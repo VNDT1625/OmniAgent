@@ -520,7 +520,7 @@
   "needHelpTooltip": "Якщо потрібна допомога, перевірте",
   "googleCloudProjectPlaceholder": "Введіть Google Cloud Project ID",
   "noAvailableModels": "Немає доступних моделей",
-  "appDescription": "Безкоштовна локальна програма з відкритим кодом для Gemini CLI",
+  "appDescription": "One desktop. Your AI agents, actually coworking.",
   "helpDocumentation": "Довідкова документація",
   "updateLog": "Журнал оновлень",
   "feedback": "Зворотний зв'язок",
@@ -823,5 +823,7 @@
     "pendingCancel": "Скасувати",
     "pendingTimeRemaining": "Залишилося часу: {{time}}"
   },
-  "noExternalSources": "Зовнішні джерела навичок не знайдені"
+  "noExternalSources": "Зовнішні джерела навичок не знайдені",
+  "bugReport": "Повідомити про проблему",
+  "bugReportTitle": "Повідомити про проблему"
 }
