@@ -33,6 +33,18 @@ interface MessageIndex {
 // Use WeakMap to cache index, auto-cleanup when list is GC'd
 const indexCache = new WeakMap<TMessage[], MessageIndex>();
 
+export function logDroppedToolCallWithoutCallId(message: TMessage): boolean {
+  if (message.type !== 'tool_call' || message.content?.call_id) return false;
+
+  console.warn('[tool-call] dropped tool_call without call_id', {
+    conversation_id: message.conversation_id,
+    msg_id: message.msg_id,
+    name: message.content?.name,
+    status: message.content?.status,
+  });
+  return true;
+}
+
 // 构建消息索引
 // Build message index
 function buildMessageIndex(list: TMessage[]): MessageIndex {
@@ -75,6 +87,11 @@ function getOrBuildIndex(list: TMessage[]): MessageIndex {
 // Index-optimized message compose function
 function composeMessageWithIndex(message: TMessage, list: TMessage[], index: MessageIndex): TMessage[] {
   if (!message) return list || [];
+
+  if (logDroppedToolCallWithoutCallId(message)) {
+    return list || [];
+  }
+
   if (!list?.length) {
     // Update index when adding first message
     if (message.msg_id) {
@@ -277,6 +294,10 @@ export const useAddOrUpdateMessage = () => {
       let newList = list;
 
       for (const item of pending) {
+        if (logDroppedToolCallWithoutCallId(item.message)) {
+          continue;
+        }
+
         if (item.add) {
           // 新增消息，更新索引
           // New message, update index
