@@ -68,11 +68,6 @@ const AboutModalContent: React.FC = () => {
       icon: <Right theme='outline' size='16' />,
     },
     {
-      title: t('settings.feedback'),
-      url: 'https://github.com/iOfficeAI/AionUi/issues',
-      icon: <Right theme='outline' size='16' />,
-    },
-    {
       title: t('settings.bugReport'),
       onClick: () => setShowFeedbackModal(true),
       icon: <Right theme='outline' size='16' />,
