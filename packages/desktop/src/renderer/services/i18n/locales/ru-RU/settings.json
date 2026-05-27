@@ -92,6 +92,7 @@
   "assistantMainAgent": "Основной агент",
   "assistantBuiltinReadonlyTip": "Это встроенный ассистент. Можно изменить только «Основной агент». Чтобы настроить остальные поля, ",
   "assistantBuiltinReadonlyDuplicateLink": "продублируйте его",
+  "assistantBuiltinReadonlyTipSuffix": ".",
   "addSkills": "Добавить навыки",
   "customSkills": "Пользовательские навыки",
   "builtinSkills": "Встроенные навыки",

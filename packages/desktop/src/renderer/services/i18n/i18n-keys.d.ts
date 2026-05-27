@@ -1041,6 +1041,7 @@ export type I18nKey =
   | 'settings.assistant.userRevoked'
   | 'settings.assistantBuiltinReadonlyDuplicateLink'
   | 'settings.assistantBuiltinReadonlyTip'
+  | 'settings.assistantBuiltinReadonlyTipSuffix'
   | 'settings.assistantCreated'
   | 'settings.assistantDescription'
   | 'settings.assistantDescriptionPlaceholder'

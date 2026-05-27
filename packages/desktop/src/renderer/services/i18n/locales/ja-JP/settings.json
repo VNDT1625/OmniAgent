@@ -92,6 +92,7 @@
   "assistantMainAgent": "メインエージェント",
   "assistantBuiltinReadonlyTip": "これはビルトインアシスタントです。「メインエージェント」以外の設定は変更できません。カスタマイズするには、",
   "assistantBuiltinReadonlyDuplicateLink": "複製して作成",
+  "assistantBuiltinReadonlyTipSuffix": "。",
   "addSkills": "スキルを追加",
   "customSkills": "カスタムスキル",
   "builtinSkills": "ビルトインスキル",

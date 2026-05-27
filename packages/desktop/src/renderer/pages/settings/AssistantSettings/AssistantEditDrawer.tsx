@@ -273,7 +273,7 @@ const AssistantEditDrawer: React.FC<AssistantEditDrawerProps> = ({
                 >
                   {t('settings.assistantBuiltinReadonlyDuplicateLink', { defaultValue: 'duplicate it' })}
                 </a>
-                <span>.</span>
+                <span>{t('settings.assistantBuiltinReadonlyTipSuffix', { defaultValue: '.' })}</span>
               </div>
             </div>
           )}

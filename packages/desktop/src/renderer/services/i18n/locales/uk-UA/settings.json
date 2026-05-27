@@ -92,6 +92,7 @@
   "assistantMainAgent": "Головний Агент",
   "assistantBuiltinReadonlyTip": "Це вбудований асистент. Можна змінити лише «Головний Агент». Щоб налаштувати інші поля, ",
   "assistantBuiltinReadonlyDuplicateLink": "продублюйте його",
+  "assistantBuiltinReadonlyTipSuffix": ".",
   "addSkills": "Додати навички",
   "customSkills": "Власні навички",
   "builtinSkills": "Вбудовані навички",

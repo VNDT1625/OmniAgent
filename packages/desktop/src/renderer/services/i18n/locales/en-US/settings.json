@@ -92,6 +92,7 @@
   "assistantMainAgent": "Main Agent",
   "assistantBuiltinReadonlyTip": "This is a builtin assistant. Only Main Agent can be changed. To customize other fields, ",
   "assistantBuiltinReadonlyDuplicateLink": "duplicate it",
+  "assistantBuiltinReadonlyTipSuffix": ".",
   "addSkills": "Add Skills",
   "customSkills": "Custom Skills",
   "builtinSkills": "Builtin Skills",

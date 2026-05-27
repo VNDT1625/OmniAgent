@@ -92,6 +92,7 @@
   "assistantMainAgent": "主代理",
   "assistantBuiltinReadonlyTip": "這是內建助理，除「主代理」外其他配置不可修改。如需自訂，請",
   "assistantBuiltinReadonlyDuplicateLink": "複製新建",
+  "assistantBuiltinReadonlyTipSuffix": "。",
   "addSkills": "新增技能",
   "customSkills": "自訂技能",
   "builtinSkills": "內建技能",

@@ -92,6 +92,7 @@
   "assistantMainAgent": "Ana Ajan",
   "assistantBuiltinReadonlyTip": "Bu yerleşik bir asistandır. Yalnızca «Ana Ajan» değiştirilebilir. Diğer alanları özelleştirmek için ",
   "assistantBuiltinReadonlyDuplicateLink": "kopyalayın",
+  "assistantBuiltinReadonlyTipSuffix": ".",
   "addSkills": "Yetenek Ekle",
   "customSkills": "Özel Yetenekler",
   "builtinSkills": "Yerleşik Yetenekler",
