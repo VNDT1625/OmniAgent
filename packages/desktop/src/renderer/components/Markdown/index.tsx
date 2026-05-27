@@ -66,30 +66,37 @@ const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
       (e: React.MouseEvent<HTMLAnchorElement>) => {
         e.preventDefault();
         e.stopPropagation();
-        // Use getAttribute to get the raw href from markdown, not browser-resolved URL
+        // Use getAttribute to get the raw href from markdown, not browser-resolved URL.
+        // react-markdown URL-encodes non-ASCII chars in href, so decode first.
         const rawHref = (e.currentTarget as HTMLAnchorElement).getAttribute('href');
         if (!rawHref) return;
+        let href: string;
+        try {
+          href = decodeURIComponent(rawHref);
+        } catch {
+          href = rawHref;
+        }
 
         // Rule 1: external URL (has scheme) → openExternal
-        if (rawHref.includes('://') || rawHref.startsWith('mailto:')) {
-          openExternalUrl(rawHref).catch((error: unknown) => {
+        if (href.includes('://') || href.startsWith('mailto:')) {
+          openExternalUrl(href).catch((error: unknown) => {
             console.error(t('messages.openLinkFailed'), error);
           });
           return;
         }
 
         // Rule 2: anchor or query-only → let browser handle (already prevented default, so do nothing special)
-        if (rawHref.startsWith('#') || rawHref.startsWith('?')) {
+        if (href.startsWith('#') || href.startsWith('?')) {
           return;
         }
 
         // Rules 3-4: local file candidate (absolute path, or relative with `/` or file extension)
-        const hasExtension = /\.[a-zA-Z0-9]+$/.test(rawHref);
-        const isAbsolute = rawHref.startsWith('/') || /^[a-zA-Z]:[/\\]/.test(rawHref);
-        const isRelativeFilePath = rawHref.includes('/') || hasExtension;
+        const hasExtension = /\.[a-zA-Z0-9]+$/.test(href);
+        const isAbsolute = href.startsWith('/') || /^[a-zA-Z]:[/\\]/.test(href);
+        const isRelativeFilePath = href.includes('/') || hasExtension;
 
         if (workspace && previewCtx && (isAbsolute || isRelativeFilePath)) {
-          const resolvedPath = resolveMessageFilePath(rawHref, workspace);
+          const resolvedPath = resolveMessageFilePath(href, workspace);
 
           // Sandbox check: must stay within workspace
           const normalizedWorkspace = workspace.replace(/[\\/]+$/, '').replace(/\\/g, '/');
@@ -112,7 +119,7 @@ const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
         }
 
         // Rule 5: fallback → openExternal
-        openExternalUrl(rawHref).catch((error: unknown) => {
+        openExternalUrl(href).catch((error: unknown) => {
           console.error(t('messages.openLinkFailed'), error);
         });
       },
