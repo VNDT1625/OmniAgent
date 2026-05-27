@@ -140,74 +140,84 @@ const SpeechToTextSettingsSection: React.FC<{
         />
       </div>
 
-      <Divider className='mt-0px mb-20px' />
+      {config.enabled && (
+        <>
+          <Divider className='mt-0px mb-20px' />
 
-      <Form layout='horizontal' labelAlign='left' className='space-y-12px'>
-        <Form.Item label={t('settings.speechToTextProvider')}>
-          <AionSelect value={config.provider} onChange={handleProviderChange}>
-            <AionSelect.Option value='openai'>{t('settings.speechToTextProviderOpenAI')}</AionSelect.Option>
-            <AionSelect.Option value='deepgram'>{t('settings.speechToTextProviderDeepgram')}</AionSelect.Option>
-          </AionSelect>
-        </Form.Item>
+          <Form layout='horizontal' labelAlign='left' className='space-y-12px'>
+            <Form.Item label={t('settings.speechToTextProvider')}>
+              <AionSelect value={config.provider} onChange={handleProviderChange}>
+                <AionSelect.Option value='openai'>{t('settings.speechToTextProviderOpenAI')}</AionSelect.Option>
+                <AionSelect.Option value='deepgram'>{t('settings.speechToTextProviderDeepgram')}</AionSelect.Option>
+              </AionSelect>
+            </Form.Item>
 
-        {config.provider === 'openai' ? (
-          <>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextApiKey', 'required')}>
-              <Input.Password
-                value={config.openai?.api_key}
-                visibilityToggle
-                onChange={(value) => handleOpenAIChange('api_key', value)}
-              />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextBaseUrl', 'optional')}>
-              <Input value={config.openai?.base_url} onChange={(value) => handleOpenAIChange('base_url', value)} />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextModel', 'optional')}>
-              <Input value={config.openai?.model} onChange={(value) => handleOpenAIChange('model', value)} />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextLanguage', 'optional')}>
-              <Input value={config.openai?.language} onChange={(value) => handleOpenAIChange('language', value)} />
-            </Form.Item>
-          </>
-        ) : (
-          <>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextApiKey', 'required')}>
-              <Input.Password
-                value={config.deepgram?.api_key}
-                visibilityToggle
-                onChange={(value) => handleDeepgramChange('api_key', value)}
-              />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextBaseUrl', 'optional')}>
-              <Input value={config.deepgram?.base_url} onChange={(value) => handleDeepgramChange('base_url', value)} />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextModel', 'optional')}>
-              <Input value={config.deepgram?.model} onChange={(value) => handleDeepgramChange('model', value)} />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextLanguage', 'optional')}>
-              <Input value={config.deepgram?.language} onChange={(value) => handleDeepgramChange('language', value)} />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextDetectLanguage', 'optional')}>
-              <Switch
-                checked={config.deepgram?.detectLanguage !== false}
-                onChange={(checked) => handleDeepgramChange('detectLanguage', checked)}
-              />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextPunctuate', 'optional')}>
-              <Switch
-                checked={config.deepgram?.punctuate !== false}
-                onChange={(checked) => handleDeepgramChange('punctuate', checked)}
-              />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextSmartFormat', 'optional')}>
-              <Switch
-                checked={config.deepgram?.smartFormat !== false}
-                onChange={(checked) => handleDeepgramChange('smartFormat', checked)}
-              />
-            </Form.Item>
-          </>
-        )}
-      </Form>
+            {config.provider === 'openai' ? (
+              <>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextApiKey', 'required')}>
+                  <Input.Password
+                    value={config.openai?.api_key}
+                    visibilityToggle
+                    onChange={(value) => handleOpenAIChange('api_key', value)}
+                  />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextBaseUrl', 'optional')}>
+                  <Input value={config.openai?.base_url} onChange={(value) => handleOpenAIChange('base_url', value)} />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextModel', 'optional')}>
+                  <Input value={config.openai?.model} onChange={(value) => handleOpenAIChange('model', value)} />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextLanguage', 'optional')}>
+                  <Input value={config.openai?.language} onChange={(value) => handleOpenAIChange('language', value)} />
+                </Form.Item>
+              </>
+            ) : (
+              <>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextApiKey', 'required')}>
+                  <Input.Password
+                    value={config.deepgram?.api_key}
+                    visibilityToggle
+                    onChange={(value) => handleDeepgramChange('api_key', value)}
+                  />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextBaseUrl', 'optional')}>
+                  <Input
+                    value={config.deepgram?.base_url}
+                    onChange={(value) => handleDeepgramChange('base_url', value)}
+                  />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextModel', 'optional')}>
+                  <Input value={config.deepgram?.model} onChange={(value) => handleDeepgramChange('model', value)} />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextLanguage', 'optional')}>
+                  <Input
+                    value={config.deepgram?.language}
+                    onChange={(value) => handleDeepgramChange('language', value)}
+                  />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextDetectLanguage', 'optional')}>
+                  <Switch
+                    checked={config.deepgram?.detectLanguage !== false}
+                    onChange={(checked) => handleDeepgramChange('detectLanguage', checked)}
+                  />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextPunctuate', 'optional')}>
+                  <Switch
+                    checked={config.deepgram?.punctuate !== false}
+                    onChange={(checked) => handleDeepgramChange('punctuate', checked)}
+                  />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextSmartFormat', 'optional')}>
+                  <Switch
+                    checked={config.deepgram?.smartFormat !== false}
+                    onChange={(checked) => handleDeepgramChange('smartFormat', checked)}
+                  />
+                </Form.Item>
+              </>
+            )}
+          </Form>
+        </>
+      )}
     </div>
   );
 };
@@ -779,84 +789,88 @@ const ToolsModalContent: React.FC = () => {
               </div>
             </div>
 
-            <Divider className='mt-0px mb-20px' />
+            {builtinImageGenServer?.enabled && (
+              <>
+                <Divider className='mt-0px mb-20px' />
 
-            <Form layout='horizontal' labelAlign='left' className='space-y-12px'>
-              <Form.Item
-                label={t('settings.imageGenerationModel')}
-                tooltip={
-                  <div className='space-y-4px'>
-                    <div>{t('settings.imageGenSupportedTooltipTitle')}</div>
-                    <ul className='list-disc pl-16px m-0'>
-                      <li>{t('settings.imageGenSupportedTooltipGemini')}</li>
-                      <li>{t('settings.imageGenSupportedTooltipOpenRouter')}</li>
-                      <li>{t('settings.imageGenSupportedTooltipAntigravity')}</li>
-                    </ul>
-                    <div>{t('settings.imageGenUnsupportedTooltip')}</div>
-                  </div>
-                }
-              >
-                {imageGenerationModelList.length > 0 ? (
-                  <AionSelect
-                    value={
-                      imageGenerationModel?.id && imageGenerationModel?.use_model
-                        ? `${imageGenerationModel.id}|${imageGenerationModel.use_model}`
-                        : undefined
+                <Form layout='horizontal' labelAlign='left' className='space-y-12px'>
+                  <Form.Item
+                    label={t('settings.imageGenerationModel')}
+                    tooltip={
+                      <div className='space-y-4px'>
+                        <div>{t('settings.imageGenSupportedTooltipTitle')}</div>
+                        <ul className='list-disc pl-16px m-0'>
+                          <li>{t('settings.imageGenSupportedTooltipGemini')}</li>
+                          <li>{t('settings.imageGenSupportedTooltipOpenRouter')}</li>
+                          <li>{t('settings.imageGenSupportedTooltipAntigravity')}</li>
+                        </ul>
+                        <div>{t('settings.imageGenUnsupportedTooltip')}</div>
+                      </div>
                     }
-                    onChange={(value) => {
-                      const [platformId, modelName] = value.split('|');
-                      const platform = imageGenerationModelList.find((p) => p.id === platformId);
-                      if (platform) {
-                        handleImageGenerationModelChange({
-                          ...platform,
-                          use_model: modelName,
-                        });
-                      }
-                    }}
                   >
-                    {imageGenerationModelList.map(({ models, ...platform }) => (
-                      <AionSelect.OptGroup label={platform.name} key={platform.id}>
-                        {models.map((modelName) => (
-                          <AionSelect.Option key={platform.id + modelName} value={platform.id + '|' + modelName}>
-                            {modelName}
-                          </AionSelect.Option>
+                    {imageGenerationModelList.length > 0 ? (
+                      <AionSelect
+                        value={
+                          imageGenerationModel?.id && imageGenerationModel?.use_model
+                            ? `${imageGenerationModel.id}|${imageGenerationModel.use_model}`
+                            : undefined
+                        }
+                        onChange={(value) => {
+                          const [platformId, modelName] = value.split('|');
+                          const platform = imageGenerationModelList.find((p) => p.id === platformId);
+                          if (platform) {
+                            handleImageGenerationModelChange({
+                              ...platform,
+                              use_model: modelName,
+                            });
+                          }
+                        }}
+                      >
+                        {imageGenerationModelList.map(({ models, ...platform }) => (
+                          <AionSelect.OptGroup label={platform.name} key={platform.id}>
+                            {models.map((modelName) => (
+                              <AionSelect.Option key={platform.id + modelName} value={platform.id + '|' + modelName}>
+                                {modelName}
+                              </AionSelect.Option>
+                            ))}
+                          </AionSelect.OptGroup>
                         ))}
-                      </AionSelect.OptGroup>
-                    ))}
-                  </AionSelect>
-                ) : (
-                  <div className='text-t-secondary flex items-center'>
-                    {t('settings.noAvailable')}
-                    <Tooltip
-                      content={
-                        <div>
-                          {t('settings.needHelpTooltip')}
+                      </AionSelect>
+                    ) : (
+                      <div className='text-t-secondary flex items-center'>
+                        {t('settings.noAvailable')}
+                        <Tooltip
+                          content={
+                            <div>
+                              {t('settings.needHelpTooltip')}
+                              <a
+                                href='https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide'
+                                target='_blank'
+                                rel='noopener noreferrer'
+                                className='text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] underline ml-4px'
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {t('settings.configGuide')}
+                              </a>
+                            </div>
+                          }
+                        >
                           <a
                             href='https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide'
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] underline ml-4px'
+                            className='ml-8px text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] cursor-pointer'
                             onClick={(e) => e.stopPropagation()}
                           >
-                            {t('settings.configGuide')}
+                            <Help theme='outline' size='14' />
                           </a>
-                        </div>
-                      }
-                    >
-                      <a
-                        href='https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide'
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        className='ml-8px text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] cursor-pointer'
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Help theme='outline' size='14' />
-                      </a>
-                    </Tooltip>
-                  </div>
-                )}
-              </Form.Item>
-            </Form>
+                        </Tooltip>
+                      </div>
+                    )}
+                  </Form.Item>
+                </Form>
+              </>
+            )}
           </div>
           <SpeechToTextSettingsSection config={speechToTextConfig} onChange={updateSpeechToTextConfig} />
         </div>
