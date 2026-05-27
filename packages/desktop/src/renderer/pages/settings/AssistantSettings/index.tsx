@@ -30,7 +30,6 @@ import {
 import SettingsPageWrapper from '../components/SettingsPageWrapper';
 import { resolveAvatarImageSrc } from './assistantUtils';
 import AddCustomPathModal from './AddCustomPathModal';
-import AddSkillsModal from './AddSkillsModal';
 import AssistantEditDrawer from './AssistantEditDrawer';
 import AssistantListPanel from './AssistantListPanel';
 import DeleteAssistantModal from './DeleteAssistantModal';
@@ -178,7 +177,6 @@ const AssistantSettings: React.FC = () => {
             customSkills={editor.customSkills}
             setDeletePendingSkillName={editor.setDeletePendingSkillName}
             setDeleteCustomSkillName={editor.setDeleteCustomSkillName}
-            setSkillsModalVisible={editor.setSkillsModalVisible}
             builtinAutoSkills={editor.builtinAutoSkills}
             disabledBuiltinSkills={editor.disabledBuiltinSkills}
             setDisabledBuiltinSkills={editor.setDisabledBuiltinSkills}
@@ -188,6 +186,7 @@ const AssistantSettings: React.FC = () => {
             availableBackends={availableBackends}
             handleSave={editor.handleSave}
             handleDeleteClick={editor.handleDeleteClick}
+            handleDuplicate={(assistant) => void editor.handleDuplicate(assistant)}
           />
 
           <DeleteAssistantModal
@@ -196,27 +195,6 @@ const AssistantSettings: React.FC = () => {
             onConfirm={editor.handleDeleteConfirm}
             activeAssistant={activeAssistant}
             avatarImageMap={avatarImageMap}
-          />
-
-          <AddSkillsModal
-            visible={editor.skillsModalVisible}
-            onCancel={() => {
-              editor.setSkillsModalVisible(false);
-              skills.setSearchExternalQuery('');
-            }}
-            externalSources={skills.externalSources}
-            activeSourceTab={skills.activeSourceTab}
-            setActiveSourceTab={skills.setActiveSourceTab}
-            activeSource={skills.activeSource}
-            filteredExternalSkills={skills.filteredExternalSkills}
-            externalSkillsLoading={skills.externalSkillsLoading}
-            searchExternalQuery={skills.searchExternalQuery}
-            setSearchExternalQuery={skills.setSearchExternalQuery}
-            refreshing={skills.refreshing}
-            handleRefreshExternal={skills.handleRefreshExternal}
-            setShowAddPathModal={skills.setShowAddPathModal}
-            customSkills={editor.customSkills}
-            handleAddFoundSkills={skills.handleAddFoundSkills}
           />
 
           <SkillConfirmModals

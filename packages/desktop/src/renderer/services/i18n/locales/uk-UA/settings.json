@@ -90,6 +90,8 @@
   "cannotDeleteBuiltin": "Неможливо видалити вбудованих асистентів",
   "duplicateAssistant": "Дублювати",
   "assistantMainAgent": "Головний Агент",
+  "assistantBuiltinReadonlyTip": "Це вбудований асистент. Можна змінити лише «Головний Агент». Щоб налаштувати інші поля, ",
+  "assistantBuiltinReadonlyDuplicateLink": "продублюйте його",
   "addSkills": "Додати навички",
   "addSkillsTitle": "Додати навички",
   "customSkills": "Власні навички",

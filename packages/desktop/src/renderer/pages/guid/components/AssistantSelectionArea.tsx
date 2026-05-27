@@ -12,7 +12,6 @@ import {
   useAssistantSkills,
 } from '@/renderer/hooks/assistant';
 import AddCustomPathModal from '@/renderer/pages/settings/AssistantSettings/AddCustomPathModal';
-import AddSkillsModal from '@/renderer/pages/settings/AssistantSettings/AddSkillsModal';
 import AssistantEditDrawer from '@/renderer/pages/settings/AssistantSettings/AssistantEditDrawer';
 import DeleteAssistantModal from '@/renderer/pages/settings/AssistantSettings/DeleteAssistantModal';
 import SkillConfirmModals from '@/renderer/pages/settings/AssistantSettings/SkillConfirmModals';
@@ -135,7 +134,6 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
         customSkills={editor.customSkills}
         setDeletePendingSkillName={editor.setDeletePendingSkillName}
         setDeleteCustomSkillName={editor.setDeleteCustomSkillName}
-        setSkillsModalVisible={editor.setSkillsModalVisible}
         builtinAutoSkills={editor.builtinAutoSkills}
         disabledBuiltinSkills={editor.disabledBuiltinSkills}
         setDisabledBuiltinSkills={editor.setDisabledBuiltinSkills}
@@ -145,6 +143,7 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
         availableBackends={availableBackends}
         handleSave={editor.handleSave}
         handleDeleteClick={editor.handleDeleteClick}
+        handleDuplicate={(assistant) => void editor.handleDuplicate(assistant)}
       />
       <DeleteAssistantModal
         visible={editor.deleteConfirmVisible}
@@ -152,26 +151,6 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
         onConfirm={editor.handleDeleteConfirm}
         activeAssistant={activeAssistant}
         avatarImageMap={avatarImageMap}
-      />
-      <AddSkillsModal
-        visible={editor.skillsModalVisible}
-        onCancel={() => {
-          editor.setSkillsModalVisible(false);
-          skills.setSearchExternalQuery('');
-        }}
-        externalSources={skills.externalSources}
-        activeSourceTab={skills.activeSourceTab}
-        setActiveSourceTab={skills.setActiveSourceTab}
-        activeSource={skills.activeSource}
-        filteredExternalSkills={skills.filteredExternalSkills}
-        externalSkillsLoading={skills.externalSkillsLoading}
-        searchExternalQuery={skills.searchExternalQuery}
-        setSearchExternalQuery={skills.setSearchExternalQuery}
-        refreshing={skills.refreshing}
-        handleRefreshExternal={skills.handleRefreshExternal}
-        setShowAddPathModal={skills.setShowAddPathModal}
-        customSkills={editor.customSkills}
-        handleAddFoundSkills={skills.handleAddFoundSkills}
       />
       <SkillConfirmModals
         deletePendingSkillName={editor.deletePendingSkillName}

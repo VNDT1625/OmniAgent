@@ -90,6 +90,8 @@
   "cannotDeleteBuiltin": "내장 어시스턴트는 삭제할 수 없습니다",
   "duplicateAssistant": "복제하여 생성",
   "assistantMainAgent": "메인 에이전트",
+  "assistantBuiltinReadonlyTip": "이것은 내장 어시스턴트입니다. '메인 에이전트' 외의 설정은 수정할 수 없습니다. 사용자 정의가 필요하시면 ",
+  "assistantBuiltinReadonlyDuplicateLink": "복제하여 생성하세요",
   "addSkills": "스킬 추가",
   "addSkillsTitle": "스킬 추가",
   "customSkills": "사용자 정의 스킬",

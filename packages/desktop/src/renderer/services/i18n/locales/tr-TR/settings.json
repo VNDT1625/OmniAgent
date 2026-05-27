@@ -90,6 +90,8 @@
   "cannotDeleteBuiltin": "Yerleşik asistanlar silinemez",
   "duplicateAssistant": "Duplicate",
   "assistantMainAgent": "Ana Ajan",
+  "assistantBuiltinReadonlyTip": "Bu yerleşik bir asistandır. Yalnızca «Ana Ajan» değiştirilebilir. Diğer alanları özelleştirmek için ",
+  "assistantBuiltinReadonlyDuplicateLink": "kopyalayın",
   "addSkills": "Yetenek Ekle",
   "addSkillsTitle": "Yetenek Ekle",
   "customSkills": "Özel Yetenekler",

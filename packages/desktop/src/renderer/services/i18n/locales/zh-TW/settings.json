@@ -90,6 +90,8 @@
   "cannotDeleteBuiltin": "無法刪除內建助理",
   "duplicateAssistant": "複製新建",
   "assistantMainAgent": "主代理",
+  "assistantBuiltinReadonlyTip": "這是內建助理，除「主代理」外其他配置不可修改。如需自訂，請",
+  "assistantBuiltinReadonlyDuplicateLink": "複製新建",
   "addSkills": "新增技能",
   "addSkillsTitle": "新增技能",
   "customSkills": "自訂技能",

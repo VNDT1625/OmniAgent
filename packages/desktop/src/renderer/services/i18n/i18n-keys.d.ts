@@ -1052,6 +1052,8 @@ export type I18nKey =
   | 'settings.assistant.tokenRequired'
   | 'settings.assistant.tokenValid'
   | 'settings.assistant.userRevoked'
+  | 'settings.assistantBuiltinReadonlyDuplicateLink'
+  | 'settings.assistantBuiltinReadonlyTip'
   | 'settings.assistantCreated'
   | 'settings.assistantDescription'
   | 'settings.assistantDescriptionPlaceholder'

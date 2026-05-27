@@ -90,6 +90,8 @@
   "cannotDeleteBuiltin": "ビルトインアシスタントは削除できません",
   "duplicateAssistant": "複製して作成",
   "assistantMainAgent": "メインエージェント",
+  "assistantBuiltinReadonlyTip": "これはビルトインアシスタントです。「メインエージェント」以外の設定は変更できません。カスタマイズするには、",
+  "assistantBuiltinReadonlyDuplicateLink": "複製して作成",
   "addSkills": "スキルを追加",
   "addSkillsTitle": "スキルを追加",
   "customSkills": "カスタムスキル",

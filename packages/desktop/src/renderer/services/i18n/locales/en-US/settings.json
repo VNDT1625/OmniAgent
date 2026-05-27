@@ -90,6 +90,8 @@
   "cannotDeleteBuiltin": "Cannot delete builtin assistants",
   "duplicateAssistant": "Duplicate",
   "assistantMainAgent": "Main Agent",
+  "assistantBuiltinReadonlyTip": "This is a builtin assistant. Only Main Agent can be changed. To customize other fields, ",
+  "assistantBuiltinReadonlyDuplicateLink": "duplicate it",
   "addSkills": "Add Skills",
   "addSkillsTitle": "Add Skills",
   "customSkills": "Custom Skills",
