@@ -783,31 +783,21 @@ const ToolsModalContent: React.FC = () => {
 
             <Form layout='horizontal' labelAlign='left' className='space-y-12px'>
               <Form.Item
-                label={
-                  <span className='inline-flex items-center gap-4px'>
-                    {t('settings.imageGenerationModel')}
-                    <Tooltip
-                      content={
-                        <div className='space-y-4px'>
-                          <div>{t('settings.imageGenSupportedTooltipTitle')}</div>
-                          <ul className='list-disc pl-16px m-0'>
-                            <li>{t('settings.imageGenSupportedTooltipGemini')}</li>
-                            <li>{t('settings.imageGenSupportedTooltipOpenRouter')}</li>
-                            <li>{t('settings.imageGenSupportedTooltipAntigravity')}</li>
-                            <li>{t('settings.imageGenSupportedTooltipOpenAI')}</li>
-                            <li>{t('settings.imageGenSupportedTooltipStability')}</li>
-                            <li>{t('settings.imageGenSupportedTooltipDashscope')}</li>
-                            <li>{t('settings.imageGenSupportedTooltipTogether')}</li>
-                          </ul>
-                          <div>{t('settings.imageGenUnsupportedTooltip')}</div>
-                        </div>
-                      }
-                    >
-                      <span className='text-t-secondary cursor-help inline-flex items-center leading-none'>
-                        <Help theme='outline' size='14' />
-                      </span>
-                    </Tooltip>
-                  </span>
+                label={t('settings.imageGenerationModel')}
+                tooltip={
+                  <div className='space-y-4px'>
+                    <div>{t('settings.imageGenSupportedTooltipTitle')}</div>
+                    <ul className='list-disc pl-16px m-0'>
+                      <li>{t('settings.imageGenSupportedTooltipGemini')}</li>
+                      <li>{t('settings.imageGenSupportedTooltipOpenRouter')}</li>
+                      <li>{t('settings.imageGenSupportedTooltipAntigravity')}</li>
+                      <li>{t('settings.imageGenSupportedTooltipOpenAI')}</li>
+                      <li>{t('settings.imageGenSupportedTooltipStability')}</li>
+                      <li>{t('settings.imageGenSupportedTooltipDashscope')}</li>
+                      <li>{t('settings.imageGenSupportedTooltipTogether')}</li>
+                    </ul>
+                    <div>{t('settings.imageGenUnsupportedTooltip')}</div>
+                  </div>
                 }
               >
                 {imageGenerationModelList.length > 0 ? (
