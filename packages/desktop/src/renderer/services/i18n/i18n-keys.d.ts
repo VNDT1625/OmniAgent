@@ -1905,6 +1905,7 @@ export type I18nKey =
   | 'update.errorTitle'
   | 'update.goToRelease'
   | 'update.installNow'
+  | 'update.installWarning'
   | 'update.modalTitle'
   | 'update.noCompatibleAsset'
   | 'update.noCompatibleAssetManual'
