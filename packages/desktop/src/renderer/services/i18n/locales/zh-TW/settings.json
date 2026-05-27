@@ -863,7 +863,18 @@
     "customAgents": "自訂 Agents",
     "custom": "自訂",
     "addCustomAgent": "新增自訂 Agent",
-    "customEmpty": "尚無自訂 Agent，點擊「新增自訂 Agent」建立。"
+    "customEmpty": "尚無自訂 Agent，點擊「新增自訂 Agent」建立。",
+    "sectionEnabled": "已啟用",
+    "sectionDisabled": "已停用",
+    "disableConfirmTitle": "停用 {{agentName}}？",
+    "disableConfirmIntro": "停用後，此 Agent 將從以下場景中隱藏：",
+    "disableConfirmScopeHome": "首頁 Agent 列表",
+    "disableConfirmScopeAssistant": "新增助手時的 Agent 選擇",
+    "disableConfirmScopeTeam": "新增團隊時的 Leader 選擇",
+    "disableConfirmKeepWorking": "已經使用此 Agent 的助手、團隊和會話不受影響，仍可正常運行。",
+    "disableConfirmReenableHint": "你可以隨時在「設定 → Agent 管理」中重新啟用。",
+    "disableConfirmCancel": "取消",
+    "disableConfirmConfirm": "確認停用"
   },
   "remoteAgent": {
     "title": "遠端 Agent",

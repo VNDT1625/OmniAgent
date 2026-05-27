@@ -861,7 +861,18 @@
     "customAgents": "Özel Ajanlar",
     "custom": "Özel",
     "addCustomAgent": "Özel Ajan Ekle",
-    "customEmpty": "Yapılandırılmış özel ajan yok. Oluşturmak için \"Özel Ajan Ekle\"ye tıklayın."
+    "customEmpty": "Yapılandırılmış özel ajan yok. Oluşturmak için \"Özel Ajan Ekle\"ye tıklayın.",
+    "sectionEnabled": "Etkin",
+    "sectionDisabled": "Devre Dışı",
+    "disableConfirmTitle": "{{agentName}} devre dışı bırakılsın mı?",
+    "disableConfirmIntro": "Devre dışı bıraktıktan sonra, bu ajan şu yerlerden gizlenecek:",
+    "disableConfirmScopeHome": "Ana sayfadaki ajan listesi",
+    "disableConfirmScopeAssistant": "Yeni asistan oluştururken ajan seçici",
+    "disableConfirmScopeTeam": "Yeni takım oluştururken Lider seçici",
+    "disableConfirmKeepWorking": "Bu ajanı kullanan mevcut asistanlar, takımlar ve konuşmalar etkilenmez ve çalışmaya devam eder.",
+    "disableConfirmReenableHint": "İstediğiniz zaman Ayarlar → Ajan Yönetimi'nden yeniden etkinleştirebilirsiniz.",
+    "disableConfirmCancel": "İptal",
+    "disableConfirmConfirm": "Devre Dışı Bırak"
   },
   "remoteAgent": {
     "title": "Uzak Ajanlar",

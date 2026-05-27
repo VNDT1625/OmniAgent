@@ -8,9 +8,9 @@ import { ipcBridge } from '@/common';
 import type { AgentMetadata } from '@/renderer/utils/model/agentTypes';
 import AionModal from '@/renderer/components/base/AionModal';
 import { useAgents } from '@/renderer/hooks/agent/useAgents';
-import { Button, Typography } from '@arco-design/web-react';
+import { Button, Modal, Typography } from '@arco-design/web-react';
 import { Home, Plus } from '@icon-park/react';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AgentCard from './AgentCard';
@@ -24,11 +24,18 @@ const LocalAgents: React.FC = () => {
   const [hubModalVisible, setHubModalVisible] = useState(false);
 
   // Single fetch for all agents; both detected and custom lists are derived from it.
+  // Settings page is the management surface — it consumes the *unfiltered* cache so
+  // disabled rows remain visible (otherwise the user could not re-enable them).
   const { agents: allAgents, revalidate: mutateAgents } = useAgents();
 
-  const detectedAgents = allAgents.filter((a) => a.agent_type !== 'remote' && a.agent_source !== 'custom');
-
-  const customAgents: AgentMetadata[] = allAgents.filter((a) => a.agent_source === 'custom');
+  const detectedAgents = useMemo(
+    () => allAgents.filter((a) => a.agent_type !== 'remote' && a.agent_source !== 'custom'),
+    [allAgents]
+  );
+  const customAgents: AgentMetadata[] = useMemo(
+    () => allAgents.filter((a) => a.agent_source === 'custom'),
+    [allAgents]
+  );
 
   const [editorVisible, setEditorVisible] = useState(false);
   const [editingAgent, setEditingAgent] = useState<AgentMetadata | null>(null);
@@ -72,21 +79,71 @@ const LocalAgents: React.FC = () => {
     [mutateAgents]
   );
 
-  const handleToggleCustomAgent = useCallback(
+  const applyEnabledChange = useCallback(
     async (agentId: string, enabled: boolean) => {
       try {
         await ipcBridge.acpConversation.setAgentEnabled.invoke({ id: agentId, enabled });
         await mutateAgents();
       } catch (err) {
-        console.error('toggle custom agent failed:', err);
+        console.error('toggle agent failed:', err);
       }
     },
     [mutateAgents]
   );
 
-  // Aion CLI first among detected agents
-  const aionrsAgent = detectedAgents?.find((a) => a.agent_type === 'aionrs' || a.backend === 'aionrs');
-  const otherDetected = detectedAgents?.filter((a) => a.agent_type !== 'aionrs' && a.backend !== 'aionrs') ?? [];
+  // Enabled→disabled requires a confirm modal so users understand the scope of
+  // hiding (home / assistant editor / team leader picker). Disabled→enabled
+  // toggles immediately — no friction needed.
+  const handleToggleAgent = useCallback(
+    (agent: { id: string; name: string; enabled?: boolean }, nextEnabled: boolean) => {
+      if (nextEnabled) {
+        void applyEnabledChange(agent.id, true);
+        return;
+      }
+      Modal.confirm({
+        title: t('settings.agentManagement.disableConfirmTitle', { agentName: agent.name }),
+        content: (
+          <div className='flex flex-col gap-8px text-13px leading-20px'>
+            <span>{t('settings.agentManagement.disableConfirmIntro')}</span>
+            <ul className='m-0 pl-20px flex flex-col gap-2px'>
+              <li>{t('settings.agentManagement.disableConfirmScopeHome')}</li>
+              <li>{t('settings.agentManagement.disableConfirmScopeAssistant')}</li>
+              <li>{t('settings.agentManagement.disableConfirmScopeTeam')}</li>
+            </ul>
+            <span>{t('settings.agentManagement.disableConfirmKeepWorking')}</span>
+            <span className='text-t-secondary'>{t('settings.agentManagement.disableConfirmReenableHint')}</span>
+          </div>
+        ),
+        okText: t('settings.agentManagement.disableConfirmConfirm'),
+        cancelText: t('settings.agentManagement.disableConfirmCancel'),
+        okButtonProps: { status: 'danger' },
+        onOk: async () => {
+          await applyEnabledChange(agent.id, false);
+        },
+      });
+    },
+    [applyEnabledChange, t]
+  );
+
+  // Aion CLI is always pinned first within whichever section it lives in.
+  const sortDetected = useCallback((list: AgentMetadata[]): AgentMetadata[] => {
+    const aion = list.find((a) => a.agent_type === 'aionrs' || a.backend === 'aionrs');
+    const others = list.filter((a) => a !== aion);
+    return aion ? [aion, ...others] : others;
+  }, []);
+
+  const enabledDetected = useMemo(
+    () => sortDetected(detectedAgents.filter((a) => a.enabled !== false)),
+    [detectedAgents, sortDetected]
+  );
+  const disabledDetected = useMemo(
+    () => sortDetected(detectedAgents.filter((a) => a.enabled === false)),
+    [detectedAgents, sortDetected]
+  );
+  const enabledCustom = useMemo(() => customAgents.filter((a) => a.enabled !== false), [customAgents]);
+  const disabledCustom = useMemo(() => customAgents.filter((a) => a.enabled === false), [customAgents]);
+
+  const hasDisabled = disabledDetected.length > 0 || disabledCustom.length > 0;
 
   const openCustomAgentEditor = useCallback(() => {
     setEditingAgent(null);
@@ -144,38 +201,92 @@ const LocalAgents: React.FC = () => {
         </div>
       )}
 
-      {/* Detected Agents section */}
+      {/* Enabled section */}
       <div className='px-16px mt-8px'>
         <Typography.Text className='text-12px font-medium text-t-secondary mb-4px block'>
-          {t('settings.agentManagement.detected')}
+          {t('settings.agentManagement.sectionEnabled')}
         </Typography.Text>
       </div>
-      <div className='grid grid-cols-2 gap-10px px-16px md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'>
-        {aionrsAgent && (
-          <AgentCard type='detected' agent={aionrsAgent} onGoToChat={() => goToChatWithAgent(aionrsAgent)} />
-        )}
-        {otherDetected.map((agent) => (
-          <AgentCard
-            key={agent.backend || agent.agent_type}
-            type='detected'
-            agent={agent}
-            onGoToChat={() => goToChatWithAgent(agent)}
-          />
-        ))}
-      </div>
-      {(!detectedAgents || detectedAgents.length === 0) && (
+      {enabledDetected.length === 0 && enabledCustom.length === 0 ? (
         <Typography.Text type='secondary' className='block px-16px py-16px text-center text-12px'>
           {t('settings.agentManagement.localAgentsEmpty')}
         </Typography.Text>
+      ) : (
+        <>
+          {enabledDetected.length > 0 && (
+            <div className='grid grid-cols-2 gap-10px px-16px md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'>
+              {enabledDetected.map((agent) => (
+                <AgentCard
+                  key={agent.id || agent.backend || agent.agent_type}
+                  type='detected'
+                  agent={agent}
+                  onGoToChat={() => goToChatWithAgent(agent)}
+                  onToggle={(next) => handleToggleAgent(agent, next)}
+                />
+              ))}
+            </div>
+          )}
+          {enabledCustom.length > 0 && (
+            <div className='flex flex-col gap-4px px-0 mt-4px'>
+              {enabledCustom.map((agent) => (
+                <AgentCard
+                  key={agent.id}
+                  type='custom'
+                  agent={agent}
+                  onGoToChat={() => goToChatWithAgent(agent)}
+                  onEdit={() => {
+                    setEditingAgent(agent);
+                    setEditorVisible(true);
+                  }}
+                  onDelete={() => void handleDeleteCustomAgent(agent.id)}
+                  onToggle={(next) => handleToggleAgent(agent, next)}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Custom Agents section */}
-      {(editorVisible || (customAgents && customAgents.length > 0)) && (
-        <div className='px-16px mt-16px'>
-          <Typography.Text className='text-12px font-medium text-t-secondary mb-4px block'>
-            {t('settings.agentManagement.customAgents', { defaultValue: 'Custom Agents' })}
-          </Typography.Text>
-        </div>
+      {/* Disabled section — only rendered when at least one disabled row exists */}
+      {hasDisabled && (
+        <>
+          <div className='px-16px mt-16px'>
+            <Typography.Text className='text-12px font-medium text-t-secondary mb-4px block'>
+              {t('settings.agentManagement.sectionDisabled')}
+            </Typography.Text>
+          </div>
+          {disabledDetected.length > 0 && (
+            <div className='grid grid-cols-2 gap-10px px-16px md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5'>
+              {disabledDetected.map((agent) => (
+                <AgentCard
+                  key={agent.id || agent.backend || agent.agent_type}
+                  type='detected'
+                  agent={agent}
+                  onGoToChat={() => goToChatWithAgent(agent)}
+                  onToggle={(next) => handleToggleAgent(agent, next)}
+                />
+              ))}
+            </div>
+          )}
+          {disabledCustom.length > 0 && (
+            <div className='flex flex-col gap-4px px-0 mt-4px'>
+              {disabledCustom.map((agent) => (
+                <AgentCard
+                  key={agent.id}
+                  type='custom'
+                  agent={agent}
+                  onGoToChat={() => goToChatWithAgent(agent)}
+                  onEdit={() => {
+                    setEditingAgent(agent);
+                    setEditorVisible(true);
+                  }}
+                  onDelete={() => void handleDeleteCustomAgent(agent.id)}
+                  onToggle={(next) => handleToggleAgent(agent, next)}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <AionModal
@@ -216,23 +327,6 @@ const LocalAgents: React.FC = () => {
           />
         )}
       </AionModal>
-
-      <div className='flex flex-col gap-4px px-0'>
-        {customAgents?.map((agent) => (
-          <AgentCard
-            key={agent.id}
-            type='custom'
-            agent={agent}
-            onGoToChat={() => goToChatWithAgent(agent)}
-            onEdit={() => {
-              setEditingAgent(agent);
-              setEditorVisible(true);
-            }}
-            onDelete={() => void handleDeleteCustomAgent(agent.id)}
-            onToggle={(enabled) => void handleToggleCustomAgent(agent.id, enabled)}
-          />
-        ))}
-      </div>
 
       {hubModalVisible && <AgentHubModal visible={hubModalVisible} onCancel={() => setHubModalVisible(false)} />}
     </div>

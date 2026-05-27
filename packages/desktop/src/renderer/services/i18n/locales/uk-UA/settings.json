@@ -779,7 +779,18 @@
     "customAgents": "Власні агенти",
     "custom": "Власний",
     "addCustomAgent": "Додати власного агента",
-    "customEmpty": "Власні агенти не налаштовані. Натисніть «Додати власного агента» для створення."
+    "customEmpty": "Власні агенти не налаштовані. Натисніть «Додати власного агента» для створення.",
+    "sectionEnabled": "Увімкнено",
+    "sectionDisabled": "Вимкнено",
+    "disableConfirmTitle": "Вимкнути {{agentName}}?",
+    "disableConfirmIntro": "Після вимкнення цей агент буде прихований у таких місцях:",
+    "disableConfirmScopeHome": "Список агентів на головній сторінці",
+    "disableConfirmScopeAssistant": "Вибір агента під час створення нового асистента",
+    "disableConfirmScopeTeam": "Вибір лідера під час створення нової команди",
+    "disableConfirmKeepWorking": "Існуючі асистенти, команди та бесіди, які використовують цього агента, не зачеплено й вони продовжать працювати.",
+    "disableConfirmReenableHint": "Ви можете знову увімкнути його в будь-який час у «Налаштування → Керування агентами».",
+    "disableConfirmCancel": "Скасувати",
+    "disableConfirmConfirm": "Вимкнути"
   },
   "remoteAgent": {
     "title": "Віддалені агенти",

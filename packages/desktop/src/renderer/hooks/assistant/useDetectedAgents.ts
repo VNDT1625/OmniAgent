@@ -24,7 +24,7 @@ export const useDetectedAgents = () => {
   const availableBackends = useMemo<AvailableBackend[]>(
     () =>
       rawAgents
-        .filter((a) => a.agent_type !== 'remote')
+        .filter((a) => a.agent_type !== 'remote' && a.enabled !== false)
         .map((a) => ({
           // `preset_agent_type` stores the backend slug (e.g. "claude", "gemini"),
           // not the AgentMetadata row id. Align the Select value with that contract.

@@ -19,6 +19,7 @@ type DetectedAgent = {
   custom_agent_id?: string;
   isExtension?: boolean;
   avatar?: string;
+  enabled?: boolean;
 };
 
 /** Minimal custom-agent fields consumed by the 'custom' card variant. */
@@ -39,6 +40,7 @@ type AgentCardProps =
       type: 'detected';
       agent: DetectedAgent;
       onGoToChat: () => void;
+      onToggle: (enabled: boolean) => void;
     }
   | {
       type: 'custom';
@@ -52,9 +54,10 @@ type AgentCardProps =
 const AgentCard: React.FC<AgentCardProps> = (props) => {
   const { t } = useTranslation();
   const goToChatButtonClassName = '!w-full !justify-center !rounded-10px !text-12px';
+  const isEnabled = props.agent.enabled !== false;
 
   if (props.type === 'detected') {
-    const { agent, onGoToChat } = props;
+    const { agent, onGoToChat, onToggle } = props;
     const extensionAvatar = resolveExtensionAssetUrl(agent.isExtension ? agent.avatar : undefined);
     const logo =
       extensionAvatar ||
@@ -66,11 +69,15 @@ const AgentCard: React.FC<AgentCardProps> = (props) => {
       });
 
     return (
-      <div className='flex min-h-[154px] flex-col rounded-12px border border-solid border-[var(--color-border-2)] bg-[var(--color-bg-2)] p-12px transition-colors hover:border-[var(--color-border-3)]'>
-        <div className='mb-10px flex justify-center'>
+      <div
+        className='flex min-h-[154px] flex-col rounded-12px border border-solid border-[var(--color-border-2)] bg-[var(--color-bg-2)] p-12px transition-colors hover:border-[var(--color-border-3)]'
+        style={{ opacity: isEnabled ? 1 : 0.6, filter: isEnabled ? undefined : 'grayscale(0.6)' }}
+      >
+        <div className='mb-10px flex items-start justify-between'>
           <Avatar size={40} shape='square' style={{ flexShrink: 0, backgroundColor: 'transparent' }}>
             {logo ? <img src={logo} alt={agent.name} className='h-full w-full object-contain' /> : '🤖'}
           </Avatar>
+          <Switch size='small' checked={isEnabled} onChange={onToggle} />
         </div>
 
         <div className='mb-10px flex-1 text-center'>
@@ -82,9 +89,11 @@ const AgentCard: React.FC<AgentCardProps> = (props) => {
           </Typography.Text>
         </div>
 
-        <Button size='small' type='secondary' onClick={onGoToChat} className={goToChatButtonClassName}>
-          {t('settings.agentManagement.goToChat')}
-        </Button>
+        {isEnabled && (
+          <Button size='small' type='secondary' onClick={onGoToChat} className={goToChatButtonClassName}>
+            {t('settings.agentManagement.goToChat')}
+          </Button>
+        )}
       </div>
     );
   }
@@ -92,7 +101,10 @@ const AgentCard: React.FC<AgentCardProps> = (props) => {
   const { agent, onGoToChat, onEdit, onDelete, onToggle } = props;
 
   return (
-    <div className='flex items-center justify-between px-16px py-10px rd-8px bg-aou-1 hover:bg-aou-2'>
+    <div
+      className='flex items-center justify-between px-16px py-10px rd-8px bg-aou-1 hover:bg-aou-2'
+      style={{ opacity: isEnabled ? 1 : 0.6, filter: isEnabled ? undefined : 'grayscale(0.6)' }}
+    >
       <div className='flex items-center gap-12px min-w-0 flex-1'>
         <Avatar
           size={32}
@@ -110,10 +122,12 @@ const AgentCard: React.FC<AgentCardProps> = (props) => {
         </div>
       </div>
       <div className='flex items-center gap-8px'>
-        <Switch size='small' checked={agent.enabled !== false} onChange={onToggle} />
-        <Button size='small' type='text' onClick={onGoToChat} disabled={agent.enabled === false}>
-          {t('settings.agentManagement.goToChat')}
-        </Button>
+        <Switch size='small' checked={isEnabled} onChange={onToggle} />
+        {isEnabled && (
+          <Button size='small' type='text' onClick={onGoToChat}>
+            {t('settings.agentManagement.goToChat')}
+          </Button>
+        )}
         <Button size='small' type='text' icon={<EditTwo theme='outline' size='14' />} onClick={onEdit} />
         <Button
           size='small'

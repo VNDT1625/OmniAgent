@@ -862,7 +862,18 @@
     "customAgents": "自定义 Agents",
     "custom": "自定义",
     "addCustomAgent": "添加自定义 Agent",
-    "customEmpty": "暂无自定义 Agent，点击「添加自定义 Agent」创建。"
+    "customEmpty": "暂无自定义 Agent，点击「添加自定义 Agent」创建。",
+    "sectionEnabled": "已启用",
+    "sectionDisabled": "已禁用",
+    "disableConfirmTitle": "禁用 {{agentName}}？",
+    "disableConfirmIntro": "禁用后，此 Agent 将从以下场景中隐藏：",
+    "disableConfirmScopeHome": "首页 Agent 列表",
+    "disableConfirmScopeAssistant": "新建助手时的 Agent 选择",
+    "disableConfirmScopeTeam": "新建团队时的 Leader 选择",
+    "disableConfirmKeepWorking": "已经使用此 Agent 的助手、团队和会话不受影响，仍可正常运行。",
+    "disableConfirmReenableHint": "你可以随时在「设置 → Agent 管理」中重新启用。",
+    "disableConfirmCancel": "取消",
+    "disableConfirmConfirm": "确认禁用"
   },
   "remoteAgent": {
     "title": "远程 Agent",

@@ -861,7 +861,18 @@
     "customAgents": "Custom Agents",
     "custom": "Custom",
     "addCustomAgent": "Add Custom Agent",
-    "customEmpty": "No custom agents configured. Click \"Add Custom Agent\" to create one."
+    "customEmpty": "No custom agents configured. Click \"Add Custom Agent\" to create one.",
+    "sectionEnabled": "Enabled",
+    "sectionDisabled": "Disabled",
+    "disableConfirmTitle": "Disable {{agentName}}?",
+    "disableConfirmIntro": "After disabling, this agent will be hidden from:",
+    "disableConfirmScopeHome": "Agent list on the home page",
+    "disableConfirmScopeAssistant": "Agent picker when creating a new assistant",
+    "disableConfirmScopeTeam": "Leader picker when creating a new team",
+    "disableConfirmKeepWorking": "Existing assistants, teams, and conversations using this agent are unaffected and will keep working.",
+    "disableConfirmReenableHint": "You can re-enable it anytime in Settings → Agent Management.",
+    "disableConfirmCancel": "Cancel",
+    "disableConfirmConfirm": "Disable"
   },
   "remoteAgent": {
     "title": "Remote Agents",

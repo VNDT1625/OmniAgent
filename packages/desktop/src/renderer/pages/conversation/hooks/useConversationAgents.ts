@@ -51,8 +51,12 @@ export const useConversationAgents = (): UseConversationAgentsResult => {
     await mutate();
   };
 
+  // Hide disabled agents from selection surfaces. Settings page consumes the
+  // raw cache via `useAgents()` so it can still render disabled agents.
+  const enabledCliAgents = (cliAgents || []).filter((a) => a.enabled !== false);
+
   return {
-    cliAgents: cliAgents || [],
+    cliAgents: enabledCliAgents,
     presetAssistants: presetAssistants || [],
     isLoading: isLoadingAgents || isLoadingPresets,
     refresh,

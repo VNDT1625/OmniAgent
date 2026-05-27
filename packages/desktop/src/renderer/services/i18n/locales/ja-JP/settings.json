@@ -863,7 +863,18 @@
     "customAgents": "カスタムエージェント",
     "custom": "カスタム",
     "addCustomAgent": "カスタムエージェントを追加",
-    "customEmpty": "カスタムエージェントが設定されていません。「カスタムエージェントを追加」をクリックして作成してください。"
+    "customEmpty": "カスタムエージェントが設定されていません。「カスタムエージェントを追加」をクリックして作成してください。",
+    "sectionEnabled": "有効",
+    "sectionDisabled": "無効",
+    "disableConfirmTitle": "{{agentName}} を無効化しますか？",
+    "disableConfirmIntro": "無効化すると、このエージェントは以下の場面で非表示になります：",
+    "disableConfirmScopeHome": "ホーム画面のエージェント一覧",
+    "disableConfirmScopeAssistant": "新規アシスタント作成時のエージェント選択",
+    "disableConfirmScopeTeam": "新規チーム作成時のリーダー選択",
+    "disableConfirmKeepWorking": "このエージェントをすでに使用しているアシスタント、チーム、会話には影響せず、引き続き動作します。",
+    "disableConfirmReenableHint": "「設定 → エージェント管理」からいつでも再度有効化できます。",
+    "disableConfirmCancel": "キャンセル",
+    "disableConfirmConfirm": "無効化"
   },
   "remoteAgent": {
     "title": "リモートエージェント",
