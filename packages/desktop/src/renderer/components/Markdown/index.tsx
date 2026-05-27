@@ -21,10 +21,6 @@ import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { convertLatexDelimiters } from '@renderer/utils/chat/latexDelimiters';
 import LocalImageView from '@renderer/components/media/LocalImageView';
-import { useConversationContextSafe } from '@renderer/hooks/context/ConversationContext';
-import { resolveMessageFilePath } from '@renderer/pages/conversation/Messages/components/MessageText';
-import { usePreviewContextSafe } from '@renderer/pages/conversation/Preview/context/PreviewContext';
-import { getFileTypeInfo } from '@renderer/utils/file/fileType';
 import CodeBlock from './CodeBlock';
 import ShadowView from './ShadowView';
 
@@ -49,9 +45,6 @@ type MarkdownViewProps = {
 const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
   ({ hiddenCodeCopyButton, codeStyle, className, onRef, allowHtml, children: childrenProp }) => {
     const { t } = useTranslation();
-    const conversationCtx = useConversationContextSafe();
-    const previewCtx = usePreviewContextSafe();
-    const workspace = conversationCtx?.workspace;
 
     const normalizedChildren = useMemo(() => {
       if (typeof childrenProp === 'string') {
@@ -66,71 +59,13 @@ const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
       (e: React.MouseEvent<HTMLAnchorElement>) => {
         e.preventDefault();
         e.stopPropagation();
-        // Use getAttribute to get the raw href from markdown, not browser-resolved URL.
-        // react-markdown URL-encodes non-ASCII chars in href, so decode first.
-        const rawHref = (e.currentTarget as HTMLAnchorElement).getAttribute('href');
-        if (!rawHref) return;
-        let href: string;
-        try {
-          href = decodeURIComponent(rawHref);
-        } catch {
-          href = rawHref;
-        }
-
-        // Rule 1: external URL (has scheme) → openExternal
-        if (href.includes('://') || href.startsWith('mailto:')) {
-          openExternalUrl(href).catch((error: unknown) => {
-            console.error(t('messages.openLinkFailed'), error);
-          });
-          return;
-        }
-
-        // Rule 2: anchor or query-only → let browser handle (already prevented default, so do nothing special)
-        if (href.startsWith('#') || href.startsWith('?')) {
-          return;
-        }
-
-        // Rules 3-4: local file candidate (absolute path, or relative with `/` or file extension)
-        const hasExtension = /\.[a-zA-Z0-9]+$/.test(href);
-        const isAbsolute = href.startsWith('/') || /^[a-zA-Z]:[/\\]/.test(href);
-        const isRelativeFilePath = href.includes('/') || hasExtension;
-
-        if (workspace && previewCtx && (isAbsolute || isRelativeFilePath)) {
-          const resolvedPath = resolveMessageFilePath(href, workspace);
-
-          // Sandbox check: must stay within workspace.
-          // Normalize via URL to collapse any `..` segments before comparing,
-          // otherwise `/workspace/../../../etc/passwd` would pass a naive startsWith.
-          const normalizedWorkspace = workspace.replace(/[\\/]+$/, '').replace(/\\/g, '/');
-          let normalizedResolved: string;
-          try {
-            normalizedResolved = new URL(resolvedPath.replace(/\\/g, '/'), 'file:///').pathname;
-          } catch {
-            normalizedResolved = resolvedPath.replace(/\\/g, '/');
-          }
-          if (!normalizedResolved.startsWith(normalizedWorkspace + '/') && normalizedResolved !== normalizedWorkspace) {
-            console.error(t('messages.openLinkFailed'), 'Path outside workspace');
-            return;
-          }
-
-          const fileName = resolvedPath.split('/').pop() ?? resolvedPath;
-          const { contentType } = getFileTypeInfo(fileName);
-          previewCtx.openPreview('', contentType, {
-            file_path: resolvedPath,
-            file_name: fileName,
-            title: fileName,
-            workspace,
-            editable: false,
-          });
-          return;
-        }
-
-        // Rule 5: fallback → openExternal
+        const href = (e.currentTarget as HTMLAnchorElement).href;
+        if (!href) return;
         openExternalUrl(href).catch((error: unknown) => {
           console.error(t('messages.openLinkFailed'), error);
         });
       },
-      [t, workspace, previewCtx]
+      [t]
     );
 
     // Memoize components so React preserves component identity across re-renders.
