@@ -6,7 +6,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { Button, Progress, Message } from '@arco-design/web-react';
-import { Caution, CheckOne, Download, FolderOpen, Refresh, CloseOne, Install } from '@icon-park/react';
+import { CheckOne, Download, FolderOpen, Refresh, CloseOne, Install } from '@icon-park/react';
 import { ipcBridge } from '@/common';
 import AionModal from '@/renderer/components/base/AionModal';
 import MarkdownView from '@/renderer/components/Markdown';
@@ -401,12 +401,8 @@ const UpdateModal: React.FC = () => {
               <CheckOne theme='filled' size='28' fill='rgb(var(--success-6))' />
             </div>
             <div className='text-16px text-t-primary font-600 mb-8px'>{t('update.readyToInstall')}</div>
-            <div className='text-13px text-t-tertiary mb-8px text-center max-w-360px'>
-              {t('update.readyToInstallDesc')}
-            </div>
-            <div className='flex items-center gap-6px mb-24px text-13px text-[rgb(var(--warning-6))]'>
-              <Caution size='14' fill='rgb(var(--warning-6))' />
-              <span>{t('update.installWarning')}</span>
+            <div className='mb-24px text-13px text-[rgb(var(--warning-6))] max-w-360px text-center'>
+              {t('update.installWarning')}
             </div>
             <Button
               type='primary'
