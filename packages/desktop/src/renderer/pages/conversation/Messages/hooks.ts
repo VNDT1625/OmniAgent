@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { createContext } from '@renderer/utils/ui/createContext';
 
 const [useMessageList, MessageListProvider, useUpdateMessageList] = createContext([] as TMessage[]);
+const [useMessageListLoading, MessageListLoadingProvider, useUpdateMessageListLoading] = createContext(false);
 
 const [useChatKey, ChatKeyProvider] = createContext('');
 
@@ -400,6 +401,7 @@ function normalizeDbMessage(msg: TMessage): TMessage {
 
 export const useMessageLstCache = (key: string) => {
   const update = useUpdateMessageList();
+  const setLoading = useUpdateMessageListLoading();
   const loadMessages = useCallback(async (): Promise<TMessage[]> => {
     const result = await ipcBridge.database.getConversationMessages.invoke({
       conversation_id: key,
@@ -444,10 +446,21 @@ export const useMessageLstCache = (key: string) => {
 
   useEffect(() => {
     if (!key) return;
-    void loadMessages().catch((error) => {
-      console.error('[useMessageLstCache] Failed to load messages from database:', error);
-    });
-  }, [key, loadMessages]);
+    let cancelled = false;
+    setLoading(true);
+    void loadMessages()
+      .catch((error) => {
+        console.error('[useMessageLstCache] Failed to load messages from database:', error);
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [key, loadMessages, setLoading]);
 };
 
 export const beforeUpdateMessageList = (fn: (list: TMessage[]) => TMessage[]) => {
@@ -456,4 +469,12 @@ export const beforeUpdateMessageList = (fn: (list: TMessage[]) => TMessage[]) =>
     beforeUpdateMessageListStack.splice(beforeUpdateMessageListStack.indexOf(fn), 1);
   };
 };
-export { ChatKeyProvider, MessageListProvider, useChatKey, useMessageList, useUpdateMessageList };
+export {
+  ChatKeyProvider,
+  MessageListLoadingProvider,
+  MessageListProvider,
+  useChatKey,
+  useMessageList,
+  useMessageListLoading,
+  useUpdateMessageList,
+};

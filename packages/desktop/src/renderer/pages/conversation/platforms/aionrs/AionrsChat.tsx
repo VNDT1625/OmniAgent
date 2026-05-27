@@ -9,7 +9,11 @@ import { ConversationProvider } from '@/renderer/hooks/context/ConversationConte
 import FlexFullContainer from '@renderer/components/layout/FlexFullContainer';
 import MessageList from '@renderer/pages/conversation/Messages/MessageList';
 import { ConversationArtifactProvider } from '@renderer/pages/conversation/Messages/artifacts';
-import { MessageListProvider, useMessageLstCache } from '@renderer/pages/conversation/Messages/hooks';
+import {
+  MessageListLoadingProvider,
+  MessageListProvider,
+  useMessageLstCache,
+} from '@renderer/pages/conversation/Messages/hooks';
 import HOC from '@renderer/utils/ui/HOC';
 import React, { useEffect, useMemo } from 'react';
 import LocalImageView from '@renderer/components/media/LocalImageView';
@@ -63,4 +67,4 @@ const AionrsChat: React.FC<{
   );
 };
 
-export default HOC.Wrapper(MessageListProvider, LocalImageView.Provider)(AionrsChat);
+export default HOC.Wrapper(MessageListProvider, MessageListLoadingProvider, LocalImageView.Provider)(AionrsChat);
