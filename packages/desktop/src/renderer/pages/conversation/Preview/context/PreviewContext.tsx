@@ -722,3 +722,6 @@ export const usePreviewContext = () => {
   }
   return context;
 };
+
+/** Returns null when called outside a PreviewProvider — safe to use in shared components. */
+export const usePreviewContextSafe = (): PreviewContextValue | null => useContext(PreviewContext);
