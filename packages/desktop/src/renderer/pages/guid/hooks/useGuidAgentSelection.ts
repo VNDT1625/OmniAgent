@@ -126,7 +126,13 @@ export const useGuidAgentSelection = ({
   preselectAgentKey,
   locationKey,
 }: UseGuidAgentSelectionOptions): GuidAgentSelectionResult => {
-  const [selectedAgentKey, _setSelectedAgentKey] = useState<string>('aionrs');
+  const [selectedAgentKey, _setSelectedAgentKey] = useState<string>(() => {
+    try {
+      return configService.get('guid.lastSelectedAgent') || 'aionrs';
+    } catch {
+      return 'aionrs';
+    }
+  });
   const [availableAgents, setAvailableAgents] = useState<AvailableAgent[]>();
   const [selectedMode, _setSelectedMode] = useState<string>('default');
   // Track whether mode was loaded from preferences to avoid overwriting during initial load
