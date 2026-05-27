@@ -789,88 +789,84 @@ const ToolsModalContent: React.FC = () => {
               </div>
             </div>
 
-            {builtinImageGenServer?.enabled && (
-              <>
-                <Divider className='mt-0px mb-20px' />
+            <Divider className='mt-0px mb-20px' />
 
-                <Form layout='horizontal' labelAlign='left' className='space-y-12px'>
-                  <Form.Item
-                    label={t('settings.imageGenerationModel')}
-                    tooltip={
-                      <div className='space-y-4px'>
-                        <div>{t('settings.imageGenSupportedTooltipTitle')}</div>
-                        <ul className='list-disc pl-16px m-0'>
-                          <li>{t('settings.imageGenSupportedTooltipGemini')}</li>
-                          <li>{t('settings.imageGenSupportedTooltipOpenRouter')}</li>
-                          <li>{t('settings.imageGenSupportedTooltipAntigravity')}</li>
-                        </ul>
-                        <div>{t('settings.imageGenUnsupportedTooltip')}</div>
-                      </div>
+            <Form layout='horizontal' labelAlign='left' className='space-y-12px'>
+              <Form.Item
+                label={t('settings.imageGenerationModel')}
+                tooltip={
+                  <div className='space-y-4px'>
+                    <div>{t('settings.imageGenSupportedTooltipTitle')}</div>
+                    <ul className='list-disc pl-16px m-0'>
+                      <li>{t('settings.imageGenSupportedTooltipGemini')}</li>
+                      <li>{t('settings.imageGenSupportedTooltipOpenRouter')}</li>
+                      <li>{t('settings.imageGenSupportedTooltipAntigravity')}</li>
+                    </ul>
+                    <div>{t('settings.imageGenUnsupportedTooltip')}</div>
+                  </div>
+                }
+              >
+                {imageGenerationModelList.length > 0 ? (
+                  <AionSelect
+                    value={
+                      imageGenerationModel?.id && imageGenerationModel?.use_model
+                        ? `${imageGenerationModel.id}|${imageGenerationModel.use_model}`
+                        : undefined
                     }
+                    onChange={(value) => {
+                      const [platformId, modelName] = value.split('|');
+                      const platform = imageGenerationModelList.find((p) => p.id === platformId);
+                      if (platform) {
+                        handleImageGenerationModelChange({
+                          ...platform,
+                          use_model: modelName,
+                        });
+                      }
+                    }}
                   >
-                    {imageGenerationModelList.length > 0 ? (
-                      <AionSelect
-                        value={
-                          imageGenerationModel?.id && imageGenerationModel?.use_model
-                            ? `${imageGenerationModel.id}|${imageGenerationModel.use_model}`
-                            : undefined
-                        }
-                        onChange={(value) => {
-                          const [platformId, modelName] = value.split('|');
-                          const platform = imageGenerationModelList.find((p) => p.id === platformId);
-                          if (platform) {
-                            handleImageGenerationModelChange({
-                              ...platform,
-                              use_model: modelName,
-                            });
-                          }
-                        }}
-                      >
-                        {imageGenerationModelList.map(({ models, ...platform }) => (
-                          <AionSelect.OptGroup label={platform.name} key={platform.id}>
-                            {models.map((modelName) => (
-                              <AionSelect.Option key={platform.id + modelName} value={platform.id + '|' + modelName}>
-                                {modelName}
-                              </AionSelect.Option>
-                            ))}
-                          </AionSelect.OptGroup>
+                    {imageGenerationModelList.map(({ models, ...platform }) => (
+                      <AionSelect.OptGroup label={platform.name} key={platform.id}>
+                        {models.map((modelName) => (
+                          <AionSelect.Option key={platform.id + modelName} value={platform.id + '|' + modelName}>
+                            {modelName}
+                          </AionSelect.Option>
                         ))}
-                      </AionSelect>
-                    ) : (
-                      <div className='text-t-secondary flex items-center'>
-                        {t('settings.noAvailable')}
-                        <Tooltip
-                          content={
-                            <div>
-                              {t('settings.needHelpTooltip')}
-                              <a
-                                href='https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide'
-                                target='_blank'
-                                rel='noopener noreferrer'
-                                className='text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] underline ml-4px'
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {t('settings.configGuide')}
-                              </a>
-                            </div>
-                          }
-                        >
+                      </AionSelect.OptGroup>
+                    ))}
+                  </AionSelect>
+                ) : (
+                  <div className='text-t-secondary flex items-center'>
+                    {t('settings.noAvailable')}
+                    <Tooltip
+                      content={
+                        <div>
+                          {t('settings.needHelpTooltip')}
                           <a
                             href='https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide'
                             target='_blank'
                             rel='noopener noreferrer'
-                            className='ml-8px text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] cursor-pointer'
+                            className='text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] underline ml-4px'
                             onClick={(e) => e.stopPropagation()}
                           >
-                            <Help theme='outline' size='14' />
+                            {t('settings.configGuide')}
                           </a>
-                        </Tooltip>
-                      </div>
-                    )}
-                  </Form.Item>
-                </Form>
-              </>
-            )}
+                        </div>
+                      }
+                    >
+                      <a
+                        href='https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide'
+                        target='_blank'
+                        rel='noopener noreferrer'
+                        className='ml-8px text-[rgb(var(--primary-6))] hover:text-[rgb(var(--primary-5))] cursor-pointer'
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Help theme='outline' size='14' />
+                      </a>
+                    </Tooltip>
+                  </div>
+                )}
+              </Form.Item>
+            </Form>
           </div>
           <SpeechToTextSettingsSection config={speechToTextConfig} onChange={updateSpeechToTextConfig} />
         </div>
