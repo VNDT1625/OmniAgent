@@ -799,7 +799,7 @@ const ToolsModalContent: React.FC = () => {
                         </div>
                       }
                     >
-                      <span className='text-t-secondary cursor-help inline-flex items-center'>
+                      <span className='text-t-secondary cursor-help inline-flex items-center leading-none'>
                         <Help theme='outline' size='14' />
                       </span>
                     </Tooltip>
