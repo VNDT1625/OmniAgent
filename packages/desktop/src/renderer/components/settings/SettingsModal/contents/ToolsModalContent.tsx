@@ -6,7 +6,9 @@
 
 import { configService } from '@/common/config/configService';
 import type { ConfigKeyMap } from '@/common/config/configKeys';
-import { type IMcpServer, BUILTIN_IMAGE_GEN_ID } from '@/common/config/storage';
+import { removeImageGenerationEnvKeys, resolveImageGenerationMcpEnv } from '@/common/config/imageGenerationMcpEnv';
+import { mcpService } from '@/common/adapter/ipcBridge';
+import { type IMcpServer, BUILTIN_IMAGE_GEN_ID, BUILTIN_IMAGE_GEN_NAME } from '@/common/config/storage';
 import { isImageGenSupported } from '@/common/utils/imageModelAllowlist';
 import type { SpeechToTextConfig, SpeechToTextProvider } from '@/common/types/provider/speech';
 import { getAgents } from '@/renderer/hooks/agent/useAgents';
@@ -23,7 +25,6 @@ import McpServerItem from '@/renderer/pages/settings/ToolsSettings/McpServerItem
 import {
   useMcpServers,
   useMcpAgentStatus,
-  useMcpOperations,
   useMcpConnection,
   useMcpModal,
   useMcpServerCRUD,
@@ -34,8 +35,14 @@ import { useSettingsViewMode } from '../settingsViewContext';
 
 type MessageInstance = ReturnType<typeof Message.useMessage>[0];
 
-const isBuiltinImageGenServer = (server: IMcpServer) => server.builtin === true && server.id === BUILTIN_IMAGE_GEN_ID;
+const isBuiltinImageGenServer = (server: IMcpServer) =>
+  server.builtin === true && (server.id === BUILTIN_IMAGE_GEN_ID || server.name === BUILTIN_IMAGE_GEN_NAME);
 const SPEECH_TO_TEXT_CONFIG_CHANGED_EVENT = 'aionui:speech-to-text-config-changed';
+const areEnvRecordsEqual = (a: Record<string, string>, b: Record<string, string>) => {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  return aKeys.length === bKeys.length && aKeys.every((key) => a[key] === b[key]);
+};
 const DEFAULT_SPEECH_TO_TEXT_CONFIG: SpeechToTextConfig = {
   enabled: false,
   provider: 'openai',
@@ -226,13 +233,13 @@ const ModalMcpManagementSection: React.FC<{
   message: MessageInstance;
   mcpServers: IMcpServer[];
   extensionMcpServers: IMcpServer[];
-  saveMcpServers: (serversOrUpdater: IMcpServer[] | ((prev: IMcpServer[]) => IMcpServer[])) => Promise<void>;
+  setMcpServers: React.Dispatch<React.SetStateAction<IMcpServer[]>>;
+  reloadMcpServers: () => Promise<IMcpServer[]>;
   isPageMode?: boolean;
-}> = ({ message, mcpServers, extensionMcpServers, saveMcpServers, isPageMode }) => {
+}> = ({ message, mcpServers, extensionMcpServers, setMcpServers, reloadMcpServers, isPageMode }) => {
   const { t } = useTranslation();
   const { agentInstallStatus, setAgentInstallStatus, isServerLoading, checkSingleServerInstallStatus } =
     useMcpAgentStatus();
-  const { syncMcpToAgents, removeMcpFromAgents } = useMcpOperations(mcpServers, message);
   const { oauthStatus, loggingIn, checkOAuthStatus, login } = useMcpOAuth();
   const visibleMcpServers = useMemo(
     () => mcpServers.filter((server) => !isBuiltinImageGenServer(server)),
@@ -246,12 +253,7 @@ const ModalMcpManagementSection: React.FC<{
     [checkOAuthStatus]
   );
 
-  const { testingServers, handleTestMcpConnection } = useMcpConnection(
-    mcpServers,
-    saveMcpServers,
-    message,
-    handleAuthRequired
-  );
+  const { testingServers, handleTestMcpConnection } = useMcpConnection(setMcpServers, message, handleAuthRequired);
   const {
     showMcpModal,
     editingMcpServer,
@@ -271,14 +273,8 @@ const ModalMcpManagementSection: React.FC<{
     handleEditMcpServer,
     handleDeleteMcpServer,
     handleToggleMcpServer,
-  } = useMcpServerCRUD(
-    mcpServers,
-    saveMcpServers,
-    syncMcpToAgents,
-    removeMcpFromAgents,
-    checkSingleServerInstallStatus,
-    setAgentInstallStatus
-  );
+    togglingServerIds,
+  } = useMcpServerCRUD(mcpServers, reloadMcpServers, checkSingleServerInstallStatus, setAgentInstallStatus);
 
   const handleOAuthLogin = useCallback(
     async (server: IMcpServer) => {
@@ -302,12 +298,9 @@ const ModalMcpManagementSection: React.FC<{
         if (addedServer.transport.type === 'http' || addedServer.transport.type === 'sse') {
           void checkOAuthStatus(addedServer);
         }
-        if (serverData.enabled) {
-          void syncMcpToAgents(addedServer, true);
-        }
       }
     },
-    [handleAddMcpServer, handleTestMcpConnection, checkOAuthStatus, syncMcpToAgents]
+    [handleAddMcpServer, handleTestMcpConnection, checkOAuthStatus]
   );
 
   const wrappedHandleEditMcpServer = useCallback(
@@ -318,12 +311,9 @@ const ModalMcpManagementSection: React.FC<{
         if (updatedServer.transport.type === 'http' || updatedServer.transport.type === 'sse') {
           void checkOAuthStatus(updatedServer);
         }
-        if (serverData.enabled) {
-          void syncMcpToAgents(updatedServer, true);
-        }
       }
     },
-    [handleEditMcpServer, handleTestMcpConnection, checkOAuthStatus, syncMcpToAgents]
+    [handleEditMcpServer, handleTestMcpConnection, checkOAuthStatus]
   );
 
   const wrappedHandleBatchImportMcpServers = useCallback(
@@ -335,13 +325,10 @@ const ModalMcpManagementSection: React.FC<{
           if (server.transport.type === 'http' || server.transport.type === 'sse') {
             void checkOAuthStatus(server);
           }
-          if (server.enabled) {
-            void syncMcpToAgents(server, true);
-          }
         });
       }
     },
-    [handleBatchImportMcpServers, handleTestMcpConnection, checkOAuthStatus, syncMcpToAgents]
+    [handleBatchImportMcpServers, handleTestMcpConnection, checkOAuthStatus]
   );
 
   const [detectedAgents, setDetectedAgents] = useState<Array<{ backend: string; name: string }>>([]);
@@ -457,6 +444,7 @@ const ModalMcpManagementSection: React.FC<{
                   agentInstallStatus={agentInstallStatus}
                   isServerLoading={isServerLoading}
                   isTestingConnection={testingServers[server.id] || false}
+                  isToggling={togglingServerIds.has(server.id)}
                   oauthStatus={oauthStatus[server.id]}
                   isLoggingIn={loggingIn[server.id]}
                   onToggleCollapse={() => toggleServerCollapse(server.id)}
@@ -525,10 +513,9 @@ const ToolsModalContent: React.FC = () => {
   const [speechToTextConfig, setSpeechToTextConfig] = useState<SpeechToTextConfig>(DEFAULT_SPEECH_TO_TEXT_CONFIG);
   const [isUpdatingImageGeneration, setIsUpdatingImageGeneration] = useState(false);
   const { modelListWithImage: data } = useConfigModelListWithImage();
-  const { mcpServers, extensionMcpServers, saveMcpServers } = useMcpServers();
+  const { mcpServers, extensionMcpServers, setMcpServers, reloadMcpServers } = useMcpServers();
   const { agentInstallStatus, setAgentInstallStatus, isServerLoading, checkSingleServerInstallStatus } =
     useMcpAgentStatus();
-  const { syncMcpToAgents, removeMcpFromAgents } = useMcpOperations(mcpServers, mcpMessage);
   const builtinImageGenServer = useMemo(() => mcpServers.find(isBuiltinImageGenServer), [mcpServers]);
   const skipNextImageGenerationAutoCheckRef = useRef(false);
   const imageGenerationInstalledAgents = builtinImageGenServer?.name
@@ -602,100 +589,159 @@ const ToolsModalContent: React.FC = () => {
       const builtinServer = mcpServers.find(isBuiltinImageGenServer);
       if (!builtinServer || builtinServer.transport.type !== 'stdio') return;
 
-      const env: Record<string, string> = { ...builtinServer.transport.env };
-      if (model.platform) {
-        env.AIONUI_IMG_PLATFORM = model.platform;
+      const existingEnv = builtinServer.transport.env || {};
+      let env: Record<string, string>;
+
+      if (!model.id && !model.use_model) {
+        env = removeImageGenerationEnvKeys(existingEnv);
+        console.info('[ImageGen] Cleared built-in MCP image env because image generation model is unset');
       } else {
-        delete env.AIONUI_IMG_PLATFORM;
-      }
-      if (model.base_url) {
-        env.AIONUI_IMG_BASE_URL = model.base_url;
-      } else {
-        delete env.AIONUI_IMG_BASE_URL;
-      }
-      if (model.api_key) {
-        env.AIONUI_IMG_API_KEY = model.api_key;
-      } else {
-        delete env.AIONUI_IMG_API_KEY;
-      }
-      if (model.use_model) {
-        env.AIONUI_IMG_MODEL = model.use_model;
-      } else {
-        delete env.AIONUI_IMG_MODEL;
+        const resolution = resolveImageGenerationMcpEnv(model, data || [], existingEnv);
+        if (resolution.ok === false) {
+          console.error('[ImageGen] Failed to resolve image MCP provider', {
+            reason: resolution.reason,
+            message: resolution.message,
+            candidates: resolution.candidates,
+          });
+          throw new Error(resolution.message);
+        }
+
+        env = {
+          ...removeImageGenerationEnvKeys(existingEnv),
+          ...resolution.env,
+        };
+        console.info(
+          '[ImageGen] Syncing built-in MCP image env via %s, provider id: %s, platform: %s, model: %s, api key present: %s',
+          resolution.source,
+          resolution.provider.id,
+          resolution.provider.platform,
+          resolution.model,
+          resolution.provider.api_key ? 'yes' : 'no'
+        );
       }
 
-      const updatedServer: IMcpServer = {
-        ...builtinServer,
-        transport: { ...builtinServer.transport, env },
-        updated_at: Date.now(),
-      };
+      if (areEnvRecordsEqual(existingEnv, env)) {
+        return;
+      }
 
-      const updatedServers = mcpServers.map((s) => (s.id === BUILTIN_IMAGE_GEN_ID ? updatedServer : s));
-      await saveMcpServers(updatedServers);
+      const updatedTransport = { ...builtinServer.transport, env };
+      const original_json = JSON.stringify(
+        {
+          mcpServers: {
+            [builtinServer.name]: {
+              command: updatedTransport.command,
+              args: updatedTransport.args || [],
+              env,
+            },
+          },
+        },
+        null,
+        2
+      );
+
+      const updatedServer = await mcpService.updateServer.invoke({
+        id: builtinServer.id,
+        data: {
+          transport: updatedTransport,
+          original_json,
+        },
+      });
+      await reloadMcpServers();
       if (updatedServer.enabled) {
-        await syncMcpToAgents(updatedServer, true);
+        await mcpService.syncMcpToAgents.invoke({ servers: [updatedServer.id] });
+        console.info(
+          '[ImageGen] Synced built-in image MCP server to installed agents, server id: %s',
+          updatedServer.id
+        );
       }
     },
-    [mcpServers, saveMcpServers, syncMcpToAgents]
+    [data, mcpServers, reloadMcpServers]
   );
 
-  // Sync imageGenerationModel api_key when provider api_key changes
+  // Keep the saved image model as a provider/model reference. Secrets stay in providers.
   useEffect(() => {
     if (!imageGenerationModel || !data) return;
 
     const currentProvider = data.find((p) => p.id === imageGenerationModel.id);
 
-    if (currentProvider && currentProvider.api_key !== imageGenerationModel.api_key) {
-      const updatedModel = {
-        ...imageGenerationModel,
-        api_key: currentProvider.api_key,
-      };
-
-      setImageGenerationModel(updatedModel);
-      configService.set('tools.imageGenerationModel', updatedModel).catch((error) => {
-        console.error('Failed to save image generation model config:', error);
-      });
-      void syncMcpServerEnv(updatedModel);
-    } else if (!currentProvider) {
+    if (!currentProvider) {
       setImageGenerationModel(undefined);
       configService.remove('tools.imageGenerationModel').catch((error) => {
         console.error('Failed to remove image generation model config:', error);
       });
-      void syncMcpServerEnv({});
+      void syncMcpServerEnv({}).catch((error) => {
+        console.error('Failed to clear image generation MCP env after provider removal:', error);
+      });
+      return;
     }
-  }, [data, imageGenerationModel?.id, imageGenerationModel?.api_key, syncMcpServerEnv]);
+
+    const sanitizedModel = {
+      ...imageGenerationModel,
+      name: currentProvider.name,
+      platform: currentProvider.platform,
+      base_url: '',
+      api_key: '',
+    };
+
+    if (imageGenerationModel.api_key || imageGenerationModel.base_url) {
+      setImageGenerationModel(sanitizedModel);
+      configService.set('tools.imageGenerationModel', sanitizedModel).catch((error) => {
+        console.error('Failed to sanitize image generation model config:', error);
+      });
+    }
+
+    void syncMcpServerEnv(sanitizedModel).catch((error) => {
+      console.error('Failed to sync image generation MCP env after provider change:', error);
+    });
+  }, [data, imageGenerationModel, syncMcpServerEnv]);
 
   const handleImageGenerationModelChange = useCallback(
     (value: Partial<ConfigKeyMap['tools.imageGenerationModel']>) => {
       setImageGenerationModel((prev) => {
-        const newImageGenerationModel = { ...prev, ...value };
+        const newImageGenerationModel = {
+          ...prev,
+          id: value.id,
+          name: value.name,
+          platform: value.platform,
+          base_url: '',
+          api_key: '',
+          use_model: value.use_model,
+        } as ConfigKeyMap['tools.imageGenerationModel'];
         configService.set('tools.imageGenerationModel', newImageGenerationModel).catch((error) => {
           console.error('Failed to update image generation model config:', error);
         });
         // Sync env vars to the built-in MCP server
-        void syncMcpServerEnv(newImageGenerationModel);
+        void syncMcpServerEnv(newImageGenerationModel).catch((error) => {
+          console.error('Failed to sync image generation MCP env:', error);
+          mcpMessage.error(error instanceof Error ? error.message : t('settings.mcpSyncError'));
+        });
         return newImageGenerationModel;
       });
     },
-    [syncMcpServerEnv]
+    [mcpMessage, syncMcpServerEnv, t]
   );
 
   const handleImageGenerationToggle = useCallback(
     async (checked: boolean) => {
       if (!builtinImageGenServer) return;
 
-      const updatedServer: IMcpServer = {
-        ...builtinImageGenServer,
-        enabled: checked,
-        updated_at: Date.now(),
-      };
-
       setIsUpdatingImageGeneration(true);
       skipNextImageGenerationAutoCheckRef.current = checked;
       try {
-        await saveMcpServers((prevServers) =>
-          prevServers.map((server) => (isBuiltinImageGenServer(server) ? updatedServer : server))
-        );
+        if (checked) {
+          if (!imageGenerationModel?.id || !imageGenerationModel.use_model) {
+            mcpMessage.error(t('settings.mcpSyncError'));
+            return;
+          }
+          await syncMcpServerEnv(imageGenerationModel);
+        }
+        const updatedServer = await mcpService.toggleServer.invoke(builtinImageGenServer.id);
+        await reloadMcpServers();
+
+        if (updatedServer.enabled !== checked) {
+          mcpMessage.error(checked ? t('settings.mcpSyncError') : t('settings.mcpRemoveError'));
+          return;
+        }
 
         setImageGenerationModel((prev) => {
           if (!prev) return prev;
@@ -708,10 +754,8 @@ const ToolsModalContent: React.FC = () => {
 
         if (checked) {
           clearImageGenerationAgentStatus(updatedServer.name);
-          await syncMcpToAgents(updatedServer, true);
           await checkSingleServerInstallStatus(updatedServer.name);
         } else {
-          await removeMcpFromAgents(updatedServer.name, undefined, updatedServer.transport.type);
           clearImageGenerationAgentStatus(updatedServer.name);
         }
       } catch (error) {
@@ -728,9 +772,11 @@ const ToolsModalContent: React.FC = () => {
       builtinImageGenServer,
       checkSingleServerInstallStatus,
       clearImageGenerationAgentStatus,
-      removeMcpFromAgents,
-      saveMcpServers,
-      syncMcpToAgents,
+      imageGenerationModel,
+      mcpMessage,
+      reloadMcpServers,
+      syncMcpServerEnv,
+      t,
     ]
   );
 
@@ -755,7 +801,8 @@ const ToolsModalContent: React.FC = () => {
                   message={mcpMessage}
                   mcpServers={mcpServers}
                   extensionMcpServers={extensionMcpServers}
-                  saveMcpServers={saveMcpServers}
+                  setMcpServers={setMcpServers}
+                  reloadMcpServers={reloadMcpServers}
                   isPageMode={isPageMode}
                 />
               </AionScrollArea>
