@@ -11,7 +11,8 @@
  * Stability AI (SD3.5), Alibaba DashScope OpenAI-compat (通义万相),
  * Together AI (FLUX schnell/dev).
  *
- * Always requests response_format: 'b64_json' to avoid 1-hour expiry URLs.
+ * For dall-e-2/dall-e-3, requests response_format: 'b64_json' to avoid 1-hour expiry
+ * URLs. gpt-image-1/2 always return b64 natively and reject the parameter.
  * Size is fixed at '1024x1024' for now; extend with a size/quality param later.
  */
 
@@ -22,17 +23,14 @@ import { isNewApiPlatform } from '@/common/utils/platformConstants';
 import { normalizeNewApiBaseUrl } from '@/common/api/ClientFactory';
 import { AuthType } from '@office-ai/aioncli-core';
 import type { NormalizedImage, ImageProviderAdapter, ImageAdapterParams } from '../types';
-import {
-  fileToBase64,
-  getImageMimeType,
-  isHttpUrl,
-  resolveLocalImageBuffer,
-  saveGeneratedImage,
-  getFileExtensionFromDataUrl,
-} from '../utils';
+import { isHttpUrl, resolveLocalImageBuffer } from '../utils';
 
 const API_TIMEOUT_MS = 120_000;
 const DEFAULT_SIZE = '1024x1024' as const;
+
+// gpt-image-1/2 always return b64 — sending response_format causes 500.
+// Only dall-e-2/dall-e-3 accept this parameter.
+const supportsDallEResponseFormat = (model: string) => /dall-e/i.test(model);
 
 function buildClient(provider: { base_url: string; api_key: string; platform: string }): OpenAIRotatingClient {
   const isNewApi = isNewApiPlatform(provider.platform);
@@ -78,34 +76,22 @@ async function resolveImageFile(
 }
 
 async function normalizeResponseData(
-  data: Array<{ b64_json?: string | null; url?: string | null }>,
-  workspaceDir: string
+  data: Array<{ b64_json?: string | null; url?: string | null }>
 ): Promise<NormalizedImage[]> {
   const normalized: NormalizedImage[] = [];
 
   for (const item of data) {
-    let dataUrl: string;
-
     if (item.b64_json) {
-      dataUrl = item.b64_json.startsWith('data:') ? item.b64_json : `data:image/png;base64,${item.b64_json}`;
+      const dataUrl = item.b64_json.startsWith('data:') ? item.b64_json : `data:image/png;base64,${item.b64_json}`;
+      normalized.push({ type: 'image_url', image_url: { url: dataUrl } });
     } else if (item.url) {
       try {
         const { buffer, mimeType } = await fetchRemoteImageBuffer(item.url);
-        dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+        normalized.push({ type: 'image_url', image_url: { url: `data:${mimeType};base64,${buffer.toString('base64')}` } });
       } catch (_e) {
-        // Return URL reference if download fails — caller will handle expiry risk
         normalized.push({ type: 'image_url', image_url: { url: item.url } });
-        continue;
       }
-    } else {
-      continue;
     }
-
-    const savedPath = await saveGeneratedImage(dataUrl, workspaceDir);
-    const ext = getFileExtensionFromDataUrl(dataUrl);
-    const mimeType = getImageMimeType(`x${ext}`);
-    const base64 = await fileToBase64(savedPath);
-    normalized.push({ type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } });
   }
 
   return normalized;
@@ -123,19 +109,21 @@ export const OpenAIImagesAdapter: ImageProviderAdapter = {
     const { prompt, provider, workspaceDir, signal } = params;
     const client = buildClient(provider);
 
+    const generateParams: OpenAI.Images.ImageGenerateParams = {
+      model: provider.use_model,
+      prompt,
+      size: DEFAULT_SIZE,
+      n: 1,
+      ...(supportsDallEResponseFormat(provider.use_model) && { response_format: 'b64_json' }),
+    };
+
     const response = await client.createImage(
-      {
-        model: provider.use_model,
-        prompt,
-        response_format: 'b64_json',
-        size: DEFAULT_SIZE,
-        n: 1,
-      } as OpenAI.Images.ImageGenerateParams,
+      generateParams as OpenAI.Images.ImageGenerateParams,
       { signal, timeout: API_TIMEOUT_MS } as OpenAI.RequestOptions
     );
 
     if (!response.data?.length) throw new Error('No images returned from /v1/images/generations');
-    return normalizeResponseData(response.data, workspaceDir);
+    return normalizeResponseData(response.data);
   },
 
   async edit(params: ImageAdapterParams): Promise<NormalizedImage[]> {
@@ -154,14 +142,14 @@ export const OpenAIImagesAdapter: ImageProviderAdapter = {
       model: provider.use_model,
       image: imageFile as any,
       prompt,
-      response_format: 'b64_json',
       size: DEFAULT_SIZE,
       n: 1,
+      ...(supportsDallEResponseFormat(provider.use_model) && { response_format: 'b64_json' }),
     };
 
     const response = await client.editImage(editParams, { signal, timeout: API_TIMEOUT_MS } as OpenAI.RequestOptions);
 
     if (!response.data?.length) throw new Error('No images returned from /v1/images/edits');
-    return normalizeResponseData(response.data, workspaceDir);
+    return normalizeResponseData(response.data);
   },
 };

@@ -157,7 +157,7 @@ describe('OpenAIImagesAdapter', () => {
     mockGetImageMimeType.mockReturnValue('image/png');
   });
 
-  it('generates an image via /v1/images/generations with b64_json', async () => {
+  it('generates an image via /v1/images/generations without response_format for gpt-image-2', async () => {
     const { OpenAIImagesAdapter } = await import('@/common/chat/imageGen/adapters/openai-images');
 
     mockCreateImage.mockResolvedValue({ data: [{ b64_json: 'abc123base64' }] });
@@ -172,8 +172,32 @@ describe('OpenAIImagesAdapter', () => {
     const result = await OpenAIImagesAdapter.generate(params);
     expect(result).toHaveLength(1);
     expect(result[0].type).toBe('image_url');
+    // gpt-image-2 always returns b64 natively — response_format must NOT be sent
     expect(mockCreateImage).toHaveBeenCalledWith(
-      expect.objectContaining({ model: 'gpt-image-2', response_format: 'b64_json', size: '1024x1024' }),
+      expect.objectContaining({ model: 'gpt-image-2', size: '1024x1024' }),
+      expect.anything()
+    );
+    expect(mockCreateImage).toHaveBeenCalledWith(
+      expect.not.objectContaining({ response_format: expect.anything() }),
+      expect.anything()
+    );
+  });
+
+  it('sends response_format: b64_json for dall-e-3', async () => {
+    const { OpenAIImagesAdapter } = await import('@/common/chat/imageGen/adapters/openai-images');
+
+    mockCreateImage.mockResolvedValue({ data: [{ b64_json: 'abc123base64' }] });
+
+    const params: ImageAdapterParams = {
+      prompt: 'a sunset',
+      imageUris: [],
+      provider: { ...imageProvider, use_model: 'dall-e-3' },
+      workspaceDir: '/workspace',
+    };
+
+    await OpenAIImagesAdapter.generate(params);
+    expect(mockCreateImage).toHaveBeenCalledWith(
+      expect.objectContaining({ model: 'dall-e-3', response_format: 'b64_json' }),
       expect.anything()
     );
   });

@@ -17,7 +17,7 @@ import * as path from 'path';
 import type OpenAI from 'openai';
 import { ClientFactory } from '@/common/api/ClientFactory';
 import type { NormalizedImage, ImageProviderAdapter, ImageAdapterParams } from '../types';
-import { processImageUri, fileToBase64, getImageMimeType, saveGeneratedImage } from '../utils';
+import { processImageUri, fileToBase64, getImageMimeType } from '../utils';
 
 const API_TIMEOUT_MS = 120_000;
 
@@ -107,14 +107,11 @@ export const OpenAIChatAdapter: ImageProviderAdapter = {
       );
     }
 
-    // Save all images to disk; return normalized references
+    // Return raw data-URIs; caller (executeImageGeneration) does the single disk save
     const normalized: NormalizedImage[] = [];
     for (const img of images) {
       if (img.type === 'image_url' && img.image_url?.url) {
-        const savedPath = await saveGeneratedImage(img.image_url.url, workspaceDir);
-        const mimeType = getImageMimeType(savedPath);
-        const base64 = await fileToBase64(savedPath);
-        normalized.push({ type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } });
+        normalized.push({ type: 'image_url', image_url: { url: img.image_url.url } });
       }
     }
     return normalized;
