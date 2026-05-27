@@ -5,13 +5,7 @@
  */
 
 import coworkSvg from '@/renderer/assets/icons/cowork.svg';
-import {
-  useDetectedAgents,
-  useAssistantEditor,
-  useAssistantList,
-  useAssistantSkills,
-} from '@/renderer/hooks/assistant';
-import AddCustomPathModal from '@/renderer/pages/settings/AssistantSettings/AddCustomPathModal';
+import { useDetectedAgents, useAssistantEditor, useAssistantList } from '@/renderer/hooks/assistant';
 import AssistantEditDrawer from '@/renderer/pages/settings/AssistantSettings/AssistantEditDrawer';
 import DeleteAssistantModal from '@/renderer/pages/settings/AssistantSettings/DeleteAssistantModal';
 import SkillConfirmModals from '@/renderer/pages/settings/AssistantSettings/SkillConfirmModals';
@@ -93,18 +87,6 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
     message: agentMessage,
   });
 
-  const skills = useAssistantSkills({
-    skillsModalVisible: editor.skillsModalVisible,
-    customSkills: editor.customSkills,
-    selectedSkills: editor.selectedSkills,
-    pendingSkills: editor.pendingSkills,
-    availableSkills: editor.availableSkills,
-    setPendingSkills: editor.setPendingSkills,
-    setCustomSkills: editor.setCustomSkills,
-    setSelectedSkills: editor.setSelectedSkills,
-    message: agentMessage,
-  });
-
   const editAvatarImage = resolveAvatarImageSrc(editor.editAvatar, avatarImageMap);
 
   const modalTree = (
@@ -164,19 +146,6 @@ const AssistantSelectionArea: React.FC<AssistantSelectionAreaProps> = ({
         selectedSkills={editor.selectedSkills}
         setSelectedSkills={editor.setSelectedSkills}
         message={agentMessage}
-      />
-      <AddCustomPathModal
-        visible={skills.showAddPathModal}
-        onCancel={() => {
-          skills.setShowAddPathModal(false);
-          skills.setCustomPathName('');
-          skills.setCustomPathValue('');
-        }}
-        onOk={() => void skills.handleAddCustomPath()}
-        customPathName={skills.customPathName}
-        setCustomPathName={skills.setCustomPathName}
-        customPathValue={skills.customPathValue}
-        setCustomPathValue={skills.setCustomPathValue}
       />
     </>
   );

@@ -93,7 +93,6 @@
   "assistantBuiltinReadonlyTip": "This is a builtin assistant. Only Main Agent can be changed. To customize other fields, ",
   "assistantBuiltinReadonlyDuplicateLink": "duplicate it",
   "addSkills": "Add Skills",
-  "addSkillsTitle": "Add Skills",
   "customSkills": "Custom Skills",
   "builtinSkills": "Builtin Skills",
   "noCustomSkills": "No custom skills added",
@@ -668,9 +667,6 @@
   "multiKeyAllValid": "All {{total}} keys are valid",
   "multiKeyPartialValid": "{{valid}} valid, {{invalid}} invalid",
   "multiKeyAllInvalid": "All {{total}} keys are invalid",
-  "skillsAdded": "{{addedCount}} skills added and selected{{skippedCountText}}",
-  "skippedCount": "{{count}} skipped",
-  "allSkillsExist": "All found skills already exist",
   "noSkillsFound": "No valid skills found in the selected path(s)",
   "skillScanFailed": "Failed to scan skills",
   "quickScan": "Quick Scan Common Paths",
@@ -917,6 +913,5 @@
     "pendingTimeout": "Approval request expired (5 minutes). Please try again.",
     "pendingCancel": "Cancel",
     "pendingTimeRemaining": "Time remaining: {{time}}"
-  },
-  "noExternalSources": "No external skill sources discovered"
+  }
 }

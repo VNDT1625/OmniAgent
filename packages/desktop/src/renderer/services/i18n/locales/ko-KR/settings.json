@@ -93,7 +93,6 @@
   "assistantBuiltinReadonlyTip": "이것은 내장 어시스턴트입니다. '메인 에이전트' 외의 설정은 수정할 수 없습니다. 사용자 정의가 필요하시면 ",
   "assistantBuiltinReadonlyDuplicateLink": "복제하여 생성하세요",
   "addSkills": "스킬 추가",
-  "addSkillsTitle": "스킬 추가",
   "customSkills": "사용자 정의 스킬",
   "builtinSkills": "내장 스킬",
   "noCustomSkills": "사용자 정의 스킬 없음",
@@ -668,9 +667,6 @@
   "multiKeyAllValid": "모든 {{total}} 키가 유효합니다",
   "multiKeyPartialValid": "{{valid}} 유효, {{invalid}} 무효",
   "multiKeyAllInvalid": "모든 {{total}} 키가 무효입니다",
-  "skillsAdded": "{{addedCount}} skills added and selected{{skippedCountText}}",
-  "skippedCount": "{{count}} skipped",
-  "allSkillsExist": "All found skills already exist",
   "noSkillsFound": "No valid skills found in the selected path(s)",
   "skillScanFailed": "Failed to scan skills",
   "quickScan": "Quick Scan Common Paths",
@@ -919,6 +915,5 @@
     "pendingTimeout": "승인 요청이 만료되었습니다 (5분). 다시 시도해주세요.",
     "pendingCancel": "취소",
     "pendingTimeRemaining": "남은 시간: {{time}}"
-  },
-  "noExternalSources": "외부 스킬 소스를 찾을 수 없습니다"
+  }
 }

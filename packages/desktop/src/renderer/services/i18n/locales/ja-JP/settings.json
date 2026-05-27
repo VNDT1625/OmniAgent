@@ -93,7 +93,6 @@
   "assistantBuiltinReadonlyTip": "これはビルトインアシスタントです。「メインエージェント」以外の設定は変更できません。カスタマイズするには、",
   "assistantBuiltinReadonlyDuplicateLink": "複製して作成",
   "addSkills": "スキルを追加",
-  "addSkillsTitle": "スキルを追加",
   "customSkills": "カスタムスキル",
   "builtinSkills": "ビルトインスキル",
   "noCustomSkills": "カスタムスキルはありません",
@@ -668,9 +667,6 @@
   "multiKeyAllValid": "すべての {{total}} 個のキーが有効です",
   "multiKeyPartialValid": "{{valid}} 個有効、{{invalid}} 個無効",
   "multiKeyAllInvalid": "すべての {{total}} 個のキーが無効です",
-  "skillsAdded": "{{addedCount}} skills added and selected{{skippedCountText}}",
-  "skippedCount": "{{count}} skipped",
-  "allSkillsExist": "All found skills already exist",
   "noSkillsFound": "No valid skills found in the selected path(s)",
   "skillScanFailed": "Failed to scan skills",
   "quickScan": "Quick Scan Common Paths",
@@ -919,6 +915,5 @@
     "pendingTimeout": "承認リクエストの期限が切れました（5分）。再試行してください。",
     "pendingCancel": "キャンセル",
     "pendingTimeRemaining": "残り時間：{{time}}"
-  },
-  "noExternalSources": "外部スキルソースが見つかりません"
+  }
 }

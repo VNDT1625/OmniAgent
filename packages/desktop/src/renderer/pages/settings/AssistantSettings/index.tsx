@@ -21,15 +21,9 @@ import { Message } from '@arco-design/web-react';
 import coworkSvg from '@/renderer/assets/icons/cowork.svg';
 import AionScrollArea from '@/renderer/components/base/AionScrollArea';
 import { useSettingsViewMode } from '@/renderer/components/settings/SettingsModal/settingsViewContext';
-import {
-  useDetectedAgents,
-  useAssistantEditor,
-  useAssistantList,
-  useAssistantSkills,
-} from '@/renderer/hooks/assistant';
+import { useDetectedAgents, useAssistantEditor, useAssistantList } from '@/renderer/hooks/assistant';
 import SettingsPageWrapper from '../components/SettingsPageWrapper';
 import { resolveAvatarImageSrc } from './assistantUtils';
-import AddCustomPathModal from './AddCustomPathModal';
 import AssistantEditDrawer from './AssistantEditDrawer';
 import AssistantListPanel from './AssistantListPanel';
 import DeleteAssistantModal from './DeleteAssistantModal';
@@ -82,18 +76,6 @@ const AssistantSettings: React.FC = () => {
     setActiveAssistantId,
     loadAssistants,
     refreshAgentDetection,
-    message,
-  });
-
-  const skills = useAssistantSkills({
-    skillsModalVisible: editor.skillsModalVisible,
-    customSkills: editor.customSkills,
-    selectedSkills: editor.selectedSkills,
-    pendingSkills: editor.pendingSkills,
-    availableSkills: editor.availableSkills,
-    setPendingSkills: editor.setPendingSkills,
-    setCustomSkills: editor.setCustomSkills,
-    setSelectedSkills: editor.setSelectedSkills,
     message,
   });
 
@@ -209,20 +191,6 @@ const AssistantSettings: React.FC = () => {
             selectedSkills={editor.selectedSkills}
             setSelectedSkills={editor.setSelectedSkills}
             message={message}
-          />
-
-          <AddCustomPathModal
-            visible={skills.showAddPathModal}
-            onCancel={() => {
-              skills.setShowAddPathModal(false);
-              skills.setCustomPathName('');
-              skills.setCustomPathValue('');
-            }}
-            onOk={() => void skills.handleAddCustomPath()}
-            customPathName={skills.customPathName}
-            setCustomPathName={skills.setCustomPathName}
-            customPathValue={skills.customPathValue}
-            setCustomPathValue={skills.setCustomPathValue}
           />
         </AionScrollArea>
       </div>

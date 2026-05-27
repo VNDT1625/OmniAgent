@@ -93,7 +93,6 @@
   "assistantBuiltinReadonlyTip": "Це вбудований асистент. Можна змінити лише «Головний Агент». Щоб налаштувати інші поля, ",
   "assistantBuiltinReadonlyDuplicateLink": "продублюйте його",
   "addSkills": "Додати навички",
-  "addSkillsTitle": "Додати навички",
   "customSkills": "Власні навички",
   "builtinSkills": "Вбудовані навички",
   "noCustomSkills": "Власних навичок не додано",
@@ -617,9 +616,6 @@
   "multiKeyAllValid": "Всі {{total}} ключів валідні",
   "multiKeyPartialValid": "{{valid}} валідних, {{invalid}} невалідних",
   "multiKeyAllInvalid": "Всі {{total}} ключів невалідні",
-  "skillsAdded": "Додано та вибрано навичок: {{addedCount}}{{skippedCountText}}",
-  "skippedCount": "пропущено: {{count}}",
-  "allSkillsExist": "Всі знайдені навички вже існують",
   "noSkillsFound": "У вибраних шляхах не знайдено валідних навичок",
   "skillScanFailed": "Помилка сканування навичок",
   "quickScan": "Швидке сканування типових шляхів",
@@ -836,7 +832,6 @@
     "pendingCancel": "Скасувати",
     "pendingTimeRemaining": "Залишилося часу: {{time}}"
   },
-  "noExternalSources": "Зовнішні джерела навичок не знайдені",
   "bugReport": "Повідомити про проблему",
   "bugReportTitle": "Повідомити про проблему"
 }

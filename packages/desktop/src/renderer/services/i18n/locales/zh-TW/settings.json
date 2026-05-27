@@ -93,7 +93,6 @@
   "assistantBuiltinReadonlyTip": "這是內建助理，除「主代理」外其他配置不可修改。如需自訂，請",
   "assistantBuiltinReadonlyDuplicateLink": "複製新建",
   "addSkills": "新增技能",
-  "addSkillsTitle": "新增技能",
   "customSkills": "自訂技能",
   "builtinSkills": "內建技能",
   "noCustomSkills": "尚無自訂技能",
@@ -668,9 +667,6 @@
   "multiKeyAllValid": "所有 {{total}} 個 Key 均有效",
   "multiKeyPartialValid": "{{valid}} 個有效，{{invalid}} 個無效",
   "multiKeyAllInvalid": "所有 {{total}} 個 Key 均無效",
-  "skillsAdded": "{{addedCount}} skills added and selected{{skippedCountText}}",
-  "skippedCount": "{{count}} skipped",
-  "allSkillsExist": "All found skills already exist",
   "noSkillsFound": "No valid skills found in the selected path(s)",
   "skillScanFailed": "Failed to scan skills",
   "quickScan": "Quick Scan Common Paths",
@@ -919,6 +915,5 @@
     "pendingTimeout": "審批請求已過期（5 分鐘）。請重試。",
     "pendingCancel": "取消",
     "pendingTimeRemaining": "剩餘時間：{{time}}"
-  },
-  "noExternalSources": "未發現外部技能來源"
+  }
 }
