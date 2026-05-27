@@ -328,12 +328,18 @@ export const useGuidAgentSelection = ({
 
     if (resetAssistant) {
       resetHandledRef.current = true;
-      const firstCliAgent = availableAgents.find((a) => !a.is_preset);
-      const fallbackKey = firstCliAgent ? getAgentKey(firstCliAgent) : 'aionrs';
-      _setSelectedAgentKey(fallbackKey);
-      configService.set('guid.lastSelectedAgent', fallbackKey).catch((error) => {
-        console.error('Failed to save reset agent key:', error);
-      });
+      // Only reset when the current selection is a preset assistant.
+      // CLI agent selections (Claude Code, Gemini CLI, etc.) are preserved so
+      // New Chat keeps the last-used CLI agent.
+      const currentIsPreset = availableAgents.some((a) => a.is_preset && getAgentKey(a) === selectedAgentKey);
+      if (currentIsPreset) {
+        const firstCliAgent = availableAgents.find((a) => !a.is_preset);
+        const fallbackKey = firstCliAgent ? getAgentKey(firstCliAgent) : 'aionrs';
+        _setSelectedAgentKey(fallbackKey);
+        configService.set('guid.lastSelectedAgent', fallbackKey).catch((error) => {
+          console.error('Failed to save reset agent key:', error);
+        });
+      }
     }
   }, [availableAgents, resetAssistant, preselectAgentKey, locationKey]);
 
