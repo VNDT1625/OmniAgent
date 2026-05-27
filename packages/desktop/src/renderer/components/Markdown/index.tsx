@@ -98,9 +98,16 @@ const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
         if (workspace && previewCtx && (isAbsolute || isRelativeFilePath)) {
           const resolvedPath = resolveMessageFilePath(href, workspace);
 
-          // Sandbox check: must stay within workspace
+          // Sandbox check: must stay within workspace.
+          // Normalize via URL to collapse any `..` segments before comparing,
+          // otherwise `/workspace/../../../etc/passwd` would pass a naive startsWith.
           const normalizedWorkspace = workspace.replace(/[\\/]+$/, '').replace(/\\/g, '/');
-          const normalizedResolved = resolvedPath.replace(/\\/g, '/');
+          let normalizedResolved: string;
+          try {
+            normalizedResolved = new URL(resolvedPath.replace(/\\/g, '/'), 'file:///').pathname;
+          } catch {
+            normalizedResolved = resolvedPath.replace(/\\/g, '/');
+          }
           if (!normalizedResolved.startsWith(normalizedWorkspace + '/') && normalizedResolved !== normalizedWorkspace) {
             console.error(t('messages.openLinkFailed'), 'Path outside workspace');
             return;
