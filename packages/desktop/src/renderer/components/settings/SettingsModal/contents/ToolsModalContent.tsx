@@ -140,74 +140,84 @@ const SpeechToTextSettingsSection: React.FC<{
         />
       </div>
 
-      <Divider className='mt-0px mb-20px' />
+      {config.enabled && (
+        <>
+          <Divider className='mt-0px mb-20px' />
 
-      <Form layout='horizontal' labelAlign='left' className='space-y-12px'>
-        <Form.Item label={t('settings.speechToTextProvider')}>
-          <AionSelect value={config.provider} onChange={handleProviderChange}>
-            <AionSelect.Option value='openai'>{t('settings.speechToTextProviderOpenAI')}</AionSelect.Option>
-            <AionSelect.Option value='deepgram'>{t('settings.speechToTextProviderDeepgram')}</AionSelect.Option>
-          </AionSelect>
-        </Form.Item>
+          <Form layout='horizontal' labelAlign='left' className='space-y-12px'>
+            <Form.Item label={t('settings.speechToTextProvider')}>
+              <AionSelect value={config.provider} onChange={handleProviderChange}>
+                <AionSelect.Option value='openai'>{t('settings.speechToTextProviderOpenAI')}</AionSelect.Option>
+                <AionSelect.Option value='deepgram'>{t('settings.speechToTextProviderDeepgram')}</AionSelect.Option>
+              </AionSelect>
+            </Form.Item>
 
-        {config.provider === 'openai' ? (
-          <>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextApiKey', 'required')}>
-              <Input.Password
-                value={config.openai?.api_key}
-                visibilityToggle
-                onChange={(value) => handleOpenAIChange('api_key', value)}
-              />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextBaseUrl', 'optional')}>
-              <Input value={config.openai?.base_url} onChange={(value) => handleOpenAIChange('base_url', value)} />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextModel', 'optional')}>
-              <Input value={config.openai?.model} onChange={(value) => handleOpenAIChange('model', value)} />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextLanguage', 'optional')}>
-              <Input value={config.openai?.language} onChange={(value) => handleOpenAIChange('language', value)} />
-            </Form.Item>
-          </>
-        ) : (
-          <>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextApiKey', 'required')}>
-              <Input.Password
-                value={config.deepgram?.api_key}
-                visibilityToggle
-                onChange={(value) => handleDeepgramChange('api_key', value)}
-              />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextBaseUrl', 'optional')}>
-              <Input value={config.deepgram?.base_url} onChange={(value) => handleDeepgramChange('base_url', value)} />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextModel', 'optional')}>
-              <Input value={config.deepgram?.model} onChange={(value) => handleDeepgramChange('model', value)} />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextLanguage', 'optional')}>
-              <Input value={config.deepgram?.language} onChange={(value) => handleDeepgramChange('language', value)} />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextDetectLanguage', 'optional')}>
-              <Switch
-                checked={config.deepgram?.detectLanguage !== false}
-                onChange={(checked) => handleDeepgramChange('detectLanguage', checked)}
-              />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextPunctuate', 'optional')}>
-              <Switch
-                checked={config.deepgram?.punctuate !== false}
-                onChange={(checked) => handleDeepgramChange('punctuate', checked)}
-              />
-            </Form.Item>
-            <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextSmartFormat', 'optional')}>
-              <Switch
-                checked={config.deepgram?.smartFormat !== false}
-                onChange={(checked) => handleDeepgramChange('smartFormat', checked)}
-              />
-            </Form.Item>
-          </>
-        )}
-      </Form>
+            {config.provider === 'openai' ? (
+              <>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextApiKey', 'required')}>
+                  <Input.Password
+                    value={config.openai?.api_key}
+                    visibilityToggle
+                    onChange={(value) => handleOpenAIChange('api_key', value)}
+                  />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextBaseUrl', 'optional')}>
+                  <Input value={config.openai?.base_url} onChange={(value) => handleOpenAIChange('base_url', value)} />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextModel', 'optional')}>
+                  <Input value={config.openai?.model} onChange={(value) => handleOpenAIChange('model', value)} />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextLanguage', 'optional')}>
+                  <Input value={config.openai?.language} onChange={(value) => handleOpenAIChange('language', value)} />
+                </Form.Item>
+              </>
+            ) : (
+              <>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextApiKey', 'required')}>
+                  <Input.Password
+                    value={config.deepgram?.api_key}
+                    visibilityToggle
+                    onChange={(value) => handleDeepgramChange('api_key', value)}
+                  />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextBaseUrl', 'optional')}>
+                  <Input
+                    value={config.deepgram?.base_url}
+                    onChange={(value) => handleDeepgramChange('base_url', value)}
+                  />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextModel', 'optional')}>
+                  <Input value={config.deepgram?.model} onChange={(value) => handleDeepgramChange('model', value)} />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextLanguage', 'optional')}>
+                  <Input
+                    value={config.deepgram?.language}
+                    onChange={(value) => handleDeepgramChange('language', value)}
+                  />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextDetectLanguage', 'optional')}>
+                  <Switch
+                    checked={config.deepgram?.detectLanguage !== false}
+                    onChange={(checked) => handleDeepgramChange('detectLanguage', checked)}
+                  />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextPunctuate', 'optional')}>
+                  <Switch
+                    checked={config.deepgram?.punctuate !== false}
+                    onChange={(checked) => handleDeepgramChange('punctuate', checked)}
+                  />
+                </Form.Item>
+                <Form.Item label={renderSpeechToTextFieldLabel('settings.speechToTextSmartFormat', 'optional')}>
+                  <Switch
+                    checked={config.deepgram?.smartFormat !== false}
+                    onChange={(checked) => handleDeepgramChange('smartFormat', checked)}
+                  />
+                </Form.Item>
+              </>
+            )}
+          </Form>
+        </>
+      )}
     </div>
   );
 };
