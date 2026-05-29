@@ -5,6 +5,8 @@
  */
 
 import { ipcBridge } from '@/common';
+import { isBackendHttpError } from '@/common/adapter/httpBridge';
+import type { AgentStreamErrorInfo } from '@/common/chat/chatLib';
 import type { TMessage } from '@/common/chat/chatLib';
 import { parseError, uuid } from '@/common/utils';
 import { emitter } from '@/renderer/utils/emitter';
@@ -19,6 +21,28 @@ type UseAcpInitialMessageParams = {
   setAiProcessing: (value: boolean) => void;
   checkAndUpdateTitle: (conversation_id: string, input: string) => void;
   addOrUpdateMessage: (message: TMessage, prepend?: boolean) => void;
+};
+
+const buildSendFailureError = (error: unknown, message: string): AgentStreamErrorInfo => {
+  if (isBackendHttpError(error) && error.code === 'BAD_GATEWAY') {
+    return {
+      message,
+      code: 'UNKNOWN_UPSTREAM_ERROR',
+      ownership: 'unknown_upstream',
+      detail: message,
+      retryable: true,
+      feedback_recommended: true,
+    };
+  }
+
+  return {
+    message,
+    code: 'AIONUI_INTERNAL_ERROR',
+    ownership: 'aionui',
+    detail: message,
+    retryable: true,
+    feedback_recommended: true,
+  };
 };
 
 /**
@@ -97,8 +121,9 @@ export const useAcpInitialMessage = ({
           type: 'tips',
           position: 'center',
           content: {
-            content: t('acp.send.failed', { error: errorMessageText }),
+            content: errorMessageText,
             type: 'error',
+            error: buildSendFailureError(error, errorMessageText),
           },
           created_at: Date.now() + 2,
         };
