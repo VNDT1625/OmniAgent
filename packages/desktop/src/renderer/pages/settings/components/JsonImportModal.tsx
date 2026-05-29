@@ -1,4 +1,4 @@
-import type { IMcpServer } from '@/common/config/storage';
+import type { IMcpServer, IMcpServerTransport } from '@/common/config/storage';
 import { Alert, Button } from '@arco-design/web-react';
 import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -12,8 +12,10 @@ interface JsonImportModalProps {
   visible: boolean;
   server?: IMcpServer;
   onCancel: () => void;
-  onSubmit: (server: Omit<IMcpServer, 'id' | 'created_at' | 'updated_at'>) => void;
-  onBatchImport?: (servers: Omit<IMcpServer, 'id' | 'created_at' | 'updated_at'>[]) => void;
+  onSubmit: (server: Omit<IMcpServer, 'id' | 'created_at' | 'updated_at'>) => Promise<void> | void;
+  onBatchImport?: (
+    servers: Omit<IMcpServer, 'id' | 'created_at' | 'updated_at'>[]
+  ) => Promise<IMcpServer[] | void> | IMcpServer[] | void;
 }
 
 interface ValidationResult {
@@ -23,11 +25,145 @@ interface ValidationResult {
 
 type ImportableMcpServer = Omit<IMcpServer, 'id' | 'created_at' | 'updated_at'>;
 
+const SPLITTABLE_STDIO_LAUNCHERS = ['npx', 'pnpx', 'bunx', 'uvx', 'uv', 'node', 'python', 'python3', 'deno'];
+
+const shellSplit = (input: string): string[] => {
+  const tokens: string[] = [];
+  let current = '';
+  let quote: '"' | "'" | null = null;
+
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index];
+    if (quote) {
+      if (char === quote) {
+        quote = null;
+        continue;
+      }
+      if (char === '\\' && quote === '"' && index + 1 < input.length) {
+        current += input[index + 1];
+        index += 1;
+        continue;
+      }
+      current += char;
+      continue;
+    }
+
+    if (char === '"' || char === "'") {
+      quote = char;
+      continue;
+    }
+
+    if (char === '\\' && index + 1 < input.length) {
+      current += input[index + 1];
+      index += 1;
+      continue;
+    }
+
+    if (/\s/.test(char)) {
+      if (current) {
+        tokens.push(current);
+        current = '';
+      }
+      continue;
+    }
+
+    current += char;
+  }
+
+  if (current) {
+    tokens.push(current);
+  }
+
+  return tokens;
+};
+
+const normalizeStdioCommand = (command: string, args?: string[]) => {
+  const trimmed = command.trim();
+  if (trimmed.length === 0 || (Array.isArray(args) && args.length > 0)) {
+    return {
+      command,
+      args: args || [],
+    };
+  }
+
+  const firstToken = trimmed.split(/\s+/)[0]?.replace(/^['"]|['"]$/g, '');
+  if (!firstToken || !SPLITTABLE_STDIO_LAUNCHERS.includes(firstToken) || !/\s/.test(trimmed)) {
+    return {
+      command,
+      args: args || [],
+    };
+  }
+
+  const tokens = shellSplit(trimmed);
+  if (tokens.length < 2) {
+    return {
+      command,
+      args: args || [],
+    };
+  }
+
+  return {
+    command: tokens[0],
+    args: tokens.slice(1),
+  };
+};
+
+const buildOriginalJson = (name: string, description: string | undefined, transport: IMcpServerTransport): string => {
+  const transportConfig =
+    transport.type === 'stdio'
+      ? {
+          command: transport.command,
+          args: transport.args || [],
+          env: transport.env || {},
+        }
+      : {
+          type: transport.type,
+          url: transport.url,
+          ...(transport.headers ? { headers: transport.headers } : {}),
+        };
+
+  return JSON.stringify(
+    {
+      mcpServers: {
+        [name]: {
+          ...(description ? { description } : {}),
+          ...transportConfig,
+        },
+      },
+    },
+    null,
+    2
+  );
+};
+
+const validateEditServerNames = (
+  currentName: string,
+  serverKeys: string[],
+  t: (key: string, options?: Record<string, string>) => string
+): ValidationResult => {
+  if (serverKeys.length !== 1) {
+    return {
+      isValid: false,
+      errorMessage: t('settings.mcpEditNameLocked', { name: currentName }),
+    };
+  }
+
+  if (serverKeys[0] !== currentName) {
+    return {
+      isValid: false,
+      errorMessage: t('settings.mcpEditNameLocked', { name: currentName }),
+    };
+  }
+
+  return { isValid: true };
+};
+
 const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCancel, onSubmit, onBatchImport }) => {
   const { t } = useTranslation();
   const { theme } = useThemeContext();
   const [jsonInput, setJsonInput] = useState('');
   const [copyStatus, setCopyStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [submitting, setSubmitting] = useState(false);
   const [validation, setValidation] = useState<ValidationResult>({ isValid: true });
 
   /**
@@ -91,17 +227,41 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
     }
   }, [visible, server]);
 
-  const toImportableServer = (parsedServer: ParsedMcpJsonServer, originalJson: string): ImportableMcpServer => ({
-    name: parsedServer.name,
-    description: parsedServer.description,
-    enabled: true,
-    transport: parsedServer.transport,
-    status: 'disconnected',
-    tools: [],
-    original_json: originalJson,
-  });
+  const normalizeParsedTransport = (transport: IMcpServerTransport): IMcpServerTransport => {
+    if (transport.type !== 'stdio') {
+      return transport;
+    }
 
-  const handleSubmit = () => {
+    const normalized = normalizeStdioCommand(transport.command, transport.args);
+    return {
+      ...transport,
+      command: normalized.command,
+      args: normalized.args,
+    };
+  };
+
+  const toImportableServer = (
+    parsedServer: ParsedMcpJsonServer,
+    originalJson: string,
+    enabled: boolean
+  ): ImportableMcpServer => {
+    const transport = normalizeParsedTransport(parsedServer.transport);
+    return {
+      name: parsedServer.name,
+      description: parsedServer.description,
+      enabled,
+      transport,
+      last_test_status: 'disconnected',
+      tools: [],
+      original_json: originalJson || buildOriginalJson(parsedServer.name, parsedServer.description, transport),
+    };
+  };
+
+  const handleSubmit = async () => {
+    if (submitting) {
+      return;
+    }
+
     // Re-validate at submit time to guard against race between useEffect validation and click
     let config: unknown;
     try {
@@ -118,24 +278,46 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
     }
 
     const parsedServers = parseResult.servers;
+    if (server) {
+      const editNameValidation = validateEditServerNames(
+        server.name,
+        parsedServers.map((parsedServer) => parsedServer.name),
+        t
+      );
+      if (!editNameValidation.isValid) {
+        setValidation(editNameValidation);
+        return;
+      }
+    }
+
+    setSubmitting(true);
 
     // 如果有多个服务器，使用批量导入
     if (parsedServers.length > 1 && onBatchImport) {
       const serversToImport = parsedServers.map((parsedServer) =>
         toImportableServer(
           parsedServer,
-          JSON.stringify({ mcpServers: { [parsedServer.name]: parsedServer.originalConfig } }, null, 2)
+          JSON.stringify({ mcpServers: { [parsedServer.name]: parsedServer.originalConfig } }, null, 2),
+          true
         )
       );
 
-      onBatchImport(serversToImport);
-      onCancel();
+      try {
+        await onBatchImport(serversToImport);
+        onCancel();
+      } finally {
+        setSubmitting(false);
+      }
       return;
     }
 
     // 单个服务器导入
-    onSubmit(toImportableServer(parsedServers[0], jsonInput));
-    onCancel();
+    try {
+      await onSubmit(toImportableServer(parsedServers[0], jsonInput, server?.enabled ?? true));
+      onCancel();
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (!visible) return null;
@@ -145,7 +327,7 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
       visible={visible}
       onCancel={onCancel}
       onOk={handleSubmit}
-      okButtonProps={{ disabled: !validation.isValid }}
+      okButtonProps={{ disabled: !validation.isValid || submitting, loading: submitting }}
       header={{ title: server ? t('settings.mcpEditServer') : t('settings.mcpImportFromJSON'), showClose: true }}
       style={{ width: 600, height: 450 }}
       contentStyle={{
@@ -159,6 +341,14 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
       <div className='space-y-12px'>
         <div>
           <div className='mb-2 text-sm text-t-secondary'>{t('settings.mcpImportPlaceholder')}</div>
+          {!validation.isValid && jsonInput.trim() && (
+            <Alert
+              className='mb-3'
+              type='error'
+              showIcon
+              content={validation.errorMessage || t('settings.mcpJsonFormatError') || 'JSON format error'}
+            />
+          )}
           <div className='relative'>
             <CodeMirror
               value={jsonInput}
@@ -236,13 +426,6 @@ const JsonImportModal: React.FC<JsonImportModalProps> = ({ visible, server, onCa
               </Button>
             )}
           </div>
-
-          {/* JSON 格式错误提示 */}
-          {!validation.isValid && jsonInput.trim() && (
-            <div className='mt-2 text-sm text-red-600'>
-              {validation.errorMessage || t('settings.mcpJsonFormatError')}
-            </div>
-          )}
         </div>
 
         <Alert

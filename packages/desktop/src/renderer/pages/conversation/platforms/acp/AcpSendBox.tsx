@@ -1,4 +1,5 @@
 import { ipcBridge } from '@/common';
+import type { IConversationMcpStatus } from '@/common/config/storage';
 import { isBackendHttpError } from '@/common/adapter/httpBridge';
 import { isSideQuestionSupported } from '@/common/chat/sideQuestion';
 import { parseError, uuid } from '@/common/utils';
@@ -116,6 +117,13 @@ const AcpSendBox: React.FC<{
   const isMobile = Boolean(layout?.isMobile);
   const conversationContext = useConversationContextSafe();
   const loadedSkills = conversationContext?.loadedSkills ?? [];
+  const loadedMcpStatuses =
+    conversationContext?.loadedMcpStatuses ??
+    (conversationContext?.loadedMcpServers ?? []).map<IConversationMcpStatus>((name) => ({
+      id: name,
+      name,
+      status: 'loaded',
+    }));
   const [isMobileSheetOpen, setIsMobileSheetOpen] = useState(false);
   const [currentMode, setCurrentMode] = useState<string | undefined>(session_mode);
 
@@ -475,6 +483,31 @@ Please check your local CLI tool authentication status`,
       });
     }
 
+    if (loadedMcpStatuses.length > 0) {
+      const mcpOptions: MobileActionSheetOption[] = loadedMcpStatuses.map((item) => ({
+        key: item.id,
+        label: item.name,
+        description:
+          item.status === 'loaded'
+            ? undefined
+            : item.reason
+              ? `${t(`conversation.mcp.status.${item.status}` as const)} · ${item.reason}`
+              : t(`conversation.mcp.status.${item.status}` as const),
+      }));
+      entries.push({
+        key: 'mcp',
+        icon: <Shield theme='outline' size='16' />,
+        label: t('conversation.mcp.loaded', { defaultValue: 'Loaded MCP' }),
+        variant: 'muted',
+        submenu: {
+          title: t('conversation.mcp.loaded', { defaultValue: 'Loaded MCP' }),
+          selectable: false,
+          options: mcpOptions,
+          onSelect: () => undefined,
+        },
+      });
+    }
+
     return entries;
   }, [
     attachEntries,
@@ -483,6 +516,7 @@ Please check your local CLI tool authentication status`,
     currentMode,
     handleSheetModeChange,
     isMobile,
+    loadedMcpStatuses,
     loadedSkills,
     model_info,
     selectModel,
@@ -553,7 +587,13 @@ Please check your local CLI tool authentication status`,
         supportedExts={allSupportedExts}
         defaultMultiLine={!isMobile}
         lockMultiLine={!isMobile}
-        tools={<FileAttachButton openFileSelector={openFileSelector} onLocalFilesAdded={handleFilesAdded} />}
+        tools={
+          <FileAttachButton
+            openFileSelector={openFileSelector}
+            onLocalFilesAdded={handleFilesAdded}
+            loadedMcpStatuses={loadedMcpStatuses}
+          />
+        }
         rightTools={
           showModeSelector ? (
             <AgentModeSelector

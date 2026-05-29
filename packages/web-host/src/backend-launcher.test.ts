@@ -17,8 +17,13 @@ vi.mock('node:net', () => ({
   createServer: vi.fn(),
 }));
 
+vi.mock('./agent-process-registry.js', () => ({
+  cleanupRegisteredAgentProcesses: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
+import { cleanupRegisteredAgentProcesses } from './agent-process-registry.js';
 import { buildSpawnArgs, buildSpawnEnv, findAvailablePort, BackendLifecycleManager } from './backend-launcher.js';
 import type { AppMetadata } from './types.js';
 
@@ -220,6 +225,7 @@ describe('BackendLifecycleManager.start (success path)', () => {
     expect(opts.env.AIONUI_CACHE_DIR).toBe('/c');
     expect(opts.env.AIONUI_WORK_DIR).toBe('/w');
     expect(opts.env.AIONUI_LOG_DIR).toBe('/l');
+    expect((spawnCall[2] as { detached?: boolean }).detached).toBe(process.platform !== 'win32');
 
     expect(fetchSpy).toHaveBeenCalled();
 
@@ -237,6 +243,7 @@ describe('BackendLifecycleManager.start (health timeout)', () => {
     vi.mocked(spawn).mockReturnValue(child as unknown as ChildProcess);
 
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockRejectedValue(new Error('ECONNREFUSED'));
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => true);
 
     const mgr = new BackendLifecycleManager(APP_META, () => '/x');
     const startPromise = mgr.start('/db');
@@ -248,9 +255,10 @@ describe('BackendLifecycleManager.start (health timeout)', () => {
     await expectedRejection;
 
     expect(mgr.status).toBe('error');
-    expect(child.kill).toHaveBeenCalledWith('SIGKILL');
+    expect(killSpy).toHaveBeenCalled();
 
     fetchSpy.mockRestore();
+    killSpy.mockRestore();
     vi.useRealTimers();
   }, 15_000);
 
@@ -405,6 +413,7 @@ describe('BackendLifecycleManager.stop', () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response('ok', { status: 200 }) as unknown as Response);
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => true);
 
     const mgr = new BackendLifecycleManager(APP_META, () => '/x');
     await mgr.start('/db');
@@ -414,10 +423,12 @@ describe('BackendLifecycleManager.stop', () => {
     (child as unknown as EventEmitter).emit('exit', 0);
     await stopPromise;
 
-    expect(child.kill).toHaveBeenCalledWith('SIGTERM');
+    expect(killSpy).toHaveBeenCalled();
+    expect(cleanupRegisteredAgentProcesses).toHaveBeenCalledWith('/db');
     expect(mgr.status).toBe('stopped');
 
     fetchSpy.mockRestore();
+    killSpy.mockRestore();
   });
 
   it('escalates to SIGKILL when SIGTERM times out', async () => {
@@ -430,6 +441,7 @@ describe('BackendLifecycleManager.stop', () => {
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response('ok', { status: 200 }) as unknown as Response);
+    const killSpy = vi.spyOn(process, 'kill').mockImplementation(() => true);
 
     const mgr = new BackendLifecycleManager(APP_META, () => '/x');
     await mgr.start('/db');
@@ -439,9 +451,12 @@ describe('BackendLifecycleManager.stop', () => {
     await new Promise((r) => setTimeout(r, 5_200));
     await stopPromise;
 
-    expect(vi.mocked(child.kill).mock.calls).toEqual(expect.arrayContaining([['SIGTERM'], ['SIGKILL']]));
+    expect(killSpy.mock.calls).toEqual(expect.arrayContaining([[expect.any(Number), 'SIGTERM']]));
+    expect(killSpy.mock.calls).toEqual(expect.arrayContaining([[expect.any(Number), 'SIGKILL']]));
+    expect(cleanupRegisteredAgentProcesses).toHaveBeenCalledWith('/db');
 
     fetchSpy.mockRestore();
+    killSpy.mockRestore();
   }, 7_000);
 });
 

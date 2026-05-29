@@ -285,6 +285,16 @@
   "skills": {
     "loaded": "Yüklenen Beceriler"
   },
+  "mcp": {
+    "loaded": "Yüklü MCP",
+    "managementHint": "Bir MCP anormal görünüyorsa, bunun nedeni genellikle MCP JSON yapılandırmasıdır. Araç ayarlarına gidip manuel olarak test edin.",
+    "openSettings": "Araç ayarlarını aç",
+    "status": {
+      "loaded": "Yüklendi",
+      "failed": "Başarısız",
+      "unsupported": "Desteklenmiyor"
+    }
+  },
   "sendbox": {
     "hint": "Komutlar için /, dosya için @ yazın"
   },
