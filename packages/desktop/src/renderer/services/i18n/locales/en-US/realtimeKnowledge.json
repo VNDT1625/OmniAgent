@@ -1,0 +1,40 @@
+{
+  "navTitle": "Realtime Knowledge",
+  "title": "Realtime Knowledge",
+  "subtitle": "Time-sensitive facts the agent keeps current — review their freshness, sources and validity, search them, or force a refresh.",
+  "desktopOnly": "Realtime Knowledge is only available in the desktop app.",
+  "reload": "Reload",
+  "retry": "Retry",
+  "searchPlaceholder": "Search facts (e.g. latest Node LTS, current price…)",
+  "loadError": "Could not load the knowledge store.",
+  "empty": "No facts recorded yet. The agent adds them with the rtk_record tool after verifying time-sensitive information.",
+  "noMatches": "No facts matched your search.",
+  "freshness": {
+    "fresh": "Fresh",
+    "stale": "Stale",
+    "expired": "Expired",
+    "unknown": "Unknown"
+  },
+  "class": {
+    "version": "Version",
+    "price": "Price",
+    "role_holder": "Role holder",
+    "spec_api": "API / spec",
+    "status_event": "Event status",
+    "stat_metric": "Statistic",
+    "other": "Other"
+  },
+  "status": {
+    "active": "Active",
+    "needs_review": "Needs review",
+    "superseded": "Superseded",
+    "archived": "Archived"
+  },
+  "card": {
+    "validAsOf": "Valid as of {{date}}",
+    "confidence": "Confidence {{percent}}%",
+    "sources": "Sources",
+    "refresh": "Refresh",
+    "refreshHint": "Re-verify this fact with the research pipeline."
+  }
+}

@@ -1,0 +1,82 @@
+/**
+ * Notion-style "properties" rows shown under a note's title. A quiet two-column
+ * grid: a fixed icon+label gutter and a borderless control that only reveals its
+ * field affordance on hover/focus (Notion's calm metadata feel).
+ *
+ * Uses the app/Manager theme tokens; no hardcoded colours. Scoped via CSS Module.
+ */
+
+.row {
+  display: grid;
+  grid-template-columns: 148px 1fr;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+}
+
+.key {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--color-text-3);
+  font-size: 13px;
+  padding: 0 6px;
+  user-select: none;
+}
+.keyIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-3);
+}
+.keyLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.value {
+  min-width: 0;
+}
+
+/* Borderless controls that read as plain text until hovered/focused. */
+.value :global(.arco-input-inner-wrapper),
+.value :global(.arco-select-view),
+.value :global(.arco-input-tag) {
+  background: transparent;
+  border-color: transparent;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease;
+}
+.value:hover :global(.arco-input-inner-wrapper),
+.value:hover :global(.arco-select-view),
+.value:hover :global(.arco-input-tag) {
+  background: var(--color-fill-1);
+}
+.value :global(.arco-input-inner-wrapper.arco-input-inner-wrapper-focus),
+.value :global(.arco-select-view-focus),
+.value :global(.arco-input-tag.arco-input-tag-focus) {
+  background: var(--color-bg-1);
+  border-color: var(--mgr-accent, var(--primary));
+}
+
+.select,
+.tagInput {
+  width: 100%;
+}
+
+.sourceRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sourceRow :global(.arco-input-inner-wrapper) {
+  flex: 1;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  padding: 2px 6px;
+}

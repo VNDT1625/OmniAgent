@@ -111,6 +111,46 @@ describe('MessageTips — FeedbackButton wiring', () => {
     expect(screen.queryByText('settings.oneClickFeedback')).not.toBeInTheDocument();
   });
 
+  it('renders IDE context pack files without feedback controls', () => {
+    render(
+      <MessageTips
+        message={
+          {
+            ...buildTips('success', 'Loaded 2 IDE context file(s).'),
+            content: {
+              type: 'success',
+              content: 'Loaded 2 IDE context file(s).',
+              kind: 'context_pack',
+              contextPack: {
+                sliceCount: 2,
+                truncated: false,
+                files: [
+                  {
+                    path: 'packages/desktop/src/process/browser/browserBridge.ts',
+                    reason: 'seed',
+                    layer: 'service',
+                    score: 1004,
+                  },
+                  {
+                    path: 'packages/desktop/src/process/services/contentExtract/index.ts',
+                    reason: 'dependency',
+                    layer: 'service',
+                    score: 7,
+                  },
+                ],
+              },
+            },
+          } as IMessageTips
+        }
+      />
+    );
+
+    expect(screen.getByText('Including IDE Context')).toBeInTheDocument();
+    expect(screen.getByText('packages/desktop/src/process/browser/browserBridge.ts')).toBeInTheDocument();
+    expect(screen.getByText('packages/desktop/src/process/services/contentExtract/index.ts')).toBeInTheDocument();
+    expect(screen.queryByText('settings.oneClickFeedback')).not.toBeInTheDocument();
+  });
+
   it('renders FeedbackButton when tip type is error', () => {
     render(<MessageTips message={buildTips('error')} />);
     expect(screen.getByText('settings.oneClickFeedback')).toBeInTheDocument();

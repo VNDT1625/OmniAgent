@@ -28,6 +28,7 @@ interface UseAutoScrollOptions {
 interface ScrollElementIntoViewOptions {
   behavior?: ScrollBehavior;
   block?: ScrollLogicalPosition;
+  followBottomAfterScroll?: boolean;
 }
 
 interface UseAutoScrollReturn {
@@ -123,7 +124,7 @@ export function useAutoScroll({ messages, itemCount }: UseAutoScrollOptions): Us
     (element: HTMLElement | null, options?: ScrollElementIntoViewOptions) => {
       if (!element) return;
 
-      userScrolledRef.current = false;
+      userScrolledRef.current = options?.followBottomAfterScroll !== true;
       setShowScrollButton(false);
       markProgrammaticScroll();
       element.scrollIntoView({

@@ -46,6 +46,7 @@ import {
   clearPendingDeepLinkUrl,
   getPendingDeepLinkUrl,
   handleDeepLinkUrl,
+  isHandledUrlArg,
   PROTOCOL_SCHEME,
 } from './process/utils/deepLink';
 import {
@@ -77,7 +78,7 @@ import electronSquirrelStartup from 'electron-squirrel-startup';
 // to the first instance via second-instance event, then quits.
 const isE2ETestMode = process.env.AIONUI_E2E_TEST === '1';
 const skipSingleInstanceLock = isE2ETestMode || process.env.AIONUI_MULTI_INSTANCE === '1';
-const deepLinkFromArgv = process.argv.find((arg) => arg.startsWith(`${PROTOCOL_SCHEME}://`));
+const deepLinkFromArgv = process.argv.find(isHandledUrlArg);
 const gotTheLock = skipSingleInstanceLock ? true : app.requestSingleInstanceLock({ deepLinkUrl: deepLinkFromArgv });
 if (!gotTheLock) {
   console.warn('[AionUi] Another instance is already running; current process will exit.');
@@ -85,9 +86,7 @@ if (!gotTheLock) {
 } else {
   app.on('second-instance', (_event, argv, _workingDirectory, additionalData) => {
     // Prefer additionalData (reliable on all platforms), fallback to argv scan
-    const deepLinkUrl =
-      (additionalData as { deepLinkUrl?: string })?.deepLinkUrl ||
-      argv.find((arg) => arg.startsWith(`${PROTOCOL_SCHEME}://`));
+    const deepLinkUrl = (additionalData as { deepLinkUrl?: string })?.deepLinkUrl || argv.find(isHandledUrlArg);
     if (deepLinkUrl) {
       handleDeepLinkUrl(deepLinkUrl);
     }

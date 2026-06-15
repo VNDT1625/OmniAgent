@@ -48,3 +48,59 @@
     font-weight: 500;
   }
 }
+
+/* Browser page: use the full available width/height instead of the centered,
+   max-1024px settings content column, so the embedded browser scales to the
+   actual panel size (especially when the chat dock is closed). */
+.settings-page-wrapper.browser-settings-wrapper {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-page-content.browser-settings-content {
+  max-width: none;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Git page: full-height layout (repo list + detail) rather than the centered,
+   max-1024px settings content column, so the manager fills the panel. */
+.settings-page-wrapper.git-settings-wrapper {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-page-content.git-settings-content {
+  max-width: none;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Terminal page: full-height layout (session rail + xterm pane) rather than the
+   centered, max-1024px settings content column, so the terminal fills the panel
+   and xterm.js has a real height to render into (otherwise it appears blank). */
+.settings-page-wrapper.terminal-settings-wrapper {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-page-content.terminal-settings-content {
+  max-width: none;
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}

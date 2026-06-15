@@ -50,6 +50,10 @@ export type ConfigKeyMap = {
   'system.cronNotificationEnabled': boolean | undefined;
   'system.keepAwake': boolean | undefined;
   'system.autoPreviewOfficeFiles': boolean | undefined;
+  // When true, links opened from inside the app (and, on Windows, links handed
+  // to AionUi by the OS as the default browser) open in the built-in Browser
+  // tab instead of the system browser. Desktop-only preference.
+  'browser.openLinksInApp': boolean | undefined;
   'assistant.telegram.defaultModel': { id: string; use_model: string } | undefined;
   'assistant.telegram.agent':
     | { agent_type: string; backend?: string; id?: string; custom_agent_id?: string; name?: string }
@@ -75,6 +79,10 @@ export type ConfigKeyMap = {
   'pet.size': number | undefined;
   'pet.dnd': boolean | undefined;
   'pet.confirmEnabled': boolean | undefined;
+  // Developer tools: when enabled, a floating in-app console overlay captures
+  // console.* output and uncaught errors so runtime issues are visible without
+  // opening DevTools. Renderer-only UI preference.
+  'developer.consoleOverlay': boolean | undefined;
   // One-shot completion flags for legacy → backend migrations. Kept in the
   // local config file (not the backend client-preferences bag) so a downgrade
   // to a pre-flag build still re-reads the legacy data unchanged. See

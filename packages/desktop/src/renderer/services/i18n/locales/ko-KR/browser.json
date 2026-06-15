@@ -1,0 +1,84 @@
+{
+  "navTitle": "브라우저",
+  "title": "브라우저",
+  "subtitle": "앱 내에서 웹을 탐색하고 AI 모델이 웹 에이전트로서 페이지를 조작하도록 합니다.",
+  "desktopOnly": "내장 브라우저는 데스크톱 앱에서만 사용할 수 있습니다.",
+  "bridgeUnavailable": "브라우저 서비스가 아직 실행되지 않았습니다. 데스크톱 브리지가 연결되면 사용할 수 있습니다.",
+  "retry": "다시 시도",
+  "address": {
+    "placeholder": "검색하거나 URL 입력",
+    "go": "이동",
+    "back": "뒤로",
+    "forward": "앞으로",
+    "reload": "새로고침"
+  },
+  "tab": {
+    "new": "새 탭",
+    "close": "탭 닫기",
+    "untitled": "새 탭"
+  },
+  "agent": {
+    "label": "웹 에이전트",
+    "pickModel": "모델 선택",
+    "pickModelFirst": "웹 에이전트를 활성화하려면 모델을 선택하세요.",
+    "noModels": "사용 가능한 모델이 없습니다. 설정 → 모델에서 추가하세요.",
+    "toggleHint": "이 모델이 페이지를 제어하도록 합니다: 클릭, 스크롤, 입력, 읽기.",
+    "enabled": "이 탭에 웹 에이전트를 활성화했습니다.",
+    "disabled": "웹 에이전트를 비활성화했습니다.",
+    "toggleError": "웹 에이전트 모드를 변경할 수 없습니다.",
+    "providerGroup": "API 모델",
+    "cliGroup": "CLI 에이전트",
+    "cliSuffix": "CLI"
+  },
+  "toolbar": {
+    "zoomIn": "확대",
+    "zoomOut": "축소",
+    "zoomReset": "확대/축소를 100%로 재설정",
+    "fullscreen": "전체 화면",
+    "exitFullscreen": "전체 화면 종료 (Esc)",
+    "showChat": "웹 에이전트 채팅 표시",
+    "hideChat": "웹 에이전트 채팅 숨기기",
+    "showAiOverlay": "이 페이지에 대해 AI에게 질문",
+    "hideAiOverlay": "AI 오버레이 숨기기",
+    "expandControls": "에이전트 컨트롤 표시",
+    "collapseControls": "에이전트 컨트롤 숨기기"
+  },
+  "aiOverlay": {
+    "title": "AI에게 질문",
+    "placeholder": "이 페이지에 대해 질문…"
+  },
+  "chat": {
+    "title": "웹 에이전트",
+    "emptyTitle": "웹 에이전트에게 요청",
+    "emptyHint": "주소창에 입력하면 일반 탐색입니다. 여기서는 에이전트에게 할 일을 알려주세요 — 예: \"Facebook을 열고 메시지를 읽은 뒤 요약해 줘.\"",
+    "placeholder": "페이지에서 에이전트가 할 일을 입력…",
+    "pickModelFirst": "위에서 모델을 선택하면 웹 에이전트와 대화할 수 있습니다.",
+    "send": "보내기",
+    "stop": "중지",
+    "clear": "대화 지우기",
+    "close": "패널 숨기기",
+    "swapSide": "반대쪽으로 이동",
+    "working": "에이전트가 작업 중…",
+    "enterHint": "Enter로 보내기 · Shift+Enter로 줄바꿈",
+    "allowControl": "제어 허용",
+    "controlOnHint": "권한 부여됨: 에이전트가 이 탭에서 클릭, 스크롤, 입력, 이동할 수 있습니다.",
+    "controlOffHint": "비표시 모드: 에이전트는 읽기/수집과 숨김 탭만 사용합니다. 이 페이지를 제어하게 하려면 켜세요.",
+    "stepFailed": "실패",
+    "persona": "페르소나 및 규칙",
+    "personaTitle": "에이전트 페르소나 및 고정 규칙",
+    "personaHint": "이 지침은 매 턴마다 웹 에이전트에 적용됩니다(언어, 말투, 절대 하면 안 되는 일 등).",
+    "personaPlaceholder": "예: 항상 베트남어로 답변. 간결하게. 확인 없이 구매하거나 양식을 제출하지 않기.",
+    "personaSave": "저장",
+    "personaCancel": "취소"
+  },
+  "subtitle_overlay": {
+    "enable": "베트남어 자막 표시",
+    "disable": "베트남어 자막 숨기기",
+    "idle": "자막 생성을 위해 동영상 오디오를 기다리는 중…"
+  },
+  "viewport": {
+    "emptyTitle": "열린 페이지 없음",
+    "emptyHint": "탭을 열어 탐색을 시작하세요. 페이지는 여기에 표시되며 앱이 제어합니다.",
+    "openFirst": "탭 열기"
+  }
+}

@@ -60,6 +60,16 @@ export const WEBUI_DEFAULT_PORT = (() => {
 
 export const TEAM_MODE_ENABLED = true;
 
+/**
+ * Music Studio (OmniAgent music) feature flag.
+ *
+ * Gates the in-app music-making capability (page route + agent MCP tools).
+ * Default OFF: the app behaves exactly as before until this is turned on, so
+ * the feature can ship dark and be removed by flipping one constant. Mirrors
+ * the TEAM_MODE_ENABLED gating pattern used by the router.
+ */
+export const MUSIC_STUDIO_ENABLED = true;
+
 // ===== AI Provider 相关常量 =====
 
 // Stable ID for the Google Auth virtual provider.

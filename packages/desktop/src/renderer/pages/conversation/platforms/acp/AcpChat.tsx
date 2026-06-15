@@ -13,6 +13,7 @@ import { ConversationArtifactProvider } from '@renderer/pages/conversation/Messa
 import {
   MessageListLoadingProvider,
   MessageListProvider,
+  MessageHistoryPagingProvider,
   useMessageLstCache,
 } from '@renderer/pages/conversation/Messages/hooks';
 import { usePendingConfirmationsRecovery } from '@renderer/pages/conversation/Messages/usePendingConfirmationsRecovery';
@@ -87,4 +88,4 @@ const AcpChat: React.FC<{
   );
 };
 
-export default HOC.Wrapper(MessageListProvider, MessageListLoadingProvider)(AcpChat);
+export default HOC.Wrapper(MessageListProvider, MessageListLoadingProvider, MessageHistoryPagingProvider)(AcpChat);

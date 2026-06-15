@@ -387,6 +387,22 @@
       "genericError": "Voice input failed. Please try again"
     }
   },
+  "goalCommand": {
+    "description": "Run a requirement autonomously until it nearly fully meets the goal",
+    "allDescription": "Full-autonomy mode: decide everything and exceed the requirement (101%)",
+    "autoResumeNotice": "Goal run stalled — auto-resuming ({{count}}/{{max}})",
+    "autoResumeGiveup": "Goal run stalled after {{max}} auto-resumes. Paused for manual review.",
+    "modeOff": "Goal Mode turned off.",
+    "modeBadge": "Goal Mode",
+    "done": "Goal completed — tests passing. Goal Mode turned off.",
+    "blocked": "Agent reported the goal is blocked. Goal Mode turned off — please review.",
+    "maxTurns": "Goal run hit the auto-drive limit. Goal Mode turned off — please review.",
+    "enforcing": "Enforcing goal workflow — continuing automatically.",
+    "verifySet": "Independent verification command set for this goal run.",
+    "verifyOff": "Independent verification disabled.",
+    "verifyRunning": "Verifying the goal independently…",
+    "verifyFailed": "Independent verification failed — the agent must fix and retry."
+  },
   "sideQuestion": {
     "title": "Side Question",
     "description": "Ask a quick question about the current conversation",
@@ -467,5 +483,20 @@
   "sendbox": {
     "hint": "Type / for commands, @ to reference files"
   },
-  "notFound": "Conversation not found or has been deleted"
+  "notFound": "Conversation not found or has been deleted",
+  "contextPack": {
+    "title": "Including IDE Context",
+    "subtitle": "{{count}} file(s) loaded for the agent",
+    "loaded": "Loaded {{count}} IDE context file(s).",
+    "truncated": "capped",
+    "score": "score {{score}}",
+    "more": "+{{count}} more",
+    "reason": {
+      "seed": "seed",
+      "dependency": "dependency",
+      "dependent": "dependent",
+      "changed": "changed",
+      "entry": "entry"
+    }
+  }
 }

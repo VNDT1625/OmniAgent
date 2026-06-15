@@ -10,6 +10,7 @@ import MessageList from '@renderer/pages/conversation/Messages/MessageList';
 import {
   MessageListLoadingProvider,
   MessageListProvider,
+  MessageHistoryPagingProvider,
   useMessageLstCache,
 } from '@renderer/pages/conversation/Messages/hooks';
 import HOC from '@renderer/utils/ui/HOC';
@@ -44,4 +45,4 @@ const NanobotChat: React.FC<{
   );
 };
 
-export default HOC.Wrapper(MessageListProvider, MessageListLoadingProvider)(NanobotChat);
+export default HOC.Wrapper(MessageListProvider, MessageListLoadingProvider, MessageHistoryPagingProvider)(NanobotChat);

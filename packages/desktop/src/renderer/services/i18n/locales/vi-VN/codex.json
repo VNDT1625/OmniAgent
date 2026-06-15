@@ -1,0 +1,133 @@
+{
+  "sendbox": {},
+  "network": {
+    "cloudflare_blocked": "Bảo vệ Cloudflare đã chặn truy cập vào {{service}}. Gợi ý: 1) Dùng VPN 2) Đổi mạng 3) Thử lại sau 4) Chuyển sang dịch vụ AI khác",
+    "network_timeout": "Hết thời gian mạng, đang tự động thử lại kết nối...",
+    "connection_refused": "Kết nối bị từ chối, vui lòng kiểm tra dịch vụ Codex có đang chạy không.",
+    "unknown_error": "Lỗi kết nối mạng, vui lòng kiểm tra cài đặt mạng.",
+    "retry_attempt": "Đang thử lại lần {{current}}...",
+    "cloudflare_blocked_title": "🚫 Dịch vụ {{service}} bị Cloudflare chặn",
+    "network_timeout_title": "⏱️ Hết thời gian kết nối mạng",
+    "connection_refused_title": "❌ Kết nối dịch vụ bị từ chối",
+    "unknown_error_title": "🔌 Lỗi kết nối mạng",
+    "recovery_suggestions": "**Giải pháp đề xuất:**",
+    "technical_info": "**Thông tin kỹ thuật:**",
+    "error_type": "Loại lỗi",
+    "retry_count": "Số lần thử lại",
+    "error_details": "Chi tiết lỗi",
+    "quick_switch_title": "💡 **Tùy chọn chuyển đổi nhanh:**",
+    "quick_switch_content": "Khi dịch vụ hiện tại gặp hạn chế mạng, bạn có thể:\n\n1. **Chuyển trợ lý AI ngay**: Chọn trợ lý khác từ bảng bên trái\n2. **Kiểm tra trạng thái dịch vụ**: Tính khả dụng của các dịch vụ AI khác nhau theo khu vực\n3. **Tối ưu mạng**: Dùng môi trường mạng ổn định để tăng tỷ lệ kết nối thành công\n4. **Thử lại sau**: Hạn chế mạng thường chỉ tạm thời\n\n**Mẹo**: Nên cấu hình nhiều dịch vụ AI dự phòng để đảm bảo liên tục làm việc.",
+    "recovery_actions": {
+      "cloudflare_blocked": [
+        "• Dùng VPN hoặc proxy",
+        "• Đổi môi trường mạng (như điểm phát sóng di động)",
+        "• Chờ 10-30 phút rồi thử lại",
+        "• Xóa cache và cookie trình duyệt",
+        "• Chuyển sang dịch vụ khác: ChatGPT, Claude, Qwen, Gemini"
+      ],
+      "network_timeout": [
+        "• Kiểm tra kết nối mạng có ổn định không",
+        "• Thử lại thao tác kết nối",
+        "• Chuyển sang môi trường mạng ổn định hơn",
+        "• Kiểm tra cài đặt tường lửa"
+      ],
+      "connection_refused": [
+        "• Kiểm tra Codex CLI đã được cài đặt đúng chưa",
+        "• Xác minh cấu hình dịch vụ và API key",
+        "• Khởi động lại ứng dụng",
+        "• Kiểm tra cổng cục bộ có bị chiếm không"
+      ],
+      "unknown": [
+        "• Kiểm tra trạng thái kết nối mạng",
+        "• Thử lại thao tác hiện tại",
+        "• Đổi môi trường mạng",
+        "• Liên hệ hỗ trợ kỹ thuật"
+      ]
+    }
+  },
+  "thinking": {
+    "processing": "🤔 Codex đang suy nghĩ...",
+    "completed": "💭 Quá trình suy nghĩ hoàn tất",
+    "analyzing": "Đang phân tích vấn đề và đề xuất giải pháp...",
+    "composing": "Đang soạn nội dung phản hồi..."
+  },
+  "error": {
+    "system_init_failed": "Khởi tạo hệ thống Codex thất bại",
+    "invalid_message_format": "Định dạng tin nhắn không hợp lệ",
+    "invalid_input": "Đầu vào không hợp lệ",
+    "session_timeout": "Phiên hết thời gian, vui lòng thử lại",
+    "permission_denied": "Không có quyền thực hiện thao tác này",
+    "context_error": "Lỗi xảy ra trong {{context}}, vui lòng làm mới hoặc thử lại.",
+    "generic": "Thành phần Codex gặp ngoại lệ, vui lòng thử lại sau.",
+    "troubleshooting": "Gợi ý khắc phục sự cố",
+    "suggestion_1": "Kiểm tra kết nối mạng có ổn định không",
+    "suggestion_2": "Đảm bảo dịch vụ Codex đang chạy đúng",
+    "suggestion_3": "Thử khởi động lại ứng dụng",
+    "suggestion_4": "Xóa cache trình duyệt và bộ nhớ cục bộ"
+  },
+  "performance": {
+    "virtualization_enabled": "Đã bật ảo hóa danh sách để tăng hiệu suất",
+    "virtualization_disabled": "Đã tắt ảo hóa danh sách, hiển thị tất cả mục",
+    "debounce_enabled": "Đã bật debounce đầu vào (độ trễ {{delay}}ms)",
+    "debounce_disabled": "Đã tắt debounce đầu vào"
+  },
+  "config": {
+    "loaded": "Đã tải cấu hình thành công",
+    "updated": "Đã cập nhật cấu hình thành công",
+    "reset": "Đã đặt lại cấu hình về mặc định",
+    "validation_failed": "Xác thực cấu hình thất bại",
+    "import_success": "Nhập cấu hình thành công",
+    "import_failed": "Nhập cấu hình thất bại",
+    "export_success": "Xuất cấu hình thành công"
+  },
+  "permissions": {
+    "allow_once": "Cho phép một lần",
+    "allow_always": "Luôn cho phép",
+    "reject_once": "Từ chối một lần",
+    "reject_always": "Luôn từ chối",
+    "allow_once_desc": "Cấp quyền chỉ cho yêu cầu này",
+    "allow_always_desc": "Luôn cấp quyền cho các yêu cầu tương tự",
+    "reject_once_desc": "Từ chối chỉ yêu cầu này",
+    "reject_always_desc": "Luôn từ chối các yêu cầu tương tự",
+    "processing": "Đang xử lý...",
+    "response_sent": "Đã gửi phản hồi thành công",
+    "choose_action": "Chọn hành động:",
+    "titles": {
+      "exec_approval_request": "Quyền thực thi lệnh",
+      "apply_patch_approval_request": "Quyền áp dụng thay đổi tệp",
+      "command_execution": "Quyền thực thi lệnh",
+      "file_write": "Quyền ghi tệp",
+      "file_read": "Quyền đọc tệp"
+    },
+    "labels": {
+      "command": "Lệnh:",
+      "directory": "Thư mục:",
+      "reason": "Lý do:",
+      "files_to_modify": "Tệp cần sửa đổi",
+      "summary": "Tóm tắt:"
+    },
+    "descriptions": {
+      "command_execution": "Codex yêu cầu thực thi lệnh hệ thống",
+      "file_write": "Codex yêu cầu sửa đổi hoặc tạo tệp",
+      "file_read": "Codex yêu cầu đọc nội dung tệp"
+    },
+    "command_execution": {
+      "allow_once_desc": "Chỉ cho phép thực thi lệnh này",
+      "allow_always_desc": "Luôn cho phép tất cả yêu cầu thực thi lệnh",
+      "reject_once_desc": "Chỉ từ chối thực thi lệnh này",
+      "reject_always_desc": "Luôn từ chối tất cả yêu cầu thực thi lệnh"
+    },
+    "file_write": {
+      "allow_once_desc": "Chỉ cho phép ghi tệp này",
+      "allow_always_desc": "Luôn cho phép tất cả yêu cầu ghi tệp",
+      "reject_once_desc": "Chỉ từ chối ghi tệp này",
+      "reject_always_desc": "Luôn từ chối tất cả yêu cầu ghi tệp"
+    },
+    "file_read": {
+      "allow_once_desc": "Chỉ cho phép đọc tệp này",
+      "allow_always_desc": "Luôn cho phép tất cả yêu cầu đọc tệp",
+      "reject_once_desc": "Chỉ từ chối đọc tệp này",
+      "reject_always_desc": "Luôn từ chối tất cả yêu cầu đọc tệp"
+    }
+  }
+}

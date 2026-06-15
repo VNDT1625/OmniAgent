@@ -9,10 +9,12 @@ import { blurActiveElement } from '@renderer/utils/ui/focus';
 import { useThemeContext } from '@renderer/hooks/context/ThemeContext';
 import { useAllCronJobs } from '@renderer/pages/cron/useCronJobs';
 import { useTeamCreatedRedirect } from '@renderer/pages/team/hooks/useTeamCreatedRedirect';
-import { SiderToolbar, SiderSearchEntry, SiderScheduledEntry } from './SiderNav';
+import { SiderToolbar, SiderSearchEntry, SiderScheduledEntry, SiderStudioEntry, SiderManagerEntry } from './SiderNav';
 import SiderFooter from './SiderFooter';
 import CronJobSiderSection from './CronJobSiderSection';
 import TeamSiderSection from './TeamSiderSection';
+import CompanySiderSection from './CompanySiderSection';
+import QuickActiveSiderSection from '@renderer/components/agent/QuickActive/QuickActiveSiderSection';
 import siderStyles from './Sider.module.css';
 
 const WorkspaceGroupedHistory = React.lazy(() => import('@renderer/pages/conversation/GroupedHistory'));
@@ -91,6 +93,32 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     closePreview();
     setIsBatchMode(false);
     Promise.resolve(navigate('/scheduled')).catch((error) => {
+      console.error('Navigation failed:', error);
+    });
+    if (onSessionClick) {
+      onSessionClick();
+    }
+  };
+
+  const handleStudioClick = () => {
+    cleanupSiderTooltips();
+    blurActiveElement();
+    closePreview();
+    setIsBatchMode(false);
+    Promise.resolve(navigate('/studio')).catch((error) => {
+      console.error('Navigation failed:', error);
+    });
+    if (onSessionClick) {
+      onSessionClick();
+    }
+  };
+
+  const handleManagerClick = () => {
+    cleanupSiderTooltips();
+    blurActiveElement();
+    closePreview();
+    setIsBatchMode(false);
+    Promise.resolve(navigate('/manager')).catch((error) => {
       console.error('Navigation failed:', error);
     });
     if (onSessionClick) {
@@ -186,6 +214,22 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
               siderTooltipProps={siderTooltipProps}
               onClick={handleScheduledClick}
             />
+            {/* Studio app nav entry - file hub + universal editor */}
+            <SiderStudioEntry
+              isMobile={isMobile}
+              isActive={pathname === '/studio'}
+              collapsed={collapsed}
+              siderTooltipProps={siderTooltipProps}
+              onClick={handleStudioClick}
+            />
+            {/* Manager app nav entry - tasks, notes & schedule */}
+            <SiderManagerEntry
+              isMobile={isMobile}
+              isActive={pathname === '/manager'}
+              collapsed={collapsed}
+              siderTooltipProps={siderTooltipProps}
+              onClick={handleManagerClick}
+            />
             {/* Divider between fixed top nav and scrollable content area */}
             <div
               className={classNames(
@@ -200,7 +244,19 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
                   {...workspaceHistoryProps}
                   afterPinnedContent={
                     <>
+                      <QuickActiveSiderSection
+                        collapsed={collapsed}
+                        pathname={pathname}
+                        siderTooltipProps={siderTooltipProps}
+                        onSessionClick={onSessionClick}
+                      />
                       <TeamSiderSection
+                        collapsed={collapsed}
+                        pathname={pathname}
+                        siderTooltipProps={siderTooltipProps}
+                        onSessionClick={onSessionClick}
+                      />
+                      <CompanySiderSection
                         collapsed={collapsed}
                         pathname={pathname}
                         siderTooltipProps={siderTooltipProps}

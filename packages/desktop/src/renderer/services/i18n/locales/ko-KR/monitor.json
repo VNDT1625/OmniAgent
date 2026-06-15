@@ -1,0 +1,60 @@
+{
+  "navTitle": "모니터",
+  "title": "버그 모니터",
+  "subtitle": "자동 수집된 오류, 제안된 수정, 승인 게이트.",
+  "refresh": "새로고침",
+  "desktopOnly": "버그 모니터는 데스크톱 앱에서만 사용할 수 있습니다.",
+  "unavailable": "모니터 서비스를 아직 사용할 수 없습니다.",
+  "noReports": "아직 버그 보고가 없습니다.",
+  "noProposals": "아직 제안된 수정이 없습니다.",
+  "section": {
+    "proposals": "제안된 수정",
+    "reports": "버그 보고"
+  },
+  "report": {
+    "occurrences": "{{count}}회 발생",
+    "source": "출처",
+    "knownFix": "알려진 수정이 있습니다",
+    "fix": "수정"
+  },
+  "fix": {
+    "startedToast": "오류를 분석하고 수정을 준비하는 중…"
+  },
+  "risk": {
+    "low": "낮음",
+    "medium": "보통",
+    "high": "높음"
+  },
+  "status": {
+    "proposed": "제안됨",
+    "pending-review": "검토 대기",
+    "approved": "승인됨",
+    "applied": "적용됨",
+    "rejected": "거부됨",
+    "rolled-back": "롤백됨"
+  },
+  "patch": {
+    "title": "제안된 수정",
+    "risk": "위험",
+    "approve": "승인 후 적용",
+    "approveConfirm": "이 수정을 앱에 적용할까요? 먼저 롤백 지점을 저장합니다.",
+    "cancel": "취소",
+    "reject": "거부",
+    "rollback": "롤백",
+    "publish": "게시",
+    "pendingReview": "검토 대기",
+    "applied": "적용됨",
+    "rejected": "거부됨",
+    "rolledBack": "롤백됨",
+    "appliedToast": "수정을 적용했습니다. 필요하면 롤백할 수 있습니다.",
+    "rejectedToast": "제안을 거부했습니다.",
+    "rolledBackToast": "수정을 롤백했습니다.",
+    "actionError": "작업을 완료할 수 없습니다."
+  },
+  "publish": {
+    "confirm": "수정 브랜치를 만들고 검토를 위해 포크에 푸시할까요?",
+    "pushedToast": "브랜치 \"{{branch}}\"를 푸시했습니다. PR 페이지를 여는 중…",
+    "notPushed": "브랜치 \"{{branch}}\"를 로컬에 준비했습니다. 준비되면 포크에 푸시하세요.",
+    "error": "수정을 게시할 수 없습니다."
+  }
+}

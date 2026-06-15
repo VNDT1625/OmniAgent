@@ -28,7 +28,7 @@ export const useDetectedAgents = () => {
         .map((a) => ({
           // `preset_agent_type` stores the backend slug (e.g. "claude", "gemini"),
           // not the AgentMetadata row id. Align the Select value with that contract.
-          id: a.backend || a.agent_type,
+          id: a.agent_source === 'custom' ? a.id : a.backend || a.agent_type,
           name: a.name,
           isExtension: a.agent_source === 'extension',
         })),

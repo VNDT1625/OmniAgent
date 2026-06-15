@@ -1,0 +1,6 @@
+node_modules/
+dist/
+coverage/
+*.tmp
+*-out.txt
+.DS_Store

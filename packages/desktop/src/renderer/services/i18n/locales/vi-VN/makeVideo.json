@@ -1,0 +1,93 @@
+{
+  "title": "Tạo video",
+  "newProject": "Dự án mới",
+  "emptyGallery": "Chưa có dự án nào. Tạo một dự án để bắt đầu bộ phim AI của bạn.",
+  "retry": "Thử lại",
+  "unavailableTitle": "Dịch vụ Tạo video không khả dụng",
+  "unavailableSubtitle": "Engine Tạo video chưa được kết nối. Nó sẽ khả dụng khi cầu nối desktop được đấu nối.",
+  "noScenes": "Chưa có cảnh nào. Tạo kịch bản để bắt đầu.",
+  "generatingScript": "Đang viết kịch bản…",
+  "new": {
+    "title": "Dự án video mới",
+    "create": "Tạo",
+    "cancel": "Hủy",
+    "topic": "Chủ đề",
+    "topicPlaceholder": "Bộ phim nói về điều gì? vd: Một con robot cô đơn tìm được một người bạn.",
+    "style": "Phong cách",
+    "stylePlaceholder": "vd: anime, điện ảnh, hoạt hình đất sét",
+    "language": "Ngôn ngữ thuyết minh"
+  },
+  "remove": {
+    "title": "Xóa dự án",
+    "content": "Xóa \"{{topic}}\"? Hành động này không thể hoàn tác.",
+    "confirm": "Xóa",
+    "cancel": "Hủy"
+  },
+  "card": {
+    "scenes": "{{count}} cảnh · đã kết xuất {{rendered}}",
+    "clips": "{{count}} clip"
+  },
+  "controls": {
+    "scriptModel": "Mô hình kịch bản",
+    "imageModel": "Mô hình hình ảnh",
+    "pickModel": "Chọn mô hình",
+    "scenes": "Cảnh",
+    "generateScript": "Tạo kịch bản",
+    "regenerateScript": "Tạo lại kịch bản",
+    "renderAll": "Kết xuất tất cả hình ảnh",
+    "voiceConfig": "Cấu hình giọng nói",
+    "genAllVoices": "Tạo tất cả giọng nói",
+    "clipConfig": "Cấu hình video clip",
+    "genAllClips": "Tạo tất cả clip",
+    "exportFinal": "Xuất MP4",
+    "exporting": "Đang xuất…",
+    "providerGroup": "Mô hình nhà cung cấp",
+    "cliGroup": "Tác tử CLI",
+    "noModels": "Chưa có mô hình. Thêm nhà cung cấp hoặc tác tử CLI trong Cài đặt.",
+    "stop": "Dừng",
+    "stopping": "Đang dừng…"
+  },
+  "scene": {
+    "index": "Cảnh {{n}}",
+    "untitled": "Cảnh chưa đặt tên",
+    "rendering": "Đang kết xuất hình ảnh…",
+    "generatingClip": "Đang tạo clip…",
+    "render": "Kết xuất hình ảnh",
+    "regenerate": "Kết xuất lại hình ảnh",
+    "genVoice": "Tạo giọng nói",
+    "regenVoice": "Tạo lại giọng nói",
+    "genClip": "Tạo video clip",
+    "regenClip": "Tạo lại clip",
+    "showVideo": "Xem video",
+    "showImage": "Xem hình ảnh",
+    "frameEndSet": "Đã đặt frame cuối",
+    "clearFrameEnd": "Xóa",
+    "voiceNotConfigured": "Cấu hình nhà cung cấp giọng nói trước",
+    "clipNotConfigured": "Cấu hình nhà cung cấp video clip trước",
+    "clipNeedsImage": "Kết xuất hình ảnh trước"
+  },
+  "voiceConfig": {
+    "title": "Nhà cung cấp giọng nói (TTS)",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "provider": "Nhà cung cấp",
+    "baseUrl": "Base URL",
+    "apiKey": "API Key",
+    "model": "Mô hình",
+    "voice": "Giọng nói",
+    "voiceId": "Voice ID"
+  },
+  "videoClipConfig": {
+    "title": "Nhà cung cấp video clip (fal.ai)",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "apiKey": "fal.ai API Key",
+    "apiKeyHint": "Lấy key tại fal.ai/dashboard",
+    "model": "Mô hình",
+    "duration": "Thời lượng clip",
+    "supportsEndFrame": "Mô hình này hỗ trợ nội suy frame đầu + frame cuối"
+  },
+  "export": {
+    "success": "Đã xuất video: {{path}}"
+  }
+}

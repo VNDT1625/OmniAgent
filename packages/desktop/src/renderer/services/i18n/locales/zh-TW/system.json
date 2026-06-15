@@ -1,0 +1,59 @@
+{
+  "loadError": "無法讀取系統狀態，觀測服務可能尚未啟動。",
+  "refresh": "重新整理",
+  "refreshed": "已重新整理系統資訊。",
+  "refreshError": "重新整理系統資訊失敗。",
+  "static": {
+    "title": "本機",
+    "subtitle": "硬體與軟體資訊，很少變動——點擊「重新整理」可重新讀取。",
+    "os": "作業系統",
+    "hostname": "主機 · 使用者",
+    "cpu": "處理器",
+    "cores": "{{count}} 個邏輯核心",
+    "memory": "總記憶體",
+    "gpu": "顯示卡",
+    "gpuNone": "未偵測到 GPU",
+    "disk": "儲存（可用 / 總計）",
+    "network": "網路",
+    "noNetwork": "無作用中的網路介面",
+    "versions": "版本"
+  },
+  "live": {
+    "title": "即時指標",
+    "subtitle": "頁面開啟時即時更新。",
+    "cpu": "CPU",
+    "memory": "記憶體",
+    "perCore": "各核心負載",
+    "loadAvg": "平均負載",
+    "uptime": "執行時間",
+    "battery": "電源",
+    "onBattery": "電池供電",
+    "plugged": "已接電源",
+    "waiting": "正在等待首個即時取樣…"
+  },
+  "process": {
+    "title": "處理程序",
+    "subtitle": "應用程式的處理程序，最耗資源的排在前面。設定優先順序以約束佔用過高的程序。",
+    "name": "處理程序",
+    "cpu": "CPU",
+    "memory": "記憶體",
+    "priority": "優先順序",
+    "none": "暫無處理程序資料。",
+    "prioritySet": "已更新 {{name}} 的優先順序。",
+    "priorityError": "無法變更優先順序（可能需要更高權限）。"
+  },
+  "priority": {
+    "high": "高",
+    "aboveNormal": "高於正常",
+    "normal": "正常",
+    "belowNormal": "低於正常",
+    "low": "低"
+  },
+  "units": {
+    "mb": "MB",
+    "gb": "GB",
+    "day": "天",
+    "hour": "時",
+    "min": "分"
+  }
+}

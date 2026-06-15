@@ -1,0 +1,40 @@
+{
+  "navTitle": "即時知識",
+  "title": "即時知識",
+  "subtitle": "智慧代理持續更新的時效性事實——檢視其新鮮度、來源與有效期，進行搜尋或強制重新整理。",
+  "desktopOnly": "即時知識僅在桌面應用程式中可用。",
+  "reload": "重新載入",
+  "retry": "重試",
+  "searchPlaceholder": "搜尋事實（如最新 Node LTS、目前價格…）",
+  "loadError": "無法載入知識庫。",
+  "empty": "尚無記錄的事實。代理會在核實時效性資訊後使用 rtk_record 工具新增。",
+  "noMatches": "沒有與搜尋相符的事實。",
+  "freshness": {
+    "fresh": "新鮮",
+    "stale": "即將過期",
+    "expired": "已過期",
+    "unknown": "未知"
+  },
+  "class": {
+    "version": "版本",
+    "price": "價格",
+    "role_holder": "職位擔任者",
+    "spec_api": "API / 規範",
+    "status_event": "事件狀態",
+    "stat_metric": "統計數據",
+    "other": "其他"
+  },
+  "status": {
+    "active": "活躍",
+    "needs_review": "需複核",
+    "superseded": "已被取代",
+    "archived": "已封存"
+  },
+  "card": {
+    "validAsOf": "有效起始：{{date}}",
+    "confidence": "信心度 {{percent}}%",
+    "sources": "來源",
+    "refresh": "重新整理",
+    "refreshHint": "透過研究管線重新核實此事實。"
+  }
+}

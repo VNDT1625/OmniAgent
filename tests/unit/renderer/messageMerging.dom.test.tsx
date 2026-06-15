@@ -11,8 +11,10 @@ import { ipcBridge } from '@/common';
 import type { IMessageAcpToolCall, IMessageText, IMessageThinking } from '@/common/chat/chatLib';
 import {
   MessageListLoadingProvider,
+  MessageHistoryPagingProvider,
   MessageListProvider,
   useAddOrUpdateMessage,
+  useMessageHistoryPaging,
   useMessageLstCache,
   useMessageList,
 } from '@/renderer/pages/conversation/Messages/hooks';
@@ -29,17 +31,21 @@ vi.mock('@/common', () => ({
 
 const CONVERSATION_ID = 'conversation-1';
 
-function createTextMessage(msgId: string, content: string): IMessageText {
+function createTextMessage(msgId: string, content: string, position: IMessageText['position'] = 'left'): IMessageText {
   return {
     id: `text-${msgId}-${content}`,
     type: 'text',
     msg_id: msgId,
     conversation_id: CONVERSATION_ID,
-    position: 'left',
+    position,
     content: {
       content,
     },
   };
+}
+
+function withCreatedAt<T extends IMessageText>(message: T, createdAt: number): T {
+  return { ...message, created_at: createdAt };
 }
 
 function createThinkingMessage(msgId: string, content: string): IMessageThinking {
@@ -98,7 +104,9 @@ function TestWrapper({ children }: PropsWithChildren): JSX.Element {
 function CacheWrapper({ children }: PropsWithChildren): JSX.Element {
   return (
     <MessageListLoadingProvider value={false}>
-      <MessageListProvider value={[]}>{children}</MessageListProvider>
+      <MessageHistoryPagingProvider value={{ hasOlder: false, loadingOlder: false, loadOlder: async () => false }}>
+        <MessageListProvider value={[]}>{children}</MessageListProvider>
+      </MessageHistoryPagingProvider>
     </MessageListLoadingProvider>
   );
 }
@@ -107,6 +115,14 @@ function useMessageHarness() {
   return {
     addOrUpdateMessage: useAddOrUpdateMessage(),
     messages: useMessageList(),
+  };
+}
+
+function useMessageCacheHarness() {
+  useMessageLstCache(CONVERSATION_ID);
+  return {
+    messages: useMessageList(),
+    paging: useMessageHistoryPaging(),
   };
 }
 
@@ -208,7 +224,7 @@ describe('message merging', () => {
     expect(result.current.messages).toEqual([]);
   });
 
-  it('requests compact tool content when hydrating historical messages', async () => {
+  it('requests only the latest compact message when hydrating historical messages', async () => {
     const invoke = vi.mocked(ipcBridge.database.getConversationMessages.invoke);
     invoke.mockClear();
     invoke.mockResolvedValue({ items: [], total: 0, has_more: false });
@@ -223,8 +239,91 @@ describe('message merging', () => {
 
     expect(invoke).toHaveBeenCalledWith({
       conversation_id: CONVERSATION_ID,
-      page: 0,
-      page_size: 10000,
+      page: 1,
+      page_size: 1,
+      order: 'desc',
+      content_mode: 'compact',
+    });
+  });
+
+  it('anchors initial hydration at the latest user message instead of the latest AI message', async () => {
+    const invoke = vi.mocked(ipcBridge.database.getConversationMessages.invoke);
+    invoke.mockClear();
+    invoke.mockResolvedValueOnce({
+      items: [createTextMessage('assistant-latest', 'assistant latest', 'left')],
+      total: 3,
+      has_more: true,
+    });
+    invoke.mockResolvedValueOnce({
+      items: [
+        withCreatedAt(createTextMessage('assistant-latest', 'assistant latest', 'left'), 300),
+        withCreatedAt(createTextMessage('user-latest', 'user latest', 'right'), 200),
+        withCreatedAt(createTextMessage('older', 'older', 'left'), 100),
+      ],
+      total: 3,
+      has_more: false,
+    });
+
+    const { result } = renderHook(() => useMessageCacheHarness(), {
+      wrapper: CacheWrapper,
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(invoke).toHaveBeenNthCalledWith(1, {
+      conversation_id: CONVERSATION_ID,
+      page: 1,
+      page_size: 1,
+      order: 'desc',
+      content_mode: 'compact',
+    });
+    expect(invoke).toHaveBeenNthCalledWith(2, {
+      conversation_id: CONVERSATION_ID,
+      page: 1,
+      page_size: 11,
+      order: 'desc',
+      content_mode: 'compact',
+    });
+    expect(result.current.messages.map((message) => message.msg_id)).toEqual(['user-latest', 'assistant-latest']);
+    expect(result.current.paging.initialAnchorMessageId).toBe('text-user-latest-user latest');
+  });
+
+  it('loads ten older messages when history paging asks for more', async () => {
+    const invoke = vi.mocked(ipcBridge.database.getConversationMessages.invoke);
+    invoke.mockClear();
+    invoke.mockResolvedValueOnce({
+      items: [createTextMessage('latest', 'latest', 'right')],
+      total: 12,
+      has_more: true,
+    });
+    invoke.mockResolvedValueOnce({
+      items: Array.from({ length: 11 }, (_, index) => createTextMessage(`msg-${index}`, `content-${index}`)),
+      total: 12,
+      has_more: true,
+    });
+
+    const { result } = renderHook(() => useMessageCacheHarness(), {
+      wrapper: CacheWrapper,
+    });
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(result.current.messages).toHaveLength(1);
+    expect(result.current.paging.hasOlder).toBe(true);
+
+    await act(async () => {
+      await result.current.paging.loadOlder();
+    });
+
+    expect(invoke).toHaveBeenLastCalledWith({
+      conversation_id: CONVERSATION_ID,
+      page: 1,
+      page_size: 11,
+      order: 'desc',
       content_mode: 'compact',
     });
   });

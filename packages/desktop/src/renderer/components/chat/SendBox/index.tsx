@@ -27,6 +27,7 @@ import { blurActiveElement, shouldBlockMobileInputFocus } from '@/renderer/utils
 import { Button, Input, Message, Tag } from '@arco-design/web-react';
 import { ArrowUp, CloseSmall, Plus, Quote } from '@icon-park/react';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
+import { GOAL_ALL_COMMAND_NAME, GOAL_COMMAND_NAME } from '@/common/chat/slash/goalCommand';
 import { theme } from '@office-ai/platform';
 import React, { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -173,6 +174,7 @@ const SendBox: React.FC<{
   onSlashBuiltinCommand?: (name: string) => void;
   hasPendingAttachments?: boolean;
   enableBtw?: boolean;
+  enableGoal?: boolean;
   allowSendWhileLoading?: boolean;
   compactActions?: boolean;
   selectedWorkspaceItems?: FileSelectionItem[];
@@ -205,6 +207,7 @@ const SendBox: React.FC<{
   onSlashBuiltinCommand,
   hasPendingAttachments = false,
   enableBtw = false,
+  enableGoal = false,
   allowSendWhileLoading = false,
   compactActions = false,
   selectedWorkspaceItems,
@@ -437,6 +440,24 @@ const SendBox: React.FC<{
         selectionBehavior: 'insert',
       });
     }
+    if (enableGoal) {
+      commands.push({
+        name: GOAL_COMMAND_NAME,
+        description: t('conversation.goalCommand.description'),
+        kind: 'builtin',
+        source: 'builtin',
+        selectionBehavior: 'insert',
+        insertText: `/${GOAL_COMMAND_NAME} `,
+      });
+      commands.push({
+        name: GOAL_ALL_COMMAND_NAME,
+        description: t('conversation.goalCommand.allDescription'),
+        kind: 'builtin',
+        source: 'builtin',
+        selectionBehavior: 'insert',
+        insertText: `/${GOAL_ALL_COMMAND_NAME} `,
+      });
+    }
     if (onSlashBuiltinCommand) {
       commands.push({
         name: 'open',
@@ -445,6 +466,14 @@ const SendBox: React.FC<{
         source: 'builtin',
       });
     }
+    commands.push({
+      name: 'execute',
+      description: t('ide.chat.planningStatus.execute'),
+      kind: 'builtin',
+      source: 'builtin',
+      selectionBehavior: 'insert',
+      insertText: '/execute @',
+    });
     if (conversationContext?.conversation_id) {
       commands.push({
         name: 'copy',
@@ -460,7 +489,7 @@ const SendBox: React.FC<{
       });
     }
     return commands;
-  }, [conversationContext?.conversation_id, enableBtw, onSlashBuiltinCommand, t]);
+  }, [conversationContext?.conversation_id, enableBtw, enableGoal, onSlashBuiltinCommand, t]);
 
   const mergedSlashCommands = useMemo(() => {
     const map = new Map<string, SlashCommandItem>();
@@ -499,8 +528,8 @@ const SendBox: React.FC<{
       }
       setInput('');
     },
-    onSelectTemplate: (name) => {
-      setInput(`/${name} `);
+    onSelectTemplate: (name, insertText) => {
+      setInput(insertText ?? `/${name} `);
     },
   });
 

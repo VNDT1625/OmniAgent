@@ -12,10 +12,11 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AddModelModal from '@/renderer/pages/settings/components/AddModelModal';
 import AddPlatformModal from '@/renderer/pages/settings/components/AddPlatformModal';
-import { isNewApiPlatform, NEW_API_PROTOCOL_OPTIONS } from '@/renderer/utils/model/modelPlatforms';
+import { isNewApiPlatform, MODEL_PLATFORMS, NEW_API_PROTOCOL_OPTIONS } from '@/renderer/utils/model/modelPlatforms';
 import EditModeModal from '@/renderer/pages/settings/components/EditModeModal';
 import AionScrollArea from '@/renderer/components/base/AionScrollArea';
 import { useProvidersQuery } from '@/renderer/hooks/agent/useModelProviderList';
+import Router9ConnectorPanel from '@/renderer/pages/settings/router9/Router9ConnectorPanel';
 import { useSettingsViewMode } from '../settingsViewContext';
 import { consumePendingDeepLink } from '@/renderer/hooks/system/useDeepLink';
 import '../model-provider.css';
@@ -480,6 +481,14 @@ const ModelModalContent: React.FC = () => {
                   >
                     {(platform.models ?? []).map((model: string, index: number, arr: string[]) => {
                       const isNewApiProvider = isNewApiPlatform(platform.platform);
+                      const shouldShowProtocol =
+                        isNewApiProvider &&
+                        !MODEL_PLATFORMS.some(
+                          (p) =>
+                            p.skipProtocolDetection &&
+                            p.base_url &&
+                            platform.base_url?.includes(new URL(p.base_url).host)
+                        );
                       const modelProtocol = platform.model_protocols?.[model] || 'openai';
                       const model_health = platform.model_health?.[model];
                       const healthStatus = model_health?.status || 'unknown';
@@ -524,7 +533,7 @@ const ModelModalContent: React.FC = () => {
                               <span className='text-14px text-t-primary'>{model}</span>
 
                               {/* New API 协议标签（点击循环切换）/ New API protocol badge (click to cycle) */}
-                              {isNewApiProvider && (
+                              {shouldShowProtocol && (
                                 <Tag
                                   size='small'
                                   color={getProtocolColor(modelProtocol)}
@@ -605,6 +614,9 @@ const ModelModalContent: React.FC = () => {
           </div>
         )}
       </AionScrollArea>
+
+      {/* Distribute the configured providers to external CLI / IDE tools via 9Router */}
+      <Router9ConnectorPanel />
     </div>
   );
 };

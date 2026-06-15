@@ -1,0 +1,19 @@
+{
+  "name": "@aionui/music-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Headless music engine: schema, commands, audio analysis (agent ears), theory, render. Shared by the user UI and the agent (MCP) plane.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "vitest": "^4.1.0"
+  }
+}

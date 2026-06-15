@@ -1,0 +1,120 @@
+{
+  "navTitle": "News",
+  "title": "News feeds",
+  "subtitle": "Aggregate RSS and Atom feeds, sorted into topics automatically — no AI required.",
+  "desktopOnly": "The News reader is only available in the AionUi desktop app.",
+  "bridgeUnavailable": "News service is not running yet. The feature will be ready once the desktop bridge is connected.",
+  "retry": "Retry",
+  "refresh": "Refresh all",
+  "refreshing": "Refreshing…",
+  "lastUpdated": "Updated {{time}}",
+  "unreadCount": "{{count}} unread",
+  "markAllRead": "Mark all read",
+  "empty": "No articles yet. Add a feed to start reading.",
+  "emptyCategory": "No articles in this topic yet.",
+  "openOriginal": "Open original",
+  "by": "by {{author}}",
+  "category": {
+    "all": "All",
+    "general": "General",
+    "world": "World",
+    "politics": "Politics",
+    "business": "Business",
+    "technology": "Technology",
+    "science": "Science",
+    "health": "Health",
+    "sports": "Sports",
+    "entertainment": "Entertainment"
+  },
+  "categorySource": {
+    "feed": "from feed",
+    "tag": "from tag",
+    "keyword": "by keyword",
+    "default": "unsorted"
+  },
+  "feeds": {
+    "title": "Feeds",
+    "add": "Add feed",
+    "addTitle": "Add a feed",
+    "editTitle": "Edit feed",
+    "url": "Feed URL",
+    "urlPlaceholder": "https://example.com/rss",
+    "name": "Name (optional)",
+    "namePlaceholder": "Taken from the feed if left blank",
+    "feedCategory": "Topic for this feed",
+    "feedCategoryAuto": "Auto (classify each article)",
+    "enabled": "Enabled",
+    "save": "Save",
+    "remove": "Delete",
+    "removeConfirm": "Delete this feed and its articles?",
+    "refresh": "Refresh now",
+    "empty": "No feeds yet. Add an RSS or Atom URL to begin.",
+    "lastError": "Last refresh failed: {{error}}",
+    "never": "Never fetched",
+    "added": "Feed added.",
+    "addError": "Could not add the feed. Check the URL.",
+    "saved": "Feed saved.",
+    "invalidUrl": "Enter a valid http(s) URL."
+  },
+  "settings": {
+    "title": "News settings",
+    "refreshInterval": "Refresh interval (minutes)",
+    "refreshIntervalHint": "RSS is pull-based. Most outlets update every 5–15 minutes.",
+    "maxItems": "Max articles per feed",
+    "maxItemsHint": "Older articles beyond this limit are pruned.",
+    "keywordRules": "Keyword rules",
+    "keywordRulesHint": "Map articles to a topic when their title or summary contains a keyword. These extend the built-in rules.",
+    "addRule": "Add rule",
+    "ruleKeywords": "Keywords (comma-separated)",
+    "ruleCategory": "Topic",
+    "saved": "Settings saved."
+  },
+  "presets": {
+    "tabLibrary": "Browse sources",
+    "tabCustom": "Custom URL",
+    "langVi": "Vietnamese",
+    "langEn": "English",
+    "groupVi": "Vietnamese sources",
+    "groupEn": "English sources",
+    "add": "Add",
+    "alreadyAdded": "Added"
+  },
+  "github": {
+    "title": "GitHub 熱門",
+    "since": {
+      "daily": "今天",
+      "weekly": "本週",
+      "monthly": "本月"
+    },
+    "error": "無法載入 GitHub 熱門。",
+    "empty": "暫無熱門儲存庫。"
+  },
+  "translate": {
+    "translate": "翻譯成我的語言",
+    "showOriginal": "顯示原文"
+  },
+  "view": {
+    "news": "新聞",
+    "stocks": "股市"
+  },
+  "market": {
+    "title": "市場",
+    "updated": "更新於 {{time}}",
+    "error": "暫無市場資料。",
+    "moreSoon": "自訂關注清單、圖表等更多行情資料即將推出。",
+    "group": {
+      "index": "指數",
+      "stock": "股票",
+      "crypto": "加密貨幣"
+    },
+    "addPlaceholder": "新增代碼 (AAPL, ^GSPC, BTC-USD)",
+    "add": "新增",
+    "remove": "移除",
+    "reset": "重設",
+    "symbolHint": "使用 Yahoo Finance 代碼。指數以 ^ 開頭，加密貨幣以 -USD 結尾。"
+  },
+  "realtime": {
+    "on": "即時:開",
+    "off": "即時:關"
+  }
+}

@@ -7,6 +7,7 @@
 import { useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ipcBridge } from '@/common';
+import { openInAppBrowserTab } from '@/renderer/utils/platform';
 
 /**
  * Deep link event payload from main process
@@ -46,6 +47,8 @@ const ALLOWED_NAVIGATE_PATTERNS = [/^\/team\/[^/]+$/, /^\/conversation\/[^/]+$/]
  * Hook to listen for aionui:// deep link events from main process.
  * Routes 'add-provider' action to the model settings page.
  * Routes 'navigate' action to the specified route (whitelist-validated).
+ * Routes 'open-url' action (http/https handed to AionUi as the default browser)
+ * to the built-in Browser tab.
  * The pre-fill data is stored in a module-level variable and consumed
  * by ModelModalContent on mount via consumePendingDeepLink().
  */
@@ -65,6 +68,19 @@ export const useDeepLink = () => {
 
         // Navigate to model settings page; ModelModalContent will pick up the pending data
         void navigate('/settings/model');
+        return;
+      }
+
+      // Web URL handed to AionUi by the OS (default browser) → open in a tab.
+      if (payload.action === 'open-url') {
+        const url = payload.params.url;
+        if (!url || !/^https?:\/\//i.test(url)) {
+          console.warn('[DeepLink] open-url action missing or invalid url param');
+          return;
+        }
+        void openInAppBrowserTab(url, (route) => navigate(route)).catch((error) => {
+          console.error('[DeepLink] Failed to open URL in built-in browser:', error);
+        });
         return;
       }
 

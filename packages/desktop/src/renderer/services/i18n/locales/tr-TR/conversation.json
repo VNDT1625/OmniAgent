@@ -382,6 +382,22 @@
       "genericError": "Sesli giriş başarısız oldu. Lütfen tekrar deneyin"
     }
   },
+  "goalCommand": {
+    "description": "Bir gereksinimi hedefe neredeyse tam ulaşana kadar özerk çalıştır",
+    "allDescription": "Tam özerklik modu: her şeye karar ver ve gereksinimi aş (%101)",
+    "autoResumeNotice": "Hedef çalışması takıldı — otomatik devam ({{count}}/{{max}})",
+    "autoResumeGiveup": "{{max}} otomatik devamdan sonra hedef hâlâ takılı. Manuel inceleme için duraklatıldı.",
+    "modeOff": "Goal Modu kapatıldı.",
+    "modeBadge": "Goal Modu",
+    "done": "Hedef tamamlandı — testler geçti. Goal Modu kapatıldı.",
+    "blocked": "Aracı hedefin engellendiğini bildirdi. Goal Modu kapatıldı — lütfen inceleyin.",
+    "maxTurns": "Goal otomatik sürüş sınırına ulaşıldı. Goal Modu kapatıldı — lütfen inceleyin.",
+    "enforcing": "Goal iş akışı uygulanıyor — otomatik olarak devam ediliyor.",
+    "verifySet": "Bu hedef için bağımsız doğrulama komutu ayarlandı.",
+    "verifyOff": "Bağımsız doğrulama kapatıldı.",
+    "verifyRunning": "Hedef bağımsız olarak doğrulanıyor…",
+    "verifyFailed": "Bağımsız doğrulama başarısız — aracı düzeltip yeniden denemeli."
+  },
   "sideQuestion": {
     "title": "Kısa Soru",
     "description": "Mevcut konuşma hakkında hızlı bir yan soru sor",
@@ -469,5 +485,20 @@
   "sendbox": {
     "hint": "Komutlar için /, dosya için @ yazın"
   },
-  "notFound": "Konuşma bulunamadı veya silinmiş"
+  "notFound": "Konuşma bulunamadı veya silinmiş",
+  "contextPack": {
+    "title": "Including IDE Context",
+    "subtitle": "{{count}} file(s) loaded for the agent",
+    "loaded": "Loaded {{count}} IDE context file(s).",
+    "truncated": "capped",
+    "score": "score {{score}}",
+    "more": "+{{count}} more",
+    "reason": {
+      "seed": "seed",
+      "dependency": "dependency",
+      "dependent": "dependent",
+      "changed": "changed",
+      "entry": "entry"
+    }
+  }
 }

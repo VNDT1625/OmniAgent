@@ -1,0 +1,83 @@
+{
+  "navTitle": "리소스",
+  "title": "리소스 대시보드",
+  "subtitle": "AionUi가 머신에서 무거운 작업을 어떻게 분산하는지 확인하고 제한을 조정합니다.",
+  "loadError": "리소스 상태를 불러올 수 없습니다. 리소스 코디네이터가 아직 실행되지 않았을 수 있습니다.",
+  "coordinatorTitle": "리소스 코디네이터",
+  "coordinatorSubtitle": "무거운 작업의 리스 예산과 자동 균형 조정.",
+  "mode": {
+    "title": "분산 모드",
+    "detailed": "상세",
+    "detailedDesc": "모든 제한을 직접 설정합니다.",
+    "suggest": "추천",
+    "suggestDesc": "AionUi가 머신을 분석해 자동으로 분산합니다.",
+    "changeError": "모드를 전환할 수 없습니다."
+  },
+  "preset": {
+    "title": "빠른 단계",
+    "subtitle": "미리 만든 예산을 한 번에 적용합니다.",
+    "saver": "절약",
+    "balanced": "균형",
+    "performance": "고성능",
+    "custom": "사용자 지정",
+    "current": "현재",
+    "applied": "프리셋을 적용했습니다.",
+    "applyError": "프리셋을 적용할 수 없습니다."
+  },
+  "machine": {
+    "title": "머신 프로필",
+    "ram": "전체 RAM",
+    "cpu": "CPU 코어",
+    "gpu": "외장 GPU",
+    "disk": "여유 디스크",
+    "gpuPresent": "있음",
+    "gpuNone": "없음"
+  },
+  "budget": {
+    "title": "현재 예산",
+    "subtitle": "메모리 상한과 동시에 실행할 수 있는 무거운 작업 수.",
+    "memoryCeiling": "무거운 작업 메모리 상한",
+    "userReserve": "사용자용 예약",
+    "concurrency": "유형별 동시 작업 수",
+    "save": "예산 저장",
+    "saved": "예산이 업데이트되었습니다.",
+    "saveError": "예산을 업데이트할 수 없습니다.",
+    "readOnlyHint": "이 제한을 편집하려면 상세 모드로 전환하세요."
+  },
+  "leases": {
+    "title": "활동",
+    "subtitle": "현재 리스를 보유한 작업과 대기열에서 기다리는 작업.",
+    "activeTotal": "활성 리스",
+    "queuedTotal": "대기 중인 작업",
+    "none": "실행 중인 무거운 작업이 없습니다.",
+    "kindHeader": "작업 유형",
+    "activeHeader": "활성",
+    "queuedHeader": "대기"
+  },
+  "adjustments": {
+    "title": "분산이 바뀐 이유",
+    "subtitle": "모든 자동 조정은 이유와 함께 기록됩니다.",
+    "empty": "아직 자동 조정이 없습니다.",
+    "reasonLabel": "이유",
+    "memoryChange": "메모리 상한: {{from}} → {{to}} MB",
+    "reserveChange": "사용자 예약: {{from}} → {{to}} MB",
+    "concurrencyChange": "{{kind}}: {{from}} → {{to}}",
+    "noFieldChange": "변경된 예산 항목이 없습니다."
+  },
+  "taskKind": {
+    "agent": "에이전트",
+    "browser": "브라우저 탭",
+    "emulator": "Android 에뮬레이터",
+    "windowsTest": "Windows 테스트",
+    "patchBuild": "패치 빌드",
+    "ocr": "OCR",
+    "transcription": "음성 전사",
+    "docConvert": "문서 변환",
+    "semanticIndex": "시맨틱 인덱스"
+  },
+  "units": {
+    "mb": "MB",
+    "gb": "GB",
+    "cores": "코어"
+  }
+}

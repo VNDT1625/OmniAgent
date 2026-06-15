@@ -1,0 +1,185 @@
+{
+  "title": "Phòng thu nhạc",
+  "beta": "Thử nghiệm",
+  "intro": "Làm nhạc cùng agent. Cả bạn và agent đều điều khiển chung một engine nhạc.",
+  "project": {
+    "title": "Dự án",
+    "name": "Tên",
+    "tempo": "Nhịp độ",
+    "tracks": "Số track",
+    "key": "Key",
+    "unsaved": "Dự án chưa lưu"
+  },
+  "action": {
+    "buildDemo": "Dựng beat mẫu",
+    "play": "Phát",
+    "stop": "Dừng",
+    "save": "Lưu",
+    "export": "Xuất WAV + stems",
+    "reset": "Làm lại",
+    "record": "Thu âm",
+    "addInstrument": "Thêm nhạc cụ",
+    "addAudio": "Thêm audio",
+    "addMidi": "Add MIDI",
+    "addPattern": "Thêm pattern",
+    "addEq": "Thêm EQ",
+    "mute": "Tắt tiếng",
+    "solo": "Solo",
+    "select": "Chọn"
+  },
+  "msg": {
+    "saved": "Đã lưu dự án.",
+    "exported": "Đã xuất ra {{path}}",
+    "sampleImported": "Đã import sample và đặt lên timeline."
+  },
+  "suggestion": {
+    "title": "Gợi ý của producer",
+    "key": "Tông",
+    "progression": "Vòng hợp âm"
+  },
+  "track": {
+    "name": "Tên",
+    "type": "Loại",
+    "clips": "Số clip"
+  },
+  "tracks": {
+    "title": "Danh sách track",
+    "empty": "Chưa có track nào. Dựng beat mẫu để bắt đầu."
+  },
+  "value": {
+    "bpm": "{{tempo}} BPM",
+    "keyAMinor": "La thứ",
+    "minor": "Thứ"
+  },
+  "transport": {
+    "barBeat": "Ô {{bar}} · Nhịp {{beat}}",
+    "snap": "Snap 1/16"
+  },
+  "recording": {
+    "title": "Thu âm",
+    "armInput": "Bật thu",
+    "status": "Micro, line-in, comping và take lanes sẽ nằm ở đây khi bridge thiết bị audio được nối.",
+    "takeLanes": "Take lanes"
+  },
+  "tuning": {
+    "title": "Tune",
+    "key": "Tông đích",
+    "scale": "Âm giai",
+    "chain": "Chuỗi pitch",
+    "pitchCorrection": "Chỉnh cao độ",
+    "subtitle": "Phân tích pitch và chỉnh vocal/nhạc cụ theo tông.",
+    "mode": "Chế độ",
+    "naturalMode": "Tự nhiên",
+    "correctionPanel": "Chỉnh pitch",
+    "humanize": "Humanize",
+    "formant": "Formant",
+    "analysis": "Phân tích",
+    "averageShift": "Lệch trung bình",
+    "maxShift": "Lệch tối đa",
+    "voicedFrames": "Khung có giọng"
+  },
+  "arrangement": {
+    "title": "Arrangement",
+    "vocal": "Vocal",
+    "drums": "Drums",
+    "bass": "Bass",
+    "keys": "Keys"
+  },
+  "beat": {
+    "title": "Làm beat",
+    "groove": "Groove",
+    "status": "Step sequencing, cắt sample, swing và humanize sẽ nằm trong lane này."
+  },
+  "mixer": {
+    "title": "Mixer",
+    "vocal": "Vocal",
+    "drums": "Drums",
+    "bass": "Bass",
+    "musicBus": "Bus nhạc",
+    "center": "Giữa",
+    "wide": "Rộng",
+    "sidechain": "Sidechain",
+    "bus": "Bus",
+    "pan": "Pan",
+    "selectedTrack": "Track đang chọn",
+    "noTrack": "Chưa chọn track",
+    "subtitle": "Cân volume, pan, mute/solo, insert và master routing.",
+    "volume": "Âm lượng",
+    "fxChain": "Chuỗi FX",
+    "noFx": "Chưa có FX"
+  },
+  "producer": {
+    "title": "AI producer",
+    "brief": "Agent cần nghe session, hiểu hòa âm, timing, màu âm và cân bằng mix, rồi chỉnh ở mức producer khi bạn yêu cầu.",
+    "taskAnalyze": "Phân tích melody, hợp âm, rhythm và hướng cảm xúc.",
+    "taskTune": "Tune vocal hoặc nhạc cụ nhưng vẫn giữ biểu cảm tự nhiên.",
+    "taskMix": "Cân level, EQ, compression, stereo width và loudness.",
+    "taskArrange": "Gợi ý cấu trúc, chuyển đoạn, drop, fill và polish cuối.",
+    "ask": "Hỏi producer"
+  },
+  "trackType": {
+    "instrument": "Nhạc cụ",
+    "audio": "Audio",
+    "midi": "MIDI"
+  },
+  "views": {
+    "projects": "Dự án",
+    "playlist": "Playlist",
+    "channelRack": "Channel Rack",
+    "pianoRoll": "Piano Roll",
+    "mixer": "Mixer",
+    "recorder": "Thu âm",
+    "tune": "Tune",
+    "browser": "Browser",
+    "producer": "AI Producer"
+  },
+  "projects": {
+    "subtitle": "Create, open, and manage local .daw sessions.",
+    "new": "Dự án mới",
+    "refresh": "Làm mới",
+    "empty": "Chưa có dự án nhạc.",
+    "open": "Mở"
+  },
+  "playlist": {
+    "subtitle": "Sắp xếp pattern, MIDI, audio và automation clip trên timeline bài hát."
+  },
+  "pianoRoll": {
+    "subtitle": "Viết hợp âm, melody, độ dài nốt và velocity cho track MIDI.",
+    "addChord": "Thêm hợp âm La thứ",
+    "notes": "{{count}} notes"
+  },
+  "browser": {
+    "subtitle": "Import sample WAV và quản lý audio dùng trong dự án này.",
+    "importWav": "Import WAV",
+    "empty": "Chưa import sample nào.",
+    "file": "Tệp",
+    "duration": "Thời lượng (s)",
+    "samples": "Samples"
+  },
+  "clipKind": {
+    "pattern": "Pattern",
+    "midi": "MIDI",
+    "audio": "Audio"
+  },
+  "menu": {
+    "file": "Tệp",
+    "edit": "Sửa",
+    "track": "Track",
+    "tools": "Công cụ"
+  },
+  "dock": {
+    "mixer": "Mixer",
+    "channelRack": "Channel Rack",
+    "pianoRoll": "Piano Roll",
+    "recorder": "Thu âm",
+    "tune": "Tune",
+    "browser": "Browser",
+    "producer": "AI Producer"
+  },
+  "trackHeaders": {
+    "title": "Track"
+  },
+  "inspector": {
+    "title": "Inspector / AI"
+  }
+}

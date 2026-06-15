@@ -1,0 +1,25 @@
+{
+  "auth": {
+    "failed": "Xác thực {{backend}} thất bại:\n\n{{error}}\n\nVui lòng kiểm tra trạng thái xác thực của công cụ CLI cục bộ",
+    "console_error": "Chi tiết lỗi xác thực ACP:",
+    "failed_confirm": "Xác thực ACP {{backend}} thất bại:\n\n{{error}}\n\nBạn có muốn đến trang cài đặt để cấu hình ngay không?"
+  },
+  "send": {
+    "failed": "Gửi tin nhắn thất bại: {{error}}"
+  },
+  "sendbox": {
+    "placeholder": "Gửi tin nhắn đến {{backend}}..."
+  },
+  "status": {
+    "connecting": "Đang kết nối đến {{agent}}...",
+    "connected": "Đã kết nối đến {{agent}}",
+    "authenticated": "Đã xác thực với {{agent}}",
+    "session_active": "Phiên hoạt động với {{agent}}",
+    "error": "Lỗi kết nối",
+    "unknown": "Trạng thái không xác định"
+  },
+  "config": {
+    "reasoning_effort": "Mức độ suy luận",
+    "default": "Mặc định"
+  }
+}

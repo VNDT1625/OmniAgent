@@ -1,0 +1,26 @@
+{
+  "pageTitle": "AionUi - Đăng nhập",
+  "brand": "AionUi",
+  "subtitle": "Chào mừng trở lại, vui lòng đăng nhập vào tài khoản của bạn",
+  "username": "Tên đăng nhập",
+  "usernamePlaceholder": "Nhập tên đăng nhập",
+  "password": "Mật khẩu",
+  "passwordPlaceholder": "Nhập mật khẩu",
+  "rememberMe": "Ghi nhớ đăng nhập",
+  "submit": "Đăng nhập",
+  "submitting": "Đang đăng nhập...",
+  "success": "Đăng nhập thành công! Đang chuyển hướng...",
+  "showPassword": "Hiện mật khẩu",
+  "hidePassword": "Ẩn mật khẩu",
+  "languageToggle": "Đổi ngôn ngữ",
+  "footerPrimary": "Nâng tầm AI dòng lệnh của bạn",
+  "footerSecondary": "Hiện đại & Hiệu quả",
+  "errors": {
+    "empty": "Vui lòng nhập tên đăng nhập và mật khẩu",
+    "invalidCredentials": "Tên đăng nhập hoặc mật khẩu không đúng",
+    "tooManyAttempts": "Quá nhiều lần thử, vui lòng thử lại sau",
+    "networkError": "Kết nối thất bại, vui lòng thử lại",
+    "serverError": "Lỗi máy chủ, vui lòng thử lại sau",
+    "unknown": "Đăng nhập thất bại, vui lòng thử lại"
+  }
+}

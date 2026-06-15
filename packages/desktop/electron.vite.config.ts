@@ -36,13 +36,22 @@ function iconParkPlugin() {
         /import\s+\{\s+([a-zA-Z, ]*)\s+\}\s+from\s+['"]@icon-park\/react['"](;?)/g,
         function (str, match) {
           if (!match) return str;
-          const components = match.split(',');
-          const importComponent = str.replace(
-            match,
-            components.map((key: string) => `${key} as _${key.trim()}`).join(', ')
-          );
+          // Parse each specifier, supporting aliased imports (`Original as Local`).
+          // The temp name is derived from the *local* name so two aliases of the
+          // same icon never collide, and the HOC binds to the local name the file
+          // actually references.
+          const specs = match
+            .split(',')
+            .map((s: string) => s.trim())
+            .filter(Boolean)
+            .map((spec: string) => {
+              const [original, alias] = spec.split(/\s+as\s+/);
+              const local = (alias ?? original).trim();
+              return { original: original.trim(), local, temp: `_${local}` };
+            });
+          const importComponent = `import { ${specs.map((s: { original: string; temp: string }) => `${s.original} as ${s.temp}`).join(', ')} } from '@icon-park/react'`;
           const hoc = `import IconParkHOC from '@renderer/components/IconParkHOC';
-          ${components.map((key: string) => `const ${key.trim()} = IconParkHOC(_${key.trim()})`).join(';\n')}`;
+          ${specs.map((s: { local: string; temp: string }) => `const ${s.local} = IconParkHOC(${s.temp})`).join(';\n')}`;
           return importComponent + ';' + hoc;
         }
       );
@@ -89,10 +98,11 @@ export default defineConfig(({ mode }) => {
       plugins: [
         // externalizeDepsPlugin replaces our custom getExternalDeps() + pluginExternalizeDynamicImports.
         // 'fix-path' excluded so it gets bundled inline (only 3KB).
-        // '@aionui/web-host' excluded so its TS sources (which use ESM ".js" import specifiers)
-        // are bundled by esbuild rather than left as `require('@aionui/web-host')`, which Node
-        // cannot resolve because the package ships no compiled .js files (workspace-only).
-        externalizeDepsPlugin({ exclude: ['fix-path', '@aionui/web-host'] }),
+        // '@aionui/web-host' and '@aionui/music-core' excluded so their TS sources (which use
+        // extensionless / ESM ".js" import specifiers) are bundled by esbuild rather than left as
+        // `require(...)`, which Node cannot resolve because these workspace-only packages ship no
+        // compiled .js files and point `exports` straight at `./src/index.ts`.
+        externalizeDepsPlugin({ exclude: ['fix-path', '@aionui/web-host', '@aionui/music-core'] }),
         ...(isDevelopment
           ? [
               {
@@ -301,6 +311,11 @@ export default defineConfig(({ mode }) => {
           'remark-breaks',
           'rehype-raw',
           'rehype-katex',
+          '@xterm/xterm',
+          '@xterm/addon-fit',
+          '@xterm/addon-search',
+          '@xterm/addon-web-links',
+          '@xterm/addon-webgl',
         ],
       },
     },

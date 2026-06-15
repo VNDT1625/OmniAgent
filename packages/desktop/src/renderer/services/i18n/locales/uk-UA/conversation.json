@@ -386,6 +386,22 @@
       "genericError": "Помилка голосового введення. Спробуйте ще раз"
     }
   },
+  "goalCommand": {
+    "description": "Автономно виконувати завдання, доки мету не буде майже повністю досягнуто",
+    "allDescription": "Режим повної автономії: вирішувати все самостійно та перевершити вимогу (101%)",
+    "autoResumeNotice": "Виконання цілі зависло — автопродовження ({{count}}/{{max}})",
+    "autoResumeGiveup": "Ціль усе ще зависла після {{max}} автопродовжень. Призупинено для ручної перевірки.",
+    "modeOff": "Режим Goal вимкнено.",
+    "modeBadge": "Режим Goal",
+    "done": "Ціль досягнуто — тести пройдено. Режим Goal вимкнено.",
+    "blocked": "Агент повідомив, що ціль заблоковано. Режим Goal вимкнено — перевірте.",
+    "maxTurns": "Досягнуто ліміту автопрогону Goal. Режим Goal вимкнено — перевірте.",
+    "enforcing": "Примусове дотримання процесу goal — продовжую автоматично.",
+    "verifySet": "Команду незалежної перевірки задано для цієї цілі.",
+    "verifyOff": "Незалежну перевірку вимкнено.",
+    "verifyRunning": "Незалежна перевірка цілі…",
+    "verifyFailed": "Незалежну перевірку не пройдено — агент має виправити та повторити."
+  },
   "sideQuestion": {
     "title": "Бічне запитання",
     "description": "Швидко запитати про поточний діалог",
@@ -466,5 +482,20 @@
   "sendbox": {
     "hint": "Введіть / для команд, @ для посилань на файли"
   },
-  "notFound": "Розмову не знайдено або її видалено"
+  "notFound": "Розмову не знайдено або її видалено",
+  "contextPack": {
+    "title": "Including IDE Context",
+    "subtitle": "{{count}} file(s) loaded for the agent",
+    "loaded": "Loaded {{count}} IDE context file(s).",
+    "truncated": "capped",
+    "score": "score {{score}}",
+    "more": "+{{count}} more",
+    "reason": {
+      "seed": "seed",
+      "dependency": "dependency",
+      "dependent": "dependent",
+      "changed": "changed",
+      "entry": "entry"
+    }
+  }
 }

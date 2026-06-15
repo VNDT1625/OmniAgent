@@ -7,12 +7,12 @@
  * Tests useDetectedAgents hook: agent detection via SWR and refresh trigger.
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { renderHook, act, waitFor } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi, type Mock } from 'vitest';
+import { renderHook, act } from '@testing-library/react';
 
 // Mock SWR
 vi.mock('swr', () => ({
-  default: vi.fn((key, fetcher) => {
+  default: vi.fn(() => {
     // Return mock data immediately for simplicity
     return { data: [], error: null, isLoading: false };
   }),
@@ -39,13 +39,16 @@ import { ipcBridge } from '@/common';
 import useSWR, { mutate } from 'swr';
 import type { AgentMetadata } from '@/renderer/utils/model/agentTypes';
 
+const useSWRMock = useSWR as unknown as Mock;
+const refreshCustomAgentsMock = ipcBridge.acpConversation.refreshCustomAgents.invoke as unknown as Mock;
+
 describe('useDetectedAgents', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
   it('returns empty availableBackends when no agents detected', () => {
-    (useSWR as any).mockReturnValue({ data: [], error: null });
+    useSWRMock.mockReturnValue({ data: [], error: null });
 
     const { result } = renderHook(() => useDetectedAgents());
 
@@ -59,10 +62,10 @@ describe('useDetectedAgents', () => {
     // agent.
     const mockAgents: AgentMetadata[] = [
       { id: 'a1', name: 'ClaudeCode', agent_type: 'acp', agent_source: 'builtin', backend: 'claude' },
-      { id: 'a2', name: 'ExtAgent', agent_type: 'local', agent_source: 'extension' },
+      { id: 'a2', name: 'ExtAgent', agent_type: 'nanobot', agent_source: 'extension' },
       { id: 'a3', name: 'RemoteAgent', agent_type: 'remote', agent_source: 'builtin' },
     ];
-    (useSWR as any).mockReturnValue({ data: mockAgents, error: null });
+    useSWRMock.mockReturnValue({ data: mockAgents, error: null });
 
     const { result } = renderHook(() => useDetectedAgents());
 
@@ -70,12 +73,37 @@ describe('useDetectedAgents', () => {
     // backend slug wins when present
     expect(result.current.availableBackends[0]).toEqual({ id: 'claude', name: 'ClaudeCode', isExtension: false });
     // falls back to agent_type when backend is absent (e.g. internal engines)
-    expect(result.current.availableBackends[1]).toEqual({ id: 'local', name: 'ExtAgent', isExtension: true });
+    expect(result.current.availableBackends[1]).toEqual({ id: 'nanobot', name: 'ExtAgent', isExtension: true });
+  });
+
+  it('uses custom agent row ids so multiple custom ACP agents remain selectable', () => {
+    const mockAgents: AgentMetadata[] = [
+      {
+        id: 'deepseek-tui-row',
+        name: 'DeepSeek TUI',
+        agent_type: 'acp',
+        agent_source: 'custom',
+      },
+      {
+        id: 'antigravity-row',
+        name: 'Antigravity',
+        agent_type: 'acp',
+        agent_source: 'custom',
+      },
+    ];
+    useSWRMock.mockReturnValue({ data: mockAgents, error: null });
+
+    const { result } = renderHook(() => useDetectedAgents());
+
+    expect(result.current.availableBackends).toEqual([
+      { id: 'deepseek-tui-row', name: 'DeepSeek TUI', isExtension: false },
+      { id: 'antigravity-row', name: 'Antigravity', isExtension: false },
+    ]);
   });
 
   it('calls refreshCustomAgents and mutate on refreshAgentDetection', async () => {
-    (useSWR as any).mockReturnValue({ data: [], error: null });
-    (ipcBridge.acpConversation.refreshCustomAgents.invoke as any).mockResolvedValue(undefined);
+    useSWRMock.mockReturnValue({ data: [], error: null });
+    refreshCustomAgentsMock.mockResolvedValue(undefined);
 
     const { result } = renderHook(() => useDetectedAgents());
 
@@ -88,8 +116,8 @@ describe('useDetectedAgents', () => {
   });
 
   it('ignores error during refreshAgentDetection', async () => {
-    (useSWR as any).mockReturnValue({ data: [], error: null });
-    (ipcBridge.acpConversation.refreshCustomAgents.invoke as any).mockRejectedValue(new Error('Refresh failed'));
+    useSWRMock.mockReturnValue({ data: [], error: null });
+    refreshCustomAgentsMock.mockRejectedValue(new Error('Refresh failed'));
 
     const { result } = renderHook(() => useDetectedAgents());
 

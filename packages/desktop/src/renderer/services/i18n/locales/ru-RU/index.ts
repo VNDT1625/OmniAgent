@@ -23,6 +23,26 @@ import guid from './guid.json';
 import agent from './agent.json';
 import team from './team.json';
 import pet from './pet.json';
+import resource from './resource.json';
+import company from './company.json';
+import browser from './browser.json';
+import editor from './editor.json';
+import testing from './testing.json';
+import monitor from './monitor.json';
+import studio from './studio.json';
+import workspace from './workspace.json';
+import quickActive from './quickActive.json';
+import manager from './manager.json';
+import automation from './automation.json';
+import ide from './ide.json';
+import makeVideo from './makeVideo.json';
+import terminal from './terminal.json';
+import news from './news.json';
+import git from './git.json';
+import music from './music.json';
+import realtimeKnowledge from './realtimeKnowledge.json';
+import system from './system.json';
+import smartTerminal from './smartTerminal.json';
 
 export default {
   common,
@@ -45,4 +65,24 @@ export default {
   agent,
   team,
   pet,
+  resource,
+  company,
+  browser,
+  editor,
+  testing,
+  monitor,
+  studio,
+  workspace,
+  quickActive,
+  manager,
+  automation,
+  ide,
+  makeVideo,
+  terminal,
+  news,
+  git,
+  music,
+  realtimeKnowledge,
+  system,
+  smartTerminal,
 };

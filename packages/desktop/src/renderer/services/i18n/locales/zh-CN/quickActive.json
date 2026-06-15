@@ -1,0 +1,20 @@
+{
+  "trigger": "快速活动",
+  "title": "活动页面",
+  "subtitle": "快速跳转到正在运行的内容",
+  "empty": "暂无活动内容",
+  "desktopOnly": "活动页面仅在桌面应用中可用。",
+  "group": {
+    "browser": "浏览器",
+    "testing": "测试"
+  },
+  "browser": {
+    "untitled": "新标签页",
+    "open": "打开浏览器",
+    "emptyHint": "没有打开的标签页"
+  },
+  "testing": {
+    "open": "打开测试",
+    "emptyHint": "暂无测试会话"
+  }
+}

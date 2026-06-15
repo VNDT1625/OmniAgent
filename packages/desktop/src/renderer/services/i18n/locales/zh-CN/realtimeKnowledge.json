@@ -1,0 +1,40 @@
+{
+  "navTitle": "实时知识",
+  "title": "实时知识",
+  "subtitle": "智能体保持更新的时效性事实——查看其新鲜度、来源与有效期，进行搜索或强制刷新。",
+  "desktopOnly": "实时知识仅在桌面应用中可用。",
+  "reload": "重新加载",
+  "retry": "重试",
+  "searchPlaceholder": "搜索事实（如最新 Node LTS、当前价格…）",
+  "loadError": "无法加载知识库。",
+  "empty": "尚无记录的事实。智能体会在核实时效性信息后使用 rtk_record 工具添加。",
+  "noMatches": "没有与搜索匹配的事实。",
+  "freshness": {
+    "fresh": "新鲜",
+    "stale": "将过期",
+    "expired": "已过期",
+    "unknown": "未知"
+  },
+  "class": {
+    "version": "版本",
+    "price": "价格",
+    "role_holder": "职位担任者",
+    "spec_api": "API / 规范",
+    "status_event": "事件状态",
+    "stat_metric": "统计数据",
+    "other": "其他"
+  },
+  "status": {
+    "active": "活跃",
+    "needs_review": "需复核",
+    "superseded": "已被取代",
+    "archived": "已归档"
+  },
+  "card": {
+    "validAsOf": "有效起始：{{date}}",
+    "confidence": "置信度 {{percent}}%",
+    "sources": "来源",
+    "refresh": "刷新",
+    "refreshHint": "通过研究管线重新核实此事实。"
+  }
+}

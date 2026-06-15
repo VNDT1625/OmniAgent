@@ -1,0 +1,84 @@
+{
+  "navTitle": "浏览器",
+  "title": "浏览器",
+  "subtitle": "在应用内浏览网页，并让 AI 模型作为网页代理操作页面。",
+  "desktopOnly": "内置浏览器仅在桌面应用中可用。",
+  "bridgeUnavailable": "浏览器服务尚未启动。待桌面端桥接接通后即可使用。",
+  "retry": "重试",
+  "address": {
+    "placeholder": "搜索或输入网址",
+    "go": "前往",
+    "back": "后退",
+    "forward": "前进",
+    "reload": "刷新"
+  },
+  "tab": {
+    "new": "新建标签页",
+    "close": "关闭标签页",
+    "untitled": "新建标签页"
+  },
+  "agent": {
+    "label": "网页代理",
+    "pickModel": "选择模型",
+    "pickModelFirst": "请先选择模型以启用网页代理。",
+    "noModels": "没有可用模型。请在“设置 → 模型”中添加。",
+    "toggleHint": "让该模型控制页面：点击、滚动、输入和读取内容。",
+    "enabled": "已为此标签页启用网页代理。",
+    "disabled": "已停用网页代理。",
+    "toggleError": "无法切换网页代理模式。",
+    "providerGroup": "API 模型",
+    "cliGroup": "CLI 智能体",
+    "cliSuffix": "CLI"
+  },
+  "toolbar": {
+    "zoomIn": "放大",
+    "zoomOut": "缩小",
+    "zoomReset": "重置缩放为 100%",
+    "fullscreen": "全屏",
+    "exitFullscreen": "退出全屏（Esc）",
+    "showChat": "显示网页代理对话",
+    "hideChat": "隐藏网页代理对话",
+    "showAiOverlay": "向AI询问此页面",
+    "hideAiOverlay": "隐藏AI问答框",
+    "expandControls": "显示代理控制栏",
+    "collapseControls": "隐藏代理控制栏"
+  },
+  "aiOverlay": {
+    "title": "问AI",
+    "placeholder": "询问此页面…"
+  },
+  "chat": {
+    "title": "网页代理",
+    "emptyTitle": "向网页代理提问",
+    "emptyHint": "在地址栏输入即可正常浏览。在这里告诉代理要做什么——例如“打开 Facebook，阅读我的消息并总结。”",
+    "placeholder": "告诉代理在页面上做什么……",
+    "pickModelFirst": "请在上方选择模型以与网页代理对话。",
+    "send": "发送",
+    "stop": "停止",
+    "clear": "清空对话",
+    "close": "隐藏面板",
+    "swapSide": "移到另一侧",
+    "working": "代理正在工作……",
+    "enterHint": "Enter 发送 · Shift+Enter 换行",
+    "allowControl": "允许控制",
+    "controlOnHint": "已授权：代理可点击、滚动、输入并导航此标签页。",
+    "controlOffHint": "隐身模式：代理仅读取／抓取并使用隐藏标签页。开启后才可控制此页面。",
+    "stepFailed": "失败",
+    "persona": "人设与规则",
+    "personaTitle": "代理人设与固定规则",
+    "personaHint": "这些指令会在每一轮都应用到网页代理（如语言、语气、绝对不能做的事）。",
+    "personaPlaceholder": "例如：始终用越南语回答。简洁。未经询问绝不购买或提交表单。",
+    "personaSave": "保存",
+    "personaCancel": "取消"
+  },
+  "subtitle_overlay": {
+    "enable": "显示越南语字幕",
+    "disable": "隐藏越南语字幕",
+    "idle": "正在等待视频音频以生成字幕……"
+  },
+  "viewport": {
+    "emptyTitle": "未打开页面",
+    "emptyHint": "打开一个标签页开始浏览。页面将在此处显示，由应用控制。",
+    "openFirst": "打开标签页"
+  }
+}

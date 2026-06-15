@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { mcpService } from '@/common/adapter/ipcBridge';
 import type { IMcpServer } from '@/common/config/storage';
+import { recommendedConcurrency } from '@/renderer/utils/hardwareConcurrency';
 import { globalMessageQueue } from './messageQueue';
 
 /**
@@ -136,7 +137,13 @@ export const useMcpConnection = (
 
   const handleTestMcpConnections = useCallback(
     async (servers: IMcpServer[], options?: TestOptions & { concurrency?: number }) => {
-      const concurrency = Math.max(1, options?.concurrency ?? 4);
+      // Default parallelism scales with the host's core count (network-bound
+      // work tolerates more in flight than CPU cores, so allow up to 6) instead
+      // of a fixed magic number, while still honouring an explicit override.
+      const concurrency = Math.max(
+        1,
+        options?.concurrency ?? recommendedConcurrency({ min: 2, max: 6, fraction: 0.75 })
+      );
       let nextIndex = 0;
 
       const worker = async () => {

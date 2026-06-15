@@ -332,6 +332,24 @@ export const PreviewProvider: React.FC<{ children: React.ReactNode }> = ({ child
     [extractFileName, findPreviewTabInList]
   );
 
+  useEffect(() => {
+    const handlePreviewOpen = (event: Event) => {
+      const detail = (
+        event as CustomEvent<{
+          content: string;
+          contentType: PreviewContentType;
+          metadata?: PreviewMetadata;
+        }>
+      ).detail;
+
+      if (!detail?.content || !detail.contentType) return;
+      openPreview(detail.content, detail.contentType, detail.metadata);
+    };
+
+    window.addEventListener('preview.open', handlePreviewOpen);
+    return () => window.removeEventListener('preview.open', handlePreviewOpen);
+  }, [openPreview]);
+
   const closePreview = useCallback(() => {
     setIsOpen(false);
     setTabs([]);

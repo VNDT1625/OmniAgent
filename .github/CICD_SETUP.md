@@ -6,7 +6,7 @@
 
 ## 工作流说明
 
-### 1. `build-and-release.yml` - 主构建和发布流
+### 1. `.github/workflows/build-and-release.yml` - 主构建和发布流
 
 - **触发时机**: 仅推送到 `main` 分支
 - **功能**:

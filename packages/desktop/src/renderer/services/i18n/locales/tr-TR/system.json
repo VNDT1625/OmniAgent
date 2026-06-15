@@ -1,0 +1,59 @@
+{
+  "loadError": "Sistem durumu okunamadı. Gözlem hizmeti henüz çalışmıyor olabilir.",
+  "refresh": "Yenile",
+  "refreshed": "Sistem bilgisi yenilendi.",
+  "refreshError": "Sistem bilgisi yenilenemedi.",
+  "static": {
+    "title": "Makine",
+    "subtitle": "Donanım ve yazılım bilgileri. Nadiren değişir — yeniden okumak için Yenile'yi kullanın.",
+    "os": "İşletim sistemi",
+    "hostname": "Ana makine · kullanıcı",
+    "cpu": "İşlemci",
+    "cores": "{{count}} mantıksal çekirdek",
+    "memory": "Toplam bellek",
+    "gpu": "Grafik",
+    "gpuNone": "GPU algılanmadı",
+    "disk": "Depolama (boş / toplam)",
+    "network": "Ağ",
+    "noNetwork": "Etkin arabirim yok",
+    "versions": "Sürümler"
+  },
+  "live": {
+    "title": "Canlı ölçümler",
+    "subtitle": "Bu sayfa açıkken gerçek zamanlı güncellenir.",
+    "cpu": "CPU",
+    "memory": "Bellek",
+    "perCore": "Çekirdek başına yük",
+    "loadAvg": "Ortalama yük",
+    "uptime": "Çalışma süresi",
+    "battery": "Güç",
+    "onBattery": "Pilde",
+    "plugged": "Fişe takılı",
+    "waiting": "İlk örnek bekleniyor…"
+  },
+  "process": {
+    "title": "Süreçler",
+    "subtitle": "Uygulamanın süreçleri, en ağırı önce. Açgözlü bir süreci dizginlemek için öncelik ayarlayın.",
+    "name": "Süreç",
+    "cpu": "CPU",
+    "memory": "Bellek",
+    "priority": "Öncelik",
+    "none": "Süreç verisi yok.",
+    "prioritySet": "{{name}} için öncelik güncellendi.",
+    "priorityError": "Öncelik değiştirilemedi (yükseltilmiş izin gerekebilir)."
+  },
+  "priority": {
+    "high": "Yüksek",
+    "aboveNormal": "Normalin üstü",
+    "normal": "Normal",
+    "belowNormal": "Normalin altı",
+    "low": "Düşük"
+  },
+  "units": {
+    "mb": "MB",
+    "gb": "GB",
+    "day": "g",
+    "hour": "s",
+    "min": "dk"
+  }
+}

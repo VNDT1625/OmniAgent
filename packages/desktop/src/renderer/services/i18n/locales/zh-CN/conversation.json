@@ -387,6 +387,22 @@
       "genericError": "语音输入失败，请重试"
     }
   },
+  "goalCommand": {
+    "description": "自主执行需求，直到几乎完全达成目标",
+    "allDescription": "全权模式：自主决定一切并超越需求（101%）",
+    "autoResumeNotice": "目标运行卡住 — 自动继续（{{count}}/{{max}}）",
+    "autoResumeGiveup": "自动继续 {{max}} 次后目标仍卡住，已暂停等待人工处理。",
+    "modeOff": "已关闭 Goal 模式。",
+    "modeBadge": "Goal 模式",
+    "done": "目标完成 — 测试通过。已关闭 Goal 模式。",
+    "blocked": "智能体报告目标被阻塞。已关闭 Goal 模式 — 请检查。",
+    "maxTurns": "已达到 Goal 自动驱动上限。已关闭 Goal 模式 — 请检查。",
+    "enforcing": "正在强制执行 goal 流程 — 自动继续。",
+    "verifySet": "已为本次目标设置独立验证命令。",
+    "verifyOff": "已关闭独立验证。",
+    "verifyRunning": "正在独立验证目标…",
+    "verifyFailed": "独立验证失败 — 智能体需修复后重试。"
+  },
   "sideQuestion": {
     "title": "顺便问一下",
     "description": "针对当前对话快速提一个小问题",
@@ -467,5 +483,20 @@
   "sendbox": {
     "hint": "输入 / 唤起命令，@ 引用文件"
   },
-  "notFound": "会话不存在或已被删除"
+  "notFound": "会话不存在或已被删除",
+  "contextPack": {
+    "title": "Including IDE Context",
+    "subtitle": "{{count}} file(s) loaded for the agent",
+    "loaded": "Loaded {{count}} IDE context file(s).",
+    "truncated": "capped",
+    "score": "score {{score}}",
+    "more": "+{{count}} more",
+    "reason": {
+      "seed": "seed",
+      "dependency": "dependency",
+      "dependent": "dependent",
+      "changed": "changed",
+      "entry": "entry"
+    }
+  }
 }

@@ -1,0 +1,246 @@
+{
+  "version": 1,
+  "updatedAt": 1780755971405,
+  "tasks": [
+    {
+      "id": "t019-backend-t0-determine-why-backend-tas",
+      "title": "[backend] T0 — Determine why backend task claiming did not detect this checklist. Result: the spec is in the correct directory, `.aionui/specs/exp-graph/tasks.md`. The likely cause is format mismatch: the file was created before the backend task-claim guard expected explicit backend markers/claim metadata, and tasks used plain checklist items like `- [ ] T5` without `[backend]` or owner/status metadata.",
+      "status": "done",
+      "sourceLine": 19,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t023-backend-t1-capture-idea-as-requireme",
+      "title": "[backend] T1 — Capture idea as requirements.",
+      "status": "done",
+      "sourceLine": 23,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t024-backend-t2-draft-architecture-design",
+      "title": "[backend] T2 — Draft architecture/design for ExpBase vector retrieval.",
+      "status": "done",
+      "sourceLine": 24,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t025-backend-t3-create-phased-implementat",
+      "title": "[backend] T3 — Create phased implementation checklist.",
+      "status": "done",
+      "sourceLine": 25,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t026-backend-t4-define-verification-plan",
+      "title": "[backend] T4 — Define verification plan.",
+      "status": "done",
+      "sourceLine": 26,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t030-backend-t5-inspect-existing-agent-me",
+      "title": "[backend] T5 — Inspect existing agent/memory/vector-related code to choose exact integration points. Owner: AI assistant; Started: 2026-06-04; Completed: 2026-06-04. Findings: use `packages/desktop/src/process/company/memoryStore.ts` as the persistence pattern and `packages/desktop/src/process/ide/vectorIndex.ts` as the vector/embedding pattern.",
+      "status": "done",
+      "sourceLine": 30,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t031-backend-t6-define-experienceentry-ty",
+      "title": "[backend] T6 — Define `ExperienceEntry` types in the correct shared/process location. Owner: AI assistant; Started: 2026-06-04.",
+      "status": "in_progress",
+      "sourceLine": 31,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t032-backend-t7-implement-experiencestore",
+      "title": "[backend] T7 — Implement `ExperienceStore` abstraction.",
+      "status": "pending",
+      "sourceLine": 32,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t033-backend-t8-implement-local-metadata-",
+      "title": "[backend] T8 — Implement local metadata persistence adapter.",
+      "status": "pending",
+      "sourceLine": 33,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t034-backend-t9-implement-experiencevecto",
+      "title": "[backend] T9 — Implement `ExperienceVectorIndex` abstraction.",
+      "status": "pending",
+      "sourceLine": 34,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t035-backend-t10-implement-a-vector-backe",
+      "title": "[backend] T10 — Implement a vector backend adapter or test/mock adapter, depending on existing project dependencies.",
+      "status": "pending",
+      "sourceLine": 35,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t036-backend-t11-implement-experiencecapt",
+      "title": "[backend] T11 — Implement `ExperienceCaptureService` with sanitization and embedding text generation.",
+      "status": "pending",
+      "sourceLine": 36,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t037-backend-t12-implement-experienceretr",
+      "title": "[backend] T12 — Implement `ExperienceRetrievalService` with vector search + metadata reranking.",
+      "status": "pending",
+      "sourceLine": 37,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t038-backend-t13-add-unit-tests-for-schem",
+      "title": "[backend] T13 — Add unit tests for schema normalization, capture, dedupe, indexing, retrieval, and reranking.",
+      "status": "pending",
+      "sourceLine": 38,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t042-backend-t14-identify-debugging-fix-s",
+      "title": "[backend] T14 — Identify debugging/fix-success/failure events in the agent workflow.",
+      "status": "pending",
+      "sourceLine": 42,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t043-backend-t15-add-retrieval-hook-befor",
+      "title": "[backend] T15 — Add retrieval hook before debug/fix planning.",
+      "status": "pending",
+      "sourceLine": 43,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t044-backend-t16-add-capture-hook-after-s",
+      "title": "[backend] T16 — Add capture hook after successful verification.",
+      "status": "pending",
+      "sourceLine": 44,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t045-backend-t17-add-capture-hook-for-fai",
+      "title": "[backend] T17 — Add capture hook for failed attempts/self-caused mistakes.",
+      "status": "pending",
+      "sourceLine": 45,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t046-backend-t18-add-confidence-update-wh",
+      "title": "[backend] T18 — Add confidence update when a retrieved suggestion helps or fails.",
+      "status": "pending",
+      "sourceLine": 46,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t050-backend-t19-add-relation-model-for-s",
+      "title": "[backend] T19 — Add relation model for `same_symptom_as`, `same_root_cause`, `supersedes`, `contradicts`, `applies_to`.",
+      "status": "pending",
+      "sourceLine": 50,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t051-backend-t20-add-graph-aware-retrieva",
+      "title": "[backend] T20 — Add graph-aware retrieval enrichment.",
+      "status": "pending",
+      "sourceLine": 51,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t052-backend-t21-add-tests-for-relation-c",
+      "title": "[backend] T21 — Add tests for relation creation and graph traversal.",
+      "status": "pending",
+      "sourceLine": 52,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t056-frontend-t22-minimal-review-ui-for-e",
+      "title": "[frontend] T22 — Minimal review UI for entries.",
+      "status": "pending",
+      "sourceLine": 56,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t057-backend-t23-metrics-for-retrieval-hi",
+      "title": "[backend] T23 — Metrics for retrieval hit rate and false positives.",
+      "status": "pending",
+      "sourceLine": 57,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    }
+  ]
+}

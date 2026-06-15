@@ -1,7 +1,7 @@
 {
   "referenceLanguage": "en-US",
   "fallbackLanguage": "en-US",
-  "supportedLanguages": ["zh-CN", "en-US", "ja-JP", "zh-TW", "ko-KR", "tr-TR", "ru-RU", "uk-UA"],
+  "supportedLanguages": ["zh-CN", "en-US", "ja-JP", "zh-TW", "ko-KR", "tr-TR", "ru-RU", "uk-UA", "vi-VN"],
   "modules": [
     "common",
     "agentMode",
@@ -22,6 +22,26 @@
     "guid",
     "agent",
     "team",
-    "pet"
+    "pet",
+    "resource",
+    "company",
+    "browser",
+    "editor",
+    "testing",
+    "monitor",
+    "studio",
+    "workspace",
+    "quickActive",
+    "manager",
+    "automation",
+    "ide",
+    "makeVideo",
+    "terminal",
+    "news",
+    "git",
+    "music",
+    "realtimeKnowledge",
+    "system",
+    "smartTerminal"
   ]
 }

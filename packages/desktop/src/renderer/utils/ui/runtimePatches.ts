@@ -18,6 +18,18 @@ declare global {
   }
 }
 
+type RendererBreadcrumb = {
+  category?: string;
+};
+
+/** Drop DOM click breadcrumbs before Electron Sentry performs its expensive scope normalization. */
+export const filterRendererBreadcrumb = <T extends RendererBreadcrumb>(breadcrumb: T): T | null =>
+  breadcrumb.category === 'ui.click' ? null : breadcrumb;
+
+/** Keep renderer error capture while avoiding synchronous deep scope mirroring to the Main process. */
+export const filterRendererSentryIntegrations = <T extends { name: string }>(integrations: T[]): T[] =>
+  integrations.filter((integration) => integration.name !== 'ScopeToMain');
+
 const RESIZE_OBSERVER_PATTERNS = [
   'resizeobserver loop limit exceeded',
   'resizeobserver loop completed with undelivered notifications',

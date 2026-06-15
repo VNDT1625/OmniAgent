@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import useModeModeList from '@renderer/hooks/agent/useModeModeList';
 import {
   isNewApiPlatform,
+  MODEL_PLATFORMS,
   NEW_API_PROTOCOL_OPTIONS,
   detectNewApiProtocol,
 } from '@/renderer/utils/model/modelPlatforms';
@@ -17,6 +18,12 @@ const AddModelModal = ModalHOC<{ data?: IProvider; onSubmit: (model: IProvider) 
     const [model, setModel] = useState('');
     const [modelProtocol, setModelProtocol] = useState<string>('openai');
     const isNewApi = isNewApiPlatform(data?.platform ?? '');
+    const skipProtocol = useMemo(() => {
+      if (!data?.base_url) return false;
+      return MODEL_PLATFORMS.some(
+        (p) => p.skipProtocolDetection && p.base_url && data.base_url.includes(new URL(p.base_url).host)
+      );
+    }, [data?.base_url]);
     const { data: modelList, isLoading } = useModeModeList(data?.platform, data?.base_url, data?.api_key);
     const existingModels = data?.models || [];
     const optionsList = useMemo(() => {
@@ -36,7 +43,8 @@ const AddModelModal = ModalHOC<{ data?: IProvider; onSubmit: (model: IProvider) 
       const updatedData: IProvider = { ...data, models: [...existingModels, model] };
 
       // new-api 平台：添加模型协议配置 / new-api platform: add model protocol config
-      if (isNewApi) {
+      // Skip for gateways with built-in format translation
+      if (isNewApi && !skipProtocol) {
         updatedData.model_protocols = { ...data?.model_protocols, [model]: modelProtocol };
       }
 
@@ -70,7 +78,7 @@ const AddModelModal = ModalHOC<{ data?: IProvider; onSubmit: (model: IProvider) 
               loading={isLoading}
               onChange={(value: string) => {
                 setModel(value);
-                if (isNewApi) setModelProtocol(detectNewApiProtocol(value));
+                if (isNewApi && !skipProtocol) setModelProtocol(detectNewApiProtocol(value));
               }}
               value={model}
               allowCreate
@@ -79,7 +87,7 @@ const AddModelModal = ModalHOC<{ data?: IProvider; onSubmit: (model: IProvider) 
           </div>
 
           {/* New API 协议选择 / New API Protocol Selection */}
-          {isNewApi && (
+          {isNewApi && !skipProtocol && (
             <div className='space-y-8px'>
               <div className='text-13px font-500 text-t-secondary'>{t('settings.modelProtocol')}</div>
               <Select

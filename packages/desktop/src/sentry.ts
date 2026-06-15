@@ -13,6 +13,11 @@ import { getOrCreateAnalyticsId } from './process/utils/analyticsId';
 import { readAutoUpdateDiagnostics } from './process/services/autoUpdateDiagnostics';
 import { collectBackendInstallDiagnostics } from './process/startup/backendInstallDiagnostics';
 import { classifyBackendStartupFailure } from './process/startup/backendStartupFailure';
+import {
+  capturedErrorFromSentryEvent,
+  sentryErrorTap,
+  type SentryLikeEvent,
+} from './process/monitor/sentryErrorSource';
 
 // 抑制 Chromium GPU 崩溃噪声（参见 ELECTRON-9A / ELECTRON-9D）：
 // 自愈逻辑在 gpuRecovery 中处理，事件流量已无价值。
@@ -106,6 +111,17 @@ export function initSentry(): void {
       }
       if (isBackendStartupSecondaryEvent(event, haystacks)) {
         return null;
+      }
+      // Tap captured runtime errors into the bug monitor (Yêu cầu 6, criterion
+      // 6.1). Best-effort + guarded: feeding the monitor must never alter what
+      // Sentry sends, so we forward a copy and always return the event.
+      try {
+        if (sentryErrorTap.hasListeners()) {
+          const captured = capturedErrorFromSentryEvent(event as SentryLikeEvent);
+          if (captured) sentryErrorTap.push(captured);
+        }
+      } catch (err) {
+        console.warn('[sentry] bug-monitor tap failed (ignored):', err);
       }
       return event;
     },

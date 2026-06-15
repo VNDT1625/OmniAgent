@@ -6,16 +6,24 @@ import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/pl
 import { type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
 import { useExtensionSettingsTabs } from '@/renderer/hooks/system/useExtensionSettingsTabs';
 import {
+  Bug,
   Cat,
   Communication,
+  Compass,
   Computer,
+  Dashboard,
+  BuildingTwo,
   Earth,
+  ExperimentOne,
   Info,
   Lightning,
   LinkCloud,
   Puzzle,
+  Refresh,
   Robot,
+  Rss,
   System,
+  Terminal,
 } from '@icon-park/react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -67,6 +75,54 @@ export function getBuiltinSettingsNavItems(isDesktop: boolean, t: TranslateFn): 
       path: 'webui',
     },
     pet: { id: 'pet', label: t('pet.desktopPet'), icon: <Cat theme='outline' size='16' />, path: 'pet' },
+    resource: {
+      id: 'resource',
+      label: t('resource.navTitle'),
+      icon: <Dashboard theme='outline' size='16' />,
+      path: 'resource',
+    },
+    company: {
+      id: 'company',
+      label: t('company.navTitle'),
+      icon: <BuildingTwo theme='outline' size='16' />,
+      path: 'company',
+    },
+    knowledge: {
+      id: 'knowledge',
+      label: t('realtimeKnowledge.navTitle'),
+      icon: <Refresh theme='outline' size='16' />,
+      path: 'knowledge',
+    },
+    browser: {
+      id: 'browser',
+      label: t('browser.navTitle'),
+      icon: <Compass theme='outline' size='16' />,
+      path: 'browser',
+    },
+    news: {
+      id: 'news',
+      label: t('news.navTitle'),
+      icon: <Rss theme='outline' size='16' />,
+      path: 'realtime',
+    },
+    testing: {
+      id: 'testing',
+      label: t('testing.navTitle'),
+      icon: <ExperimentOne theme='outline' size='16' />,
+      path: 'testing',
+    },
+    monitor: {
+      id: 'monitor',
+      label: t('monitor.navTitle'),
+      icon: <Bug theme='outline' size='16' />,
+      path: 'monitor',
+    },
+    terminal: {
+      id: 'terminal',
+      label: t('terminal.navTitle', { defaultValue: 'Terminal' }),
+      icon: <Terminal theme='outline' size='16' />,
+      path: 'terminal',
+    },
     system: { id: 'system', label: t('settings.system'), icon: <System theme='outline' size='16' />, path: 'system' },
     about: { id: 'about', label: t('settings.about'), icon: <Info theme='outline' size='16' />, path: 'about' },
   };

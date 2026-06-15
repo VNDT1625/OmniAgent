@@ -387,6 +387,22 @@
       "genericError": "Ошибка голосового ввода. Попробуйте снова"
     }
   },
+  "goalCommand": {
+    "description": "Автономно выполнять задачу, пока цель не будет почти полностью достигнута",
+    "allDescription": "Режим полной автономии: решать всё самому и превзойти требование (101%)",
+    "autoResumeNotice": "Выполнение цели зависло — автопродолжение ({{count}}/{{max}})",
+    "autoResumeGiveup": "Цель всё ещё зависла после {{max}} автопродолжений. Приостановлено для ручной проверки.",
+    "modeOff": "Режим Goal выключен.",
+    "modeBadge": "Режим Goal",
+    "done": "Цель достигнута — тесты пройдены. Режим Goal выключен.",
+    "blocked": "Агент сообщил, что цель заблокирована. Режим Goal выключен — проверьте.",
+    "maxTurns": "Достигнут лимит автопрогона Goal. Режим Goal выключен — проверьте.",
+    "enforcing": "Принудительное соблюдение процесса goal — продолжаю автоматически.",
+    "verifySet": "Команда независимой проверки задана для этой цели.",
+    "verifyOff": "Независимая проверка отключена.",
+    "verifyRunning": "Независимая проверка цели…",
+    "verifyFailed": "Независимая проверка не пройдена — агент должен исправить и повторить."
+  },
   "sideQuestion": {
     "title": "Боковой вопрос",
     "description": "Быстро спросить о текущем диалоге",
@@ -467,5 +483,20 @@
   "sendbox": {
     "hint": "Введите / для команд, @ для ссылок на файлы"
   },
-  "notFound": "Беседа не найдена или была удалена"
+  "notFound": "Беседа не найдена или была удалена",
+  "contextPack": {
+    "title": "Including IDE Context",
+    "subtitle": "{{count}} file(s) loaded for the agent",
+    "loaded": "Loaded {{count}} IDE context file(s).",
+    "truncated": "capped",
+    "score": "score {{score}}",
+    "more": "+{{count}} more",
+    "reason": {
+      "seed": "seed",
+      "dependency": "dependency",
+      "dependent": "dependent",
+      "changed": "changed",
+      "entry": "entry"
+    }
+  }
 }

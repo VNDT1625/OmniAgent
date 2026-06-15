@@ -6,12 +6,14 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { Switch } from '@arco-design/web-react';
 import FontSizeControl from '@/renderer/components/settings/FontSizeControl';
 import { ThemeSwitcher } from '@/renderer/components/settings/ThemeSwitcher';
 import CssThemeSettings from '@renderer/pages/settings/DisplaySettings/CssThemeSettings';
 import AionScrollArea from '@/renderer/components/base/AionScrollArea';
 import AionCollapse from '@/renderer/components/base/AionCollapse';
 import { Down, Up } from '@icon-park/react';
+import { configService } from '@/common/config/configService';
 import { useSettingsViewMode } from '../settingsViewContext';
 
 /**
@@ -21,11 +23,16 @@ import { useSettingsViewMode } from '../settingsViewContext';
 const PreferenceRow: React.FC<{
   /** 标签文本 / Label text */
   label: string;
+  /** 描述文本（可选）/ Description text (optional) */
+  description?: string;
   /** 控件元素 / Control element */
   children: React.ReactNode;
-}> = ({ label, children }) => (
+}> = ({ label, description, children }) => (
   <div className='flex flex-col items-stretch gap-10px py-12px md:flex-row md:items-center md:justify-between md:gap-24px'>
-    <div className='text-14px text-t-primary leading-22px'>{label}</div>
+    <div className='flex flex-col gap-2px'>
+      <div className='text-14px text-t-primary leading-22px'>{label}</div>
+      {description ? <div className='text-12px text-t-tertiary leading-18px'>{description}</div> : null}
+    </div>
     <div className='w-full flex md:flex-1 md:justify-end'>{children}</div>
   </div>
 );
@@ -45,6 +52,21 @@ const DisplayModalContent: React.FC = () => {
   const { t } = useTranslation();
   const viewMode = useSettingsViewMode();
   const isPageMode = viewMode === 'page';
+
+  // Developer console overlay toggle (Settings → Display → Developer tools).
+  const [devConsole, setDevConsole] = React.useState<boolean>(
+    () => configService.get('developer.consoleOverlay') ?? false
+  );
+
+  React.useEffect(() => {
+    const unsubscribe = configService.subscribe('developer.consoleOverlay', (value) => setDevConsole(Boolean(value)));
+    return unsubscribe;
+  }, []);
+
+  const handleDevConsoleChange = React.useCallback((checked: boolean) => {
+    setDevConsole(checked);
+    configService.set('developer.consoleOverlay', checked).catch(() => setDevConsole(!checked));
+  }, []);
 
   // 渲染折叠面板的展开/收起图标 / Render expand/collapse icon for collapse panel
   const renderExpandIcon = (active: boolean) =>
@@ -94,6 +116,18 @@ const DisplayModalContent: React.FC = () => {
               <CssThemeSettings />
             </AionCollapse.Item>
           </AionCollapse>
+
+          {/* 开发者工具 / Developer Tools */}
+          <div className='px-16px md:px-24px lg:px-28px py-14px md:py-16px bg-2 rd-16px'>
+            <div className='w-full flex flex-col divide-y divide-border-2'>
+              <PreferenceRow
+                label={t('settings.devConsole.toggleLabel')}
+                description={t('settings.devConsole.toggleDescription')}
+              >
+                <Switch checked={devConsole} onChange={handleDevConsoleChange} />
+              </PreferenceRow>
+            </div>
+          </div>
         </div>
       </AionScrollArea>
     </div>

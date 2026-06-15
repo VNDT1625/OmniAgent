@@ -15,6 +15,7 @@ import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conve
 import { warmupConversation } from '@/renderer/pages/conversation/utils/warmupConversation';
 import type { ThoughtData } from '@/renderer/components/chat/ThoughtDisplay';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { noteAssistantReply } from '@/renderer/services/i18n/responseLanguage';
 
 export type UseAcpMessageReturn = {
   thought: ThoughtData;
@@ -54,6 +55,10 @@ export const useAcpMessage = (conversation_id: string, options?: { skipWarmup?: 
 
   // Track whether current turn has content output
   const hasContentInTurnRef = useRef(false);
+
+  // Accumulate the current turn's reply text so we can detect, at finish, the
+  // language the model actually answered in (adaptive response-language guard).
+  const turnTextRef = useRef('');
 
   // Guard: after finish arrives, prevent auto-recover from setting running=true
   // until a new 'start' signal arrives for the next turn
@@ -229,6 +234,7 @@ export const useAcpMessage = (conversation_id: string, options?: { skipWarmup?: 
           // New turn starting — clear the finished guard and content flag
           turnFinishedRef.current = false;
           hasContentInTurnRef.current = false;
+          turnTextRef.current = '';
           setRunning(true);
           runningRef.current = true;
           // Don't reset aiProcessing here - let content arrival handle it
@@ -237,6 +243,12 @@ export const useAcpMessage = (conversation_id: string, options?: { skipWarmup?: 
           {
             // Mark turn as finished to prevent auto-recover from late messages
             turnFinishedRef.current = true;
+            // Detect the reply language and adaptively arm/disarm the strong
+            // response-language constraint for this conversation.
+            if (turnTextRef.current.trim()) {
+              noteAssistantReply(conversation_id, turnTextRef.current);
+              turnTextRef.current = '';
+            }
             // Immediate state reset (notification is handled by centralized hook)
             setRunning(false);
             runningRef.current = false;
@@ -266,6 +278,20 @@ export const useAcpMessage = (conversation_id: string, options?: { skipWarmup?: 
             hasContentInTurnRef.current = true;
             setAiProcessing(false);
             aiProcessingRef.current = false;
+          }
+          // Accumulate raw reply text for end-of-turn language detection.
+          {
+            const payload = message.data;
+            const chunk =
+              typeof payload === 'string'
+                ? payload
+                : typeof payload === 'object' &&
+                    payload !== null &&
+                    'content' in payload &&
+                    typeof (payload as { content?: unknown }).content === 'string'
+                  ? ((payload as { content: string }).content ?? '')
+                  : '';
+            if (chunk) turnTextRef.current += chunk;
           }
           // Auto-recover running state only if turn hasn't finished
           if (!runningRef.current && !turnFinishedRef.current) {

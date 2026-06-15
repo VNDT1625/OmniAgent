@@ -1,0 +1,60 @@
+{
+  "navTitle": "監控",
+  "title": "錯誤監控",
+  "subtitle": "自動收集的錯誤、建議的修復以及審批關卡。",
+  "refresh": "重新整理",
+  "desktopOnly": "錯誤監控僅在桌面應用程式中可用。",
+  "unavailable": "監控服務尚未就緒。",
+  "noReports": "尚無錯誤報告。",
+  "noProposals": "尚無建議的修復。",
+  "section": {
+    "proposals": "建議的修復",
+    "reports": "錯誤報告"
+  },
+  "report": {
+    "occurrences": "出現 {{count}} 次",
+    "source": "來源",
+    "knownFix": "已有修復方案",
+    "fix": "修復"
+  },
+  "fix": {
+    "startedToast": "正在分析錯誤並準備修復……"
+  },
+  "risk": {
+    "low": "低",
+    "medium": "中",
+    "high": "高"
+  },
+  "status": {
+    "proposed": "已建議",
+    "pending-review": "待審核",
+    "approved": "已核准",
+    "applied": "已套用",
+    "rejected": "已拒絕",
+    "rolled-back": "已回復"
+  },
+  "patch": {
+    "title": "建議的修復",
+    "risk": "風險",
+    "approve": "核准並套用",
+    "approveConfirm": "要將此修復套用到應用程式嗎？會先儲存回復點。",
+    "cancel": "取消",
+    "reject": "拒絕",
+    "rollback": "回復",
+    "publish": "發布",
+    "pendingReview": "待審核",
+    "applied": "已套用",
+    "rejected": "已拒絕",
+    "rolledBack": "已回復",
+    "appliedToast": "已套用修復，必要時可回復。",
+    "rejectedToast": "已拒絕該建議。",
+    "rolledBackToast": "修復已回復。",
+    "actionError": "操作未能完成。"
+  },
+  "publish": {
+    "confirm": "建立修復分支並推送到你的 fork 以供審查？",
+    "pushedToast": "已推送分支「{{branch}}」。正在開啟 PR 頁面……",
+    "notPushed": "已在本機準備分支「{{branch}}」。就緒後請推送到你的 fork。",
+    "error": "無法發布修復。"
+  }
+}

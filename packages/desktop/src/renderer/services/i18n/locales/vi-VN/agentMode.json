@@ -1,0 +1,19 @@
+{
+  "plan": "Chế độ lập kế hoạch",
+  "default": "Mặc định",
+  "acceptEdits": "Chấp nhận chỉnh sửa",
+  "autoEdit": "Tự động chỉnh sửa",
+  "auto_edit": "Tự động chỉnh sửa",
+  "yolo": "YOLO",
+  "yoloNoSandbox": "Toàn tự động (không sandbox)",
+  "auto": "Tự động",
+  "dontAsk": "Không hỏi",
+  "bypass": "Bỏ qua (YOLO)",
+  "bypassPermissions": "YOLO",
+  "smart": "Thông minh",
+  "build": "Chế độ xây dựng",
+  "permission": "Quyền",
+  "switchMode": "Chế độ quyền",
+  "switchSuccess": "Đã chuyển chế độ thành công",
+  "switchFailed": "Chuyển chế độ thất bại"
+}

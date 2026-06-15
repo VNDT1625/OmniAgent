@@ -1,0 +1,30 @@
+{
+  "agentFallbackNotice": "{{original}} không khả dụng, đang dùng {{fallback}} thay thế.",
+  "noAgentAvailable": "Không có tác nhân chính nào khả dụng. Vui lòng đăng nhập Google hoặc cài Claude/Codex CLI. Đến cài đặt?",
+  "noAgentAvailableShort": "Không có tác nhân chính. Nhấn để cấu hình.",
+  "agentTabAutoSwitch": "Mô hình không tương thích với Gemini, đã tự chuyển sang {{fallback}}",
+  "autoSwitchToAgent": "Gemini chưa được cấu hình, đang tự chuyển sang {{agent}}",
+  "autoSwitchedAgent": "{{from}} không khả dụng, đã chuyển sang {{to}}",
+  "promptExamplesHint": "Thử các gợi ý mẫu:",
+  "selectAssistantHint": "Chọn trợ lý để bắt đầu nhiệm vụ",
+  "agentSwitcherLabel": "Tác nhân",
+  "switchedToAgent": "Đã chuyển sang {{agent}}",
+  "workspace": {
+    "workInProject": "Làm việc trong dự án",
+    "optional": "Tùy chọn",
+    "clearWorkspace": "Xóa",
+    "specifyWorkspace": "Chọn thư mục dự án",
+    "searchPlaceholder": "Tìm kiếm dự án…",
+    "noProject": "Không có dự án"
+  },
+  "scanning": {
+    "initialMessage": "Tác nhân hiện tại không khả dụng, đang phát hiện các tác nhân khác...",
+    "scanningMessage": "Đang quét các tác nhân cục bộ khả dụng...",
+    "connectingMessage": "Kết nối thành công, vui lòng chờ...",
+    "establishingConnection": "Đang thiết lập kết nối...",
+    "statusQueued": "Đang chờ",
+    "statusTesting": "Đang kiểm tra độ trễ...",
+    "statusUnreachable": "Không thể kết nối",
+    "statusAvailable": "Khả dụng"
+  }
+}

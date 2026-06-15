@@ -1,0 +1,84 @@
+{
+  "navTitle": "ブラウザ",
+  "title": "ブラウザ",
+  "subtitle": "アプリ内でウェブを閲覧し、AI モデルにウェブエージェントとしてページを操作させます。",
+  "desktopOnly": "組み込みブラウザはデスクトップアプリでのみ利用できます。",
+  "bridgeUnavailable": "ブラウザサービスはまだ起動していません。デスクトップブリッジが接続されると利用できます。",
+  "retry": "再試行",
+  "address": {
+    "placeholder": "検索または URL を入力",
+    "go": "移動",
+    "back": "戻る",
+    "forward": "進む",
+    "reload": "再読み込み"
+  },
+  "tab": {
+    "new": "新しいタブ",
+    "close": "タブを閉じる",
+    "untitled": "新しいタブ"
+  },
+  "agent": {
+    "label": "ウェブエージェント",
+    "pickModel": "モデルを選択",
+    "pickModelFirst": "ウェブエージェントを有効にするにはモデルを選択してください。",
+    "noModels": "利用可能なモデルがありません。「設定 → モデル」で追加してください。",
+    "toggleHint": "このモデルにページの操作を許可します：クリック、スクロール、入力、読み取り。",
+    "enabled": "このタブのウェブエージェントを有効にしました。",
+    "disabled": "ウェブエージェントを無効にしました。",
+    "toggleError": "ウェブエージェントモードを切り替えできませんでした。",
+    "providerGroup": "API モデル",
+    "cliGroup": "CLI エージェント",
+    "cliSuffix": "CLI"
+  },
+  "toolbar": {
+    "zoomIn": "拡大",
+    "zoomOut": "縮小",
+    "zoomReset": "ズームを 100% に戻す",
+    "fullscreen": "全画面",
+    "exitFullscreen": "全画面を終了（Esc）",
+    "showChat": "ウェブエージェントのチャットを表示",
+    "hideChat": "ウェブエージェントのチャットを非表示",
+    "showAiOverlay": "このページについてAIに質問",
+    "hideAiOverlay": "AIオーバーレイを非表示",
+    "expandControls": "エージェント操作バーを表示",
+    "collapseControls": "エージェント操作バーを非表示"
+  },
+  "aiOverlay": {
+    "title": "AIに質問",
+    "placeholder": "このページについて質問…"
+  },
+  "chat": {
+    "title": "ウェブエージェント",
+    "emptyTitle": "ウェブエージェントに依頼",
+    "emptyHint": "アドレスバーに入力すれば通常のブラウジングです。ここではエージェントへの指示を入力します——例：「Facebook を開いてメッセージを読んで要約して。」",
+    "placeholder": "ページ上でエージェントに何をさせるか入力…",
+    "pickModelFirst": "上でモデルを選択するとウェブエージェントと会話できます。",
+    "send": "送信",
+    "stop": "停止",
+    "clear": "会話をクリア",
+    "close": "パネルを隠す",
+    "swapSide": "反対側へ移動",
+    "working": "エージェントが作業中…",
+    "enterHint": "Enter で送信 · Shift+Enter で改行",
+    "allowControl": "操作を許可",
+    "controlOnHint": "許可済み：エージェントはこのタブでクリック・スクロール・入力・移動できます。",
+    "controlOffHint": "非表示モード：エージェントは読み取り／収集と非表示タブのみ使用します。このページを操作させるにはオンにします。",
+    "stepFailed": "失敗",
+    "persona": "ペルソナとルール",
+    "personaTitle": "エージェントのペルソナと固定ルール",
+    "personaHint": "これらの指示は毎ターン、ウェブエージェントに適用されます（言語、口調、絶対にしてはいけないことなど）。",
+    "personaPlaceholder": "例：常にベトナム語で回答。簡潔に。確認なしに購入やフォーム送信は絶対にしない。",
+    "personaSave": "保存",
+    "personaCancel": "キャンセル"
+  },
+  "subtitle_overlay": {
+    "enable": "ベトナム語字幕を表示",
+    "disable": "ベトナム語字幕を非表示",
+    "idle": "字幕生成のため動画の音声を待機中…"
+  },
+  "viewport": {
+    "emptyTitle": "開いているページがありません",
+    "emptyHint": "タブを開いて閲覧を始めましょう。ページはここに表示され、アプリが制御します。",
+    "openFirst": "タブを開く"
+  }
+}

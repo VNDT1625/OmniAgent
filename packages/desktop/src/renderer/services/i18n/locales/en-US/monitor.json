@@ -1,0 +1,60 @@
+{
+  "navTitle": "Monitor",
+  "title": "Bug Monitor",
+  "subtitle": "Auto-collected errors, proposed fixes, and the approval gate.",
+  "refresh": "Refresh",
+  "desktopOnly": "The bug monitor is only available in the desktop app.",
+  "unavailable": "The monitor service is not available yet.",
+  "noReports": "No bug reports yet.",
+  "noProposals": "No proposed fixes yet.",
+  "section": {
+    "proposals": "Proposed fixes",
+    "reports": "Reports"
+  },
+  "report": {
+    "occurrences": "Seen {{count}} times",
+    "source": "Source",
+    "knownFix": "Known fix available",
+    "fix": "Fix"
+  },
+  "fix": {
+    "startedToast": "Analysing the error and preparing a fix…"
+  },
+  "risk": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High"
+  },
+  "status": {
+    "proposed": "Proposed",
+    "pending-review": "Pending review",
+    "approved": "Approved",
+    "applied": "Applied",
+    "rejected": "Rejected",
+    "rolled-back": "Rolled back"
+  },
+  "patch": {
+    "title": "Proposed fix",
+    "risk": "Risk",
+    "approve": "Approve & apply",
+    "approveConfirm": "Apply this fix to the app? A rollback point is saved first.",
+    "cancel": "Cancel",
+    "reject": "Reject",
+    "rollback": "Roll back",
+    "publish": "Publish",
+    "pendingReview": "Pending review",
+    "applied": "Applied",
+    "rejected": "Rejected",
+    "rolledBack": "Rolled back",
+    "appliedToast": "Fix applied. You can roll it back if needed.",
+    "rejectedToast": "Proposal rejected.",
+    "rolledBackToast": "Fix rolled back.",
+    "actionError": "The action could not be completed."
+  },
+  "publish": {
+    "confirm": "Create a fix branch and push it to your fork for review?",
+    "pushedToast": "Pushed branch \"{{branch}}\". Opening the pull request page…",
+    "notPushed": "Prepared branch \"{{branch}}\" locally. Push it to your fork when ready.",
+    "error": "Could not publish the fix."
+  }
+}

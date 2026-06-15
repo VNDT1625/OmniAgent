@@ -5,6 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
+import { parseError } from '@/common/utils';
 import type { IConversationMcpStatus } from '@/common/config/storage';
 import AgentModeSelector from '@/renderer/components/agent/AgentModeSelector';
 import CommandQueuePanel from '@/renderer/components/chat/CommandQueuePanel';
@@ -36,6 +37,25 @@ import {
 import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
 import { warmupConversation } from '@/renderer/pages/conversation/utils/warmupConversation';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { buildPlanningGuard } from '@/renderer/pages/studio/ide/planningGuard';
+import { withResponseLanguageDirective } from '@/renderer/services/i18n/responseLanguage';
+import {
+  expandGoalCommand,
+  isGoalOffCommand,
+  parseGoalCommand,
+  parseGoalVerifyCommand,
+} from '@/common/chat/slash/goalCommand';
+import {
+  clearGoalMode,
+  getGoalMode,
+  isGoalModeActive,
+  setGoalMode,
+  withGoalSteeringDirective,
+} from '@/renderer/utils/chat/goalMode';
+import { clearGoalVerifyCommand, getGoalVerifyCommand, setGoalVerifyCommand } from '@/renderer/utils/chat/goalVerify';
+import { runWorkspaceVerification } from '@/renderer/utils/chat/runWorkspaceVerification';
+import { DEFAULT_GOAL_WATCHDOG_CONFIG } from '@/common/chat/slash/goalWatchdog';
+import { useGoalRunner } from '@/renderer/hooks/chat/useGoalRunner';
 import { useTeamPermission } from '@/renderer/pages/team/hooks/TeamPermissionContext';
 import { allSupportedExts } from '@/renderer/services/FileService';
 import { iconColors } from '@/renderer/styles/colors';
@@ -182,6 +202,11 @@ const AionrsSendBox: React.FC<{
   const setContentRef = useLatestRef(setContent);
   const contentRef = useLatestRef(content);
   const atPathRef = useLatestRef(atPath);
+  const [goalModeActive, setGoalModeActive] = useState<boolean>(() => isGoalModeActive(conversation_id));
+  // Re-sync Goal Mode flag when switching conversations.
+  useEffect(() => {
+    setGoalModeActive(isGoalModeActive(conversation_id));
+  }, [conversation_id]);
 
   // Register handler for adding text from preview panel to sendbox
   useEffect(() => {
@@ -218,18 +243,39 @@ const AionrsSendBox: React.FC<{
         throw new Error('No model selected');
       }
 
-      setWaitingResponse(true);
-
-      const displayMessage = buildDisplayMessage(input, files, workspacePath);
       let msg_id: string | null = null;
       try {
+        const displayMessage = buildDisplayMessage(input, files, workspacePath);
+        // Goal commands (/goal, /goal-all) expand into a full autonomous instruction
+        // sent to the agent, while the bubble keeps showing the raw `/goal ...` text.
+        // They also activate persistent Goal Mode for this conversation, so the
+        // mandatory-pipeline steering is re-injected on EVERY subsequent turn.
+        const goalExpansion = expandGoalCommand(input);
+        if (goalExpansion) {
+          const parsedGoal = parseGoalCommand(input);
+          if (parsedGoal) {
+            setGoalMode(conversation_id, parsedGoal.variant, parsedGoal.requirement);
+            setGoalModeActive(true);
+          }
+        }
+        const baseModelMessage = goalExpansion
+          ? buildDisplayMessage(goalExpansion, files, workspacePath)
+          : displayMessage;
+        const guardedMessage = await buildPlanningGuard(workspacePath, baseModelMessage);
+        // Goal Mode steering: bind every ordinary turn to the mandatory pipeline.
+        const steeredMessage = withGoalSteeringDirective(guardedMessage, conversation_id);
+        // Keep the model replying in the app's active language even though the
+        // codebase/files are mostly English (the visible bubble keeps raw text).
+        const modelInput = withResponseLanguageDirective(steeredMessage, conversation_id);
+
+        setWaitingResponse(true);
         void checkAndUpdateTitle(conversation_id, input);
         // Wait for the server-assigned msg_id before rendering the optimistic
         // user bubble so the local row uses the same id as the DB row and
         // subsequent WebSocket stream events — avoids duplicate bubbles when
         // useMessageLstCache reloads.
         const res = await ipcBridge.conversation.sendMessage.invoke({
-          input: displayMessage,
+          input: modelInput,
           conversation_id,
           files,
         });
@@ -254,7 +300,10 @@ const AionrsSendBox: React.FC<{
           emitter.emit('aionrs.workspace.refresh');
         }
       } catch (error) {
+        setWaitingResponse(false);
+        setContentRef.current(input);
         if (msg_id) removeMessageByMsgId(msg_id);
+        Message.error({ content: parseError(error) || t('common.unknownError'), duration: 6000 });
         throw error;
       }
     },
@@ -320,6 +369,30 @@ const AionrsSendBox: React.FC<{
   }, [conversation_id, current_model?.use_model, executeCommand]);
 
   const onSendHandler = async (message: string) => {
+    // `/goal verify <cmd>` / `/goal verify off` — configure independent verification.
+    const verifyControl = parseGoalVerifyCommand(message);
+    if (verifyControl) {
+      if (verifyControl.kind === 'clear') {
+        clearGoalVerifyCommand(conversation_id);
+        Message.info(t('conversation.goalCommand.verifyOff'));
+      } else {
+        setGoalVerifyCommand(conversation_id, verifyControl.command);
+        Message.info(t('conversation.goalCommand.verifySet'));
+      }
+      clearFiles();
+      emitter.emit('aionrs.selected.file.clear');
+      return;
+    }
+    // `/goal off` is a control command: turn Goal Mode off without sending a turn.
+    if (isGoalOffCommand(message)) {
+      clearGoalMode(conversation_id);
+      setGoalModeActive(false);
+      clearFiles();
+      emitter.emit('aionrs.selected.file.clear');
+      Message.info(t('conversation.goalCommand.modeOff'));
+      return;
+    }
+
     if (isBusy) {
       Message.warning(t('messages.conversationInProgress'));
       return;
@@ -560,6 +633,55 @@ const AionrsSendBox: React.FC<{
     }
   };
 
+  // Renderer-driven Goal run orchestrator: hard compliance enforcement (status
+  // marker gating) + hang recovery (stall watchdog). Active only while Goal Mode
+  // is on. Drives the agent through the mandatory pipeline by code and only
+  // accepts completion when the agent reports done with tests passing.
+  useGoalRunner({
+    conversation_id,
+    running: isBusy,
+    goalModeActive,
+    getResumePayload: () => {
+      const mode = getGoalMode(conversation_id);
+      if (!mode) return null;
+      return { input: `/${mode.variant} ${mode.requirement}`, files: [] };
+    },
+    onStall: handleStop,
+    send: (payload) => executeCommand(payload),
+    verify: async () => {
+      const cmd = getGoalVerifyCommand(conversation_id);
+      if (!cmd) return null;
+      Message.info(t('conversation.goalCommand.verifyRunning'));
+      const result = await runWorkspaceVerification(workspacePath, cmd);
+      return { passed: result.passed, output: result.output };
+    },
+    onAccept: () => {
+      clearGoalMode(conversation_id);
+      setGoalModeActive(false);
+      Message.success(t('conversation.goalCommand.done'));
+    },
+    onHalt: (reason) => {
+      clearGoalMode(conversation_id);
+      setGoalModeActive(false);
+      if (reason === 'blocked') {
+        Message.warning(t('conversation.goalCommand.blocked'));
+      } else {
+        Message.warning(t('conversation.goalCommand.maxTurns'));
+      }
+    },
+    onNotice: (kind) => {
+      if (kind === 'resume') {
+        Message.info(
+          t('conversation.goalCommand.autoResumeNotice', { count: 1, max: DEFAULT_GOAL_WATCHDOG_CONFIG.maxResumes })
+        );
+      } else if (kind === 'verify-fail') {
+        Message.warning(t('conversation.goalCommand.verifyFailed'));
+      } else {
+        Message.info(t('conversation.goalCommand.enforcing'));
+      }
+    },
+  });
+
   return (
     <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
       <CommandQueuePanel
@@ -576,6 +698,24 @@ const AionrsSendBox: React.FC<{
         onClear={clear}
       />
       <ThoughtDisplay thought={thought} running={running} onStop={handleStop} />
+
+      {goalModeActive && (
+        <div className='flex justify-center mb-8px'>
+          <Tag
+            color='arcoblue'
+            bordered
+            closable
+            icon={<MagicHat theme='outline' size='12' />}
+            onClose={() => {
+              clearGoalMode(conversation_id);
+              setGoalModeActive(false);
+              Message.info(t('conversation.goalCommand.modeOff'));
+            }}
+          >
+            {t('conversation.goalCommand.modeBadge')}
+          </Tag>
+        </div>
+      )}
 
       <SendBox
         data-testid='aionrs-sendbox'
@@ -670,6 +810,7 @@ const AionrsSendBox: React.FC<{
         onSend={onSendHandler}
         slash_commands={slash_commands}
         onSlashBuiltinCommand={onSlashBuiltinCommand}
+        enableGoal
         allowSendWhileLoading
       />
       {isMobile && (

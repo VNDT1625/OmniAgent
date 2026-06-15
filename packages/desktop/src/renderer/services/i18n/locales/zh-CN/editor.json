@@ -1,0 +1,84 @@
+{
+  "action": {
+    "save": "保存",
+    "retry": "重试"
+  },
+  "state": {
+    "loading": "加载中…",
+    "errorTitle": "无法打开文件"
+  },
+  "adapter": {
+    "comingSoonTitle": "该编辑器即将推出",
+    "comingSoonSubtitle": "针对 \"{{kind}}\" 文件的专用编辑器即将上线。你仍可在下方以纯文本方式编辑。"
+  },
+  "rawText": {
+    "placeholder": "文件内容…"
+  },
+  "image": {
+    "rotate": "旋转 90°",
+    "size": "尺寸",
+    "apply": "调整尺寸"
+  },
+  "docx": {
+    "editNotice": "正在编辑文档文本。保存时会重新生成干净的 .docx（不保留复杂格式）。",
+    "placeholder": "文档内容…",
+    "openFailed": "无法打开此 Word 文档"
+  },
+  "spreadsheet": {
+    "addRow": "添加行",
+    "editNotice": "以表格方式编辑第一个工作表。保存时会重新生成干净的 .xlsx（不保留复杂格式与其他工作表）。",
+    "openFailed": "无法打开此表格"
+  },
+  "slide": {
+    "addSlide": "添加幻灯片",
+    "slideLabel": "幻灯片 {{index}}",
+    "empty": "（空）",
+    "placeholder": "幻灯片内容…",
+    "openFailed": "无法打开此演示文稿"
+  },
+  "pdf": {
+    "viewerTitle": "PDF 查看器",
+    "tooLargeForViewer": "此 PDF 文件过大，无法在应用内预览（{{size}} MB）。请使用 Office 编辑器或外部 PDF 查看器打开。",
+    "openExternal": "用系统查看器打开"
+  },
+  "media": {
+    "local": "本地",
+    "online": "在线",
+    "transcribe": "转写",
+    "summarize": "摘要",
+    "heavyNotice": "转写和摘要在后台运行，由资源协调器调度。",
+    "transcriptIdle": "暂无转写。请选择模式并开始转写。"
+  },
+  "binary": {
+    "readOnlyNotice": "该文件以只读检查模式显示。",
+    "type": "类型",
+    "size": "大小",
+    "unknownType": "二进制",
+    "empty": "（空文件）",
+    "truncated": "仅显示前 {{count}} 字节。"
+  },
+  "office": {
+    "fallbackTitle": "正在使用简易编辑器",
+    "fallbackGeneric": "无法打开完整的 Office 编辑器，正在使用轻量编辑器。部分格式可能无法显示。",
+    "retry": "重试 Office"
+  },
+  "onlyoffice": {
+    "connecting": "正在连接 Office 编辑器…",
+    "noServerTitle": "未配置 Office 编辑器",
+    "noServerHint": "设置 ONLYOFFICE Document Server 地址即可用完整 Office 编辑器编辑此文件。",
+    "failedTitle": "无法打开 Office 编辑器",
+    "settingsTitle": "Office 编辑器设置",
+    "settingsHint": "请输入你的 ONLYOFFICE Document Server 基础地址。它单独运行，仅在编辑时连接。",
+    "dockerHint": "若 Document Server 运行在 Docker 中，请确保它能访问本应用（集成主机监听所有网卡）。",
+    "save": "保存",
+    "cancel": "取消",
+    "resolving": "正在准备 Office 编辑器…",
+    "reason": {
+      "docker-missing": "未安装 Docker。请安装 Docker 或在设置中填写 Document Server 地址。",
+      "docker-stopped": "Docker 正在启动。首次启动可能需要片刻，请稍后重试，或在设置中填写 Document Server 地址。",
+      "start-failed": "无法启动 Document Server 容器。",
+      "timeout": "Document Server 未能及时就绪。"
+    },
+    "startingHint": "首次运行可能需要几分钟来启动 Office 引擎（必要时会下载）。"
+  }
+}

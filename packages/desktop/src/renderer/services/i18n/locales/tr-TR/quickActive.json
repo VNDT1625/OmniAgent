@@ -1,0 +1,20 @@
+{
+  "trigger": "Hızlı Etkin",
+  "title": "Etkin sayfalar",
+  "subtitle": "Şu anda çalışana hızlıca geç",
+  "empty": "Henüz etkin bir şey yok",
+  "desktopOnly": "Etkin sayfalar yalnızca masaüstü uygulamasında bulunur.",
+  "group": {
+    "browser": "Tarayıcı",
+    "testing": "Test"
+  },
+  "browser": {
+    "untitled": "Yeni sekme",
+    "open": "Tarayıcıyı aç",
+    "emptyHint": "Açık sekme yok"
+  },
+  "testing": {
+    "open": "Testi aç",
+    "emptyHint": "Test oturumu yok"
+  }
+}

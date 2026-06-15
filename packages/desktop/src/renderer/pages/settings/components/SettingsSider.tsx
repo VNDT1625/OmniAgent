@@ -4,17 +4,25 @@ import { type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
 import { useExtensionSettingsTabs } from '@/renderer/hooks/system/useExtensionSettingsTabs';
 import {
+  Bug,
   Cat,
   Communication,
+  Compass,
   Computer,
+  Dashboard,
+  BuildingTwo,
   Earth,
+  ExperimentOne,
   Info,
   Lightning,
   LinkCloud,
   Puzzle,
+  Refresh,
   Robot,
+  Rss,
   Speed,
   System,
+  Terminal,
 } from '@icon-park/react';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
@@ -32,6 +40,14 @@ export const BUILTIN_TAB_IDS = [
   'display',
   'webui',
   'pet',
+  'resource',
+  'company',
+  'knowledge',
+  'browser',
+  'news',
+  'testing',
+  'monitor',
+  'terminal',
   'system',
   'about',
 ] as const;
@@ -108,12 +124,32 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
         path: 'webui',
       },
       pet: { id: 'pet', label: t('pet.desktopPet'), icon: <Cat />, path: 'pet' },
+      resource: { id: 'resource', label: t('resource.navTitle'), icon: <Dashboard />, path: 'resource' },
+      company: { id: 'company', label: t('company.navTitle'), icon: <BuildingTwo />, path: 'company' },
+      knowledge: { id: 'knowledge', label: t('realtimeKnowledge.navTitle'), icon: <Refresh />, path: 'knowledge' },
+      browser: { id: 'browser', label: t('browser.navTitle'), icon: <Compass />, path: 'browser' },
+      news: { id: 'news', label: t('news.navTitle'), icon: <Rss />, path: 'realtime' },
+      testing: { id: 'testing', label: t('testing.navTitle'), icon: <ExperimentOne />, path: 'testing' },
+      monitor: { id: 'monitor', label: t('monitor.navTitle'), icon: <Bug />, path: 'monitor' },
+      terminal: { id: 'terminal', label: t('terminal.navTitle'), icon: <Terminal />, path: 'terminal' },
       system: { id: 'system', label: t('settings.system'), icon: <System />, path: 'system' },
       about: { id: 'about', label: t('settings.about'), icon: <Info />, path: 'about' },
     };
 
     // Start with ordered builtin IDs, hiding desktop-only tabs in browser mode
-    const result: SiderItem[] = BUILTIN_TAB_IDS.filter((id) => isDesktop || id !== 'pet').map((id) => builtinMap[id]);
+    const result: SiderItem[] = BUILTIN_TAB_IDS.filter(
+      (id) =>
+        isDesktop ||
+        (id !== 'pet' &&
+          id !== 'resource' &&
+          id !== 'company' &&
+          id !== 'knowledge' &&
+          id !== 'browser' &&
+          id !== 'news' &&
+          id !== 'testing' &&
+          id !== 'monitor' &&
+          id !== 'terminal')
+    ).map((id) => builtinMap[id]);
 
     // Extension tabs with position anchoring
     const beforeMap = new Map<string, IExtensionSettingsTab[]>();

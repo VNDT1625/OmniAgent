@@ -145,8 +145,8 @@ function areStringArraysEqual(left?: string[], right?: string[]): boolean {
 function areStringRecordsEqual(left?: Record<string, string>, right?: Record<string, string>): boolean {
   const leftValue = left || {};
   const rightValue = right || {};
-  const leftKeys = Object.keys(leftValue).sort();
-  const rightKeys = Object.keys(rightValue).sort();
+  const leftKeys = Object.keys(leftValue).toSorted();
+  const rightKeys = Object.keys(rightValue).toSorted();
   return areStringArraysEqual(leftKeys, rightKeys) && leftKeys.every((key) => leftValue[key] === rightValue[key]);
 }
 
@@ -379,8 +379,242 @@ const MIGRATION_STEPS: Array<{
     name: 'ensureBootstrapMcpServersInDb',
     run: async (configFile) => (await ensureBootstrapMcpServersInDb(configFile), true),
   },
+  {
+    name: 'ensureTestingMcpRegistered',
+    run: async () => {
+      const { ensureTestingMcpRegistered } = await import('@process/testing/registerTestingMcp');
+      return ensureTestingMcpRegistered();
+    },
+  },
+  {
+    name: 'ensureBrowserControlMcpRegistered',
+    run: async () => {
+      const { ensureBrowserControlMcpRegistered } = await import('@process/browser/registerBrowserControlMcp');
+      return ensureBrowserControlMcpRegistered();
+    },
+  },
+  {
+    name: 'ensureCronMcpRegistered',
+    run: async () => {
+      const { ensureCronMcpRegistered } = await import('@process/cron/registerCronMcp');
+      return ensureCronMcpRegistered();
+    },
+  },
+  {
+    name: 'ensureManagerMcpRegistered',
+    run: async () => {
+      const { ensureManagerMcpRegistered } = await import('@process/manager/registerManagerMcp');
+      return ensureManagerMcpRegistered();
+    },
+  },
+  {
+    name: 'ensureSystemInfoMcpRegistered',
+    run: async () => {
+      const { ensureSystemInfoMcpRegistered } = await import('@process/system/registerSystemInfoMcp');
+      return ensureSystemInfoMcpRegistered();
+    },
+  },
+  {
+    name: 'ensureIdeMcpRegistered',
+    run: async () => {
+      const { ensureIdeMcpRegistered } = await import('@process/ide/mcp/registerIdeMcp');
+      return ensureIdeMcpRegistered();
+    },
+  },
+  {
+    name: 'ensureAutomationMcpRegistered',
+    run: async () => {
+      const { ensureAutomationMcpRegistered } = await import('@process/automation/registerAutomationMcp');
+      return ensureAutomationMcpRegistered();
+    },
+  },
+  {
+    name: 'ensureOfficeEditorMcpRegistered',
+    run: async () => {
+      const { ensureOfficeEditorMcpRegistered } = await import('@process/editor/registerOfficeEditorMcp');
+      return ensureOfficeEditorMcpRegistered();
+    },
+  },
+  {
+    name: 'ensureMusicMcpRegistered',
+    run: async () => {
+      // Gated: only register the Music MCP server when the feature flag is on,
+      // so the agent plane stays dark until Music Studio is enabled.
+      const { MUSIC_STUDIO_ENABLED } = await import('@/common/config/constants');
+      if (!MUSIC_STUDIO_ENABLED) return false;
+      const { ensureMusicMcpRegistered } = await import('@process/music/registerMusicMcp');
+      return ensureMusicMcpRegistered();
+    },
+  },
+  {
+    name: 'ensureRealtimeKnowledgeMcpRegistered',
+    run: async () => {
+      const { ensureRealtimeKnowledgeMcpRegistered } = await import(
+        '@process/knowledge/registerRealtimeKnowledgeMcp'
+      );
+      return ensureRealtimeKnowledgeMcpRegistered();
+    },
+  },
   { name: 'migrateAssistantsToBackend', run: async (configFile) => migrateAssistantsToBackend(configFile) },
+  {
+    name: 'ensureBootstrapAgents',
+    run: async () => ensureBootstrapAgents(),
+  },
 ];
+
+type BootstrapAgentEntry = {
+  name: string;
+  command: string;
+  args?: string[];
+  icon?: string;
+  description?: string;
+  yolo_id?: string;
+};
+
+const ANTIGRAVITY_COMMAND = process.platform === 'win32' ? 'agi.exe' : 'agi';
+
+const BOOTSTRAP_AGENTS: BootstrapAgentEntry[] = [
+  {
+    name: 'DeepSeek TUI',
+    command: 'deepseek-tui',
+    args: ['acp'],
+    icon: 'ai-china/deepseek.svg',
+    description: 'DeepSeek Terminal UI (codewhale)',
+    yolo_id: 'yolo',
+  },
+  {
+    name: 'Antigravity',
+    command: ANTIGRAVITY_COMMAND,
+    args: ['acp'],
+    icon: 'tools/antigravity.svg',
+    description: 'Antigravity CLI (agi.exe / agi)',
+    yolo_id: 'yolo',
+  },
+];
+
+type MinimalAgentRow = {
+  id: string;
+  name?: string;
+  command?: string;
+  args?: string[];
+  icon?: string;
+  description?: string;
+  yolo_id?: string;
+  agent_source?: string;
+};
+
+type BootstrapAgentPayload = {
+  name: string;
+  command: string;
+  icon?: string;
+  args?: string[];
+  advanced?: {
+    description?: string;
+    yolo_id?: string;
+  };
+};
+
+function buildBootstrapAgentPayload(entry: BootstrapAgentEntry): BootstrapAgentPayload {
+  return {
+    name: entry.name,
+    command: entry.command,
+    icon: entry.icon,
+    args: entry.args,
+    advanced:
+      entry.description || entry.yolo_id
+        ? {
+            description: entry.description,
+            yolo_id: entry.yolo_id,
+          }
+        : undefined,
+  };
+}
+
+function findBootstrapAgent(existing: MinimalAgentRow[], entry: BootstrapAgentEntry): MinimalAgentRow | undefined {
+  return existing.find(
+    (agent) =>
+      agent.name === entry.name ||
+      agent.command === entry.command ||
+      agent.id === entry.command ||
+      agent.id === entry.name
+  );
+}
+
+function needsBootstrapAgentUpdate(existing: MinimalAgentRow, entry: BootstrapAgentEntry): boolean {
+  return (
+    existing.name !== entry.name ||
+    existing.command !== entry.command ||
+    existing.icon !== entry.icon ||
+    existing.description !== entry.description ||
+    existing.yolo_id !== entry.yolo_id ||
+    !areStringArraysEqual(existing.args, entry.args)
+  );
+}
+
+async function ensureBootstrapAgents(): Promise<boolean> {
+  let existing: MinimalAgentRow[] = [];
+  try {
+    const raw = await httpRequest<unknown>('GET', '/api/agents');
+    existing = (Array.isArray(raw) ? raw : []) as MinimalAgentRow[];
+  } catch (error) {
+    console.warn('[AionUi] Bootstrap agents: failed to fetch existing agents, will retry next launch', error);
+    return false;
+  }
+
+  console.info(`[AionUi] Bootstrap agents: found ${existing.length} existing agent(s)`);
+
+  let changed = 0;
+
+  for (const entry of BOOTSTRAP_AGENTS) {
+    const matchedAgent = findBootstrapAgent(existing, entry);
+    const payload = buildBootstrapAgentPayload(entry);
+
+    if (matchedAgent) {
+      if (!needsBootstrapAgentUpdate(matchedAgent, entry)) {
+        console.info(`[AionUi] Bootstrap agents: "${entry.name}" already registered, skipping`);
+        continue;
+      }
+
+      if (matchedAgent.agent_source && matchedAgent.agent_source !== 'custom') {
+        console.info(
+          `[AionUi] Bootstrap agents: "${entry.name}" is managed by source "${matchedAgent.agent_source}", skipping update`
+        );
+        continue;
+      }
+
+      try {
+        // eslint-disable-next-line no-await-in-loop -- bootstrap migrations intentionally run sequentially at startup.
+        await httpRequest<unknown>('PUT', `/api/agents/custom/${matchedAgent.id}`, payload);
+        console.info(`[AionUi] Bootstrap agents: updated "${entry.name}" (command=${entry.command})`);
+        changed += 1;
+      } catch (error) {
+        console.warn(`[AionUi] Bootstrap agents: failed to update "${entry.name}"`, error);
+      }
+      continue;
+    }
+
+    try {
+      // eslint-disable-next-line no-await-in-loop -- bootstrap migrations intentionally run sequentially at startup.
+      const result = await httpRequest<unknown>('POST', '/api/agents/custom', payload);
+      console.info(`[AionUi] Bootstrap agents: registered "${entry.name}" (command=${entry.command})`, result);
+      changed += 1;
+    } catch (error) {
+      console.warn(`[AionUi] Bootstrap agents: failed to register "${entry.name}"`, error);
+    }
+  }
+
+  // Trigger a refresh so the backend re-scans PATH for the new agents
+  if (changed > 0) {
+    console.info(`[AionUi] Bootstrap agents: changed ${changed} agent(s), triggering refresh`);
+    try {
+      await httpRequest<void>('POST', '/api/agents/refresh');
+    } catch (error) {
+      console.warn('[AionUi] Bootstrap agents: refresh failed (non-fatal)', error);
+    }
+  }
+
+  return true;
+}
 
 async function syncBuiltinMcpConfig(configFile: ConfigFile): Promise<void> {
   const localMcpConfig = ((await configFile.get('mcp.config').catch((): IMcpServer[] => [])) || []) as IMcpServer[];

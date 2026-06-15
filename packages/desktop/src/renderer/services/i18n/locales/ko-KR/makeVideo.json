@@ -1,0 +1,93 @@
+{
+  "title": "비디오 제작",
+  "newProject": "새 프로젝트",
+  "emptyGallery": "아직 프로젝트가 없습니다. 하나 만들어 AI 영화를 시작하세요.",
+  "retry": "다시 시도",
+  "unavailableTitle": "비디오 제작 서비스를 사용할 수 없습니다",
+  "unavailableSubtitle": "비디오 제작 엔진이 아직 연결되지 않았습니다. 데스크톱 브리지가 연결되면 사용할 수 있습니다.",
+  "noScenes": "아직 장면이 없습니다. 스크립트를 생성해 시작하세요.",
+  "generatingScript": "스크립트를 작성하는 중…",
+  "new": {
+    "title": "새 비디오 프로젝트",
+    "create": "만들기",
+    "cancel": "취소",
+    "topic": "주제",
+    "topicPlaceholder": "영화는 무엇에 관한 것인가요? 예: 외로운 로봇이 친구를 찾습니다.",
+    "style": "스타일",
+    "stylePlaceholder": "예: 애니메이션, 시네마틱, 클레이메이션",
+    "language": "내레이션 언어"
+  },
+  "remove": {
+    "title": "프로젝트 삭제",
+    "content": "\"{{topic}}\"을(를) 삭제하시겠습니까? 이 작업은 취소할 수 없습니다.",
+    "confirm": "삭제",
+    "cancel": "취소"
+  },
+  "card": {
+    "scenes": "{{count}}개 장면 · {{rendered}}개 렌더링됨",
+    "clips": "{{count}}개 클립"
+  },
+  "controls": {
+    "scriptModel": "스크립트 모델",
+    "imageModel": "이미지 모델",
+    "pickModel": "모델 선택",
+    "scenes": "장면",
+    "generateScript": "스크립트 생성",
+    "regenerateScript": "스크립트 다시 생성",
+    "renderAll": "모든 이미지 렌더링",
+    "voiceConfig": "음성 설정",
+    "genAllVoices": "모든 음성 생성",
+    "clipConfig": "동영상 클립 설정",
+    "genAllClips": "모든 클립 생성",
+    "exportFinal": "MP4 내보내기",
+    "exporting": "내보내는 중…",
+    "providerGroup": "제공자 모델",
+    "cliGroup": "CLI 에이전트",
+    "noModels": "모델이 없습니다. 설정에서 제공자 또는 CLI 에이전트를 추가하세요.",
+    "stop": "중지",
+    "stopping": "중지하는 중…"
+  },
+  "scene": {
+    "index": "장면 {{n}}",
+    "untitled": "제목 없는 장면",
+    "rendering": "렌더링 중…",
+    "render": "이미지 렌더링",
+    "regenerate": "다시 생성",
+    "generatingClip": "클립 생성 중…",
+    "genVoice": "음성 생성",
+    "regenVoice": "음성 재생성",
+    "genClip": "동영상 클립 생성",
+    "regenClip": "클립 재생성",
+    "showVideo": "동영상 보기",
+    "showImage": "이미지 보기",
+    "frameEndSet": "종료 프레임 설정됨",
+    "clearFrameEnd": "지우기",
+    "voiceNotConfigured": "먼저 음성 제공자를 설정하세요",
+    "clipNotConfigured": "먼저 동영상 클립 제공자를 설정하세요",
+    "clipNeedsImage": "먼저 이미지를 렌더링하세요"
+  },
+  "voiceConfig": {
+    "title": "음성 (TTS) 제공자",
+    "save": "저장",
+    "cancel": "취소",
+    "provider": "제공자",
+    "baseUrl": "Base URL",
+    "apiKey": "API Key",
+    "model": "모델",
+    "voice": "음성",
+    "voiceId": "Voice ID"
+  },
+  "videoClipConfig": {
+    "title": "동영상 클립 제공자 (fal.ai)",
+    "save": "저장",
+    "cancel": "취소",
+    "apiKey": "fal.ai API Key",
+    "apiKeyHint": "fal.ai/dashboard에서 키를 발급받으세요",
+    "model": "모델",
+    "duration": "클립 길이",
+    "supportsEndFrame": "이 모델은 시작 + 종료 프레임 보간을 지원합니다"
+  },
+  "export": {
+    "success": "동영상 내보내기 완료: {{path}}"
+  }
+}

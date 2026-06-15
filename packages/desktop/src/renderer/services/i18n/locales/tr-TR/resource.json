@@ -1,0 +1,83 @@
+{
+  "navTitle": "Kaynaklar",
+  "title": "Kaynak Panosu",
+  "subtitle": "AionUi'nin ağır görevleri makinenizde nasıl dengelediğini görün ve sınırları ayarlayın.",
+  "loadError": "Kaynak durumu yüklenemedi. Kaynak koordinatörü henüz çalışmıyor olabilir.",
+  "coordinatorTitle": "Kaynak koordinatörü",
+  "coordinatorSubtitle": "Ağır görevler için kiralama bütçesi ve otomatik dengeleme.",
+  "mode": {
+    "title": "Dengeleme modu",
+    "detailed": "Ayrıntılı",
+    "detailedDesc": "Her sınırı kendiniz belirlersiniz.",
+    "suggest": "Önerilen",
+    "suggestDesc": "AionUi makinenizi okur ve otomatik olarak dengeler.",
+    "changeError": "Mod değiştirilemedi."
+  },
+  "preset": {
+    "title": "Hızlı seviyeler",
+    "subtitle": "Hazır bir bütçeyi tek tıkla uygulayın.",
+    "saver": "Tasarruf",
+    "balanced": "Dengeli",
+    "performance": "Performans",
+    "custom": "Özel",
+    "current": "Geçerli",
+    "applied": "Ön ayar uygulandı.",
+    "applyError": "Ön ayar uygulanamadı."
+  },
+  "machine": {
+    "title": "Makine profili",
+    "ram": "Toplam RAM",
+    "cpu": "CPU çekirdeği",
+    "gpu": "Ayrı GPU",
+    "disk": "Boş disk",
+    "gpuPresent": "Var",
+    "gpuNone": "Yok"
+  },
+  "budget": {
+    "title": "Geçerli bütçe",
+    "subtitle": "Bellek üst sınırları ve aynı anda kaç ağır görevin çalışabileceği.",
+    "memoryCeiling": "Ağır görevler için bellek üst sınırı",
+    "userReserve": "Sizin için ayrılan",
+    "concurrency": "Türe göre eş zamanlı görev sayısı",
+    "save": "Bütçeyi kaydet",
+    "saved": "Bütçe güncellendi.",
+    "saveError": "Bütçe güncellenemedi.",
+    "readOnlyHint": "Bu sınırları düzenlemek için Ayrıntılı moda geçin."
+  },
+  "leases": {
+    "title": "Etkinlik",
+    "subtitle": "Şu anda kira tutan görevler ve kuyrukta bekleyen görevler.",
+    "activeTotal": "Etkin kiralar",
+    "queuedTotal": "Kuyruktaki görevler",
+    "none": "Çalışan ağır görev yok.",
+    "kindHeader": "Görev türü",
+    "activeHeader": "Etkin",
+    "queuedHeader": "Kuyruk"
+  },
+  "adjustments": {
+    "title": "Denge neden değişti",
+    "subtitle": "Her otomatik ayarlama nedeniyle birlikte kaydedilir.",
+    "empty": "Henüz otomatik ayarlama yok.",
+    "reasonLabel": "Neden",
+    "memoryChange": "Bellek üst sınırı: {{from}} → {{to}} MB",
+    "reserveChange": "Kullanıcı ayırması: {{from}} → {{to}} MB",
+    "concurrencyChange": "{{kind}}: {{from}} → {{to}}",
+    "noFieldChange": "Bütçe alanları değişmedi."
+  },
+  "taskKind": {
+    "agent": "Aracılar",
+    "browser": "Tarayıcı sekmeleri",
+    "emulator": "Android emülatörleri",
+    "windowsTest": "Windows testleri",
+    "patchBuild": "Yama derlemeleri",
+    "ocr": "OCR",
+    "transcription": "Deşifre",
+    "docConvert": "Belge dönüştürme",
+    "semanticIndex": "Anlamsal dizin"
+  },
+  "units": {
+    "mb": "MB",
+    "gb": "GB",
+    "cores": "çekirdek"
+  }
+}

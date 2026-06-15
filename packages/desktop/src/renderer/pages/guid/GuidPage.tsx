@@ -27,6 +27,7 @@ import { useGuidModelSelection } from './hooks/useGuidModelSelection';
 import { useGuidSend } from './hooks/useGuidSend';
 import { useTypewriterPlaceholder } from './hooks/useTypewriterPlaceholder';
 import { ensureBackendMcpCatalog } from '@/renderer/hooks/mcp/catalog';
+import { BROWSER_CONTROL_MCP_NAME } from '@/renderer/pages/conversation/hooks/useSuperMode';
 import { resolveAgentLogo } from '@/renderer/utils/model/agentLogo';
 import { Button, ConfigProvider, Dropdown, Menu, Message } from '@arco-design/web-react';
 import { Down, Left, Robot, Write } from '@icon-park/react';
@@ -96,6 +97,28 @@ const GuidPage: React.FC = () => {
         setGuidSelectedMcpServerIds((prev) => prev ?? []);
       });
   }, []);
+
+  // --- Super (first-turn) ---
+  // "Super" grants the new conversation's agent the Browser-Control tool set so
+  // it can drive a live browser from the VERY FIRST message. Mechanically it is
+  // the built-in `aionui-browser-control` MCP server (registered at boot as an
+  // in-process SSE host) added to the conversation's selected servers — the same
+  // mechanism as the in-conversation Super switch, but applied here so the first
+  // turn already has the tools (the user does not have to send one message first).
+  const superServerId = useMemo(
+    () => availableMcpServers.find((s) => s.name === BROWSER_CONTROL_MCP_NAME)?.id ?? null,
+    [availableMcpServers]
+  );
+  const superEnabled = Boolean(superServerId && (guidSelectedMcpServerIds ?? []).includes(superServerId));
+  const handleToggleSuper = useCallback(() => {
+    if (!superServerId) return;
+    setGuidSelectedMcpServerIds((prev) => {
+      const current = prev ?? [];
+      return current.includes(superServerId)
+        ? current.filter((id) => id !== superServerId)
+        : [...current, superServerId];
+    });
+  }, [superServerId]);
 
   const handleToggleSkill = useCallback((skillName: string, isAuto: boolean) => {
     if (isAuto) {
@@ -591,6 +614,9 @@ const GuidPage: React.FC = () => {
       mcpServers={availableMcpServers}
       selectedMcpServerIds={guidSelectedMcpServerIds ?? []}
       onToggleMcpServer={handleToggleMcpServer}
+      superAvailable={Boolean(superServerId)}
+      superEnabled={superEnabled}
+      onToggleSuper={handleToggleSuper}
       hidePresetTag
       loading={guidInput.loading}
       isButtonDisabled={send.isButtonDisabled}

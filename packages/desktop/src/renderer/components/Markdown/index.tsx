@@ -15,6 +15,7 @@ import remarkMath from 'remark-math';
 // Import KaTeX CSS to make it available in the document
 import 'katex/dist/katex.min.css';
 
+import { ipcBridge } from '@/common';
 import { openExternalUrl } from '@/renderer/utils/platform';
 import classNames from 'classnames';
 import React, { useCallback, useMemo } from 'react';
@@ -29,6 +30,55 @@ const REMARK_PLUGINS = [remarkGfm, remarkMath, remarkBreaks];
 const isLocalFilePath = (src: string): boolean => {
   if (src.startsWith('http://') || src.startsWith('https://')) return false;
   if (src.startsWith('data:')) return false;
+  return true;
+};
+
+const isExternalLink = (href: string): boolean => {
+  return /^[a-z][a-z0-9+.-]*:/i.test(href) && !href.startsWith('file:');
+};
+
+const decodeMarkdownHref = (href: string, attributeHref?: string): string => {
+  const rawHref = attributeHref || href;
+  const withoutFileProtocol = rawHref.replace(/^file:\/\//i, '');
+  return decodeURIComponent(withoutFileProtocol);
+};
+
+const getContentTypeFromPath = (path: string) => {
+  const extension = path.split('.').pop()?.toLowerCase();
+  if (extension === 'md' || extension === 'markdown') return 'markdown';
+  if (extension === 'html' || extension === 'htm') return 'html';
+  return 'code';
+};
+
+type PreviewOpenEvent = {
+  content: string;
+  contentType: ReturnType<typeof getContentTypeFromPath>;
+  metadata: {
+    file_path: string;
+    file_name: string;
+    title: string;
+  };
+};
+
+const openLocalFileInPreview = async (path: string): Promise<boolean> => {
+  const content = await ipcBridge.fs.readFile.invoke({ path });
+  if (content === null) return false;
+
+  const normalizedPath = path.replace(/\\/g, '/');
+  const fileName = normalizedPath.split('/').pop() || path;
+  window.dispatchEvent(
+    new CustomEvent<PreviewOpenEvent>('preview.open', {
+      detail: {
+        content,
+        contentType: getContentTypeFromPath(path),
+        metadata: {
+          file_path: path,
+          file_name: fileName,
+          title: fileName,
+        },
+      },
+    })
+  );
   return true;
 };
 
@@ -56,14 +106,21 @@ const MarkdownView: React.FC<MarkdownViewProps> = React.memo(
     }, [childrenProp]);
 
     const handleLinkClick = useCallback(
-      (e: React.MouseEvent<HTMLAnchorElement>) => {
+      async (e: React.MouseEvent<HTMLAnchorElement>) => {
         e.preventDefault();
         e.stopPropagation();
-        const href = (e.currentTarget as HTMLAnchorElement).href;
+        const href = e.currentTarget.getAttribute('href');
         if (!href) return;
-        openExternalUrl(href).catch((error: unknown) => {
-          console.error(t('messages.openLinkFailed'), error);
-        });
+
+        if (isExternalLink(href)) {
+          openExternalUrl(href).catch((error: unknown) => {
+            console.error(t('messages.openLinkFailed'), error);
+          });
+          return;
+        }
+
+        const localPath = decodeMarkdownHref(href);
+        await openLocalFileInPreview(localPath);
       },
       [t]
     );

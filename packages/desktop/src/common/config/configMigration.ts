@@ -53,6 +53,7 @@ const ALL_LEGACY_KEYS: ConfigKey[] = [
   'system.cronNotificationEnabled',
   'system.keepAwake',
   'system.autoPreviewOfficeFiles',
+  'browser.openLinksInApp',
   'assistant.telegram.defaultModel',
   'assistant.telegram.agent',
   'assistant.lark.defaultModel',

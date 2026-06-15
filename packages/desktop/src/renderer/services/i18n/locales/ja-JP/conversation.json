@@ -387,6 +387,22 @@
       "genericError": "音声入力に失敗しました。もう一度お試しください"
     }
   },
+  "goalCommand": {
+    "description": "目標をほぼ完全に達成するまで要件を自律的に実行",
+    "allDescription": "全権モード：すべてを自分で決定し要件を超える（101%）",
+    "autoResumeNotice": "ゴール実行が停滞 — 自動再開（{{count}}/{{max}}）",
+    "autoResumeGiveup": "{{max}}回の自動再開後もゴールが停滞。手動確認のため一時停止しました。",
+    "modeOff": "Goalモードをオフにしました。",
+    "modeBadge": "Goalモード",
+    "done": "目標を達成 — テスト合格。Goalモードをオフにしました。",
+    "blocked": "エージェントが目標のブロックを報告。Goalモードをオフにしました — 確認してください。",
+    "maxTurns": "Goalの自動実行上限に到達。Goalモードをオフにしました — 確認してください。",
+    "enforcing": "goalワークフローを強制中 — 自動的に続行します。",
+    "verifySet": "このゴールの独立検証コマンドを設定しました。",
+    "verifyOff": "独立検証を無効にしました。",
+    "verifyRunning": "ゴールを独立して検証中…",
+    "verifyFailed": "独立検証が失敗 — エージェントは修正して再試行する必要があります。"
+  },
   "sideQuestion": {
     "title": "ちょっと質問",
     "description": "現在の会話について短い補足質問をする",
@@ -467,5 +483,20 @@
   "sendbox": {
     "hint": "/ でコマンド、@ でファイルを参照"
   },
-  "notFound": "会話が存在しないか、削除されました"
+  "notFound": "会話が存在しないか、削除されました",
+  "contextPack": {
+    "title": "Including IDE Context",
+    "subtitle": "{{count}} file(s) loaded for the agent",
+    "loaded": "Loaded {{count}} IDE context file(s).",
+    "truncated": "capped",
+    "score": "score {{score}}",
+    "more": "+{{count}} more",
+    "reason": {
+      "seed": "seed",
+      "dependency": "dependency",
+      "dependent": "dependent",
+      "changed": "changed",
+      "entry": "entry"
+    }
+  }
 }

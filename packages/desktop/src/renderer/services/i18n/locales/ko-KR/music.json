@@ -1,0 +1,185 @@
+{
+  "title": "뮤직 스튜디오",
+  "beta": "베타",
+  "intro": "에이전트와 함께 음악을 만드세요. 사용자와 에이전트가 동일한 헤드리스 엔진을 제어합니다.",
+  "project": {
+    "title": "프로젝트",
+    "name": "이름",
+    "tempo": "템포",
+    "tracks": "트랙 수",
+    "key": "Key",
+    "unsaved": "Unsaved project"
+  },
+  "action": {
+    "buildDemo": "데모 비트 생성",
+    "play": "재생",
+    "stop": "정지",
+    "save": "저장",
+    "export": "WAV + 스템 내보내기",
+    "reset": "초기화",
+    "record": "Record",
+    "addInstrument": "Add instrument",
+    "addAudio": "Add audio",
+    "addMidi": "Add MIDI",
+    "addPattern": "Add pattern",
+    "addEq": "Add EQ",
+    "mute": "Mute",
+    "solo": "Solo",
+    "select": "Select"
+  },
+  "msg": {
+    "saved": "프로젝트를 저장했습니다.",
+    "exported": "{{path}} 로 내보냈습니다",
+    "sampleImported": "Sample imported and placed on the timeline."
+  },
+  "suggestion": {
+    "title": "프로듀서 제안",
+    "key": "조성",
+    "progression": "코드 진행"
+  },
+  "track": {
+    "name": "이름",
+    "type": "유형",
+    "clips": "클립 수"
+  },
+  "tracks": {
+    "title": "트랙",
+    "empty": "아직 트랙이 없습니다. 데모 비트를 생성하여 시작하세요."
+  },
+  "value": {
+    "bpm": "{{tempo}} BPM",
+    "keyAMinor": "A minor",
+    "minor": "Minor"
+  },
+  "transport": {
+    "barBeat": "Bar {{bar}} · Beat {{beat}}",
+    "snap": "Snap 1/16"
+  },
+  "recording": {
+    "title": "Recording",
+    "armInput": "Arm input",
+    "status": "Microphone, line-in, comping, and take lanes will live here once the audio-device bridge is wired.",
+    "takeLanes": "Take lanes"
+  },
+  "tuning": {
+    "title": "Tune",
+    "key": "Target key",
+    "scale": "Scale",
+    "chain": "Pitch chain",
+    "pitchCorrection": "Pitch correction",
+    "subtitle": "Analyze pitch and plan key-aware vocal/instrument correction.",
+    "mode": "Mode",
+    "naturalMode": "Natural",
+    "correctionPanel": "Correction",
+    "humanize": "Humanize",
+    "formant": "Formant",
+    "analysis": "Analysis",
+    "averageShift": "Average shift",
+    "maxShift": "Max shift",
+    "voicedFrames": "Voiced frames"
+  },
+  "arrangement": {
+    "title": "Arrangement",
+    "vocal": "Vocal",
+    "drums": "Drums",
+    "bass": "Bass",
+    "keys": "Keys"
+  },
+  "beat": {
+    "title": "Beat maker",
+    "groove": "Groove",
+    "status": "Step sequencing, sample chopping, swing, and humanization belong in this lane."
+  },
+  "mixer": {
+    "title": "Mixer",
+    "vocal": "Vocal",
+    "drums": "Drums",
+    "bass": "Bass",
+    "musicBus": "Music bus",
+    "center": "Center",
+    "wide": "Wide",
+    "sidechain": "Sidechain",
+    "bus": "Bus",
+    "pan": "Pan",
+    "selectedTrack": "Selected track",
+    "noTrack": "No track selected",
+    "subtitle": "Balance track volume, pan, mute/solo, inserts, and master routing.",
+    "volume": "Volume",
+    "fxChain": "FX chain",
+    "noFx": "No FX"
+  },
+  "producer": {
+    "title": "AI producer",
+    "brief": "The agent should listen to the session, understand harmony, timing, tone, and mix balance, then make producer-grade edits when asked.",
+    "taskAnalyze": "Analyze melody, chord movement, rhythm, and emotional direction.",
+    "taskTune": "Tune vocals or instruments while preserving natural expression.",
+    "taskMix": "Balance levels, EQ, compression, stereo width, and loudness.",
+    "taskArrange": "Suggest structure, transitions, drops, fills, and final polish.",
+    "ask": "Ask producer"
+  },
+  "trackType": {
+    "instrument": "Instrument",
+    "audio": "Audio",
+    "midi": "MIDI"
+  },
+  "views": {
+    "projects": "Projects",
+    "playlist": "Playlist",
+    "channelRack": "Channel Rack",
+    "pianoRoll": "Piano Roll",
+    "mixer": "Mixer",
+    "recorder": "Recorder",
+    "tune": "Tune",
+    "browser": "Browser",
+    "producer": "AI Producer"
+  },
+  "projects": {
+    "subtitle": "Create, open, and manage local .daw sessions.",
+    "new": "New project",
+    "refresh": "Refresh",
+    "empty": "No music projects yet.",
+    "open": "Open"
+  },
+  "playlist": {
+    "subtitle": "Arrange pattern, MIDI, audio, and automation clips on the song timeline."
+  },
+  "pianoRoll": {
+    "subtitle": "Write chords, melodies, note lengths, and velocity for MIDI tracks.",
+    "addChord": "Add A minor chord",
+    "notes": "{{count}} notes"
+  },
+  "browser": {
+    "subtitle": "Import WAV samples and manage audio used by this project.",
+    "importWav": "Import WAV",
+    "empty": "No samples imported yet.",
+    "file": "File",
+    "duration": "Duration (s)",
+    "samples": "Samples"
+  },
+  "clipKind": {
+    "pattern": "Pattern",
+    "midi": "MIDI",
+    "audio": "Audio"
+  },
+  "menu": {
+    "file": "File",
+    "edit": "Edit",
+    "track": "Track",
+    "tools": "Tools"
+  },
+  "dock": {
+    "mixer": "Mixer",
+    "channelRack": "Channel Rack",
+    "pianoRoll": "Piano Roll",
+    "recorder": "Recorder",
+    "tune": "Tune",
+    "browser": "Browser",
+    "producer": "AI Producer"
+  },
+  "trackHeaders": {
+    "title": "Tracks"
+  },
+  "inspector": {
+    "title": "Inspector / AI"
+  }
+}

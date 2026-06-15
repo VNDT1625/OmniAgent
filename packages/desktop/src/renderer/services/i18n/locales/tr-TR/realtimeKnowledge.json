@@ -1,0 +1,40 @@
+{
+  "navTitle": "Gerçek Zamanlı Bilgi",
+  "title": "Gerçek Zamanlı Bilgi",
+  "subtitle": "Ajanın güncel tuttuğu zamana duyarlı gerçekler — tazeliklerini, kaynaklarını ve geçerliliklerini inceleyin, arayın veya yenileyin.",
+  "desktopOnly": "Gerçek Zamanlı Bilgi yalnızca masaüstü uygulamasında kullanılabilir.",
+  "reload": "Yeniden yükle",
+  "retry": "Yeniden dene",
+  "searchPlaceholder": "Gerçekleri ara (örn. en son Node LTS, güncel fiyat…)",
+  "loadError": "Bilgi deposu yüklenemedi.",
+  "empty": "Henüz kayıtlı gerçek yok. Ajan, zamana duyarlı bilgileri doğruladıktan sonra rtk_record aracıyla ekler.",
+  "noMatches": "Aramanızla eşleşen gerçek yok.",
+  "freshness": {
+    "fresh": "Taze",
+    "stale": "Eskimekte",
+    "expired": "Süresi dolmuş",
+    "unknown": "Bilinmiyor"
+  },
+  "class": {
+    "version": "Sürüm",
+    "price": "Fiyat",
+    "role_holder": "Görev sahibi",
+    "spec_api": "API / şartname",
+    "status_event": "Olay durumu",
+    "stat_metric": "İstatistik",
+    "other": "Diğer"
+  },
+  "status": {
+    "active": "Etkin",
+    "needs_review": "İnceleme gerekli",
+    "superseded": "Değiştirildi",
+    "archived": "Arşivlendi"
+  },
+  "card": {
+    "validAsOf": "{{date}} itibarıyla geçerli",
+    "confidence": "Güven %{{percent}}",
+    "sources": "Kaynaklar",
+    "refresh": "Yenile",
+    "refreshHint": "Bu gerçeği araştırma hattıyla yeniden doğrula."
+  }
+}

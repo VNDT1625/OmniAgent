@@ -16,6 +16,7 @@ import { loadPresetAssistantResources } from '@/common/utils/presetAssistantReso
 import {
   buildAgentConversationParams,
   getConversationTypeForBackend,
+  resolveAgentBackendKey,
 } from '@/common/utils/buildAgentConversationParams';
 import type { AgentMetadata } from '@/renderer/utils/model/agentTypes';
 import { getAgents } from '@/renderer/hooks/agent/useAgents';
@@ -160,7 +161,7 @@ export async function getDefaultAionrsModel(): Promise<TProviderWithModel> {
  * The backend will automatically fill in derived fields (gateway.cli_path, runtimeValidation, etc.).
  */
 export async function buildCliAgentParams(agent: AgentMetadata, workspace: string): Promise<ICreateConversationParams> {
-  const agentKey = agent.backend || agent.agent_type;
+  const agentKey = resolveAgentBackendKey(agent);
   const type = getConversationTypeForBackend(agentKey);
   const preferredMode = await resolvePreferredMode(agentKey);
   const preferredAcpModelId = type === 'acp' ? await resolvePreferredAcpModelId(agentKey) : undefined;

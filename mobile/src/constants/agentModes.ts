@@ -66,6 +66,15 @@ export const AGENT_MODES: Record<string, AgentModeOption[]> = {
     { value: 'default', label: 'Agent' },
     { value: 'yolo', label: 'YOLO' },
   ],
+  deepseek: [
+    { value: 'default', label: 'Default' },
+    { value: 'acceptEdits', label: 'Accept Edits', description: 'Auto-approve file edits, prompt for commands' },
+    { value: 'yolo', label: 'YOLO', description: 'Auto-approve all operations without prompting' },
+  ],
+  antigravity: [
+    { value: 'default', label: 'Default' },
+    { value: 'yolo', label: 'YOLO', description: 'Auto-approve all operations without prompting' },
+  ],
 };
 
 /**

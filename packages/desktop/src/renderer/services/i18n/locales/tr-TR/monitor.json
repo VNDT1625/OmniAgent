@@ -1,0 +1,60 @@
+{
+  "navTitle": "İzleme",
+  "title": "Hata İzleyici",
+  "subtitle": "Otomatik toplanan hatalar, önerilen düzeltmeler ve onay kapısı.",
+  "refresh": "Yenile",
+  "desktopOnly": "Hata izleyici yalnızca masaüstü uygulamasında kullanılabilir.",
+  "unavailable": "İzleme hizmeti henüz kullanılamıyor.",
+  "noReports": "Henüz hata raporu yok.",
+  "noProposals": "Henüz önerilen düzeltme yok.",
+  "section": {
+    "proposals": "Önerilen düzeltmeler",
+    "reports": "Raporlar"
+  },
+  "report": {
+    "occurrences": "{{count}} kez görüldü",
+    "source": "Kaynak",
+    "knownFix": "Bilinen bir düzeltme var",
+    "fix": "Düzelt"
+  },
+  "fix": {
+    "startedToast": "Hata analiz ediliyor ve düzeltme hazırlanıyor…"
+  },
+  "risk": {
+    "low": "Düşük",
+    "medium": "Orta",
+    "high": "Yüksek"
+  },
+  "status": {
+    "proposed": "Önerildi",
+    "pending-review": "İnceleme bekliyor",
+    "approved": "Onaylandı",
+    "applied": "Uygulandı",
+    "rejected": "Reddedildi",
+    "rolled-back": "Geri alındı"
+  },
+  "patch": {
+    "title": "Önerilen düzeltme",
+    "risk": "Risk",
+    "approve": "Onayla ve uygula",
+    "approveConfirm": "Bu düzeltme uygulamaya uygulansın mı? Önce bir geri alma noktası kaydedilir.",
+    "cancel": "İptal",
+    "reject": "Reddet",
+    "rollback": "Geri al",
+    "publish": "Yayınla",
+    "pendingReview": "İnceleme bekliyor",
+    "applied": "Uygulandı",
+    "rejected": "Reddedildi",
+    "rolledBack": "Geri alındı",
+    "appliedToast": "Düzeltme uygulandı. Gerekirse geri alabilirsiniz.",
+    "rejectedToast": "Öneri reddedildi.",
+    "rolledBackToast": "Düzeltme geri alındı.",
+    "actionError": "İşlem tamamlanamadı."
+  },
+  "publish": {
+    "confirm": "Bir düzeltme dalı oluşturup inceleme için fork'unuza gönderilsin mi?",
+    "pushedToast": "\"{{branch}}\" dalı gönderildi. Pull request sayfası açılıyor…",
+    "notPushed": "\"{{branch}}\" dalı yerel olarak hazırlandı. Hazır olduğunuzda fork'unuza gönderin.",
+    "error": "Düzeltme yayınlanamadı."
+  }
+}

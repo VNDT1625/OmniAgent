@@ -26,13 +26,22 @@ import { useConversationContextSafe } from '@/renderer/hooks/context/Conversatio
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { useOpenFileSelector } from '@/renderer/hooks/file/useOpenFileSelector';
 import { useLatestRef } from '@/renderer/hooks/ui/useLatestRef';
-import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/hooks';
+import {
+  useAddOrUpdateMessage,
+  useMessageList,
+  useMessageListLoading,
+} from '@/renderer/pages/conversation/Messages/hooks';
 import {
   shouldEnqueueConversationCommand,
   useConversationCommandQueue,
   type ConversationCommandQueueItem,
 } from '@/renderer/pages/conversation/platforms/useConversationCommandQueue';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
+import { ideClient } from '@/renderer/pages/studio/ide/ideClient';
+import { buildPlanningGuard } from '@/renderer/pages/studio/ide/planningGuard';
+import { expandGoalCommand, isGoalOffCommand, parseGoalCommand } from '@/common/chat/slash/goalCommand';
+import { clearGoalMode, setGoalMode, withGoalSteeringDirective } from '@/renderer/utils/chat/goalMode';
+import { withResponseLanguageDirective } from '@/renderer/services/i18n/responseLanguage';
 import { warmupConversation } from '@/renderer/pages/conversation/utils/warmupConversation';
 import { useTeamPermission } from '@/renderer/pages/team/hooks/TeamPermissionContext';
 import { allSupportedExts } from '@/renderer/services/FileService';
@@ -216,6 +225,8 @@ const AcpSendBox: React.FC<{
   const atPathRef = useLatestRef(atPath);
 
   const addOrUpdateMessage = useAddOrUpdateMessage(); // Move this here so it's available in useEffect
+  const messages = useMessageList();
+  const messageListLoading = useMessageListLoading();
   const addOrUpdateMessageRef = useLatestRef(addOrUpdateMessage);
 
   // Shared file handling logic
@@ -261,17 +272,67 @@ const AcpSendBox: React.FC<{
     async ({ input, files }: Pick<ConversationCommandQueueItem, 'input' | 'files'>) => {
       if (teamPermission) await teamPermission.warmupSession();
       const displayMessage = buildDisplayMessage(input, files, workspacePath || '');
+      // Goal commands (/goal, /goal-all) expand into a full autonomous instruction
+      // for the agent; the bubble keeps showing the raw `/goal ...` text.
+      const goalExpansion = expandGoalCommand(input);
+      const modelBase = goalExpansion ?? displayMessage;
+      if (goalExpansion) {
+        const parsedGoal = parseGoalCommand(input);
+        if (parsedGoal) setGoalMode(conversation_id, parsedGoal.variant, parsedGoal.requirement);
+      }
 
       setAiProcessing(true);
 
       try {
         void checkAndUpdateTitle(conversation_id, input);
+        let outgoingMessage = modelBase;
+        if (workspacePath && !messageListLoading && messages.length === 0) {
+          const contextResult = await ideClient.kgContext(workspacePath, input, [], true).catch((): null => null);
+          const pack = contextResult?.ok ? contextResult.data : null;
+          if (pack && pack.slices.length > 0) {
+            outgoingMessage = `${pack.renderedContext}\n\n${modelBase}`;
+            addOrUpdateMessageRef.current(
+              {
+                id: uuid(),
+                msg_id: uuid(),
+                type: 'tips',
+                position: 'center',
+                conversation_id,
+                created_at: Date.now(),
+                content: {
+                  type: 'success',
+                  content: t('conversation.contextPack.loaded', { count: pack.sliceCount }),
+                  kind: 'context_pack',
+                  contextPack: {
+                    sliceCount: pack.sliceCount,
+                    truncated: pack.truncated,
+                    files: pack.slices.map((slice) => ({
+                      path: slice.path,
+                      reason: slice.reason,
+                      layer: slice.layer,
+                      score: slice.score,
+                    })),
+                  },
+                },
+              },
+              true
+            );
+          }
+        }
+        if (workspacePath) {
+          outgoingMessage = await buildPlanningGuard(workspacePath, outgoingMessage);
+        }
+        // Goal Mode steering: bind every ordinary turn to the mandatory pipeline.
+        outgoingMessage = withGoalSteeringDirective(outgoingMessage, conversation_id);
+        // Keep the model replying in the app's active language even though the
+        // codebase/files are mostly English (the visible bubble keeps raw text).
+        outgoingMessage = withResponseLanguageDirective(outgoingMessage, conversation_id);
         // Wait for the server-assigned msg_id before rendering the optimistic
         // user bubble so the local row uses the same id as the DB row and
         // subsequent WebSocket stream events — avoids duplicate bubbles when
         // useMessageLstCache reloads.
         const { msg_id } = await ipcBridge.acpConversation.sendMessage.invoke({
-          input: displayMessage,
+          input: outgoingMessage,
           conversation_id,
           files,
         });
@@ -352,7 +413,16 @@ Please check your local CLI tool authentication status`,
         emitter.emit('acp.workspace.refresh');
       }
     },
-    [backend, checkAndUpdateTitle, conversation_id, setAiProcessing, t, workspacePath]
+    [
+      backend,
+      checkAndUpdateTitle,
+      conversation_id,
+      messageListLoading,
+      messages.length,
+      setAiProcessing,
+      t,
+      workspacePath,
+    ]
   );
 
   const {
@@ -378,6 +448,11 @@ Please check your local CLI tool authentication status`,
   });
 
   const onSendHandler = async (message: string) => {
+    if (isGoalOffCommand(message)) {
+      clearGoalMode(conversation_id);
+      Message.info(t('conversation.goalCommand.modeOff'));
+      return;
+    }
     const atPathFiles = atPath.map((item) => (typeof item === 'string' ? item : item.path));
     const allFiles = [...uploadFile, ...atPathFiles];
 
@@ -675,6 +750,7 @@ Please check your local CLI tool authentication status`,
         onSend={onSendHandler}
         slash_commands={slashCommands}
         onSlashBuiltinCommand={onSlashBuiltinCommand}
+        enableGoal
         allowSendWhileLoading
         compactActions={false}
       ></SendBox>

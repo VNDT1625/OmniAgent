@@ -91,6 +91,10 @@ export interface IConfigStorageRefer {
   'system.keepAwake'?: boolean;
   // Automatically preview newly created Office files in the current workspace
   'system.autoPreviewOfficeFiles'?: boolean;
+  // Open links in the built-in Browser tab instead of the system browser.
+  // On Windows this also governs where OS-handed http/https URLs land when
+  // AionUi is set as the default browser. Desktop-only.
+  'browser.openLinksInApp'?: boolean;
   // Telegram assistant default model / Telegram 助手默认模型
   'assistant.telegram.defaultModel'?: {
     id: string;

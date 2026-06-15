@@ -1,0 +1,140 @@
+{
+  "navTitle": "Thời gian thực",
+  "title": "Nguồn tin",
+  "subtitle": "Tổng hợp nguồn RSS và Atom, tự động phân loại theo chủ đề — không cần AI.",
+  "heroLabel": "Tin nổi bật",
+  "trendingTitle": "Xu hướng",
+  "trendingNews": "Tin xu hướng",
+  "latestNews": "Mới nhất",
+  "sourceCount": "{{count}} nguồn",
+  "sourcesButton": "Nguồn tin",
+  "allSources": "Tất cả nguồn",
+  "marketTitle": "Thị trường",
+  "comingSoon": "Sắp ra mắt",
+  "stocksComingSoon": "Dữ liệu chứng khoán — sắp ra mắt",
+  "weather": {
+    "title": "Thời tiết",
+    "setLocation": "Đặt vị trí",
+    "locationPlaceholder": "Ví dụ: Hà Nội",
+    "unavailable": "Không có dữ liệu thời tiết",
+    "feelsLike": "C:{{max}}° T:{{min}}°",
+    "useAuto": "Tự động"
+  },
+  "desktopOnly": "Trình đọc tin chỉ khả dụng trong ứng dụng AionUi trên máy tính.",
+  "bridgeUnavailable": "Dịch vụ tin tức chưa chạy. Tính năng sẽ sẵn sàng khi cầu nối desktop được kết nối.",
+  "retry": "Thử lại",
+  "refresh": "Làm mới tất cả",
+  "refreshing": "Đang làm mới…",
+  "lastUpdated": "Cập nhật {{time}}",
+  "unreadCount": "{{count}} chưa đọc",
+  "markAllRead": "Đánh dấu đã đọc hết",
+  "empty": "Chưa có bài nào. Thêm một nguồn để bắt đầu đọc.",
+  "emptyCategory": "Chưa có bài nào trong chủ đề này.",
+  "openOriginal": "Mở bài gốc",
+  "loadMore": "Xem thêm ({{count}})",
+  "by": "bởi {{author}}",
+  "category": {
+    "all": "Tất cả",
+    "general": "Chung",
+    "world": "Thế giới",
+    "politics": "Chính trị",
+    "business": "Kinh tế",
+    "technology": "Công nghệ",
+    "science": "Khoa học",
+    "health": "Sức khỏe",
+    "sports": "Thể thao",
+    "entertainment": "Giải trí"
+  },
+  "categorySource": {
+    "feed": "theo nguồn",
+    "tag": "theo thẻ",
+    "keyword": "theo từ khóa",
+    "default": "chưa phân loại"
+  },
+  "feeds": {
+    "title": "Nguồn tin",
+    "add": "Thêm nguồn",
+    "addTitle": "Thêm một nguồn",
+    "editTitle": "Sửa nguồn",
+    "url": "URL nguồn",
+    "urlPlaceholder": "https://example.com/rss",
+    "name": "Tên (tùy chọn)",
+    "namePlaceholder": "Lấy từ nguồn nếu để trống",
+    "feedCategory": "Chủ đề cho nguồn này",
+    "feedCategoryAuto": "Tự động (phân loại từng bài)",
+    "enabled": "Đang bật",
+    "save": "Lưu",
+    "remove": "Xóa",
+    "removeConfirm": "Xóa nguồn này cùng các bài của nó?",
+    "refresh": "Làm mới ngay",
+    "empty": "Chưa có nguồn nào. Thêm URL RSS hoặc Atom để bắt đầu.",
+    "lastError": "Lần làm mới gần nhất thất bại: {{error}}",
+    "never": "Chưa từng tải",
+    "added": "Đã thêm nguồn.",
+    "addError": "Không thể thêm nguồn. Kiểm tra lại URL.",
+    "saved": "Đã lưu nguồn.",
+    "invalidUrl": "Nhập một URL http(s) hợp lệ.",
+    "testUrl": "Kiểm tra"
+  },
+  "settings": {
+    "title": "Cài đặt tin tức",
+    "refreshInterval": "Chu kỳ làm mới (phút)",
+    "refreshIntervalHint": "RSS hoạt động theo kiểu kéo về. Đa số báo cập nhật mỗi 5–15 phút.",
+    "maxItems": "Số bài tối đa mỗi nguồn",
+    "maxItemsHint": "Các bài cũ vượt quá giới hạn này sẽ bị dọn bớt.",
+    "keywordRules": "Quy tắc từ khóa",
+    "keywordRulesHint": "Gán bài vào một chủ đề khi tiêu đề hoặc tóm tắt chứa từ khóa. Các quy tắc này bổ sung cho quy tắc tích hợp sẵn.",
+    "addRule": "Thêm quy tắc",
+    "ruleKeywords": "Từ khóa (cách nhau bằng dấu phẩy)",
+    "ruleCategory": "Chủ đề",
+    "saved": "Đã lưu cài đặt."
+  },
+  "presets": {
+    "tabLibrary": "Chọn từ thư viện",
+    "tabCustom": "Nhập URL thủ công",
+    "langVi": "Tiếng Việt",
+    "langEn": "Tiếng Anh",
+    "groupVi": "Nguồn tiếng Việt",
+    "groupEn": "Nguồn tiếng Anh",
+    "add": "Thêm",
+    "alreadyAdded": "Đã thêm"
+  },
+  "github": {
+    "title": "Top GitHub",
+    "since": {
+      "daily": "Hôm nay",
+      "weekly": "Tuần này",
+      "monthly": "Tháng này"
+    },
+    "error": "Không tải được GitHub trending.",
+    "empty": "Chưa có repo nổi bật."
+  },
+  "translate": {
+    "translate": "Dịch sang ngôn ngữ của tôi",
+    "showOriginal": "Xem bản gốc"
+  },
+  "view": {
+    "news": "Tin tức",
+    "stocks": "Chứng khoán"
+  },
+  "market": {
+    "title": "Thị trường",
+    "updated": "Cập nhật {{time}}",
+    "error": "Không có dữ liệu thị trường.",
+    "moreSoon": "Danh mục theo dõi tùy chỉnh, biểu đồ và nhiều dữ liệu hơn sẽ sớm có.",
+    "group": {
+      "index": "Chỉ số",
+      "stock": "Cổ phiếu",
+      "crypto": "Tiền mã hóa"
+    },
+    "addPlaceholder": "Thêm mã (AAPL, ^GSPC, BTC-USD)",
+    "add": "Thêm",
+    "remove": "Xóa",
+    "reset": "Mặc định",
+    "symbolHint": "Mã theo Yahoo Finance. Chỉ số bắt đầu bằng ^, crypto kết thúc bằng -USD."
+  },
+  "realtime": {
+    "on": "Realtime: bật",
+    "off": "Realtime: tắt"
+  }
+}

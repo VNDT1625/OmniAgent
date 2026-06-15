@@ -32,6 +32,13 @@ export type BuildAgentConversationInput = {
   extra?: Partial<ICreateConversationParams['extra']>;
 };
 
+export function resolveAgentBackendKey(agent: { agent_type: string; agent_source?: string; backend?: string }): string {
+  if (agent.agent_source === 'custom') {
+    return 'custom';
+  }
+  return agent.backend || agent.agent_type;
+}
+
 export function getConversationTypeForBackend(backend: string): ICreateConversationParams['type'] {
   switch (backend) {
     case 'aionrs':

@@ -1,0 +1,134 @@
+/**
+ * Styling for the Notion-style embed block (iframe preview + bookmark card +
+ * empty input). Theme-token driven; scoped via CSS Module. The iframe surface is
+ * the documented non-Arco editor exception.
+ */
+
+.host {
+  width: 100%;
+  margin: 4px 0;
+}
+
+/* ---- Empty state: paste-a-URL prompt ---------------------------------- */
+.empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 10px;
+  background: var(--color-fill-1);
+}
+.emptyIcon {
+  display: inline-flex;
+  color: var(--color-text-3);
+  flex-shrink: 0;
+}
+.emptyInput {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- Trusted iframe preview ------------------------------------------- */
+.frameWrap {
+  border: 1px solid var(--color-border-2);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--color-bg-2);
+}
+.frameRatio {
+  position: relative;
+  width: 100%;
+  height: 0;
+}
+.frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+}
+.frameBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px 4px 12px;
+  border-top: 1px solid var(--color-border-2);
+  background: var(--color-bg-1);
+}
+.frameProvider {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  color: var(--color-text-3);
+}
+.frameOpen {
+  color: var(--color-text-2) !important;
+}
+
+/* ---- Bookmark fallback card ------------------------------------------- */
+.bookmark {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--color-border-2);
+  border-radius: 12px;
+  background: var(--color-bg-1);
+  cursor: pointer;
+  transition:
+    border-color 0.14s ease,
+    background 0.14s ease;
+  outline: none;
+}
+.bookmark:hover {
+  border-color: var(--mgr-accent, var(--primary));
+  background: var(--color-fill-1);
+}
+.bookmark:focus-visible {
+  outline: 2px solid var(--mgr-accent, var(--primary));
+  outline-offset: 2px;
+}
+.bookmarkIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 9px;
+  background: var(--mgr-accent-light-1, var(--color-fill-2));
+  color: var(--mgr-accent, var(--primary));
+  flex-shrink: 0;
+}
+.bookmarkBody {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+.bookmarkHost {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--color-text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bookmarkUrl {
+  font-size: 12px;
+  color: var(--color-text-3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bookmarkOpen {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--mgr-accent, var(--primary));
+  flex-shrink: 0;
+}

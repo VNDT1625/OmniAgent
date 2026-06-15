@@ -4,9 +4,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import type { IMessageTips } from '@/common/chat/chatLib';
+import type { AgentContextPackTip, IMessageTips } from '@/common/chat/chatLib';
 import { Collapse, Tag } from '@arco-design/web-react';
-import { Attention, CheckOne } from '@icon-park/react';
+import { Attention, CheckOne, FileCode } from '@icon-park/react';
 import { theme } from '@office-ai/platform';
 import classNames from 'classnames';
 import React, { useMemo } from 'react';
@@ -58,6 +58,51 @@ const ownershipColor = {
   unknown_upstream: 'gray',
 };
 
+const ContextPackTip: React.FC<{ pack: AgentContextPackTip }> = ({ pack }) => {
+  const { t } = useTranslation();
+  const visibleFiles = pack.files.slice(0, 12);
+  const hiddenCount = Math.max(0, pack.files.length - visibleFiles.length);
+
+  return (
+    <div className='w-full'>
+      <div className='bg-message-tips rd-8px p-x-12px p-y-10px flex flex-col gap-8px border border-solid border-2'>
+        <div className='flex items-center gap-8px min-w-0'>
+          <FileCode theme='outline' size='16' className='text-primary shrink-0' />
+          <div className='flex-1 min-w-0'>
+            <div className='text-13px font-600 text-t-primary truncate'>{t('conversation.contextPack.title')}</div>
+            <div className='text-12px text-t-tertiary'>
+              {t('conversation.contextPack.subtitle', { count: pack.sliceCount })}
+            </div>
+          </div>
+          {pack.truncated ? (
+            <Tag size='small' color='orange'>
+              {t('conversation.contextPack.truncated')}
+            </Tag>
+          ) : null}
+        </div>
+        <div className='flex flex-wrap gap-6px'>
+          {visibleFiles.map((file) => (
+            <Tag key={file.path} size='small' className='max-w-full'>
+              <span className='inline-flex items-center gap-5px max-w-full'>
+                <span className='font-600 text-t-primary truncate max-w-320px'>{file.path}</span>
+                <span className='text-t-tertiary'>
+                  {t(`conversation.contextPack.reason.${file.reason}`)} · {file.layer} ·{' '}
+                  {t('conversation.contextPack.score', { score: file.score.toFixed(1) })}
+                </span>
+              </span>
+            </Tag>
+          ))}
+          {hiddenCount > 0 ? (
+            <Tag size='small' color='gray'>
+              {t('conversation.contextPack.more', { count: hiddenCount })}
+            </Tag>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const MessageTips: React.FC<{ message: IMessageTips }> = ({ message }) => {
   const { t } = useTranslation();
   const { content, type } = message.content;
@@ -66,6 +111,10 @@ const MessageTips: React.FC<{ message: IMessageTips }> = ({ message }) => {
 
   const displayContent = json ? '' : content;
   const shouldShowFeedback = type === 'error';
+
+  if (message.content.kind === 'context_pack' && message.content.contextPack) {
+    return <ContextPackTip pack={message.content.contextPack} />;
+  }
 
   if (structuredError) {
     const code = structuredError.code;

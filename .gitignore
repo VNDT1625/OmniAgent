@@ -215,3 +215,14 @@ graphify-out/
 .graphify_python
 
 .snow/
+
+# MTUI Rust build artifacts
+packages/mtui/target/
+
+# MTUI local state directory (runtime-generated)
+.mtui/
+
+# Files containing local dev-router API key (do not commit secrets)
+.kiro/steering/claude-ui-testing.md
+.claude/skills/test-with-computer/SKILL.md
+.kiro/status.md

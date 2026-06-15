@@ -160,12 +160,25 @@ export type AgentStreamErrorInfo = {
   resolution?: AgentErrorResolution;
 };
 
+export type AgentContextPackTip = {
+  sliceCount: number;
+  truncated: boolean;
+  files: Array<{
+    path: string;
+    reason: 'seed' | 'dependency' | 'dependent' | 'changed' | 'entry';
+    layer: string;
+    score: number;
+  }>;
+};
+
 export type IMessageTips = IMessage<
   'tips',
   {
     content: string;
     type: 'error' | 'success' | 'warning';
     error?: AgentStreamErrorInfo;
+    kind?: 'context_pack';
+    contextPack?: AgentContextPackTip;
   }
 >;
 

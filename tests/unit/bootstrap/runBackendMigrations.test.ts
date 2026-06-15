@@ -49,6 +49,34 @@ vi.mock('@/process/utils/migrateAssistants', () => ({
   migrateAssistantsToBackend: vi.fn().mockResolvedValue(true),
 }));
 
+vi.mock('@process/testing/registerTestingMcp', () => ({
+  ensureTestingMcpRegistered: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('@process/browser/registerBrowserControlMcp', () => ({
+  ensureBrowserControlMcpRegistered: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('@process/cron/registerCronMcp', () => ({
+  ensureCronMcpRegistered: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('@process/manager/registerManagerMcp', () => ({
+  ensureManagerMcpRegistered: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('@process/automation/registerAutomationMcp', () => ({
+  ensureAutomationMcpRegistered: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('@process/editor/registerOfficeEditorMcp', () => ({
+  ensureOfficeEditorMcpRegistered: vi.fn().mockResolvedValue(true),
+}));
+
+vi.mock('@/common/config/constants', () => ({
+  MUSIC_STUDIO_ENABLED: false,
+}));
+
 const provider: IProvider = {
   id: 'provider-1',
   platform: 'gemini',
@@ -66,6 +94,8 @@ const imageEnv = {
   [IMAGE_GEN_ENV_KEYS.apiKey]: 'provider-key',
   [IMAGE_GEN_ENV_KEYS.model]: 'gemini-image',
 };
+
+const antigravityCommand = process.platform === 'win32' ? 'agi.exe' : 'agi';
 
 const imageServer = (): IMcpServer => ({
   id: 'image-server-id',
@@ -185,5 +215,100 @@ describe('runBackendMigrations', () => {
       'yes',
       'yes'
     );
+  });
+
+  it('registers missing bootstrap CLI agents and refreshes the agent cache', async () => {
+    listServersMock.mockResolvedValue([imageServer()]);
+    httpRequestMock.mockImplementation(async (method: string, path: string) => {
+      if (method === 'GET' && path === '/api/settings/client') {
+        return {};
+      }
+      if (method === 'GET' && path === '/api/providers') {
+        return [provider];
+      }
+      if (method === 'GET' && path === '/api/agents') {
+        return [];
+      }
+      return undefined;
+    });
+
+    await runBackendMigrations(configFile as never);
+
+    expect(httpRequestMock).toHaveBeenCalledWith('POST', '/api/agents/custom', {
+      name: 'DeepSeek TUI',
+      command: 'deepseek-tui',
+      icon: 'ai-china/deepseek.svg',
+      args: ['acp'],
+      advanced: {
+        description: 'DeepSeek Terminal UI (codewhale)',
+        yolo_id: 'yolo',
+      },
+    });
+    expect(httpRequestMock).toHaveBeenCalledWith('POST', '/api/agents/custom', {
+      name: 'Antigravity',
+      command: antigravityCommand,
+      icon: 'tools/antigravity.svg',
+      args: ['acp'],
+      advanced: {
+        description: 'Antigravity CLI (agi.exe / agi)',
+        yolo_id: 'yolo',
+      },
+    });
+    expect(httpRequestMock).toHaveBeenCalledWith('POST', '/api/agents/refresh');
+  });
+
+  it('updates stale bootstrap CLI agents instead of skipping them', async () => {
+    listServersMock.mockResolvedValue([imageServer()]);
+    httpRequestMock.mockImplementation(async (method: string, path: string) => {
+      if (method === 'GET' && path === '/api/settings/client') {
+        return {};
+      }
+      if (method === 'GET' && path === '/api/providers') {
+        return [provider];
+      }
+      if (method === 'GET' && path === '/api/agents') {
+        return [
+          {
+            id: 'deepseek-row',
+            agent_source: 'custom',
+            name: 'DeepSeek TUI',
+            command: 'deepseek-tui',
+            args: [],
+          },
+          {
+            id: 'antigravity-row',
+            agent_source: 'custom',
+            name: 'Antigravity',
+            command: 'agi',
+            args: [],
+          },
+        ];
+      }
+      return undefined;
+    });
+
+    await runBackendMigrations(configFile as never);
+
+    expect(httpRequestMock).toHaveBeenCalledWith('PUT', '/api/agents/custom/deepseek-row', {
+      name: 'DeepSeek TUI',
+      command: 'deepseek-tui',
+      icon: 'ai-china/deepseek.svg',
+      args: ['acp'],
+      advanced: {
+        description: 'DeepSeek Terminal UI (codewhale)',
+        yolo_id: 'yolo',
+      },
+    });
+    expect(httpRequestMock).toHaveBeenCalledWith('PUT', '/api/agents/custom/antigravity-row', {
+      name: 'Antigravity',
+      command: antigravityCommand,
+      icon: 'tools/antigravity.svg',
+      args: ['acp'],
+      advanced: {
+        description: 'Antigravity CLI (agi.exe / agi)',
+        yolo_id: 'yolo',
+      },
+    });
+    expect(httpRequestMock).toHaveBeenCalledWith('POST', '/api/agents/refresh');
   });
 });

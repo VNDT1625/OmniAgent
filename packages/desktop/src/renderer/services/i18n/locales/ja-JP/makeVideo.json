@@ -1,0 +1,93 @@
+{
+  "title": "ムービー作成",
+  "newProject": "新しいプロジェクト",
+  "emptyGallery": "まだプロジェクトがありません。作成して AI ムービーを始めましょう。",
+  "retry": "再試行",
+  "unavailableTitle": "ムービー作成サービスは利用できません",
+  "unavailableSubtitle": "ムービー作成エンジンはまだ接続されていません。デスクトップブリッジが接続されると利用可能になります。",
+  "noScenes": "まだシーンがありません。スクリプトを生成して始めましょう。",
+  "generatingScript": "スクリプトを作成中…",
+  "new": {
+    "title": "新しいムービープロジェクト",
+    "create": "作成",
+    "cancel": "キャンセル",
+    "topic": "テーマ",
+    "topicPlaceholder": "どんなムービーですか？例：孤独なロボットが友達を見つける。",
+    "style": "スタイル",
+    "stylePlaceholder": "例：アニメ、シネマティック、クレイアニメ",
+    "language": "ナレーション言語"
+  },
+  "remove": {
+    "title": "プロジェクトを削除",
+    "content": "「{{topic}}」を削除しますか？この操作は取り消せません。",
+    "confirm": "削除",
+    "cancel": "キャンセル"
+  },
+  "card": {
+    "scenes": "{{count}} シーン · {{rendered}} レンダリング済み",
+    "clips": "{{count}} クリップ"
+  },
+  "controls": {
+    "scriptModel": "スクリプトモデル",
+    "imageModel": "画像モデル",
+    "pickModel": "モデルを選択",
+    "scenes": "シーン",
+    "generateScript": "スクリプトを生成",
+    "regenerateScript": "スクリプトを再生成",
+    "renderAll": "すべての画像をレンダリング",
+    "voiceConfig": "音声設定",
+    "genAllVoices": "すべての音声を生成",
+    "clipConfig": "動画クリップ設定",
+    "genAllClips": "すべてのクリップを生成",
+    "exportFinal": "MP4 に書き出す",
+    "exporting": "書き出し中…",
+    "providerGroup": "プロバイダーモデル",
+    "cliGroup": "CLI エージェント",
+    "noModels": "モデルがありません。設定でプロバイダーまたは CLI エージェントを追加してください。",
+    "stop": "停止",
+    "stopping": "停止中…"
+  },
+  "scene": {
+    "index": "シーン {{n}}",
+    "untitled": "無題のシーン",
+    "rendering": "レンダリング中…",
+    "render": "画像をレンダリング",
+    "regenerate": "再生成",
+    "generatingClip": "クリップを生成中…",
+    "genVoice": "音声を生成",
+    "regenVoice": "音声を再生成",
+    "genClip": "動画クリップを生成",
+    "regenClip": "クリップを再生成",
+    "showVideo": "動画を表示",
+    "showImage": "画像を表示",
+    "frameEndSet": "終了フレーム設定済み",
+    "clearFrameEnd": "クリア",
+    "voiceNotConfigured": "先に音声プロバイダーを設定してください",
+    "clipNotConfigured": "先に動画クリッププロバイダーを設定してください",
+    "clipNeedsImage": "先に画像をレンダリングしてください"
+  },
+  "voiceConfig": {
+    "title": "音声 (TTS) プロバイダー",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "provider": "プロバイダー",
+    "baseUrl": "Base URL",
+    "apiKey": "API Key",
+    "model": "モデル",
+    "voice": "音声",
+    "voiceId": "Voice ID"
+  },
+  "videoClipConfig": {
+    "title": "動画クリッププロバイダー (fal.ai)",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "apiKey": "fal.ai API Key",
+    "apiKeyHint": "fal.ai/dashboard でキーを取得",
+    "model": "モデル",
+    "duration": "クリップの長さ",
+    "supportsEndFrame": "このモデルは開始フレーム＋終了フレームの補間をサポートしています"
+  },
+  "export": {
+    "success": "動画を書き出しました：{{path}}"
+  }
+}

@@ -1,0 +1,226 @@
+{
+  "version": 1,
+  "updatedAt": 1781521880514,
+  "tasks": [
+    {
+      "id": "t008-1-1-commandtypes-ts-commandrecord-co",
+      "title": "1.1 `commandTypes.ts` — `CommandRecord`, `CommandSuggestion`, trọng số scoring (PURE).",
+      "status": "pending",
+      "sourceLine": 8,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t009-1-2-commandredact-ts-che-secret-tron",
+      "title": "1.2 `commandRedact.ts` — che secret trong lệnh trước khi lưu (PURE).",
+      "status": "pending",
+      "sourceLine": 9,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t010-1-3-commandclassify-ts-tach-program-",
+      "title": "1.3 `commandClassify.ts` — tách `program` + `args` (PURE).",
+      "status": "pending",
+      "sourceLine": 10,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t011-1-4-commandscore-ts-prefix-frequency",
+      "title": "1.4 `commandScore.ts` — prefix + frequency + recency (+vector optional) → rank (PURE).",
+      "status": "pending",
+      "sourceLine": 11,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t012-1-5-commanddocstore-ts-persist-comma",
+      "title": "1.5 `commandDocStore.ts` — persist commandDoc.json (atomic, fs DI).",
+      "status": "pending",
+      "sourceLine": 12,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t013-1-6-commanddocservice-ts-facade-capt",
+      "title": "1.6 `commandDocService.ts` — facade capture/suggest/topK (+ Embedder optional).",
+      "status": "pending",
+      "sourceLine": 13,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t014-1-7-test-phase-1-redact-classify-sco",
+      "title": "1.7 Test Phase 1 — redact/classify/score/store/service.",
+      "status": "pending",
+      "sourceLine": 14,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t018-2-1-commanddocbridge-ts-kenh-termina",
+      "title": "2.1 `commandDocBridge.ts` — kênh `terminal.cmd-capture` / `terminal.cmd-suggest`.",
+      "status": "pending",
+      "sourceLine": 18,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t019-2-2-wire-initallbridges-client-termi",
+      "title": "2.2 Wire `initAllBridges()` + client `terminalBridgeClient` thêm cmd invokers.",
+      "status": "pending",
+      "sourceLine": 19,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t020-2-3-terminalview-tren-command-end-ex",
+      "title": "2.3 TerminalView: trên `command-end(exitCode=0)` + `command-line` → gọi capture.",
+      "status": "pending",
+      "sourceLine": 20,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t024-3-1-usecommanddoc-ts-theo-doi-dong-d",
+      "title": "3.1 `useCommandDoc.ts` — theo dõi dòng đang gõ (keydown), gọi suggest, Tab-accept.",
+      "status": "pending",
+      "sourceLine": 24,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t025-3-2-ghostsuggestion-tsx-overlay-ghos",
+      "title": "3.2 `GhostSuggestion.tsx` — overlay ghost-text mờ tại con trỏ (Arco/UnoCSS, reduced-motion).",
+      "status": "pending",
+      "sourceLine": 25,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t026-3-3-tich-hop-vao-terminalview-giua-p",
+      "title": "3.3 Tích hợp vào TerminalView (giữa prompt-end..command-start).",
+      "status": "pending",
+      "sourceLine": 26,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t030-4-1-commandremap-ts-program-rtk-fact",
+      "title": "4.1 `commandRemap.ts` — program + RTK facts/seed → replacement + updateUrl (PURE).",
+      "status": "pending",
+      "sourceLine": 30,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t031-4-2-smartfixservice-ts-goi-rtkservic",
+      "title": "4.2 `smartFixService.ts` — gọi rtkService + seed built-in (gemini→agi).",
+      "status": "pending",
+      "sourceLine": 31,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t032-4-3-smartfixnotice-tsx-usesmartfix-t",
+      "title": "4.3 `SmartFixNotice.tsx` + `useSmartFix.ts` — nghe command-end≠0 → notice + nút Run với <new>.",
+      "status": "pending",
+      "sourceLine": 32,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t036-5-1-i18n-module-moi-hoac-mo-rong-ter",
+      "title": "5.1 i18n module mới (hoặc mở rộng `terminal`) 9 locale cho ghost/notice.",
+      "status": "pending",
+      "sourceLine": 36,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t037-5-2-tuy-chon-autorerun-mac-dinh-tat-",
+      "title": "5.2 Tuỳ chọn `autoRerun` (mặc định tắt) trong Settings › Terminal.",
+      "status": "pending",
+      "sourceLine": 37,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t038-5-3-dom-test-ghost-text-smart-fix-no",
+      "title": "5.3 DOM test ghost-text + smart-fix notice.",
+      "status": "pending",
+      "sourceLine": 38,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t042-cp1-phase-1-test-pure-store-service-",
+      "title": "CP1 (Phase 1): test pure/store/service pass, tsc sạch.",
+      "status": "pending",
+      "sourceLine": 42,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t043-cp2-phase-2-3-capture-that-khi-lenh-",
+      "title": "CP2 (Phase 2-3): capture thật khi lệnh thành công + ghost-text Tab-accept hoạt động.",
+      "status": "pending",
+      "sourceLine": 43,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    },
+    {
+      "id": "t044-cp3-phase-4-5-smart-fix-notice-remap",
+      "title": "CP3 (Phase 4-5): smart-fix notice + remap RTK + i18n/tests.",
+      "status": "pending",
+      "sourceLine": 44,
+      "indent": 0,
+      "claimedBy": null,
+      "updatedAt": null,
+      "note": null
+    }
+  ]
+}

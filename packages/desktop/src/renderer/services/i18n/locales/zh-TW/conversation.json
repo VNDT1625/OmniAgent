@@ -387,6 +387,22 @@
       "genericError": "語音輸入失敗，請再試一次"
     }
   },
+  "goalCommand": {
+    "description": "自主執行需求，直到幾乎完全達成目標",
+    "allDescription": "全權模式：自主決定一切並超越需求（101%）",
+    "autoResumeNotice": "目標執行卡住 — 自動繼續（{{count}}/{{max}}）",
+    "autoResumeGiveup": "自動繼續 {{max}} 次後目標仍卡住，已暫停等待人工處理。",
+    "modeOff": "已關閉 Goal 模式。",
+    "modeBadge": "Goal 模式",
+    "done": "目標完成 — 測試通過。已關閉 Goal 模式。",
+    "blocked": "智慧代理回報目標被阻擋。已關閉 Goal 模式 — 請檢查。",
+    "maxTurns": "已達到 Goal 自動驅動上限。已關閉 Goal 模式 — 請檢查。",
+    "enforcing": "正在強制執行 goal 流程 — 自動繼續。",
+    "verifySet": "已為本次目標設定獨立驗證命令。",
+    "verifyOff": "已關閉獨立驗證。",
+    "verifyRunning": "正在獨立驗證目標…",
+    "verifyFailed": "獨立驗證失敗 — 智慧代理需修復後重試。"
+  },
   "sideQuestion": {
     "title": "順便問一下",
     "description": "針對目前對話快速提出一個小問題",
@@ -467,5 +483,20 @@
   "sendbox": {
     "hint": "輸入 / 喚起命令，@ 引用檔案"
   },
-  "notFound": "會話不存在或已被刪除"
+  "notFound": "會話不存在或已被刪除",
+  "contextPack": {
+    "title": "Including IDE Context",
+    "subtitle": "{{count}} file(s) loaded for the agent",
+    "loaded": "Loaded {{count}} IDE context file(s).",
+    "truncated": "capped",
+    "score": "score {{score}}",
+    "more": "+{{count}} more",
+    "reason": {
+      "seed": "seed",
+      "dependency": "dependency",
+      "dependent": "dependent",
+      "changed": "changed",
+      "entry": "entry"
+    }
+  }
 }

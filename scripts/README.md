@@ -6,11 +6,11 @@ This directory contains scripts for building and packaging AionUi across differe
 
 | Script                    | Lines | Purpose                                         |
 | ------------------------- | ----- | ----------------------------------------------- |
-| `build-with-builder.js`   | 116   | Coordinates Electron Forge and electron-builder |
-| `rebuildNativeModules.js` | 219   | **Unified native module rebuild utility**       |
+| `scripts/build-with-builder.js`   | 116   | Coordinates Electron Forge and electron-builder |
+| `scripts/rebuildNativeModules.js` | 219   | **Unified native module rebuild utility**       |
 | `beforeBuild.js`          | 38    | Pre-packaging native module rebuild hook        |
-| `afterPack.js`            | 67    | Post-packaging verification (Linux only)        |
-| `afterSign.js`            | 47    | macOS code signing and notarization             |
+| `scripts/afterPack.js`            | 67    | Post-packaging verification (Linux only)        |
+| `scripts/afterSign.js`            | 47    | macOS code signing and notarization             |
 
 **Total**: 487 lines (down from 711 lines before optimization)
 
@@ -35,7 +35,7 @@ electron-builder
 
 ## Native Module Rebuild Strategy
 
-### `rebuildNativeModules.js` - Unified Rebuild Utility
+### `scripts/rebuildNativeModules.js` - Unified Rebuild Utility
 
 This is the core module that handles all native module rebuilding. It provides:
 
@@ -47,7 +47,7 @@ This is the core module that handles all native module rebuilding. It provides:
    - Modules: `better-sqlite3`
 
 2. **`rebuildSingleModule(options)`**
-   - Used by: `afterPack.js`
+   - Used by: `scripts/afterPack.js`
    - Rebuilds a single module in packaged app
    - Strategy: Try prebuild-install first, fall back to electron-rebuild
 
@@ -147,7 +147,7 @@ rebuildSingleModule({
 1. Module is in `packages/desktop/electron-builder.yml` → `files` section
 2. Module is in `packages/desktop/electron-builder.yml` → `asarUnpack` section
 3. `beforeBuild.js` ran successfully during build
-4. For Linux: `afterPack.js` ran successfully
+4. For Linux: `scripts/afterPack.js` ran successfully
 
 ### Native module crashes on launch
 
@@ -157,7 +157,7 @@ rebuildSingleModule({
 
 1. Verify target architecture matches build architecture
 2. Check that `beforeBuild.js` rebuilt for correct architecture
-3. For Linux ARM64: Ensure `afterPack.js` rebuilt the module
+3. For Linux ARM64: Ensure `scripts/afterPack.js` rebuilt the module
 
 ### Cross-compilation fails
 
@@ -182,10 +182,10 @@ rebuildSingleModule({
 - Savings: 224 lines (31% reduction)
 - Changes:
   - ✅ Deleted `release.sh` (67 lines) - use `npm version` instead
-  - ✅ Created `rebuildNativeModules.js` (219 lines) - unified utility
-  - ✅ Simplified `build-with-builder.js`: 321 → 116 lines
+  - ✅ Created `scripts/rebuildNativeModules.js` (219 lines) - unified utility
+  - ✅ Simplified `scripts/build-with-builder.js`: 321 → 116 lines
   - ✅ Simplified `beforeBuild.js`: 95 → 38 lines
-  - ✅ Simplified `afterPack.js`: 181 → 67 lines
+  - ✅ Simplified `scripts/afterPack.js`: 181 → 67 lines
 
 ## Contributing
 

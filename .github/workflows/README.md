@@ -127,7 +127,7 @@
 
 ### GPT Review（自动 + 手动触发）
 
-**自动触发**：通过 `pr-checks.yml` 在 PR 首次提交时自动触发，无需手动操作。
+**自动触发**：通过 `.github/workflows/pr-checks.yml` 在 PR 首次提交时自动触发，无需手动操作。
 
 **手动触发**：
 
@@ -139,7 +139,7 @@
 
 ### GPT PR Assessment（自动 + 手动触发）
 
-**自动触发**：当非项目成员（即 `author_association` 既不是 `OWNER` 也不是 `MEMBER`）首次提交 PR 时，`pr-checks.yml` 会在代码质量检查通过后自动触发评估。
+**自动触发**：当非项目成员（即 `author_association` 既不是 `OWNER` 也不是 `MEMBER`）首次提交 PR 时，`.github/workflows/pr-checks.yml` 会在代码质量检查通过后自动触发评估。
 
 **手动触发**：
 
@@ -162,5 +162,5 @@
 - **更换模型**: 修改 `.github/actions/call-openai/action.yml` 中的 `model` 字段
 - **调整重试逻辑**: 修改 `.github/actions/call-openai/action.yml` 中的 `callOpenAI` 函数
 - **修改文件优先级**: 修改 `.github/actions/read-file-contents/action.yml` 中的 `filePriority` 函数
-- **修改 Review prompt**: 修改 `gpt-review.yml` 中的 "Construct GPT prompts" step
-- **修改 Assessment prompt**: 修改 `gpt-pr-assessment.yml` 中的 "Construct GPT prompts" step
+- **修改 Review prompt**: 修改 `.github/workflows/gpt-review.yml` 中的 "Construct GPT prompts" step
+- **修改 Assessment prompt**: 修改 `.github/workflows/gpt-pr-assessment.yml` 中的 "Construct GPT prompts" step

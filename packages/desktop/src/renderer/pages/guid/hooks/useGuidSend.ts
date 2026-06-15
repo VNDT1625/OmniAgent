@@ -11,6 +11,7 @@ import { toSessionMcpServer } from '@/renderer/hooks/mcp/catalog';
 import { emitter } from '@/renderer/utils/emitter';
 import { buildDisplayMessage } from '@/renderer/utils/file/messageFiles';
 import { updateWorkspaceTime } from '@/renderer/utils/workspace/workspaceHistory';
+import { BROWSER_CONTROL_MCP_NAME, withSuperBrowserRules } from '@/renderer/pages/conversation/hooks/superGuidance';
 import { Message } from '@arco-design/web-react';
 import { useCallback, useRef } from 'react';
 import { type TFunction } from 'i18next';
@@ -152,6 +153,17 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
       .filter((server) => selectedMcpServerIdSet.has(server.id) && server.builtin === true)
       .map((server) => toSessionMcpServer(server));
 
+    // Super = the Browser-Control MCP is among the selected servers. When on, the
+    // agent must be told to use the embedded `browser_*` tools (not spawn
+    // sub-agents / shell out to open a browser, which fails on Windows and has no
+    // tools). We append standing browser rules to the conversation's rules layer.
+    const superSelected = availableMcpServers.some(
+      (server) => server.name === BROWSER_CONTROL_MCP_NAME && selectedMcpServerIdSet.has(server.id)
+    );
+    /** Append Super browser rules to a rules string only when Super is selected. */
+    const withSuperRules = (rules?: string): string | undefined =>
+      superSelected ? withSuperBrowserRules(rules) : rules;
+
     const finalEffectiveAgentType = effectiveAgentType;
 
     // OpenClaw Gateway path
@@ -274,7 +286,7 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
             default_files: files,
             workspace: finalWorkspace,
             custom_workspace: isCustomWorkspace,
-            preset_rules: is_preset ? preset_rules : undefined,
+            preset_rules: withSuperRules(is_preset ? preset_rules : undefined),
             preset_enabled_skills: enabled_skills_to_send,
             exclude_auto_inject_skills: excludeBuiltinSkills,
             selected_mcp_server_ids: selectedUserMcpServerIds,
@@ -350,13 +362,14 @@ export const useGuidSend = (deps: GuidSendDeps): GuidSendResult => {
         custom_workspace: isCustomWorkspace,
         is_preset,
         preset_agent_type: finalEffectiveAgentType,
-        preset_resources: is_preset
-          ? {
-              rules: preset_rules,
-              enabled_skills,
-              exclude_auto_inject_skills: excludeBuiltinSkills,
-            }
-          : undefined,
+        preset_resources:
+          is_preset || superSelected
+            ? {
+                rules: withSuperRules(is_preset ? preset_rules : undefined),
+                enabled_skills,
+                exclude_auto_inject_skills: excludeBuiltinSkills,
+              }
+            : undefined,
         session_mode: selectedMode,
         current_model_id: selectedAcpModel || currentAcpCachedModelInfo?.current_model_id || undefined,
         extra: {

@@ -5,7 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
-import type { IGpuStatus, IStartOnBootStatus } from '@/common/adapter/ipcBridge';
+import type { IDefaultBrowserStatus, IGpuStatus, IStartOnBootStatus } from '@/common/adapter/ipcBridge';
 import { configService } from '@/common/config/configService';
 import AionScrollArea from '@/renderer/components/base/AionScrollArea';
 import FeedbackButton from '@/renderer/components/base/FeedbackButton';
@@ -52,6 +52,9 @@ const SystemModalContent: React.FC = () => {
   const [agentIdleTimeout, setAgentIdleTimeout] = useState<number>(5);
   const [saveUploadToWorkspace, setSaveUploadToWorkspace] = useState(false);
   const [autoPreviewOfficeFiles, setAutoPreviewOfficeFiles] = useState(true);
+  const [openLinksInApp, setOpenLinksInApp] = useState(false);
+  const [defaultBrowser, setDefaultBrowser] = useState<IDefaultBrowserStatus | null>(null);
+  const [settingDefaultBrowser, setSettingDefaultBrowser] = useState(false);
 
   useEffect(() => {
     if (!isDesktop) {
@@ -75,6 +78,15 @@ const SystemModalContent: React.FC = () => {
         }
       })
       .catch(() => {});
+
+    ipcBridge.application.getDefaultBrowserStatus
+      .invoke()
+      .then((result) => {
+        if (result.success && result.data) {
+          setDefaultBrowser(result.data);
+        }
+      })
+      .catch(() => {});
   }, [isDesktop]);
 
   useEffect(() => {
@@ -83,6 +95,7 @@ const SystemModalContent: React.FC = () => {
     setCronNotificationEnabled(configService.get('system.cronNotificationEnabled') ?? false);
     setSaveUploadToWorkspace(configService.get('upload.saveToWorkspace') ?? false);
     setAutoPreviewOfficeFiles(configService.get('system.autoPreviewOfficeFiles') ?? true);
+    setOpenLinksInApp(configService.get('browser.openLinksInApp') ?? false);
     const pt = configService.get('acp.promptTimeout');
     if (pt && pt > 0) setPromptTimeout(pt);
     const ait = configService.get('acp.agentIdleTimeout');
@@ -213,6 +226,33 @@ const SystemModalContent: React.FC = () => {
     });
   }, []);
 
+  const handleOpenLinksInAppChange = useCallback((checked: boolean) => {
+    setOpenLinksInApp(checked);
+    configService.set('browser.openLinksInApp', checked).catch(() => {
+      setOpenLinksInApp(!checked);
+      configService.setLocal('browser.openLinksInApp', !checked);
+    });
+  }, []);
+
+  const handleSetAsDefaultBrowser = useCallback(() => {
+    setSettingDefaultBrowser(true);
+    ipcBridge.application.setAsDefaultBrowser
+      .invoke()
+      .then((result) => {
+        if (result.success && result.data) {
+          setDefaultBrowser(result.data);
+        } else if (result.msg) {
+          Message.error(result.msg);
+        }
+      })
+      .catch(() => {
+        Message.error(t('settings.defaultBrowserUpdateFailed'));
+      })
+      .finally(() => {
+        setSettingDefaultBrowser(false);
+      });
+  }, [t]);
+
   // Get system directory info
   const { data: systemInfo } = useSWR('system.dir.info', () => ipcBridge.application.systemInfo.invoke());
 
@@ -310,6 +350,38 @@ const SystemModalContent: React.FC = () => {
       description: t('settings.autoPreviewOfficeFilesDesc'),
       component: <Switch checked={autoPreviewOfficeFiles} onChange={handleAutoPreviewOfficeFilesChange} />,
     },
+    ...(isDesktop
+      ? [
+          {
+            key: 'openLinksInApp',
+            label: t('settings.openLinksInApp'),
+            description: t('settings.openLinksInAppDesc'),
+            component: <Switch checked={openLinksInApp} onChange={handleOpenLinksInAppChange} />,
+          },
+        ]
+      : []),
+    ...(isDesktop && defaultBrowser?.supported
+      ? [
+          {
+            key: 'defaultBrowser',
+            label: t('settings.defaultBrowser'),
+            description: defaultBrowser.isDefault
+              ? t('settings.defaultBrowserActive')
+              : t('settings.defaultBrowserDesc'),
+            component: (
+              <Button
+                type='outline'
+                size='small'
+                loading={settingDefaultBrowser}
+                disabled={defaultBrowser.isDefault}
+                onClick={handleSetAsDefaultBrowser}
+              >
+                {defaultBrowser.isDefault ? t('settings.defaultBrowserIsDefault') : t('settings.defaultBrowserSet')}
+              </Button>
+            ),
+          },
+        ]
+      : []),
   ];
 
   const saveDirConfigValidate = (_values: { workDir: string }): Promise<unknown> => {

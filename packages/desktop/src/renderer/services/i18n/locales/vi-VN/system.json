@@ -1,0 +1,59 @@
+{
+  "loadError": "Không đọc được trạng thái hệ thống. Dịch vụ quan sát có thể chưa khởi động.",
+  "refresh": "Làm mới",
+  "refreshed": "Đã làm mới thông tin hệ thống.",
+  "refreshError": "Không làm mới được thông tin hệ thống.",
+  "static": {
+    "title": "Máy",
+    "subtitle": "Thông tin phần cứng và phần mềm. Ít khi thay đổi — bấm Làm mới để đọc lại.",
+    "os": "Hệ điều hành",
+    "hostname": "Tên máy · người dùng",
+    "cpu": "Bộ xử lý",
+    "cores": "{{count}} nhân logic",
+    "memory": "Tổng bộ nhớ",
+    "gpu": "Đồ họa",
+    "gpuNone": "Không phát hiện GPU",
+    "disk": "Lưu trữ (trống / tổng)",
+    "network": "Mạng",
+    "noNetwork": "Không có giao diện mạng",
+    "versions": "Phiên bản"
+  },
+  "live": {
+    "title": "Số liệu thời gian thực",
+    "subtitle": "Cập nhật liên tục khi trang này đang mở.",
+    "cpu": "CPU",
+    "memory": "Bộ nhớ",
+    "perCore": "Tải theo từng nhân",
+    "loadAvg": "Tải trung bình",
+    "uptime": "Thời gian chạy",
+    "battery": "Nguồn",
+    "onBattery": "Dùng pin",
+    "plugged": "Cắm sạc",
+    "waiting": "Đang chờ mẫu đo đầu tiên…"
+  },
+  "process": {
+    "title": "Tiến trình",
+    "subtitle": "Các tiến trình của ứng dụng, nặng nhất xếp trước. Đặt mức ưu tiên để ghìm tiến trình ngốn tài nguyên.",
+    "name": "Tiến trình",
+    "cpu": "CPU",
+    "memory": "Bộ nhớ",
+    "priority": "Ưu tiên",
+    "none": "Chưa có dữ liệu tiến trình.",
+    "prioritySet": "Đã cập nhật ưu tiên cho {{name}}.",
+    "priorityError": "Không đổi được mức ưu tiên (có thể cần quyền cao hơn)."
+  },
+  "priority": {
+    "high": "Cao",
+    "aboveNormal": "Trên trung bình",
+    "normal": "Bình thường",
+    "belowNormal": "Dưới trung bình",
+    "low": "Thấp"
+  },
+  "units": {
+    "mb": "MB",
+    "gb": "GB",
+    "day": "ngày",
+    "hour": "giờ",
+    "min": "phút"
+  }
+}

@@ -41,4 +41,6 @@ export interface SlashCommandItem {
   hint?: string;
   /** Optional override for how selection behaves in the slash menu */
   selectionBehavior?: SlashCommandSelectionBehavior;
+  /** Optional text inserted into the composer when selectionBehavior is "insert" */
+  insertText?: string;
 }

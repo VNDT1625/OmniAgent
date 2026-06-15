@@ -1,0 +1,84 @@
+{
+  "navTitle": "Trình duyệt",
+  "title": "Trình duyệt",
+  "subtitle": "Duyệt web ngay trong ứng dụng và để một mô hình AI điều khiển trang như một tác nhân duyệt web.",
+  "desktopOnly": "Trình duyệt nhúng chỉ khả dụng trên ứng dụng desktop.",
+  "bridgeUnavailable": "Dịch vụ trình duyệt chưa khởi động. Tính năng sẽ sẵn sàng khi cầu nối desktop được kết nối.",
+  "retry": "Thử lại",
+  "address": {
+    "placeholder": "Tìm kiếm hoặc nhập URL",
+    "go": "Đi tới",
+    "back": "Quay lại",
+    "forward": "Tới",
+    "reload": "Tải lại"
+  },
+  "tab": {
+    "new": "Thẻ mới",
+    "close": "Đóng thẻ",
+    "untitled": "Thẻ mới"
+  },
+  "agent": {
+    "label": "Tác nhân web",
+    "pickModel": "Chọn mô hình",
+    "pickModelFirst": "Hãy chọn một mô hình để bật tác nhân web.",
+    "noModels": "Chưa có mô hình khả dụng. Thêm tại Cài đặt → Mô hình.",
+    "toggleHint": "Cho phép mô hình điều khiển trang: bấm, cuộn, gõ và đọc nội dung.",
+    "enabled": "Đã bật tác nhân web cho thẻ này.",
+    "disabled": "Đã tắt tác nhân web.",
+    "toggleError": "Không thể thay đổi chế độ tác nhân web.",
+    "providerGroup": "Mô hình API",
+    "cliGroup": "Tác nhân CLI",
+    "cliSuffix": "CLI"
+  },
+  "toolbar": {
+    "zoomIn": "Phóng to",
+    "zoomOut": "Thu nhỏ",
+    "zoomReset": "Đặt lại thu phóng về 100%",
+    "fullscreen": "Toàn màn hình",
+    "exitFullscreen": "Thoát toàn màn hình (Esc)",
+    "showChat": "Hiện khung chat tác nhân web",
+    "hideChat": "Ẩn khung chat tác nhân web",
+    "showAiOverlay": "Hỏi AI về trang này",
+    "hideAiOverlay": "Ẩn hộp hỏi AI",
+    "expandControls": "Hiện thanh điều khiển tác nhân",
+    "collapseControls": "Ẩn thanh điều khiển tác nhân"
+  },
+  "aiOverlay": {
+    "title": "Hỏi AI",
+    "placeholder": "Hỏi về trang này…"
+  },
+  "chat": {
+    "title": "Tác nhân web",
+    "emptyTitle": "Ra lệnh cho tác nhân web",
+    "emptyHint": "Gõ vào thanh địa chỉ để duyệt web bình thường. Còn ở đây, hãy bảo tác nhân làm gì — ví dụ: \"Mở Facebook, đọc tin nhắn của tôi rồi tóm tắt lại.\"",
+    "placeholder": "Bảo tác nhân làm gì trên trang…",
+    "pickModelFirst": "Chọn một mô hình ở trên để trò chuyện với tác nhân web.",
+    "send": "Gửi",
+    "stop": "Dừng",
+    "clear": "Xoá hội thoại",
+    "close": "Ẩn bảng",
+    "swapSide": "Chuyển sang bên kia",
+    "working": "Tác nhân đang xử lý…",
+    "enterHint": "Enter để gửi · Shift+Enter để xuống dòng",
+    "allowControl": "Cho phép điều khiển",
+    "controlOnHint": "Đã cấp quyền: tác nhân có thể click, cuộn, gõ và điều hướng tab này.",
+    "controlOffHint": "Chế độ ẩn: tác nhân chỉ đọc/thu thập và dùng tab nền. Bật để cho nó điều khiển trang này.",
+    "stepFailed": "thất bại",
+    "persona": "Tính cách & quy tắc",
+    "personaTitle": "Tính cách & quy tắc cố định của tác nhân",
+    "personaHint": "Các chỉ dẫn này được áp dụng cho tác nhân web ở mọi lượt (vd ngôn ngữ, giọng điệu, điều tuyệt đối không làm).",
+    "personaPlaceholder": "vd: Luôn trả lời bằng tiếng Việt. Ngắn gọn. Tuyệt đối không mua hàng hay gửi biểu mẫu khi chưa hỏi.",
+    "personaSave": "Lưu",
+    "personaCancel": "Huỷ"
+  },
+  "subtitle_overlay": {
+    "enable": "Hiện phụ đề tiếng Việt",
+    "disable": "Ẩn phụ đề tiếng Việt",
+    "idle": "Đang chờ âm thanh video để tạo phụ đề…"
+  },
+  "viewport": {
+    "emptyTitle": "Chưa mở trang nào",
+    "emptyHint": "Mở một thẻ để bắt đầu duyệt. Trang sẽ hiển thị ở đây và do ứng dụng điều khiển.",
+    "openFirst": "Mở một thẻ"
+  }
+}

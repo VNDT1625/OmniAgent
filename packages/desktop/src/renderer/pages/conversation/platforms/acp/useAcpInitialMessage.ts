@@ -9,6 +9,9 @@ import { isBackendHttpError } from '@/common/adapter/httpBridge';
 import type { AgentStreamErrorInfo } from '@/common/chat/chatLib';
 import type { TMessage } from '@/common/chat/chatLib';
 import { parseError, uuid } from '@/common/utils';
+import { ideClient } from '@/renderer/pages/studio/ide/ideClient';
+import { buildPlanningGuard } from '@/renderer/pages/studio/ide/planningGuard';
+import { withResponseLanguageDirective } from '@/renderer/services/i18n/responseLanguage';
 import { emitter } from '@/renderer/utils/emitter';
 import { buildDisplayMessage } from '@/renderer/utils/file/messageFiles';
 import { useEffect } from 'react';
@@ -51,7 +54,7 @@ const buildSendFailureError = (error: unknown, message: string): AgentStreamErro
  */
 export const useAcpInitialMessage = ({
   conversation_id,
-  backend,
+  backend: _backend,
   workspacePath,
   setAiProcessing,
   checkAndUpdateTitle,
@@ -84,8 +87,48 @@ export const useAcpInitialMessage = ({
         // with sendMessage — which previously produced two duplicated user
         // bubbles on the first conversation render.
         void checkAndUpdateTitle(conversation_id, input);
+        let outgoingMessage = displayMessage;
+        if (workspacePath) {
+          const contextResult = await ideClient.kgContext(workspacePath, input, [], true).catch((): null => null);
+          const pack = contextResult?.ok ? contextResult.data : null;
+          if (pack && pack.slices.length > 0) {
+            outgoingMessage = `${pack.renderedContext}\n\n${displayMessage}`;
+            addOrUpdateMessage(
+              {
+                id: uuid(),
+                msg_id: uuid(),
+                type: 'tips',
+                position: 'center',
+                conversation_id,
+                created_at: Date.now(),
+                content: {
+                  type: 'success',
+                  content: t('conversation.contextPack.loaded', { count: pack.sliceCount }),
+                  kind: 'context_pack',
+                  contextPack: {
+                    sliceCount: pack.sliceCount,
+                    truncated: pack.truncated,
+                    files: pack.slices.map((slice) => ({
+                      path: slice.path,
+                      reason: slice.reason,
+                      layer: slice.layer,
+                      score: slice.score,
+                    })),
+                  },
+                },
+              },
+              true
+            );
+          }
+        }
+        if (workspacePath) {
+          outgoingMessage = await buildPlanningGuard(workspacePath, outgoingMessage);
+        }
+        // Keep the model replying in the app's active language even though the
+        // codebase/files are mostly English (the visible bubble keeps raw text).
+        outgoingMessage = withResponseLanguageDirective(outgoingMessage, conversation_id);
         const { msg_id } = await ipcBridge.acpConversation.sendMessage.invoke({
-          input: displayMessage,
+          input: outgoingMessage,
           conversation_id: conversation_id,
           files,
         });
@@ -135,5 +178,5 @@ export const useAcpInitialMessage = ({
     sendInitialMessage().catch((error) => {
       console.error('Failed to send initial message:', error);
     });
-  }, [addOrUpdateMessage, backend, checkAndUpdateTitle, conversation_id, setAiProcessing, t, workspacePath]);
+  }, [addOrUpdateMessage, checkAndUpdateTitle, conversation_id, setAiProcessing, t, workspacePath]);
 };

@@ -14,7 +14,7 @@ See [docs/contributing/file-structure.md](docs/contributing/file-structure.md) f
 
 - **Components**: PascalCase (`Button.tsx`, `Modal.tsx`)
 - **Utilities**: camelCase (`formatDate.ts`)
-- **Hooks**: camelCase with `use` prefix (`useTheme.ts`)
+- **Hooks**: camelCase with `use` prefix (`packages/desktop/src/renderer/hooks/system/useTheme.ts`)
 - **Constants files**: camelCase (`constants.ts`) — values inside use UPPER_SNAKE_CASE
 - **Type files**: camelCase (`types.ts`)
 - **Style files**: kebab-case or `ComponentName.module.css`
@@ -24,6 +24,8 @@ See [docs/contributing/file-structure.md](docs/contributing/file-structure.md) f
 
 - **Components**: `@arco-design/web-react` — no raw interactive HTML (`<button>`, `<input>`, `<select>`, etc.)
 - **Icons**: `@icon-park/react`
+
+> **MANDATORY for any UI work**: before creating or restyling UI (pages, panels, components, modals), activate the `frontend-design` skill (`.claude/skills/frontend-design/SKILL.md`). Apply the skill's aesthetic principles but render strictly with Arco + `@icon-park/react` + UnoCSS semantic tokens — never Tailwind, shadcn, raw HTML, or hardcoded colors (see the skill's "Project Stack Binding").
 
 ### CSS
 
@@ -75,6 +77,10 @@ bun run test:coverage     # with coverage report
 See the `testing` skill (`.claude/skills/testing/SKILL.md`) for complete workflow and quality rules.
 
 ## Workflow
+
+### MTUI Runtime
+
+Before loading long source files, agents should use `mtui --json map intent "<task>"`, then `mtui --json map folder <path>` / `context` / `compass read` to narrow scope; all file writes must go through MTUI (`new`, `edit`, or `apply-patch`) with `diff`/`undo` available.
 
 ### During Development
 
@@ -132,17 +138,23 @@ For pull request creation, see the `oss-pr` skill (`.claude/skills/oss-pr/SKILL.
 
 ## Skills Index
 
-| Skill             | Purpose                                                                               | Triggers                                                                                   |
-| ----------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| **architecture**  | File & directory structure conventions for all process types                          | Creating files, adding modules, architectural decisions                                    |
-| **i18n**          | Internationalization workflow and standards                                           | Adding user-facing text, modifying `locales/` or `packages/desktop/src/common/config/i18n` |
-| **testing**       | Testing workflow and quality standards                                                | Writing tests, adding features, before claiming completion                                 |
-| **oss-pr**        | Full commit + PR workflow: branch management, quality checks, issue linking, PR       | Creating pull requests, after committing, `/oss-pr`                                        |
-| **bump-version**  | Version bump workflow: update package.json, checks, branch, PR, tag release           | Bumping version, `/bump-version`                                                           |
-| **pr-review**     | Local PR code review with full project context, no truncation limits                  | Reviewing a PR, user says "review PR", `/pr-review`                                        |
-| **pr-fix**        | Fix all issues from a pr-review report, create a follow-up PR, and verify each fix    | After pr-review, user says "fix all issues", `/pr-fix`                                     |
-| **pr-verify**     | Verify and merge bot:ready-to-merge PRs with impact analysis and test supplementation | Verifying PRs, merging ready PRs, `/pr-verify`                                             |
-| **pr-ship**       | End-to-end PR lifecycle: create, CI wait, review, fix, merge in one invocation        | `/pr-ship`, after development is done, resume shepherding a PR                             |
-| **pr-automation** | PR automation orchestrator: poll PRs, review, fix, and merge via label state machine  | Invoked by daemon script (`pr-automation.sh`), `/pr-automation`                            |
+| Skill                    | Purpose                                                                                                          | Triggers                                                                                   |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| **architecture**         | File & directory structure conventions for all process types                                                     | Creating files, adding modules, architectural decisions                                    |
+| **frontend-design**      | Distinctive, production-grade UI aesthetics (upstream Anthropic skill + Arco/UnoCSS adaptation)                  | Creating or restyling any UI: pages, panels, components, modals, beautifying screens       |
+| **systematic-debugging** | Root-cause-first debugging (4-phase framework, upstream obra/superpowers)                                        | Any bug, test failure, unexpected behavior, perf/build issue — before proposing fixes      |
+| **performance**          | RAM/CPU/GPU + startup optimization for Electron/React/aioncore, tied to ResourceCoordinator                      | App lag, high memory/GPU, slow startup, tuning concurrency/leases                          |
+| **test-with-computer**   | ⛔ DEPRECATED — do NOT use. Claude/computer-use UI testing is disabled per `.kiro/steering/claude-ui-testing.md` | (none — use Vitest/DOM tests + user-run `bun start` instead)                               |
+| **i18n**                 | Internationalization workflow and standards                                                                      | Adding user-facing text, modifying `locales/` or `packages/desktop/src/common/config/i18n` |
+| **testing**              | Testing workflow and quality standards                                                                           | Writing tests, adding features, before claiming completion                                 |
+| **oss-pr**               | Full commit + PR workflow: branch management, quality checks, issue linking, PR                                  | Creating pull requests, after committing, `/oss-pr`                                        |
+| **bump-version**         | Version bump workflow: update package.json, checks, branch, PR, tag release                                      | Bumping version, `/bump-version`                                                           |
+| **pr-review**            | Local PR code review with full project context, no truncation limits                                             | Reviewing a PR, user says "review PR", `/pr-review`                                        |
+| **pr-fix**               | Fix all issues from a pr-review report, create a follow-up PR, and verify each fix                               | After pr-review, user says "fix all issues", `/pr-fix`                                     |
+| **pr-verify**            | Verify and merge bot:ready-to-merge PRs with impact analysis and test supplementation                            | Verifying PRs, merging ready PRs, `/pr-verify`                                             |
+| **pr-ship**              | End-to-end PR lifecycle: create, CI wait, review, fix, merge in one invocation                                   | `/pr-ship`, after development is done, resume shepherding a PR                             |
+| **pr-automation**        | PR automation orchestrator: poll PRs, review, fix, and merge via label state machine                             | Invoked by daemon script (`scripts/pr-automation.sh`), `/pr-automation`                            |
 
 > Skills are located in `.claude/skills/` and contain project conventions that apply to **all** agents and contributors.
+>
+> **At the start of every session, read [`.claude/skills/SKILLS_GUIDE.md`](.claude/skills/SKILLS_GUIDE.md)** — it maps each situation to the right skill, lists skill paths, and gives conflict-avoidance rules (which skills overlap and which must NOT run together). Before adding any new skill, follow its "should we add a skill?" checklist to avoid duplication and stack conflicts.

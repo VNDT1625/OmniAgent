@@ -5,6 +5,7 @@ import { CUSTOM_AVATAR_IMAGE_MAP } from '@renderer/pages/guid/constants';
 import type { AgentMetadata } from '@renderer/utils/model/agentTypes';
 import type { Assistant } from '@/common/types/agent/assistantTypes';
 import { resolveBackendAssetUrl } from '@renderer/utils/platform';
+import { resolveAgentBackendKey } from '@/common/utils/buildAgentConversationParams';
 
 /**
  * Team leader selector entry — unified view over CLI agents and preset
@@ -28,7 +29,7 @@ export function cliAgentToOption(agent: AgentMetadata): TeamAgentOption {
   return {
     id: agent.id,
     name: agent.name,
-    backend: agent.backend || agent.agent_type,
+    backend: resolveAgentBackendKey(agent),
     icon: agent.icon,
     team_capable: agent.team_capable,
   };

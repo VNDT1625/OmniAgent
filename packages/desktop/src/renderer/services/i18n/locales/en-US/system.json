@@ -1,0 +1,59 @@
+{
+  "loadError": "Could not read the system status. The observer service may not be running yet.",
+  "refresh": "Refresh",
+  "refreshed": "System profile refreshed.",
+  "refreshError": "Could not refresh the system profile.",
+  "static": {
+    "title": "Machine",
+    "subtitle": "Hardware and software facts. These rarely change — use Refresh to re-read them.",
+    "os": "Operating system",
+    "hostname": "Host · user",
+    "cpu": "Processor",
+    "cores": "{{count}} logical cores",
+    "memory": "Total memory",
+    "gpu": "Graphics",
+    "gpuNone": "No GPU detected",
+    "disk": "Storage (free / total)",
+    "network": "Network",
+    "noNetwork": "No active interfaces",
+    "versions": "Versions"
+  },
+  "live": {
+    "title": "Live metrics",
+    "subtitle": "Updates in real time while this page is open.",
+    "cpu": "CPU",
+    "memory": "Memory",
+    "perCore": "Per-core load",
+    "loadAvg": "Load average",
+    "uptime": "Uptime",
+    "battery": "Power",
+    "onBattery": "On battery",
+    "plugged": "Plugged in",
+    "waiting": "Waiting for the first live sample…"
+  },
+  "process": {
+    "title": "Processes",
+    "subtitle": "The app's processes, heaviest first. Set a priority to tame a hungry one.",
+    "name": "Process",
+    "cpu": "CPU",
+    "memory": "Memory",
+    "priority": "Priority",
+    "none": "No process data available.",
+    "prioritySet": "Priority updated for {{name}}.",
+    "priorityError": "Could not change priority (it may require elevated permissions)."
+  },
+  "priority": {
+    "high": "High",
+    "aboveNormal": "Above normal",
+    "normal": "Normal",
+    "belowNormal": "Below normal",
+    "low": "Low"
+  },
+  "units": {
+    "mb": "MB",
+    "gb": "GB",
+    "day": "d",
+    "hour": "h",
+    "min": "m"
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "action": {
+    "save": "Save",
+    "retry": "Retry"
+  },
+  "state": {
+    "loading": "Loading…",
+    "errorTitle": "Could not open the file"
+  },
+  "adapter": {
+    "comingSoonTitle": "This editor is on the way",
+    "comingSoonSubtitle": "A dedicated editor for \"{{kind}}\" files is coming soon. You can still edit it as plain text below."
+  },
+  "rawText": {
+    "placeholder": "File content…"
+  },
+  "image": {
+    "rotate": "Rotate 90°",
+    "size": "Size",
+    "apply": "Resize"
+  },
+  "docx": {
+    "editNotice": "Editing the document text. Saving rebuilds a clean .docx (rich formatting is not preserved).",
+    "placeholder": "Document content…",
+    "openFailed": "Could not open this Word document"
+  },
+  "spreadsheet": {
+    "addRow": "Add row",
+    "editNotice": "Editing the first sheet as a table. Saving rebuilds a clean .xlsx (rich formatting and extra sheets are not preserved).",
+    "openFailed": "Could not open this spreadsheet"
+  },
+  "slide": {
+    "addSlide": "Add slide",
+    "slideLabel": "Slide {{index}}",
+    "empty": "(empty)",
+    "placeholder": "Slide content…",
+    "openFailed": "Could not open this presentation"
+  },
+  "pdf": {
+    "viewerTitle": "PDF viewer",
+    "tooLargeForViewer": "This PDF is too large to preview in the app ({{size}} MB). Open it in the Office editor or use an external PDF viewer.",
+    "openExternal": "Open with system viewer"
+  },
+  "media": {
+    "local": "On device",
+    "online": "Online",
+    "transcribe": "Transcribe",
+    "summarize": "Summarize",
+    "heavyNotice": "Transcription and summary run in the background and are scheduled by the resource coordinator.",
+    "transcriptIdle": "No transcript yet. Choose a mode and start a transcription."
+  },
+  "binary": {
+    "readOnlyNotice": "This file is shown in read-only inspection mode.",
+    "type": "Type",
+    "size": "Size",
+    "unknownType": "Binary",
+    "empty": "(empty file)",
+    "truncated": "Showing the first {{count}} bytes."
+  },
+  "office": {
+    "fallbackTitle": "Using the simple editor",
+    "fallbackGeneric": "The full Office editor could not open, so a lightweight editor is in use. Some formatting may not show.",
+    "retry": "Retry Office"
+  },
+  "onlyoffice": {
+    "connecting": "Connecting to the Office editor…",
+    "noServerTitle": "Office editor not configured",
+    "noServerHint": "Set the ONLYOFFICE Document Server URL to edit this file with the full Office editor.",
+    "failedTitle": "Could not open the Office editor",
+    "settingsTitle": "Office editor settings",
+    "settingsHint": "Enter the base URL of your ONLYOFFICE Document Server. It runs separately and is only contacted while editing.",
+    "dockerHint": "If the Document Server runs in Docker, make sure it can reach this app (the integration host binds to all interfaces).",
+    "save": "Save",
+    "cancel": "Cancel",
+    "resolving": "Preparing the Office editor…",
+    "reason": {
+      "docker-missing": "Docker is not installed. Install Docker or set a Document Server URL in settings.",
+      "docker-stopped": "Docker is starting up. This can take a moment on the first try — please retry shortly, or set a Document Server URL in settings.",
+      "start-failed": "Could not start the Document Server container.",
+      "timeout": "The Document Server did not become ready in time."
+    },
+    "startingHint": "First run can take a few minutes while the Office engine starts (and downloads if needed)."
+  }
+}

@@ -32,6 +32,7 @@ import type {
   UpdateAssistantRequest,
 } from '../types/agent/assistantTypes';
 import type { PreviewHistoryTarget, PreviewSnapshotInfo } from '../types/office/preview';
+import type { PricingRecommendation } from '../pricing/modelPricingAdvisor';
 import type { AcpModelInfo } from '../types/platform/acpTypes';
 import type {
   CreateProviderRequest,
@@ -62,6 +63,8 @@ import type {
   UpdateDownloadResult,
 } from '../update/updateTypes';
 import type { ProtocolDetectionRequest, ProtocolDetectionResponse } from '../utils/protocolDetector';
+import type { ApplicablePreset, ResourceBudget, ResourceMode, ResourceState } from '@process/resource/leaseTypes';
+import type { LiveSystemMetrics, ProcessPriorityLevel, SetPriorityResult, StaticSystemInfo, SystemSnapshot } from '@process/system/systemInfoTypes';
 import { fromApiConversation, fromApiPaginatedConversations, toApiModelOptional } from './apiModelMapper';
 import {
   httpDelete,
@@ -344,6 +347,20 @@ export interface IStartOnBootStatus {
   platform: string;
 }
 
+/**
+ * Default-browser registration status. `supported` is true only where AionUi
+ * can register itself as an http/https handler candidate (currently Windows).
+ * `isDefault` reflects whether the OS currently routes http/https to AionUi.
+ */
+export interface IDefaultBrowserStatus {
+  /** Whether registering as a default-browser candidate is available on this OS. */
+  supported: boolean;
+  /** Whether the OS currently treats AionUi as the default http/https handler. */
+  isDefault: boolean;
+  /** Current OS platform (process.platform). */
+  platform: string;
+}
+
 /** Hardware acceleration / GPU recovery status — see process/utils/gpuRecovery */
 export type IGpuOverride = 'force-on' | 'force-off';
 
@@ -388,6 +405,14 @@ export const application = {
   setStartOnBoot: bridge.buildProvider<IBridgeResponse<IStartOnBootStatus>, { enabled: boolean }>(
     'app.set-start-on-boot'
   ),
+  // Default-browser registration (Windows). getDefaultBrowserStatus reports
+  // whether registration is supported and currently active; setAsDefaultBrowser
+  // registers AionUi as an http/https handler candidate and opens the OS
+  // "default apps" settings so the user can confirm the choice.
+  getDefaultBrowserStatus: bridge.buildProvider<IBridgeResponse<IDefaultBrowserStatus>, void>(
+    'app.get-default-browser-status'
+  ),
+  setAsDefaultBrowser: bridge.buildProvider<IBridgeResponse<IDefaultBrowserStatus>, void>('app.set-as-default-browser'),
   getGpuStatus: bridge.buildProvider<IBridgeResponse<IGpuStatus>, void>('app.get-gpu-status'),
   setGpuOverride: bridge.buildProvider<IBridgeResponse<IGpuStatus>, { override: IGpuOverride | null }>(
     'app.set-gpu-override'
@@ -1085,6 +1110,60 @@ export type INotificationOptions = {
 export const notification = {
   show: bridge.buildProvider<void, INotificationOptions>('notification.show'),
   clicked: bridge.buildEmitter<{ conversation_id?: string }>('notification.clicked'),
+};
+
+// ---------------------------------------------------------------------------
+// Resource Coordinator — stays IPC (Electron-native main-process service that
+// gates every heavy task; see process/resource/resourceCoordinator). The
+// Dashboard UI reads/writes the budget here and subscribes to live state
+// pushes via the `stateChanged` emitter (Requirement 5.2).
+// ---------------------------------------------------------------------------
+
+export const resource = {
+  getState: bridge.buildProvider<ResourceState, void>('resource.get-state'),
+  setMode: bridge.buildProvider<ResourceState, { mode: ResourceMode }>('resource.set-mode'),
+  setBudget: bridge.buildProvider<ResourceState, { budget: Partial<ResourceBudget> }>('resource.set-budget'),
+  applyPreset: bridge.buildProvider<ResourceState, { preset: ApplicablePreset }>('resource.apply-preset'),
+  stateChanged: bridge.buildEmitter<ResourceState>('resource.state-changed'),
+};
+
+// ---------------------------------------------------------------------------
+// System Insight (Settings › Quan sát) — Electron-native main-process service
+// that observes the whole machine: a static profile (refreshed on demand) plus
+// fast-changing live metrics pushed via `metricsChanged`. Also lets the user
+// nudge per-process OS scheduling priority. See process/system.
+// ---------------------------------------------------------------------------
+
+export const systemInfo = {
+  /** Read the cached static host profile (probed at startup / on refresh). */
+  getStaticInfo: bridge.buildProvider<StaticSystemInfo | null, void>('system-info.get-static'),
+  /** Re-probe the static profile (the "Refresh" button) and return it. */
+  refreshStatic: bridge.buildProvider<StaticSystemInfo, void>('system-info.refresh-static'),
+  /** Read the latest complete snapshot (static + live + history). */
+  getSnapshot: bridge.buildProvider<SystemSnapshot | null, void>('system-info.get-snapshot'),
+  /** Apply an OS scheduling priority level to a live process. */
+  setProcessPriority: bridge.buildProvider<SetPriorityResult, { pid: number; level: ProcessPriorityLevel }>(
+    'system-info.set-process-priority'
+  ),
+  /** Ref-counted: begin fast live streaming while the Quan sát page is mounted. */
+  startStream: bridge.buildProvider<void, void>('system-info.start-stream'),
+  /** Ref-counted: stop fast live streaming when the page unmounts. */
+  stopStream: bridge.buildProvider<void, void>('system-info.stop-stream'),
+  /** Main → renderer push of every live sample while streaming. */
+  metricsChanged: bridge.buildEmitter<LiveSystemMetrics>('system-info.metrics-changed'),
+};
+
+// ---------------------------------------------------------------------------
+// Pricing — main-process only, keeps provider keys and benchmark API access out
+// of the renderer while returning sanitized model recommendations.
+// ---------------------------------------------------------------------------
+
+export type PricingResult<T> = { ok: true; data: T } | { ok: false; error: string };
+
+export const pricing = {
+  recommendConfiguredModels: bridge.buildProvider<PricingResult<PricingRecommendation>, void>(
+    'pricing.recommend-configured-models'
+  ),
 };
 
 // ---------------------------------------------------------------------------

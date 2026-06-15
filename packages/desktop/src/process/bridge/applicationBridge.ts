@@ -12,6 +12,7 @@ import { getZoomFactor, setZoomFactor } from '@process/utils/zoom';
 import { getCdpStatus, updateCdpConfig } from '@process/utils/configureChromium';
 import { getGpuStatus, setGpuUserOverride } from '@process/utils/gpuRecovery';
 import { initApplicationBridgeCore } from './applicationBridgeCore';
+import { getDefaultBrowserStatus, setAsDefaultBrowser } from './defaultBrowser';
 import type { IStartOnBootStatus } from '@/common/adapter/ipcBridge';
 
 let mainWindowRef: BrowserWindow | null = null;
@@ -92,6 +93,16 @@ export function setStartOnBootEnabled(enabled: boolean): IStartOnBootStatus {
 
 export function setApplicationMainWindow(win: BrowserWindow): void {
   mainWindowRef = win;
+}
+
+/**
+ * Accessor for the current main window, or `null` before it is created / after
+ * it is destroyed. Used by Main-process services that must attach to the window
+ * lazily without owning its lifecycle — e.g. the browser bridge's
+ * {@link createBrowserViewManager} `getWindow` dependency (Task 15.1 wiring).
+ */
+export function getApplicationMainWindow(): BrowserWindow | null {
+  return mainWindowRef;
 }
 
 export function initApplicationBridge(): void {
@@ -200,6 +211,26 @@ export function initApplicationBridge(): void {
   ipcBridge.application.getGpuStatus.provider(async () => {
     try {
       return { success: true, data: getGpuStatus() };
+    } catch (e) {
+      return { success: false, msg: e.message || e.toString() };
+    }
+  });
+
+  ipcBridge.application.getDefaultBrowserStatus.provider(async () => {
+    try {
+      return { success: true, data: getDefaultBrowserStatus() };
+    } catch (e) {
+      return { success: false, msg: e.message || e.toString() };
+    }
+  });
+
+  ipcBridge.application.setAsDefaultBrowser.provider(async () => {
+    try {
+      const status = await setAsDefaultBrowser();
+      if (!status.supported) {
+        return { success: false, msg: 'Default browser registration is only available on Windows.', data: status };
+      }
+      return { success: true, data: status };
     } catch (e) {
       return { success: false, msg: e.message || e.toString() };
     }

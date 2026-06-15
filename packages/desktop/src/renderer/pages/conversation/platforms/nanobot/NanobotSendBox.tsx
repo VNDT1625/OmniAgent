@@ -32,7 +32,9 @@ import { allSupportedExts, type FileMetadata } from '@/renderer/services/FileSer
 import { emitter, useAddEventListener } from '@/renderer/utils/emitter';
 import { mergeFileSelectionItems } from '@/renderer/utils/file/fileSelection';
 import { buildDisplayMessage } from '@/renderer/utils/file/messageFiles';
-import { Tag } from '@arco-design/web-react';
+import { expandGoalCommand, isGoalOffCommand, parseGoalCommand } from '@/common/chat/slash/goalCommand';
+import { clearGoalMode, setGoalMode, withGoalSteeringDirective } from '@/renderer/utils/chat/goalMode';
+import { Message, Tag } from '@arco-design/web-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -248,6 +250,15 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
     async ({ input, files }: Pick<ConversationCommandQueueItem, 'input' | 'files'>) => {
       if (teamPermission) await teamPermission.warmupSession();
       const displayMessage = buildDisplayMessage(input, files, workspacePath);
+      // Goal commands (/goal, /goal-all) expand into a full autonomous instruction
+      // for the agent; the bubble keeps showing the raw `/goal ...` text.
+      const goalExpansion = expandGoalCommand(input);
+      const modelInput = goalExpansion ? buildDisplayMessage(goalExpansion, files, workspacePath) : displayMessage;
+      if (goalExpansion) {
+        const parsedGoal = parseGoalCommand(input);
+        if (parsedGoal) setGoalMode(conversation_id, parsedGoal.variant, parsedGoal.requirement);
+      }
+      const steeredInput = withGoalSteeringDirective(modelInput, conversation_id);
 
       setAiProcessing(true);
       let msg_id: string | null = null;
@@ -258,7 +269,7 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
         // subsequent WebSocket stream events — avoids duplicate bubbles when
         // useMessageLstCache reloads.
         const res = await ipcBridge.conversation.sendMessage.invoke({
-          input: displayMessage,
+          input: steeredInput,
           conversation_id,
           files,
         });
@@ -309,6 +320,11 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
   });
 
   const onSendHandler = async (message: string) => {
+    if (isGoalOffCommand(message)) {
+      clearGoalMode(conversation_id);
+      Message.info(t('conversation.goalCommand.modeOff'));
+      return;
+    }
     emitter.emit('nanobot.selected.file.clear');
     const file_paths = [...uploadFile, ...atPath.map((item) => (typeof item === 'string' ? item : item.path))];
     setAtPath([]);
@@ -369,12 +385,18 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
         const resolvedWorkspace = res?.extra?.workspace ?? '';
         setWorkspacePath(resolvedWorkspace);
         const initialDisplayMessage = buildDisplayMessage(input, files, resolvedWorkspace);
+        const initialGoalExpansion = expandGoalCommand(input);
+        const initialModelInput = initialGoalExpansion ? buildDisplayMessage(initialGoalExpansion, files, resolvedWorkspace) : initialDisplayMessage;
+        if (initialGoalExpansion) {
+          const parsedGoal = parseGoalCommand(input);
+          if (parsedGoal) setGoalMode(conversation_id, parsedGoal.variant, parsedGoal.requirement);
+        }
 
         void checkAndUpdateTitle(conversation_id, input);
         // Fetch the server-assigned msg_id before rendering the optimistic
         // bubble so the local row uses the same id as the persisted DB row.
         const sendResult = await ipcBridge.conversation.sendMessage.invoke({
-          input: initialDisplayMessage,
+          input: withGoalSteeringDirective(initialModelInput, conversation_id),
           conversation_id,
           files,
         });
@@ -501,6 +523,7 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
         onSend={onSendHandler}
         slash_commands={slash_commands}
         onSlashBuiltinCommand={onSlashBuiltinCommand}
+        enableGoal
         allowSendWhileLoading
       ></SendBox>
     </div>

@@ -1,0 +1,60 @@
+{
+  "navTitle": "监控",
+  "title": "错误监控",
+  "subtitle": "自动收集的错误、建议的修复以及审批关口。",
+  "refresh": "刷新",
+  "desktopOnly": "错误监控仅在桌面应用中可用。",
+  "unavailable": "监控服务尚不可用。",
+  "noReports": "暂无错误报告。",
+  "noProposals": "暂无建议的修复。",
+  "section": {
+    "proposals": "建议的修复",
+    "reports": "错误报告"
+  },
+  "report": {
+    "occurrences": "出现 {{count}} 次",
+    "source": "来源",
+    "knownFix": "已有修复方案",
+    "fix": "修复"
+  },
+  "fix": {
+    "startedToast": "正在分析错误并准备修复……"
+  },
+  "risk": {
+    "low": "低",
+    "medium": "中",
+    "high": "高"
+  },
+  "status": {
+    "proposed": "已建议",
+    "pending-review": "待审核",
+    "approved": "已批准",
+    "applied": "已应用",
+    "rejected": "已拒绝",
+    "rolled-back": "已回滚"
+  },
+  "patch": {
+    "title": "建议的修复",
+    "risk": "风险",
+    "approve": "批准并应用",
+    "approveConfirm": "将此修复应用到应用？会先保存回滚点。",
+    "cancel": "取消",
+    "reject": "拒绝",
+    "rollback": "回滚",
+    "publish": "发布",
+    "pendingReview": "待审核",
+    "applied": "已应用",
+    "rejected": "已拒绝",
+    "rolledBack": "已回滚",
+    "appliedToast": "修复已应用，必要时可回滚。",
+    "rejectedToast": "已拒绝该建议。",
+    "rolledBackToast": "修复已回滚。",
+    "actionError": "操作未能完成。"
+  },
+  "publish": {
+    "confirm": "创建修复分支并推送到你的 fork 以供审查？",
+    "pushedToast": "已推送分支「{{branch}}」。正在打开 PR 页面……",
+    "notPushed": "已在本地准备分支「{{branch}}」。就绪后请推送到你的 fork。",
+    "error": "无法发布修复。"
+  }
+}

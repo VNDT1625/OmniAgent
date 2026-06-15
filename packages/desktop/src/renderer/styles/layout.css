@@ -261,3 +261,63 @@
     line-height: 20px !important;
   }
 }
+
+/* xterm.js terminal host — let the emulator's viewport fill the pane so its
+   built-in scrollback/scrollbar work and the FitAddon can measure real size.
+   The colors come from the JS theme (xtermTheme.ts); these rules are layout
+   only. */
+.terminal-xterm-host {
+  position: relative;
+  overflow: hidden;
+}
+.terminal-xterm-host .xterm,
+.terminal-xterm-host .xterm-viewport,
+.terminal-xterm-host .xterm-screen {
+  height: 100%;
+  width: 100%;
+}
+.terminal-xterm-host .xterm-viewport {
+  /* Match the panel surface; xterm paints its own bg behind the screen. */
+  background-color: transparent !important;
+}
+
+/* Shell-integration command decorations (VS Code-style gutter dots). xterm
+   positions the decoration element in the left gutter aligned to the command's
+   prompt row; we render a small colored dot reflecting the exit code. */
+.aionui-cmd-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  margin-left: 2px;
+  align-self: center;
+}
+.aionui-cmd-ok {
+  background-color: var(--color-success-6, #23d18b);
+}
+.aionui-cmd-fail {
+  background-color: var(--color-danger-6, #f14c4c);
+}
+
+/* Terminal page (Settings › Terminal): make the Arco Tabs body fill the
+   available height so the xterm.js pane inside the Sessions tab has a real
+   height to render into. Without this the tab content collapses and the
+   terminal appears blank. Uses !important to beat Arco's own height rules. */
+.terminal-tabs.arco-tabs {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 0;
+}
+.terminal-tabs > .arco-tabs-content {
+  flex: 1 1 0% !important;
+  min-height: 0 !important;
+  height: auto !important;
+}
+.terminal-tabs .arco-tabs-content-inner {
+  height: 100% !important;
+}
+.terminal-tabs .arco-tabs-content-item {
+  height: 100% !important;
+}
+.terminal-tabs .arco-tabs-pane {
+  height: 100% !important;
+}

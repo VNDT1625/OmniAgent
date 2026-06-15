@@ -387,6 +387,22 @@
       "genericError": "음성 입력에 실패했습니다. 다시 시도해 주세요"
     }
   },
+  "goalCommand": {
+    "description": "목표에 거의 완전히 도달할 때까지 요구사항을 자율 실행",
+    "allDescription": "전권 모드: 모든 것을 스스로 결정하고 요구사항을 초과(101%)",
+    "autoResumeNotice": "목표 실행이 멈춤 — 자동 재개({{count}}/{{max}})",
+    "autoResumeGiveup": "{{max}}회 자동 재개 후에도 목표가 멈춤. 수동 확인을 위해 일시중지했습니다.",
+    "modeOff": "Goal 모드를 껐습니다.",
+    "modeBadge": "Goal 모드",
+    "done": "목표 완료 — 테스트 통과. Goal 모드를 껐습니다.",
+    "blocked": "에이전트가 목표 차단을 보고했습니다. Goal 모드를 껐습니다 — 확인해 주세요.",
+    "maxTurns": "Goal 자동 실행 한도에 도달했습니다. Goal 모드를 껐습니다 — 확인해 주세요.",
+    "enforcing": "goal 워크플로를 강제하는 중 — 자동으로 계속합니다.",
+    "verifySet": "이 목표에 대한 독립 검증 명령을 설정했습니다.",
+    "verifyOff": "독립 검증을 껐습니다.",
+    "verifyRunning": "목표를 독립적으로 검증 중…",
+    "verifyFailed": "독립 검증 실패 — 에이전트가 수정 후 다시 시도해야 합니다."
+  },
   "sideQuestion": {
     "title": "잠깐 질문",
     "description": "현재 대화에 대해 짧은 보조 질문을 합니다",
@@ -467,5 +483,20 @@
   "sendbox": {
     "hint": "/ 로 명령, @ 로 파일 참조"
   },
-  "notFound": "대화를 찾을 수 없거나 삭제되었습니다"
+  "notFound": "대화를 찾을 수 없거나 삭제되었습니다",
+  "contextPack": {
+    "title": "Including IDE Context",
+    "subtitle": "{{count}} file(s) loaded for the agent",
+    "loaded": "Loaded {{count}} IDE context file(s).",
+    "truncated": "capped",
+    "score": "score {{score}}",
+    "more": "+{{count}} more",
+    "reason": {
+      "seed": "seed",
+      "dependency": "dependency",
+      "dependent": "dependent",
+      "changed": "changed",
+      "entry": "entry"
+    }
+  }
 }

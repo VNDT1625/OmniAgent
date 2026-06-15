@@ -41,6 +41,13 @@ export interface PlatformConfig {
   base_url?: string;
   /** 国际化 key（可选，用于需要翻译的平台名称） / i18n key (optional, for platform names that need translation) */
   i18nKey?: string;
+  /**
+   * 当为 true 时，跳过 per-model 协议检测，始终使用 OpenAI 协议。
+   * 适用于自带格式转换的网关（如 9Router）。
+   * When true, skip per-model protocol detection and always use OpenAI protocol.
+   * For gateways that handle format translation internally (e.g. 9Router).
+   */
+  skipProtocolDetection?: boolean;
 }
 
 /**
@@ -64,6 +71,20 @@ export const MODEL_PLATFORMS: PlatformConfig[] = [
     logo: buildLogoAssetUrl('ai-cloud/newapi.svg'),
     platform: 'new-api',
     i18nKey: 'settings.platformNewApi',
+  },
+
+  // 9Router 本地路由网关（OpenAI 兼容） / 9Router local routing gateway (OpenAI-compatible).
+  // Aggregates 40+ providers (OAuth + API key) behind a single local endpoint with
+  // auto-fallback and format translation. See common/router9 for the distribution layer.
+  // 9Router handles format translation internally — always use OpenAI protocol.
+  {
+    name: '9Router',
+    value: '9router',
+    logo: null,
+    platform: 'new-api',
+    base_url: 'http://127.0.0.1:20128/v1',
+    i18nKey: 'settings.platform9router',
+    skipProtocolDetection: true,
   },
 
   // 官方 Gemini 平台
@@ -275,7 +296,9 @@ export const NEW_API_PROTOCOL_OPTIONS = [
  */
 export const detectNewApiProtocol = (modelName: string): string => {
   const name = modelName.toLowerCase();
-  if (name.startsWith('claude') || name.startsWith('anthropic')) return 'anthropic';
+  // Match claude/anthropic models regardless of provider prefix (e.g. freemodel/claude-opus-4-8)
+  if (name.startsWith('claude') || name.startsWith('anthropic') || name.includes('/claude') || name.includes('-claude'))
+    return 'anthropic';
   if (name.startsWith('gemini') || name.startsWith('models/gemini')) return 'gemini';
   // Default to openai (covers gpt, deepseek, qwen, o1, o3, etc.)
   return 'openai';

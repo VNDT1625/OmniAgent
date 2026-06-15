@@ -18,6 +18,18 @@ import { createContext } from '@renderer/utils/ui/createContext';
 
 const [useMessageList, MessageListProvider, useUpdateMessageList] = createContext([] as TMessage[]);
 const [useMessageListLoading, MessageListLoadingProvider, useUpdateMessageListLoading] = createContext(false);
+type MessageHistoryPagingState = {
+  hasOlder: boolean;
+  loadingOlder: boolean;
+  loadOlder: () => Promise<boolean>;
+  initialAnchorMessageId?: string;
+};
+const [useMessageHistoryPaging, MessageHistoryPagingProvider, useUpdateMessageHistoryPaging] =
+  createContext<MessageHistoryPagingState>({
+    hasOlder: false,
+    loadingOlder: false,
+    loadOlder: async (): Promise<boolean> => false,
+  });
 
 const [useChatKey, ChatKeyProvider] = createContext('');
 
@@ -554,56 +566,183 @@ export function normalizeDbMessage(msg: TMessage): TMessage {
   }
 }
 
+const INITIAL_MESSAGE_WINDOW_SIZE = 1;
+const OLDER_MESSAGE_BATCH_SIZE = 10;
+const MAX_INITIAL_USER_ANCHOR_WINDOW_SIZE = 101;
+
+const sortMessagesAsc = (messages: TMessage[]): TMessage[] =>
+  messages.toSorted((a, b) => (a.created_at ?? 0) - (b.created_at ?? 0));
+
+const sliceFromLatestUserMessage = (messages: TMessage[]): TMessage[] => {
+  const latestUserIndex = messages.findLastIndex((message) => message.position === 'right');
+  return latestUserIndex >= 0 ? messages.slice(latestUserIndex) : messages.slice(-INITIAL_MESSAGE_WINDOW_SIZE);
+};
+
+const latestUserMessageId = (messages: TMessage[]): string | undefined => {
+  const latestUser = messages.findLast((message) => message.position === 'right');
+  return latestUser?.id;
+};
+
+const getMessageDedupeKey = (message: TMessage, fallbackIndex: number): string =>
+  message.id || message.msg_id || `${message.type}:${message.created_at ?? fallbackIndex}`;
+
+const dedupeMessages = (messages: TMessage[]): TMessage[] => {
+  const seen = new Set<string>();
+  const result: TMessage[] = [];
+  for (let index = 0; index < messages.length; index++) {
+    const message = messages[index];
+    const key = getMessageDedupeKey(message, index);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(message);
+  }
+  return result;
+};
+
+const isVolatileMessage = (message: TMessage): boolean =>
+  message.type === 'thinking' ||
+  message.type === 'agent_status' ||
+  message.type === 'permission' ||
+  message.type === 'acp_permission';
+
+const mergeLoadedMessages = (
+  messages: TMessage[],
+  currentList: TMessage[],
+  key: string,
+  preserveUnloaded = true
+): TMessage[] => {
+  if (!currentList.length) return messages;
+  const sameConversation = currentList.filter((m) => m.conversation_id === key);
+  if (!sameConversation.length) return messages;
+  const dbIds = new Set(messages.map((m) => m.id));
+  const dbMsgIds = new Set(messages.map((m) => m.msg_id).filter(Boolean));
+
+  const streamingByMsgId = new Map<string, IMessageText>();
+  for (const m of sameConversation) {
+    if (m.msg_id && m.type === 'text' && dbMsgIds.has(m.msg_id)) {
+      streamingByMsgId.set(m.msg_id, m);
+    }
+  }
+
+  const mergedMessages = messages.map((dbMsg) => {
+    if (!dbMsg.msg_id || dbMsg.type !== 'text') return dbMsg;
+    const streamMsg = streamingByMsgId.get(dbMsg.msg_id);
+    if (!streamMsg) return dbMsg;
+    return preferTextMessageVersion(dbMsg, streamMsg);
+  });
+
+  const newestLoadedAt = Math.max(...messages.map((m) => m.created_at ?? 0), 0);
+  const streamingOnly = sameConversation.filter((m) => {
+    if (dbIds.has(m.id) || (m.msg_id && dbMsgIds.has(m.msg_id))) return false;
+    if (preserveUnloaded) return true;
+    if (isVolatileMessage(m)) return true;
+    return (m.created_at ?? 0) >= newestLoadedAt;
+  });
+  return dedupeMessages(sortMessagesAsc([...mergedMessages, ...streamingOnly]));
+};
+
 export const useMessageLstCache = (key: string) => {
   const update = useUpdateMessageList();
   const setLoading = useUpdateMessageListLoading();
+  const updatePaging = useUpdateMessageHistoryPaging();
+  const loadedWindowSizeRef = useRef(INITIAL_MESSAGE_WINDOW_SIZE);
+  const hasOlderRef = useRef(false);
+  const loadingOlderRef = useRef(false);
+
+  const setPagingState = useCallback(
+    (state: Partial<Pick<MessageHistoryPagingState, 'hasOlder' | 'loadingOlder' | 'initialAnchorMessageId'>>) => {
+      if (typeof state.hasOlder === 'boolean') hasOlderRef.current = state.hasOlder;
+      if (typeof state.loadingOlder === 'boolean') loadingOlderRef.current = state.loadingOlder;
+      updatePaging((current) => ({
+        ...current,
+        hasOlder: hasOlderRef.current,
+        loadingOlder: loadingOlderRef.current,
+        ...(Object.hasOwn(state, 'initialAnchorMessageId')
+          ? { initialAnchorMessageId: state.initialAnchorMessageId }
+          : {}),
+      }));
+    },
+    [updatePaging]
+  );
+
+  const fetchLatestWindow = useCallback(
+    async (pageSize: number): Promise<{ messages: TMessage[]; hasMore: boolean; windowSize: number }> => {
+      const result = await ipcBridge.database.getConversationMessages.invoke({
+        conversation_id: key,
+        page: 1,
+        page_size: pageSize,
+        order: 'desc',
+        content_mode: 'compact',
+      });
+      return {
+        messages: sortMessagesAsc((result?.items ?? []).map(normalizeDbMessage)),
+        hasMore: Boolean(result?.has_more),
+        windowSize: pageSize,
+      };
+    },
+    [key]
+  );
+
+  const fetchInitialUserAnchoredWindow = useCallback(async (): Promise<{
+    messages: TMessage[];
+    hasMore: boolean;
+    windowSize: number;
+  }> => {
+    let pageSize = INITIAL_MESSAGE_WINDOW_SIZE;
+    let latest = await fetchLatestWindow(pageSize);
+    while (
+      latest.hasMore &&
+      latest.messages.findLastIndex((message) => message.position === 'right') < 0 &&
+      pageSize < MAX_INITIAL_USER_ANCHOR_WINDOW_SIZE
+    ) {
+      pageSize = Math.min(pageSize + OLDER_MESSAGE_BATCH_SIZE, MAX_INITIAL_USER_ANCHOR_WINDOW_SIZE);
+      // eslint-disable-next-line no-await-in-loop -- initial hydration expands only until it finds the latest user message.
+      latest = await fetchLatestWindow(pageSize);
+    }
+
+    return {
+      ...latest,
+      messages: sliceFromLatestUserMessage(latest.messages),
+    };
+  }, [fetchLatestWindow]);
+
   const loadMessages = useCallback(async (): Promise<TMessage[]> => {
-    const result = await ipcBridge.database.getConversationMessages.invoke({
-      conversation_id: key,
-      page: 0,
-      page_size: 10000,
-      content_mode: 'compact',
-    });
-    const messages = result?.items?.map(normalizeDbMessage);
+    loadedWindowSizeRef.current = INITIAL_MESSAGE_WINDOW_SIZE;
+    const { messages, hasMore, windowSize } = await fetchInitialUserAnchoredWindow();
+    loadedWindowSizeRef.current = windowSize;
     if (messages && Array.isArray(messages)) {
       update((currentList) => {
-        if (!currentList.length) return messages;
-        const sameConversation = currentList.filter((m) => m.conversation_id === key);
-        if (!sameConversation.length) return messages;
-        const dbIds = new Set(messages.map((m) => m.id));
-        const dbMsgIds = new Set(messages.map((m) => m.msg_id).filter(Boolean));
-
-        // Build a map of streaming messages by msg_id for content-length comparison.
-        // During streaming, the DB may have an older snapshot (due to 2000ms save debounce),
-        // so we keep whichever version has more content to avoid losing streamed data.
-        const streamingByMsgId = new Map<string, IMessageText>();
-        for (const m of sameConversation) {
-          if (m.msg_id && m.type === 'text' && dbMsgIds.has(m.msg_id)) {
-            streamingByMsgId.set(m.msg_id, m);
-          }
-        }
-
-        // Replace DB messages with streaming versions when streaming has more content
-        const mergedMessages = messages.map((dbMsg) => {
-          if (!dbMsg.msg_id || dbMsg.type !== 'text') return dbMsg;
-          const streamMsg = streamingByMsgId.get(dbMsg.msg_id);
-          if (!streamMsg) return dbMsg;
-          return preferTextMessageVersion(dbMsg, streamMsg);
-        });
-
-        const streamingOnly = sameConversation.filter((m) => !dbIds.has(m.id) && !(m.msg_id && dbMsgIds.has(m.msg_id)));
-        if (!streamingOnly.length && !streamingByMsgId.size) return messages;
-        return [...mergedMessages, ...streamingOnly];
+        return mergeLoadedMessages(messages, currentList, key, false);
       });
+      setPagingState({ hasOlder: hasMore, loadingOlder: false, initialAnchorMessageId: latestUserMessageId(messages) });
       return messages;
     }
+    setPagingState({ hasOlder: false, loadingOlder: false, initialAnchorMessageId: undefined });
     return [];
-  }, [key, update]);
+  }, [fetchInitialUserAnchoredWindow, key, setPagingState, update]);
+
+  const loadOlder = useCallback(async (): Promise<boolean> => {
+    if (!key || loadingOlderRef.current || !hasOlderRef.current) return false;
+    setPagingState({ loadingOlder: true });
+    const nextWindowSize = loadedWindowSizeRef.current + OLDER_MESSAGE_BATCH_SIZE;
+    try {
+      const { messages, hasMore } = await fetchLatestWindow(nextWindowSize);
+      loadedWindowSizeRef.current = nextWindowSize;
+      update((currentList) => mergeLoadedMessages(messages, currentList, key));
+      setPagingState({ hasOlder: hasMore, loadingOlder: false });
+      return true;
+    } catch (error) {
+      console.error('[useMessageLstCache] Failed to load older messages from database:', error);
+      setPagingState({ loadingOlder: false });
+      return false;
+    }
+  }, [fetchLatestWindow, key, setPagingState, update]);
 
   useEffect(() => {
     if (!key) return;
     let cancelled = false;
     setLoading(true);
+    updatePaging({ hasOlder: false, loadingOlder: false, loadOlder, initialAnchorMessageId: undefined });
     void loadMessages()
       .catch((error) => {
         console.error('[useMessageLstCache] Failed to load messages from database:', error);
@@ -616,7 +755,7 @@ export const useMessageLstCache = (key: string) => {
     return () => {
       cancelled = true;
     };
-  }, [key, loadMessages, setLoading]);
+  }, [key, loadMessages, loadOlder, setLoading, updatePaging]);
 };
 
 export const beforeUpdateMessageList = (fn: (list: TMessage[]) => TMessage[]) => {
@@ -627,9 +766,11 @@ export const beforeUpdateMessageList = (fn: (list: TMessage[]) => TMessage[]) =>
 };
 export {
   ChatKeyProvider,
+  MessageHistoryPagingProvider,
   MessageListLoadingProvider,
   MessageListProvider,
   useChatKey,
+  useMessageHistoryPaging,
   useMessageList,
   useMessageListLoading,
   useUpdateMessageList,

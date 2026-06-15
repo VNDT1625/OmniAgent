@@ -19,6 +19,8 @@ const FULL_AUTO_MODE: Record<string, string> = {
   codex: CODEX_MODE_NATIVE_FULL_ACCESS,
   cursor: 'agent',
   snow: 'yolo',
+  deepseek: 'yolo',
+  antigravity: 'yolo',
 };
 
 /**

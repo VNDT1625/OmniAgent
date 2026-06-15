@@ -59,6 +59,13 @@ type GuidActionRowProps = {
   selectedMcpServerIds: string[];
   onToggleMcpServer: (serverId: string) => void;
 
+  /** Whether the Browser-Control (Super) server is registered/available. */
+  superAvailable?: boolean;
+  /** Whether Super is enabled for the conversation being created. */
+  superEnabled?: boolean;
+  /** Toggle Super for the new conversation (grants the agent the live-browser tools). */
+  onToggleSuper?: () => void;
+
   // Send button
   loading: boolean;
   isButtonDisabled: boolean;
@@ -89,6 +96,9 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
   mcpServers,
   selectedMcpServerIds,
   onToggleMcpServer,
+  superAvailable = false,
+  superEnabled = false,
+  onToggleSuper,
   hidePresetTag = false,
   loading,
   isButtonDisabled,
@@ -301,6 +311,18 @@ const GuidActionRow: React.FC<GuidActionRowProps> = ({
         </div>
       </div>
       <div className={styles.actionSubmit}>
+        {superAvailable && !isWebUI && onToggleSuper && (
+          <Tooltip content={superEnabled ? t('workspace.super.onHint') : t('workspace.super.offHint')}>
+            <Button
+              size='small'
+              type={superEnabled ? 'primary' : 'secondary'}
+              icon={<Lightning theme={superEnabled ? 'filled' : 'outline'} size='14' />}
+              onClick={onToggleSuper}
+            >
+              {t('workspace.super.label')}
+            </Button>
+          </Tooltip>
+        )}
         {configOptionCount > 0 && (
           <div className={styles.actionConfigGroup} data-mobile={isMobile ? 'true' : undefined}>
             {modelSelectorNode}

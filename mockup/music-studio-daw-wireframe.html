@@ -1,0 +1,724 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Aion Music Studio DAW Wireframe</title>
+    <style>
+      :root {
+        --bg: #15191c;
+        --panel: #20262a;
+        --panel-2: #252d31;
+        --panel-3: #2d363b;
+        --line: #3a444a;
+        --text: #e7ecef;
+        --muted: #99a7ad;
+        --accent: #35c6a4;
+        --pink: #b45acb;
+        --blue: #5f7fca;
+        --yellow: #c8a642;
+        --orange: #cb7047;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: #0f1214;
+        color: var(--text);
+        font-family:
+          ui-sans-serif,
+          system-ui,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+      }
+
+      .page {
+        padding: 24px;
+      }
+
+      .frame {
+        width: 1440px;
+        height: 900px;
+        margin: 0 auto;
+        border: 1px solid #30383d;
+        background: var(--bg);
+        display: grid;
+        grid-template-rows: 34px 72px minmax(0, 1fr) 230px;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+      }
+
+      .menu {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 0 12px;
+        background: #111517;
+        border-bottom: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .transport {
+        display: grid;
+        grid-template-columns: 250px 310px 1fr 260px;
+        gap: 12px;
+        align-items: center;
+        padding: 10px 12px;
+        background: #191f22;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .cluster,
+      .tool {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px;
+      }
+
+      .btn {
+        width: 34px;
+        height: 30px;
+        border-radius: 4px;
+        background: var(--panel-3);
+        display: grid;
+        place-items: center;
+        color: var(--text);
+        font-size: 12px;
+      }
+
+      .record {
+        background: #78312d;
+        color: #ffb3a8;
+      }
+
+      .time {
+        color: #cde7ff;
+        font-size: 26px;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0;
+      }
+
+      .field {
+        min-width: 54px;
+        height: 30px;
+        border-radius: 4px;
+        background: #111517;
+        border: 1px solid var(--line);
+        display: grid;
+        place-items: center;
+        font-size: 12px;
+      }
+
+      .main {
+        min-height: 0;
+        display: grid;
+        grid-template-columns: 230px 190px minmax(0, 1fr) 260px;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .browser,
+      .track-list,
+      .inspector,
+      .bottom {
+        background: var(--panel);
+        border-right: 1px solid var(--line);
+        min-height: 0;
+      }
+
+      .browser {
+        display: grid;
+        grid-template-rows: 38px 1fr;
+      }
+
+      .section-title {
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 10px;
+        border-bottom: 1px solid var(--line);
+        font-size: 12px;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .browser-list {
+        padding: 8px;
+        overflow: hidden;
+      }
+
+      .sample {
+        height: 28px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 8px;
+        color: #c9d4d8;
+        font-size: 12px;
+      }
+
+      .sample:nth-child(odd) {
+        background: rgba(255, 255, 255, 0.035);
+      }
+
+      .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+      }
+
+      .track-list {
+        display: grid;
+        grid-template-rows: 38px repeat(8, 62px) 1fr;
+      }
+
+      .track {
+        border-bottom: 1px solid var(--line);
+        padding: 7px 8px;
+        display: grid;
+        grid-template-columns: 1fr 24px 24px 24px;
+        gap: 6px;
+        align-items: center;
+        font-size: 12px;
+      }
+
+      .track .name {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .mini {
+        height: 22px;
+        border-radius: 3px;
+        background: var(--panel-3);
+        color: var(--muted);
+        display: grid;
+        place-items: center;
+        font-size: 10px;
+      }
+
+      .armed {
+        background: #6a2d2d;
+        color: #ffc2bd;
+      }
+
+      .playlist {
+        min-width: 0;
+        display: grid;
+        grid-template-rows: 38px 1fr;
+        background:
+          linear-gradient(to right, rgba(255, 255, 255, 0.055) 1px, transparent 1px) 0 38px / 52px 100%,
+          linear-gradient(to bottom, rgba(255, 255, 255, 0.045) 1px, transparent 1px) 0 38px / 100% 62px,
+          #171c1f;
+      }
+
+      .ruler {
+        display: grid;
+        grid-template-columns: repeat(16, 1fr);
+        border-bottom: 1px solid var(--line);
+        background: #192024;
+      }
+
+      .bar {
+        border-right: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 11px;
+        padding: 10px 0 0 8px;
+      }
+
+      .timeline {
+        position: relative;
+        min-height: 0;
+      }
+
+      .playhead {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        left: 31%;
+        width: 2px;
+        background: #e6eff3;
+        box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2);
+      }
+
+      .clip {
+        position: absolute;
+        height: 42px;
+        border-radius: 5px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        padding: 6px 8px;
+        overflow: hidden;
+        color: rgba(255, 255, 255, 0.78);
+        font-size: 11px;
+      }
+
+      .midi {
+        background: rgba(180, 90, 203, 0.82);
+      }
+
+      .audio {
+        background: rgba(95, 127, 202, 0.82);
+      }
+
+      .drum {
+        background: rgba(200, 166, 66, 0.82);
+      }
+
+      .automation {
+        background: rgba(53, 198, 164, 0.5);
+        border-color: rgba(53, 198, 164, 0.8);
+      }
+
+      .wave,
+      .notes {
+        height: 16px;
+        margin-top: 6px;
+        opacity: 0.55;
+      }
+
+      .wave {
+        background: repeating-linear-gradient(to right, currentColor 0 2px, transparent 2px 8px);
+      }
+
+      .notes {
+        background:
+          linear-gradient(currentColor, currentColor) 8px 5px / 30px 2px no-repeat,
+          linear-gradient(currentColor, currentColor) 48px 9px / 36px 2px no-repeat,
+          linear-gradient(currentColor, currentColor) 92px 3px / 26px 2px no-repeat,
+          linear-gradient(currentColor, currentColor) 126px 8px / 42px 2px no-repeat;
+      }
+
+      .inspector {
+        border-right: 0;
+        display: grid;
+        grid-template-rows: 38px 220px 1fr;
+      }
+
+      .inspector-card {
+        margin: 10px;
+        padding: 10px;
+        border-radius: 7px;
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+      }
+
+      .meter {
+        height: 12px;
+        border-radius: 6px;
+        background: #111517;
+        overflow: hidden;
+        margin: 8px 0;
+      }
+
+      .fill {
+        height: 100%;
+        background: var(--accent);
+      }
+
+      .bottom {
+        border-right: 0;
+        display: grid;
+        grid-template-rows: 34px 1fr;
+        background: #171c1f;
+      }
+
+      .tabs {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 10px;
+        border-bottom: 1px solid var(--line);
+        background: #15191c;
+      }
+
+      .tab {
+        height: 24px;
+        padding: 0 10px;
+        border-radius: 4px;
+        background: var(--panel-2);
+        display: flex;
+        align-items: center;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .tab.active {
+        color: var(--text);
+        background: var(--panel-3);
+      }
+
+      .mixer {
+        display: grid;
+        grid-template-columns: repeat(10, 1fr);
+        gap: 8px;
+        padding: 10px;
+        overflow: hidden;
+      }
+
+      .strip {
+        min-width: 0;
+        border-radius: 7px;
+        background: var(--panel);
+        border: 1px solid var(--line);
+        display: grid;
+        grid-template-rows: 24px 1fr 24px;
+        padding: 6px;
+      }
+
+      .strip-name {
+        font-size: 11px;
+        color: var(--muted);
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+
+      .fader-area {
+        display: grid;
+        grid-template-columns: 1fr 12px 24px;
+        gap: 6px;
+        align-items: end;
+      }
+
+      .level {
+        height: 116px;
+        border-radius: 6px;
+        background: #101416;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .level::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: var(--h);
+        background: linear-gradient(to top, var(--accent), #e0cf63);
+      }
+
+      .fader {
+        height: 116px;
+        background: linear-gradient(to bottom, transparent 0 45%, #d4dde2 45% 52%, transparent 52%);
+        border-left: 2px solid #4d5a60;
+      }
+
+      .strip-actions {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 4px;
+      }
+
+      .label {
+        color: var(--muted);
+        font-size: 11px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="frame">
+        <div class="menu">
+          <strong>Aion Music Studio</strong>
+          <span>File</span>
+          <span>Edit</span>
+          <span>View</span>
+          <span>Track</span>
+          <span>Tools</span>
+          <span>AI Producer</span>
+          <span>Help</span>
+        </div>
+
+        <div class="transport">
+          <div class="cluster">
+            <div class="btn">↶</div>
+            <div class="btn">↷</div>
+            <div class="btn">↺</div>
+            <div class="btn">✂</div>
+            <div class="btn">✎</div>
+            <div class="btn">▣</div>
+          </div>
+          <div class="cluster">
+            <div class="btn">◀</div>
+            <div class="btn">▶</div>
+            <div class="btn">■</div>
+            <div class="btn record">●</div>
+            <div class="time">00:22:13</div>
+          </div>
+          <div class="cluster">
+            <div class="field">140 BPM</div>
+            <div class="field">4/4</div>
+            <div class="field">A min</div>
+            <div class="field">Snap 1/16</div>
+            <div class="field">Song</div>
+            <div class="field">Loop</div>
+          </div>
+          <div class="cluster">
+            <div class="btn">💾</div>
+            <div class="btn">⬇</div>
+            <div class="field">Publish</div>
+          </div>
+        </div>
+
+        <div class="main">
+          <aside class="browser">
+            <div class="section-title">Browser <span>Import WAV</span></div>
+            <div class="browser-list">
+              <div class="sample"><span class="dot"></span>KSHMR Kick 01.wav</div>
+              <div class="sample"><span class="dot"></span>Snare bright.wav</div>
+              <div class="sample"><span class="dot"></span>HiHat closed.wav</div>
+              <div class="sample"><span class="dot"></span>Vocal take 03.wav</div>
+              <div class="sample"><span class="dot"></span>Piano Soft preset</div>
+              <div class="sample"><span class="dot"></span>808 Subber.wav</div>
+              <div class="sample"><span class="dot"></span>Atmosphere loop.wav</div>
+              <div class="sample"><span class="dot"></span>Project stems</div>
+              <div class="sample"><span class="dot"></span>Recent projects</div>
+              <div class="sample"><span class="dot"></span>AI generated ideas</div>
+            </div>
+          </aside>
+
+          <aside class="track-list">
+            <div class="section-title">Tracks <span>+ Track</span></div>
+            <div class="track">
+              <span class="name">Lead Vox</span><span class="mini">M</span><span class="mini">S</span
+              ><span class="mini armed">R</span>
+            </div>
+            <div class="track">
+              <span class="name">Drum Machine</span><span class="mini">M</span><span class="mini">S</span
+              ><span class="mini">R</span>
+            </div>
+            <div class="track">
+              <span class="name">Piano Soft</span><span class="mini">M</span><span class="mini">S</span
+              ><span class="mini">R</span>
+            </div>
+            <div class="track">
+              <span class="name">808 Bass</span><span class="mini">M</span><span class="mini">S</span
+              ><span class="mini">R</span>
+            </div>
+            <div class="track">
+              <span class="name">Guitar Chop</span><span class="mini">M</span><span class="mini">S</span
+              ><span class="mini">R</span>
+            </div>
+            <div class="track">
+              <span class="name">Automation</span><span class="mini">M</span><span class="mini">S</span
+              ><span class="mini">R</span>
+            </div>
+            <div class="track">
+              <span class="name">FX Return</span><span class="mini">M</span><span class="mini">S</span
+              ><span class="mini">R</span>
+            </div>
+            <div class="track">
+              <span class="name">Master</span><span class="mini">M</span><span class="mini">S</span
+              ><span class="mini">R</span>
+            </div>
+          </aside>
+
+          <section class="playlist">
+            <div class="ruler">
+              <div class="bar">1</div>
+              <div class="bar">2</div>
+              <div class="bar">3</div>
+              <div class="bar">4</div>
+              <div class="bar">5</div>
+              <div class="bar">6</div>
+              <div class="bar">7</div>
+              <div class="bar">8</div>
+              <div class="bar">9</div>
+              <div class="bar">10</div>
+              <div class="bar">11</div>
+              <div class="bar">12</div>
+              <div class="bar">13</div>
+              <div class="bar">14</div>
+              <div class="bar">15</div>
+              <div class="bar">16</div>
+            </div>
+            <div class="timeline">
+              <div class="playhead"></div>
+              <div class="clip audio" style="left: 2%; top: 14px; width: 27%">
+                Lead Vox take
+                <div class="wave"></div>
+              </div>
+              <div class="clip drum" style="left: 2%; top: 76px; width: 96%">
+                Drum pattern
+                <div class="notes"></div>
+              </div>
+              <div class="clip midi" style="left: 2%; top: 138px; width: 24%">
+                Piano chord A
+                <div class="notes"></div>
+              </div>
+              <div class="clip midi" style="left: 33%; top: 138px; width: 28%">
+                Piano chord B
+                <div class="notes"></div>
+              </div>
+              <div class="clip midi" style="left: 67%; top: 138px; width: 28%">
+                Piano chord C
+                <div class="notes"></div>
+              </div>
+              <div class="clip audio" style="left: 34%; top: 200px; width: 28%">
+                808 sub audio
+                <div class="wave"></div>
+              </div>
+              <div class="clip audio" style="left: 2%; top: 262px; width: 22%">
+                Guitar chop
+                <div class="wave"></div>
+              </div>
+              <div class="clip automation" style="left: 2%; top: 324px; width: 70%">Master volume automation</div>
+            </div>
+          </section>
+
+          <aside class="inspector">
+            <div class="section-title">Inspector / AI <span>Listen</span></div>
+            <div class="inspector-card">
+              <div class="label">Selected clip</div>
+              <h3 style="margin: 8px 0 4px">Lead Vox take</h3>
+              <div class="label">Key: A minor · Pitch tune: 42%</div>
+              <div class="meter"><div class="fill" style="width: 68%"></div></div>
+              <div class="label">FX chain: EQ → Compressor → Reverb</div>
+            </div>
+            <div class="inspector-card">
+              <div class="label">AI Producer</div>
+              <p style="font-size: 12px; line-height: 1.5; color: var(--muted)">
+                Heard A minor, tempo around 140 BPM. Vocal is slightly sharp in bar 3. Kick and bass conflict around 65
+                Hz.
+              </p>
+              <div class="field" style="width: 100%; margin-bottom: 8px">Tune selected vocal</div>
+              <div class="field" style="width: 100%; margin-bottom: 8px">Balance mix</div>
+              <div class="field" style="width: 100%">Generate transition fill</div>
+            </div>
+          </aside>
+        </div>
+
+        <div class="bottom">
+          <div class="tabs">
+            <div class="tab active">Mixer</div>
+            <div class="tab">Channel Rack</div>
+            <div class="tab">Piano Roll</div>
+            <div class="tab">Recorder</div>
+            <div class="tab">Tune</div>
+          </div>
+          <div class="mixer">
+            <div class="strip">
+              <div class="strip-name">Lead Vox</div>
+              <div class="fader-area">
+                <div class="level" style="--h: 76%"></div>
+                <div class="fader"></div>
+                <div class="label">-8</div>
+              </div>
+              <div class="strip-actions">
+                <div class="mini">M</div>
+                <div class="mini">S</div>
+                <div class="mini armed">R</div>
+              </div>
+            </div>
+            <div class="strip">
+              <div class="strip-name">Drums</div>
+              <div class="fader-area">
+                <div class="level" style="--h: 82%"></div>
+                <div class="fader"></div>
+                <div class="label">-4</div>
+              </div>
+              <div class="strip-actions">
+                <div class="mini">M</div>
+                <div class="mini">S</div>
+                <div class="mini">R</div>
+              </div>
+            </div>
+            <div class="strip">
+              <div class="strip-name">Piano</div>
+              <div class="fader-area">
+                <div class="level" style="--h: 54%"></div>
+                <div class="fader"></div>
+                <div class="label">-12</div>
+              </div>
+              <div class="strip-actions">
+                <div class="mini">M</div>
+                <div class="mini">S</div>
+                <div class="mini">R</div>
+              </div>
+            </div>
+            <div class="strip">
+              <div class="strip-name">808 Bass</div>
+              <div class="fader-area">
+                <div class="level" style="--h: 69%"></div>
+                <div class="fader"></div>
+                <div class="label">-7</div>
+              </div>
+              <div class="strip-actions">
+                <div class="mini">M</div>
+                <div class="mini">S</div>
+                <div class="mini">R</div>
+              </div>
+            </div>
+            <div class="strip">
+              <div class="strip-name">Guitar</div>
+              <div class="fader-area">
+                <div class="level" style="--h: 44%"></div>
+                <div class="fader"></div>
+                <div class="label">-15</div>
+              </div>
+              <div class="strip-actions">
+                <div class="mini">M</div>
+                <div class="mini">S</div>
+                <div class="mini">R</div>
+              </div>
+            </div>
+            <div class="strip">
+              <div class="strip-name">FX Return</div>
+              <div class="fader-area">
+                <div class="level" style="--h: 35%"></div>
+                <div class="fader"></div>
+                <div class="label">-18</div>
+              </div>
+              <div class="strip-actions">
+                <div class="mini">M</div>
+                <div class="mini">S</div>
+                <div class="mini">R</div>
+              </div>
+            </div>
+            <div class="strip">
+              <div class="strip-name">Master</div>
+              <div class="fader-area">
+                <div class="level" style="--h: 88%"></div>
+                <div class="fader"></div>
+                <div class="label">-3</div>
+              </div>
+              <div class="strip-actions">
+                <div class="mini">M</div>
+                <div class="mini">S</div>
+                <div class="mini">R</div>
+              </div>
+            </div>
+            <div class="strip">
+              <div class="strip-name">Preview</div>
+              <div class="fader-area">
+                <div class="level" style="--h: 24%"></div>
+                <div class="fader"></div>
+                <div class="label">-24</div>
+              </div>
+              <div class="strip-actions">
+                <div class="mini">M</div>
+                <div class="mini">S</div>
+                <div class="mini">R</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

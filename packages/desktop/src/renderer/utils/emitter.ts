@@ -54,6 +54,41 @@ interface EventTypes {
   'sendbox.reply.clear': void; // clear reply quote
   'staroffice.install.request': [{ conversation_id: string; text: string; detectedUrl?: string | null }];
   'staroffice.install.finished': [{ conversation_id: string }];
+  // Super: toggle the in-chat live-browser frames panel for a conversation.
+  'super.watch.toggle': [string]; // conversation_id
+  // Super: explicitly set the panel open/closed for a conversation.
+  'super.watch.set': [string, boolean]; // conversation_id, open
+  // Super: the overlay announces its open state so the header button can sync.
+  'super.watch.state': [string, boolean]; // conversation_id, open
+  // Browser: ask the Browser page to open its AI chat dock (e.g. when a URL is
+  // opened from outside the app / default-browser hand-off).
+  'browser.openChat': void;
+  // IDE Agent Hooks: a fired hook wants the IDE Chat surface to run a prompt
+  // (the workspace root + the prompt to send to a new/active agent tab).
+  'ide.hook.askAgent': [{ rootPath: string; prompt: string; hookName: string }];
+  // IDE navigation: the editor asks the workspace to resolve a symbol's
+  // definition/references (the workspace owns rootPath + file-opening). When
+  // `lsp` is present (a language server is attached to the file), the workspace
+  // resolves via that server (type-aware, accurate) instead of the heuristic.
+  'ide.nav.request': [
+    {
+      symbol: string;
+      mode: 'definition' | 'references';
+      lsp?: { serverId: string; filePath: string; line: number; column: number };
+    },
+  ];
+  // IDE run-test-at-cursor: the editor asks the workspace to build + run the
+  // nearest test for a file at a cursor line (workspace owns rootPath + terminal).
+  'ide.test.runAtCursor': [{ filePath: string; content: string; line: number }];
+  // IDE run-in-terminal: the file tree asks the terminal dock to open + run a
+  // quick command in a fresh session at a cwd (empty command = just open here).
+  'ide.terminal.run': [{ command: string; cwd?: string }];
+  // IDE relations: the editor's impact CodeLens asks the workspace to reveal the
+  // Related-code rail (so the user can see who depends on the file being edited).
+  'ide.relations.reveal': [{ filePath: string }];
+  // IDE knowledge graph updated for a repo (e.g. a file was re-summarised): open
+  // editors refetch the graph so hovers/relations reflect the new summary.
+  'ide.kg.updated': [{ rootPath: string }];
 }
 
 export const emitter = new EventEmitter<EventTypes>();

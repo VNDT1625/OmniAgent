@@ -101,12 +101,99 @@ export type AgentMetadata = {
   handshake?: AgentHandshake;
 };
 
+type BootstrapCliAgent = {
+  name: string;
+  command: string;
+  args: string[];
+  icon: string;
+  description: string;
+  yolo_id: string;
+};
+
+function resolveAntigravityCommand(): string {
+  if (typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows')) {
+    return 'agi.exe';
+  }
+  return 'agi';
+}
+
+const BOOTSTRAP_CLI_AGENTS: BootstrapCliAgent[] = [
+  {
+    name: 'DeepSeek TUI',
+    command: 'deepseek-tui',
+    args: ['acp'],
+    icon: 'ai-china/deepseek.svg',
+    description: 'DeepSeek Terminal UI (codewhale)',
+    yolo_id: 'yolo',
+  },
+  {
+    name: 'Antigravity',
+    command: resolveAntigravityCommand(),
+    args: ['acp'],
+    icon: 'tools/antigravity.svg',
+    description: 'Antigravity CLI (agi.exe / agi)',
+    yolo_id: 'yolo',
+  },
+];
+
+let lastBootstrapCliAgentAttempt = 0;
+const BOOTSTRAP_CLI_AGENT_RETRY_MS = 60_000;
+
+function hasBootstrapCliAgent(agents: AgentMetadata[], entry: BootstrapCliAgent): boolean {
+  return agents.some(
+    (agent) =>
+      agent.name === entry.name ||
+      agent.command === entry.command ||
+      agent.id === entry.command ||
+      agent.id === entry.name
+  );
+}
+
+async function ensureBootstrapCliAgents(agents: AgentMetadata[]): Promise<boolean> {
+  const missing = BOOTSTRAP_CLI_AGENTS.filter((entry) => !hasBootstrapCliAgent(agents, entry));
+  if (missing.length === 0) {
+    return false;
+  }
+
+  const now = Date.now();
+  if (now - lastBootstrapCliAgentAttempt < BOOTSTRAP_CLI_AGENT_RETRY_MS) {
+    return false;
+  }
+  lastBootstrapCliAgentAttempt = now;
+
+  const results = await Promise.allSettled(
+    missing.map((entry) =>
+      ipcBridge.acpConversation.createCustomAgent.invoke({
+        name: entry.name,
+        command: entry.command,
+        icon: entry.icon,
+        args: entry.args,
+        advanced: {
+          description: entry.description,
+          yolo_id: entry.yolo_id,
+        },
+      })
+    )
+  );
+
+  const created = results.some((result) => result.status === 'fulfilled');
+  if (created) {
+    await ipcBridge.acpConversation.refreshCustomAgents.invoke().catch((): undefined => undefined);
+  }
+  return created;
+}
+
 /** Shared fetcher for DETECTED_AGENTS_SWR_KEY — single source of truth. */
 export async function fetchDetectedAgents(): Promise<AgentMetadata[]> {
   try {
     const agents = await ipcBridge.acpConversation.getAvailableAgents.invoke();
     if (Array.isArray(agents)) {
-      return agents as AgentMetadata[];
+      const detectedAgents = agents as AgentMetadata[];
+      if (await ensureBootstrapCliAgents(detectedAgents)) {
+        const refreshedAgents = await ipcBridge.acpConversation.getAvailableAgents.invoke();
+        return Array.isArray(refreshedAgents) ? (refreshedAgents as AgentMetadata[]) : detectedAgents;
+      }
+      return detectedAgents;
     }
   } catch {
     // fallback to empty

@@ -1,0 +1,93 @@
+{
+  "title": "Make Video",
+  "newProject": "New project",
+  "emptyGallery": "No projects yet. Create one to start your AI movie.",
+  "retry": "Retry",
+  "unavailableTitle": "Make Video service unavailable",
+  "unavailableSubtitle": "The Make Video engine is not connected yet. It becomes available once the desktop bridge is wired.",
+  "noScenes": "No scenes yet. Generate a script to begin.",
+  "generatingScript": "Writing the script…",
+  "new": {
+    "title": "New video project",
+    "create": "Create",
+    "cancel": "Cancel",
+    "topic": "Topic",
+    "topicPlaceholder": "What is the movie about? e.g. A lonely robot finds a friend.",
+    "style": "Style",
+    "stylePlaceholder": "e.g. anime, cinematic, claymation",
+    "language": "Narration language"
+  },
+  "remove": {
+    "title": "Delete project",
+    "content": "Delete \"{{topic}}\"? This cannot be undone.",
+    "confirm": "Delete",
+    "cancel": "Cancel"
+  },
+  "card": {
+    "scenes": "{{count}} scenes · {{rendered}} rendered",
+    "clips": "{{count}} clips"
+  },
+  "controls": {
+    "scriptModel": "Script model",
+    "imageModel": "Image model",
+    "pickModel": "Select a model",
+    "scenes": "Scenes",
+    "generateScript": "Generate script",
+    "regenerateScript": "Regenerate script",
+    "renderAll": "Render all images",
+    "voiceConfig": "Voice config",
+    "genAllVoices": "Gen all voices",
+    "clipConfig": "Video clip config",
+    "genAllClips": "Gen all clips",
+    "exportFinal": "Export MP4",
+    "exporting": "Exporting…",
+    "providerGroup": "Provider models",
+    "cliGroup": "CLI agents",
+    "noModels": "No models. Add a provider or CLI agent in Settings.",
+    "stop": "Stop",
+    "stopping": "Stopping…"
+  },
+  "scene": {
+    "index": "Scene {{n}}",
+    "untitled": "Untitled scene",
+    "rendering": "Rendering image…",
+    "generatingClip": "Generating clip…",
+    "render": "Render image",
+    "regenerate": "Re-render image",
+    "genVoice": "Gen voice",
+    "regenVoice": "Re-gen voice",
+    "genClip": "Gen video clip",
+    "regenClip": "Re-gen clip",
+    "showVideo": "Show video",
+    "showImage": "Show image",
+    "frameEndSet": "End frame set",
+    "clearFrameEnd": "Clear",
+    "voiceNotConfigured": "Configure voice provider first",
+    "clipNotConfigured": "Configure video clip provider first",
+    "clipNeedsImage": "Render an image first"
+  },
+  "voiceConfig": {
+    "title": "Voice (TTS) Provider",
+    "save": "Save",
+    "cancel": "Cancel",
+    "provider": "Provider",
+    "baseUrl": "Base URL",
+    "apiKey": "API Key",
+    "model": "Model",
+    "voice": "Voice",
+    "voiceId": "Voice ID"
+  },
+  "videoClipConfig": {
+    "title": "Video Clip Provider (fal.ai)",
+    "save": "Save",
+    "cancel": "Cancel",
+    "apiKey": "fal.ai API Key",
+    "apiKeyHint": "Get your key at fal.ai/dashboard",
+    "model": "Model",
+    "duration": "Clip duration",
+    "supportsEndFrame": "This model supports start + end frame interpolation"
+  },
+  "export": {
+    "success": "Video exported: {{path}}"
+  }
+}

@@ -22,6 +22,8 @@ import { emitter } from '../../../utils/emitter';
 import AcpChat from '../platforms/acp/AcpChat';
 import ChatLayout from './ChatLayout';
 import ChatSlider from './ChatSlider.tsx';
+import ConversationSurfaces from './ConversationSurfaces';
+import ConversationWatchOverlay from './superWatch/ConversationWatchOverlay';
 import NanobotChat from '../platforms/nanobot/NanobotChat';
 import OpenClawChat from '../platforms/openclaw/OpenClawChat';
 import RemoteChat from '../platforms/remote/RemoteChat';
@@ -136,10 +138,11 @@ const _AddNewConversation: React.FC<{ conversation: TChatConversation }> = ({ co
 
 type AionrsConversation = Extract<TChatConversation, { type: 'aionrs' }>;
 
-const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; sliderTitle: React.ReactNode }> = ({
-  conversation,
-  sliderTitle,
-}) => {
+const AionrsConversationPanel: React.FC<{
+  conversation: AionrsConversation;
+  sliderTitle: React.ReactNode;
+  embedded?: boolean;
+}> = ({ conversation, sliderTitle, embedded }) => {
   const onSelectModel = useCallback(
     async (_provider: IProvider, modelName: string) => {
       const selected = { ..._provider, use_model: modelName } as TProviderWithModel;
@@ -170,6 +173,7 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
     sider: <ChatSlider conversation={conversation} />,
     headerExtra: (
       <div className='flex items-center gap-8px'>
+        <ConversationSurfaces conversation={conversation} />
         <CronJobManager
           conversation_id={conversation.id}
           cron_job_id={conversation.extra?.cron_job_id as string | undefined}
@@ -178,12 +182,13 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
         {!isMobile && <AionrsModelSelector selection={modelSelection} />}
       </div>
     ),
-    workspaceEnabled,
+    workspaceEnabled: embedded ? false : workspaceEnabled,
     workspacePath: conversation.extra?.workspace,
     isTemporaryWorkspace: (conversation.extra as { is_temporary_workspace?: boolean } | undefined)
       ?.is_temporary_workspace,
     backend: 'aionrs' as const,
     presetAssistant: presetAssistantInfo ? { ...presetAssistantInfo, id: aionrsAssistantId } : undefined,
+    chatColumnOverlay: <ConversationWatchOverlay conversationId={conversation.id} />,
   };
 
   return (
@@ -208,7 +213,14 @@ const AionrsConversationPanel: React.FC<{ conversation: AionrsConversation; slid
 const ChatConversation: React.FC<{
   conversation?: TChatConversation;
   hideSendBox?: boolean;
-}> = ({ conversation, hideSendBox }) => {
+  /**
+   * When true, the chat is embedded inside another surface (e.g. the Studio
+   * editor's narrow AI side-panel). The workspace file-tree sider is suppressed
+   * to reclaim horizontal space; the agent's cwd is unaffected (it derives from
+   * the backend `extra.workspace`, not this UI flag).
+   */
+  embedded?: boolean;
+}> = ({ conversation, hideSendBox, embedded }) => {
   const { t } = useTranslation();
   const { openPreview } = usePreviewContext();
   const workspaceEnabled = Boolean(conversation?.extra?.workspace);
@@ -350,7 +362,14 @@ const ChatConversation: React.FC<{
   }, [conversation, isAionrsConversation, isMobile]);
 
   if (conversation && conversation.type === 'aionrs') {
-    return <AionrsConversationPanel key={conversation.id} conversation={conversation} sliderTitle={sliderTitle} />;
+    return (
+      <AionrsConversationPanel
+        key={conversation.id}
+        conversation={conversation}
+        sliderTitle={sliderTitle}
+        embedded={embedded}
+      />
+    );
   }
 
   // 如果有预设助手信息，使用预设助手的 logo 和名称；加载中时不进入 fallback；否则使用 backend 的 logo
@@ -381,6 +400,7 @@ const ChatConversation: React.FC<{
 
   const headerExtraNode = (
     <div className='flex items-center gap-8px'>
+      <ConversationSurfaces conversation={conversation} />
       {conversation?.type === 'openclaw-gateway' && (
         <div className='shrink-0'>
           <StarOfficeMonitorCard
@@ -411,12 +431,13 @@ const ChatConversation: React.FC<{
       headerExtra={headerExtraNode}
       siderTitle={sliderTitle}
       sider={<ChatSlider conversation={conversation} />}
-      workspaceEnabled={workspaceEnabled}
+      workspaceEnabled={embedded ? false : workspaceEnabled}
       workspacePath={conversation?.extra?.workspace}
       isTemporaryWorkspace={
         (conversation?.extra as { is_temporary_workspace?: boolean } | undefined)?.is_temporary_workspace
       }
       conversation_id={conversation?.id}
+      chatColumnOverlay={<ConversationWatchOverlay conversationId={conversation?.id} />}
     >
       {conversationNode}
     </ChatLayout>

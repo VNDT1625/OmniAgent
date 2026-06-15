@@ -31,6 +31,9 @@ import { allSupportedExts, type FileMetadata } from '@/renderer/services/FileSer
 import { emitter, useAddEventListener } from '@/renderer/utils/emitter';
 import { mergeFileSelectionItems } from '@/renderer/utils/file/fileSelection';
 import { buildDisplayMessage } from '@/renderer/utils/file/messageFiles';
+import { expandGoalCommand, isGoalOffCommand, parseGoalCommand } from '@/common/chat/slash/goalCommand';
+import { clearGoalMode, setGoalMode, withGoalSteeringDirective } from '@/renderer/utils/chat/goalMode';
+import { Message } from '@arco-design/web-react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -263,10 +266,16 @@ const RemoteSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id 
         aiProcessingRef.current = true;
 
         void checkAndUpdateTitle(conversation_id, input);
+        const initialGoalExpansion = expandGoalCommand(input);
+        const initialModelInput = initialGoalExpansion ? buildDisplayMessage(initialGoalExpansion, files, workspacePath) : initialDisplayMessage;
+        if (initialGoalExpansion) {
+          const parsedGoal = parseGoalCommand(input);
+          if (parsedGoal) setGoalMode(conversation_id, parsedGoal.variant, parsedGoal.requirement);
+        }
         // Fetch the server-assigned msg_id before rendering the optimistic
         // bubble so the local row uses the same id as the persisted DB row.
         const sendResult = await ipcBridge.conversation.sendMessage.invoke({
-          input: initialDisplayMessage,
+          input: withGoalSteeringDirective(initialModelInput, conversation_id),
           conversation_id,
           files,
         });
@@ -333,12 +342,20 @@ const RemoteSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id 
       let msg_id: string | null = null;
       try {
         void checkAndUpdateTitle(conversation_id, input);
+        // Goal commands (/goal, /goal-all) expand into a full autonomous instruction
+        // for the agent; the bubble keeps showing the raw `/goal ...` text.
+        const goalExpansion = expandGoalCommand(input);
+        const modelInput = goalExpansion ? buildDisplayMessage(goalExpansion, files, workspacePath) : displayMessage;
+        if (goalExpansion) {
+          const parsedGoal = parseGoalCommand(input);
+          if (parsedGoal) setGoalMode(conversation_id, parsedGoal.variant, parsedGoal.requirement);
+        }
         // Wait for the server-assigned msg_id before rendering the optimistic
         // user bubble so the local row uses the same id as the DB row and
         // subsequent WebSocket stream events — avoids duplicate bubbles when
         // useMessageLstCache reloads.
         const res = await ipcBridge.conversation.sendMessage.invoke({
-          input: displayMessage,
+          input: withGoalSteeringDirective(modelInput, conversation_id),
           conversation_id,
           files,
         });
@@ -390,6 +407,11 @@ const RemoteSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id 
 
   const onSendHandler = useCallback(
     async (message: string) => {
+      if (isGoalOffCommand(message)) {
+        clearGoalMode(conversation_id);
+        Message.info(t('conversation.goalCommand.modeOff'));
+        return;
+      }
       emitter.emit('remote.selected.file.clear');
       const currentAtPath = [...atPath];
       const currentUploadFile = [...uploadFile];
@@ -413,7 +435,7 @@ const RemoteSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id 
 
       await executeCommand({ input: message, files: file_paths });
     },
-    [aiProcessing, atPath, enqueue, executeCommand, hasPendingCommands, setAtPath, setUploadFile, uploadFile]
+    [aiProcessing, atPath, conversation_id, enqueue, executeCommand, hasPendingCommands, setAtPath, setUploadFile, t, uploadFile]
   );
 
   const handleEditQueuedCommand = useCallback(
@@ -507,6 +529,7 @@ const RemoteSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id 
           ) : undefined
         }
         onSend={onSendHandler}
+        enableGoal
         allowSendWhileLoading
       />
     </div>

@@ -1,0 +1,24 @@
+/**
+ * @license
+ * Copyright 2025 AionUi (aionui.com)
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React from 'react';
+import SettingsPageWrapper from '../components/SettingsPageWrapper';
+import ResourceDashboard from './ResourceDashboard';
+
+/**
+ * Resource Dashboard settings page (Requirement 5 — anti-lag resource
+ * management). Registered at `/settings/resource`; renders inside the shared
+ * settings page chrome so it picks up the settings navigation.
+ */
+const ResourceSettings: React.FC = () => {
+  return (
+    <SettingsPageWrapper>
+      <ResourceDashboard />
+    </SettingsPageWrapper>
+  );
+};
+
+export default ResourceSettings;

@@ -75,6 +75,23 @@ global.cancelAnimationFrame = (id: number) => {
   clearTimeout(id);
 };
 
+// Mock matchMedia (jsdom lacks it) — used by theme helpers (e.g. xtermTheme).
+if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}
+
 // Mock scrollTo
 Element.prototype.scrollTo = () => {};
 Element.prototype.scrollIntoView = () => {};

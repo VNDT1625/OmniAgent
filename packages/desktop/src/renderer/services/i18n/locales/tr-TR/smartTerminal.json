@@ -1,0 +1,15 @@
+{
+  "smartFix": {
+    "errorLine": "`{{command}}` başarısız (çıkış {{code}})",
+    "updatedTo": "güncellendi →",
+    "updateLink": "Yenilikler",
+    "run": "{{program}} ile çalıştır",
+    "dismiss": "Kapat",
+    "tag": "Smart Fix",
+    "confirmQuestion": "bunun yerine `{{program}}` çalıştırılsın mı? (y/N)",
+    "skipped": "Smart Fix atlandı.",
+    "running": "`{{program}}` çalıştırılıyor…"
+  },
+  "autoRerunLabel": "Hatada düzeltme öner",
+  "autoRerunHint": "Bir komut başarısız olur ve bilinen bir alternatifi varsa, terminalde (y/N) sorar; siz veya bir ajan yazarak uygulayabilir."
+}

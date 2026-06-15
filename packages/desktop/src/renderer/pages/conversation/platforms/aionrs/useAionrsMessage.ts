@@ -14,6 +14,7 @@ import { useAddOrUpdateMessage } from '@/renderer/pages/conversation/Messages/ho
 import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { processLocalCronResponse } from './localCronCommands';
+import { noteAssistantReply } from '@/renderer/services/i18n/responseLanguage';
 
 type TokenUsage = {
   input_tokens?: number;
@@ -131,6 +132,10 @@ export const useAionrsMessage = (
       if (!rawContent.trim()) {
         return;
       }
+
+      // Adaptively arm/disarm the strong language constraint for this
+      // conversation based on the language the model actually replied in.
+      noteAssistantReply(conversation_id, rawContent);
 
       processedCronMsgIdsRef.current.add(msgId);
 

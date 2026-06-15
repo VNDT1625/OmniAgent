@@ -37,6 +37,26 @@ async function main() {
       entryPoints: [path.join(ROOT, 'packages/desktop/src/process/resources/builtinMcp/imageGenServer.ts')],
       outfile: path.join(ROOT, 'out/main/builtin-mcp-image-gen.js'),
     }),
+    esbuild.build({
+      ...SHARED_OPTIONS,
+      entryPoints: [path.join(ROOT, 'packages/desktop/src/process/resources/builtinMcp/resourceServer.ts')],
+      outfile: path.join(ROOT, 'out/main/builtin-mcp-resource.js'),
+    }),
+    esbuild.build({
+      ...SHARED_OPTIONS,
+      entryPoints: [path.join(ROOT, 'packages/desktop/src/process/resources/builtinMcp/companyServer.ts')],
+      outfile: path.join(ROOT, 'out/main/builtin-mcp-company.js'),
+    }),
+    esbuild.build({
+      ...SHARED_OPTIONS,
+      entryPoints: [path.join(ROOT, 'packages/desktop/src/process/resources/builtinMcp/managerServer.ts')],
+      outfile: path.join(ROOT, 'out/main/builtin-mcp-manager.js'),
+    }),
+    esbuild.build({
+      ...SHARED_OPTIONS,
+      entryPoints: [path.join(ROOT, 'packages/desktop/src/process/system/systemInfoMcpServer.ts')],
+      outfile: path.join(ROOT, 'out/main/builtin-mcp-system.js'),
+    }),
   ]);
 }
 

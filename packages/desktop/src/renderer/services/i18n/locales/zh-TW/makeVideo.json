@@ -1,0 +1,93 @@
+{
+  "title": "影片製作",
+  "newProject": "新增專案",
+  "emptyGallery": "還沒有專案。建立一個開始你的 AI 影片。",
+  "retry": "重試",
+  "unavailableTitle": "影片製作服務無法使用",
+  "unavailableSubtitle": "影片製作引擎尚未連接。桌面橋接接通後即可使用。",
+  "noScenes": "還沒有場景。產生腳本來開始。",
+  "generatingScript": "正在撰寫腳本…",
+  "new": {
+    "title": "新增影片專案",
+    "create": "建立",
+    "cancel": "取消",
+    "topic": "主題",
+    "topicPlaceholder": "影片講的是什麼？例如：一個孤獨的機器人找到了朋友。",
+    "style": "風格",
+    "stylePlaceholder": "例如：動漫、電影感、黏土動畫",
+    "language": "旁白語言"
+  },
+  "remove": {
+    "title": "刪除專案",
+    "content": "刪除「{{topic}}」？此操作無法復原。",
+    "confirm": "刪除",
+    "cancel": "取消"
+  },
+  "card": {
+    "scenes": "{{count}} 個場景 · 已算繪 {{rendered}}",
+    "clips": "{{count}} 個片段"
+  },
+  "controls": {
+    "scriptModel": "腳本模型",
+    "imageModel": "影像模型",
+    "pickModel": "選擇模型",
+    "scenes": "場景",
+    "generateScript": "產生腳本",
+    "regenerateScript": "重新產生腳本",
+    "renderAll": "算繪所有影像",
+    "voiceConfig": "語音設定",
+    "genAllVoices": "產生所有語音",
+    "clipConfig": "影片片段設定",
+    "genAllClips": "產生所有片段",
+    "exportFinal": "匯出 MP4",
+    "exporting": "匯出中…",
+    "providerGroup": "供應商模型",
+    "cliGroup": "CLI 智能體",
+    "noModels": "尚無模型。請在設定中新增供應商或 CLI 智能體。",
+    "stop": "停止",
+    "stopping": "正在停止…"
+  },
+  "scene": {
+    "index": "場景 {{n}}",
+    "untitled": "未命名場景",
+    "rendering": "算繪中…",
+    "render": "算繪影像",
+    "regenerate": "重新產生",
+    "generatingClip": "正在產生片段…",
+    "genVoice": "產生語音",
+    "regenVoice": "重新產生語音",
+    "genClip": "產生影片片段",
+    "regenClip": "重新產生片段",
+    "showVideo": "顯示影片",
+    "showImage": "顯示影像",
+    "frameEndSet": "已設定結束影格",
+    "clearFrameEnd": "清除",
+    "voiceNotConfigured": "請先設定語音提供商",
+    "clipNotConfigured": "請先設定影片片段提供商",
+    "clipNeedsImage": "請先算繪影像"
+  },
+  "voiceConfig": {
+    "title": "語音 (TTS) 提供商",
+    "save": "儲存",
+    "cancel": "取消",
+    "provider": "提供商",
+    "baseUrl": "Base URL",
+    "apiKey": "API Key",
+    "model": "模型",
+    "voice": "語音",
+    "voiceId": "Voice ID"
+  },
+  "videoClipConfig": {
+    "title": "影片片段提供商 (fal.ai)",
+    "save": "儲存",
+    "cancel": "取消",
+    "apiKey": "fal.ai API Key",
+    "apiKeyHint": "在 fal.ai/dashboard 取得您的金鑰",
+    "model": "模型",
+    "duration": "片段時長",
+    "supportsEndFrame": "此模型支援起始影格 + 結束影格插值"
+  },
+  "export": {
+    "success": "影片已匯出：{{path}}"
+  }
+}

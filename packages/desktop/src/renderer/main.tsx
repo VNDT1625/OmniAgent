@@ -4,6 +4,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { filterRendererBreadcrumb, filterRendererSentryIntegrations } from './utils/ui/runtimePatches';
+
 // Sentry must be initialized first
 // Use electron-specific renderer package only inside Electron; fall back to the
 // browser SDK when running as a web server (no window.electronAPI).
@@ -12,6 +14,9 @@ if ((window as { electronAPI?: unknown }).electronAPI) {
   import('@sentry/electron/renderer')
     .then((Sentry) =>
       Sentry.init({
+        beforeBreadcrumb: filterRendererBreadcrumb,
+
+        integrations: filterRendererSentryIntegrations,
         beforeSend(event) {
           if (!(window as { __backendStartupFailed?: boolean }).__backendStartupFailed) {
             return event;
@@ -33,7 +38,6 @@ if ((window as { electronAPI?: unknown }).electronAPI) {
 }
 
 // Runtime patches must be imported early
-import './utils/ui/runtimePatches';
 
 // Browser adapter setup
 import '@/common/adapter/browser';
@@ -81,11 +85,13 @@ import { registerPwa } from './services/registerPwa';
 import { mutate as swrMutate } from 'swr';
 import { DETECTED_AGENTS_SWR_KEY, fetchDetectedAgents } from './utils/model/agentTypes';
 import { repairAllCronJobTimeZonesOnce } from '@renderer/pages/cron/repairCronJobTimeZone';
+import { resumeInterruptedCompanyRuns } from '@renderer/pages/company/useCompanyPipeline';
 
 // Components and utilities
 import Layout from './components/layout/Layout';
 import Router from './components/layout/Router';
 import Sider from './components/layout/Sider';
+import DevConsoleOverlay from './components/devtools/DevConsoleOverlay';
 import { useAuth } from './hooks/context/AuthContext';
 import { ConversationHistoryProvider } from './hooks/context/ConversationHistoryContext';
 import HOC from './utils/ui/HOC';
@@ -128,7 +134,11 @@ const AppProviders: React.FC<PropsWithChildren> = ({ children }) =>
     React.createElement(
       ThemeProvider,
       null,
-      React.createElement(PreviewProvider, null, React.createElement(FeedbackProvider, null, children))
+      React.createElement(
+        PreviewProvider,
+        null,
+        React.createElement(FeedbackProvider, null, children, React.createElement(DevConsoleOverlay, null))
+      )
     )
   );
 
@@ -167,6 +177,16 @@ const Main = () => {
     if (!ready) return;
     void repairAllCronJobTimeZonesOnce();
   }, [ready]);
+
+  // After a renderer reload (F5), a company run that was in progress is torn
+  // down because the recursive pipeline lives in the renderer. The user never
+  // asked it to stop, so proactively re-attach to any interrupted company run
+  // and restart it from its goal — regardless of the current route. Runs once
+  // per load, after config is ready so the company bridge is reachable.
+  useEffect(() => {
+    if (!ready || !configReady) return;
+    resumeInterruptedCompanyRuns();
+  }, [ready, configReady]);
 
   if (!ready || !configReady) {
     return null;

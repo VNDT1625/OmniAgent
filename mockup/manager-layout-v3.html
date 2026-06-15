@@ -1,0 +1,457 @@
+<!doctype html>
+<!-- v3: panel ẩn ở mép phải, hover hiện. Demo 2 trạng thái cạnh nhau. -->
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <title>Manager — auto-hide right panel</title>
+    <style>
+      :root {
+        --canvas: #ffffff;
+        --paper: #fbfbfa;
+        --soft: #f5f5f3;
+        --hover: #eeedea;
+        --line: #ebeae8;
+        --line2: #e0dfdc;
+        --ink: #37352f;
+        --ink2: #73726c;
+        --ink3: #a4a29b;
+        --accent: #2b6fd6;
+        --accent-soft: #eaf1fb;
+        --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: var(--font);
+        color: var(--ink);
+        background: #dfdedb;
+        padding: 22px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      .lbl {
+        max-width: 1280px;
+        margin: 0 auto 6px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: #8a8980;
+      }
+      .frame {
+        position: relative;
+        max-width: 1280px;
+        margin: 0 auto 22px;
+        height: 660px;
+        background: var(--canvas);
+        border: 1px solid var(--line2);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 14px 44px -16px rgba(0, 0, 0, 0.25);
+        display: flex;
+      }
+
+      /* app rail (đã có sẵn) */
+      .rail {
+        width: 50px;
+        background: #f3f3f1;
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 14px;
+        padding: 14px 0;
+        flex: none;
+      }
+      .rail .d {
+        width: 24px;
+        height: 24px;
+        border-radius: 7px;
+        background: #e3e2df;
+      }
+      .rail .d.b {
+        background: var(--ink);
+      }
+      .rail .d.on {
+        background: var(--accent-soft);
+        border: 1px solid var(--accent);
+      }
+
+      /* MAIN — full bleed */
+      .main {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+      .topbar {
+        height: 42px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 16px;
+        color: var(--ink3);
+        font-size: 13px;
+      }
+      .topbar .crumb {
+        color: var(--ink2);
+      }
+      .topbar .sp {
+        flex: 1;
+      }
+      .topbar .a {
+        height: 28px;
+        padding: 0 9px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--ink2);
+        font-size: 12.5px;
+      }
+      .body {
+        flex: 1;
+        overflow: auto;
+      }
+      .doc {
+        max-width: 740px;
+        margin: 0 auto;
+        padding: 0 28px 60px;
+      }
+      .cover {
+        height: 170px;
+        background: linear-gradient(120deg, #4b6cb7, #182848);
+      }
+
+      /* Right edge trigger zone — invisible 14px hot zone (right hover) */
+      .edge {
+        position: absolute;
+        top: 42px;
+        right: 0;
+        bottom: 0;
+        width: 14px;
+        z-index: 5;
+      }
+      /* a faint vertical hint bar so users know there's something */
+      .hint {
+        position: absolute;
+        top: 50%;
+        right: 5px;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 42px;
+        border-radius: 3px;
+        background: var(--line2);
+        opacity: 0.7;
+        pointer-events: none;
+        transition: opacity 0.15s ease;
+      }
+      .frame:hover .hint {
+        opacity: 0.9;
+      }
+
+      /* Side panel (auto-hide on the right) */
+      .panel {
+        position: absolute;
+        top: 42px;
+        right: 0;
+        bottom: 0;
+        width: 300px;
+        background: var(--paper);
+        border-left: 1px solid var(--line);
+        box-shadow: -12px 0 32px -16px rgba(0, 0, 0, 0.18);
+        transform: translateX(100%);
+        transition: transform 0.22s ease;
+        display: flex;
+        flex-direction: column;
+        z-index: 6;
+      }
+      .frame.open .panel,
+      .panel:hover,
+      .edge:hover ~ .panel {
+        transform: translateX(0);
+      }
+
+      .panel .ph {
+        padding: 12px 12px 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid var(--line);
+      }
+      .panel .ph .ic {
+        width: 28px;
+        height: 28px;
+        border-radius: 7px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+      }
+      .panel .ph .tt {
+        font-size: 13.5px;
+        font-weight: 650;
+      }
+      .panel .ph .pin {
+        margin-left: auto;
+        font-size: 12px;
+        color: var(--ink3);
+        cursor: pointer;
+        padding: 3px 6px;
+        border-radius: 6px;
+      }
+      .panel .pin:hover {
+        background: var(--hover);
+      }
+      .scroll {
+        flex: 1;
+        overflow: auto;
+        padding: 8px;
+      }
+      .search {
+        height: 30px;
+        border: 1px solid var(--line2);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 9px;
+        color: var(--ink3);
+        font-size: 12.5px;
+        margin: 6px 4px 4px;
+      }
+      .sec {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        color: var(--ink3);
+        padding: 14px 8px 4px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .nv {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 6px 8px;
+        border-radius: 7px;
+        font-size: 13.5px;
+        color: var(--ink);
+        cursor: pointer;
+      }
+      .nv:hover {
+        background: var(--hover);
+      }
+      .nv.on {
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-weight: 500;
+      }
+      .nv .em {
+        width: 18px;
+        text-align: center;
+      }
+      .nv.child {
+        padding-left: 26px;
+        color: var(--ink2);
+        font-size: 13px;
+      }
+
+      /* shared content sample */
+      .empty {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: var(--ink3);
+        padding-top: 18px;
+      }
+      table {
+        border-collapse: separate;
+        border-spacing: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Frame 1: COLLAPSED state (default) -->
+    <div class="lbl">A · Trạng thái mặc định — panel ẨN, content full-width</div>
+    <div class="frame">
+      <div class="rail">
+        <div class="d b"></div>
+        <div class="d"></div>
+        <div class="d"></div>
+        <div class="d on"></div>
+      </div>
+      <div class="main">
+        <div class="topbar">
+          <span class="crumb">Ghi chú / Học tập / C4 Model</span><span class="sp"></span><span class="a">⌕</span
+          ><span class="a">🎨</span><span class="a">⋯</span>
+        </div>
+        <div class="body">
+          <div class="cover"></div>
+          <div class="doc">
+            <div
+              style="
+                width: 62px;
+                height: 62px;
+                border-radius: 14px;
+                background: #fff;
+                border: 1px solid var(--line);
+                box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.2);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 34px;
+                margin-top: -30px;
+              "
+            >
+              📘
+            </div>
+            <div style="font-size: 36px; font-weight: 700; letter-spacing: -0.7px; margin: 10px 0 16px">C4 Model</div>
+            <p style="font-size: 15.5px; color: #2f2e2b; margin-bottom: 12px">
+              Mô tả kiến trúc theo 4 mức: Context, Container, Component, Code. Mỗi mức zoom sâu dần.
+            </p>
+            <div
+              style="
+                background: var(--soft);
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                padding: 12px 14px;
+                display: flex;
+                gap: 10px;
+                margin: 14px 0;
+              "
+            >
+              💡
+              <div>
+                Mức Component thường gắn
+                <span style="color: var(--accent); border-bottom: 1px solid var(--accent-soft)">[[Class Diagram]]</span
+                >.
+              </div>
+            </div>
+            <table
+              style="
+                width: 100%;
+                border: 1px solid var(--line2);
+                border-radius: 8px;
+                overflow: hidden;
+                font-size: 13.5px;
+              "
+            >
+              <tr style="background: var(--soft)">
+                <th style="text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line)">Mức</th>
+                <th style="text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line)">Mô tả</th>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px; border-bottom: 1px solid var(--line)">Context</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid var(--line)">Hệ thống & bên ngoài</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px">Container</td>
+                <td style="padding: 8px 12px">App, service, DB</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+        <div class="hint"></div>
+        <div class="edge"></div>
+        <div class="panel">
+          <div class="ph">
+            <div class="ic">◆</div>
+            <div class="tt">Quản lý cá nhân</div>
+            <div class="pin" title="Pin">📌</div>
+          </div>
+          <div class="search">⌕ Tìm nhanh</div>
+          <div class="scroll">
+            <div class="nv"><span class="em">✓</span> Nhiệm vụ</div>
+            <div class="nv"><span class="em">🗓️</span> Lịch trình</div>
+            <div class="sec">Ghi chú</div>
+            <div class="nv"><span class="em">📓</span> Hằng ngày</div>
+            <div class="nv"><span class="em">📘</span> Học tập</div>
+            <div class="nv child on">• C4 Model</div>
+            <div class="nv child">• Class Diagram</div>
+            <div class="nv child">• REST vs gRPC</div>
+            <div class="nv"><span class="em">🗂️</span> Tài liệu</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Frame 2: HOVERED state (forced open via .open) -->
+    <div class="lbl">B · Khi rê chuột tới mép phải — panel TRƯỢT VÀO (overlay, không đẩy content)</div>
+    <div class="frame open">
+      <div class="rail">
+        <div class="d b"></div>
+        <div class="d"></div>
+        <div class="d"></div>
+        <div class="d on"></div>
+      </div>
+      <div class="main">
+        <div class="topbar">
+          <span class="crumb">Ghi chú / Học tập / C4 Model</span><span class="sp"></span><span class="a">⌕</span
+          ><span class="a">🎨</span><span class="a">⋯</span>
+        </div>
+        <div class="body">
+          <div class="cover"></div>
+          <div class="doc">
+            <div
+              style="
+                width: 62px;
+                height: 62px;
+                border-radius: 14px;
+                background: #fff;
+                border: 1px solid var(--line);
+                box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.2);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 34px;
+                margin-top: -30px;
+              "
+            >
+              📘
+            </div>
+            <div style="font-size: 36px; font-weight: 700; letter-spacing: -0.7px; margin: 10px 0 16px">C4 Model</div>
+            <p style="font-size: 15.5px; color: #2f2e2b; margin-bottom: 12px">
+              Content giữ nguyên — panel đè lên, không đẩy nội dung dịch sang.
+            </p>
+          </div>
+        </div>
+        <div class="hint"></div>
+        <div class="edge"></div>
+        <div class="panel">
+          <div class="ph">
+            <div class="ic">◆</div>
+            <div class="tt">Quản lý cá nhân</div>
+            <div class="pin" title="Ghim">📌</div>
+          </div>
+          <div class="search">⌕ Tìm nhanh</div>
+          <div class="scroll">
+            <div class="nv"><span class="em">✓</span> Nhiệm vụ</div>
+            <div class="nv"><span class="em">🗓️</span> Lịch trình</div>
+            <div class="sec">Ghi chú</div>
+            <div class="nv"><span class="em">📓</span> Hằng ngày</div>
+            <div class="nv"><span class="em">📘</span> Học tập</div>
+            <div class="nv child on">• C4 Model</div>
+            <div class="nv child">• Class Diagram</div>
+            <div class="nv child">• REST vs gRPC</div>
+            <div class="nv"><span class="em">🗂️</span> Tài liệu</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lbl" style="margin-top: 14px">
+      Cách dùng: di chuột vào mép phải (vùng 14px) → panel trượt vào · ra khỏi panel → tự ẩn · bấm 📌 để ghim mở mãi.
+    </div>
+  </body>
+</html>

@@ -1,0 +1,84 @@
+{
+  "navTitle": "瀏覽器",
+  "title": "瀏覽器",
+  "subtitle": "在應用程式內瀏覽網頁，並讓 AI 模型作為網頁代理操作頁面。",
+  "desktopOnly": "內建瀏覽器僅在桌面應用程式中可用。",
+  "bridgeUnavailable": "瀏覽器服務尚未啟動。待桌面端橋接接通後即可使用。",
+  "retry": "重試",
+  "address": {
+    "placeholder": "搜尋或輸入網址",
+    "go": "前往",
+    "back": "上一頁",
+    "forward": "下一頁",
+    "reload": "重新整理"
+  },
+  "tab": {
+    "new": "新增分頁",
+    "close": "關閉分頁",
+    "untitled": "新增分頁"
+  },
+  "agent": {
+    "label": "網頁代理",
+    "pickModel": "選擇模型",
+    "pickModelFirst": "請先選擇模型以啟用網頁代理。",
+    "noModels": "沒有可用模型。請在「設定 → 模型」中新增。",
+    "toggleHint": "讓該模型控制頁面：點擊、捲動、輸入與讀取內容。",
+    "enabled": "已為此分頁啟用網頁代理。",
+    "disabled": "已停用網頁代理。",
+    "toggleError": "無法切換網頁代理模式。",
+    "providerGroup": "API 模型",
+    "cliGroup": "CLI 代理",
+    "cliSuffix": "CLI"
+  },
+  "toolbar": {
+    "zoomIn": "放大",
+    "zoomOut": "縮小",
+    "zoomReset": "重設縮放為 100%",
+    "fullscreen": "全螢幕",
+    "exitFullscreen": "離開全螢幕（Esc）",
+    "showChat": "顯示網頁代理對話",
+    "hideChat": "隱藏網頁代理對話",
+    "showAiOverlay": "向AI詢問此頁面",
+    "hideAiOverlay": "隱藏AI問答框",
+    "expandControls": "顯示代理控制列",
+    "collapseControls": "隱藏代理控制列"
+  },
+  "aiOverlay": {
+    "title": "問AI",
+    "placeholder": "詢問此頁面…"
+  },
+  "chat": {
+    "title": "網頁代理",
+    "emptyTitle": "向網頁代理提問",
+    "emptyHint": "在網址列輸入即可正常瀏覽。在這裡告訴代理要做什麼——例如「開啟 Facebook，閱讀我的訊息並摘要。」",
+    "placeholder": "告訴代理在頁面上做什麼……",
+    "pickModelFirst": "請在上方選擇模型以與網頁代理對話。",
+    "send": "傳送",
+    "stop": "停止",
+    "clear": "清空對話",
+    "close": "隱藏面板",
+    "swapSide": "移到另一側",
+    "working": "代理正在處理……",
+    "enterHint": "Enter 傳送 · Shift+Enter 換行",
+    "allowControl": "允許控制",
+    "controlOnHint": "已授權：代理可點擊、捲動、輸入並導覽此分頁。",
+    "controlOffHint": "隱形模式：代理僅讀取／擷取並使用隱藏分頁。開啟後才可控制此頁面。",
+    "stepFailed": "失敗",
+    "persona": "人設與規則",
+    "personaTitle": "代理人設與固定規則",
+    "personaHint": "這些指令會在每一輪都套用到網頁代理（如語言、語氣、絕對不能做的事）。",
+    "personaPlaceholder": "例如：一律用越南語回答。簡潔。未經詢問絕不購買或送出表單。",
+    "personaSave": "儲存",
+    "personaCancel": "取消"
+  },
+  "subtitle_overlay": {
+    "enable": "顯示越南語字幕",
+    "disable": "隱藏越南語字幕",
+    "idle": "正在等待影片音訊以產生字幕……"
+  },
+  "viewport": {
+    "emptyTitle": "未開啟頁面",
+    "emptyHint": "開啟一個分頁開始瀏覽。頁面將在此處顯示，由應用程式控制。",
+    "openFirst": "開啟分頁"
+  }
+}

@@ -9,7 +9,7 @@ import type { IMessageAcpToolCall, IMessageToolCall, IMessageToolGroup, TMessage
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 import { iconColors } from '@/renderer/styles/colors';
 import { CHAT_MESSAGE_JUMP_EVENT, type ChatMessageJumpDetail } from '@/renderer/utils/chat/chatMinimapEvents';
-import { Image } from '@arco-design/web-react';
+import { Image, Spin } from '@arco-design/web-react';
 import { Down } from '@icon-park/react';
 import MessageAcpPermission from '@renderer/pages/conversation/Messages/acp/MessageAcpPermission';
 import MessagePermission from './components/MessagePermission';
@@ -24,7 +24,7 @@ import HOC from '@renderer/utils/ui/HOC';
 import type { FileChangeInfo } from './MessageFileChanges';
 import MessageFileChanges, { parseDiff } from './MessageFileChanges';
 import { useConversationArtifacts } from './artifacts';
-import { useMessageList, useMessageListLoading } from './hooks';
+import { useMessageHistoryPaging, useMessageList, useMessageListLoading } from './hooks';
 import MessageAgentStatus from './components/MessageAgentStatus';
 import MessagePlan from './components/MessagePlan';
 import MessageTips from './components/MessageTips';
@@ -233,6 +233,7 @@ const MessageItem: React.FC<{ message: TMessage; highlighted?: boolean }> = Reac
 const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }> = ({ emptySlot }) => {
   const list = useMessageList();
   const isMessageListLoading = useMessageListLoading();
+  const messageHistoryPaging = useMessageHistoryPaging();
   const artifacts = useConversationArtifacts();
   const conversationContext = useConversationContextSafe();
   useAutoPreviewOfficeFiles(conversationContext);
@@ -242,6 +243,7 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
   const targetMessageId = locationState.targetMessageId;
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | undefined>();
   const handledTargetKeyRef = useRef<string>('');
+  const handledInitialAnchorRef = useRef<string>('');
 
   // Pre-process message list to group tool outputs into summary cards
   const processedList = useMemo(() => {
@@ -359,6 +361,67 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
     messages: list,
     itemCount: processedList.length,
   });
+
+  const loadOlderAroundScrollPosition = (scroller: HTMLDivElement): void => {
+    if (!messageHistoryPaging.hasOlder || messageHistoryPaging.loadingOlder) {
+      return;
+    }
+    const previousScrollHeight = scroller.scrollHeight;
+    const previousScrollTop = scroller.scrollTop;
+    void messageHistoryPaging.loadOlder().then((loaded) => {
+      if (!loaded) return;
+      requestAnimationFrame(() => {
+        const nextScrollTop = scroller.scrollHeight - previousScrollHeight + previousScrollTop;
+        scroller.scrollTop = Math.max(0, nextScrollTop);
+      });
+    });
+  };
+
+  const handleMessageListScroll = (event: React.UIEvent<HTMLDivElement>): void => {
+    handleScroll(event);
+    const scroller = event.currentTarget;
+    if (scroller.scrollTop > 24) return;
+    loadOlderAroundScrollPosition(scroller);
+  };
+
+  const handleMessageListWheel = (event: React.WheelEvent<HTMLDivElement>): void => {
+    handleWheel(event);
+    const scroller = event.currentTarget;
+    if (event.deltaY >= 0 || scroller.scrollTop > 24) return;
+    loadOlderAroundScrollPosition(scroller);
+  };
+
+  useEffect(() => {
+    const anchorId = messageHistoryPaging.initialAnchorMessageId;
+    const conversationId = conversationContext?.conversation_id;
+    if (!anchorId || !conversationId || processedList.length === 0 || isMessageListLoading) {
+      return;
+    }
+    const anchorKey = `${conversationId}:${anchorId}`;
+    if (handledInitialAnchorRef.current === anchorKey) {
+      return;
+    }
+    const targetIndex = processedList.findIndex((item) => getProcessedItemSourceMessageIds(item).includes(anchorId));
+    if (targetIndex === -1) {
+      return;
+    }
+    handledInitialAnchorRef.current = anchorKey;
+    hideScrollButton();
+    requestAnimationFrame(() => {
+      const targetElement = document.getElementById(`message-${getProcessedItemAnchorId(processedList[targetIndex])}`);
+      scrollElementIntoView(targetElement, {
+        behavior: 'auto',
+        block: 'start',
+      });
+    });
+  }, [
+    conversationContext?.conversation_id,
+    hideScrollButton,
+    isMessageListLoading,
+    messageHistoryPaging.initialAnchorMessageId,
+    processedList,
+    scrollElementIntoView,
+  ]);
 
   useEffect(() => {
     if (!targetMessageId || processedList.length === 0) {
@@ -495,11 +558,16 @@ const MessageList: React.FC<{ className?: string; emptySlot?: React.ReactNode }>
             className='flex-1 h-full overflow-y-auto pb-10px box-border'
             style={{ overflowAnchor: 'none' }}
             onPointerDown={handlePointerDown}
-            onScroll={handleScroll}
-            onWheel={handleWheel}
+            onScroll={handleMessageListScroll}
+            onWheel={handleMessageListWheel}
           >
             <div ref={handleContentRef} data-testid='message-list-content' style={{ overflowAnchor: 'none' }}>
               <div className='h-10px' />
+              {messageHistoryPaging.loadingOlder ? (
+                <div className='h-28px flex-center text-t-tertiary'>
+                  <Spin size={14} />
+                </div>
+              ) : null}
               {processedList.map((item, index) => (
                 <React.Fragment key={getProcessedItemAnchorId(item) || index}>{renderItem(index, item)}</React.Fragment>
               ))}
