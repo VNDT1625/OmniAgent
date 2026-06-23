@@ -25,7 +25,7 @@
  */
 
 import { Button, Dropdown, Empty, Input, Menu, Spin, Switch, Tooltip } from '@arco-design/web-react';
-import { Brain, CloseSmall, Down, FileCode, FolderClose, Plus, Robot, Search, Shield } from '@icon-park/react';
+import { Brain, Check, CheckOne, CloseSmall, Down, FileCode, FolderClose, Plus, Right, Robot, Search, Shield } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
@@ -36,9 +36,20 @@ import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conve
 import ChatConversation from '@/renderer/pages/conversation/components/ChatConversation';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview/context/PreviewContext';
 import { useAddEventListener } from '@/renderer/utils/emitter';
-import { ideClient, type SpecLifecycleStatus, type SpecListEntry, type SpecTaskRunbook } from '../ideClient';
+import {
+  ideClient,
+  type SpecApprovalGate,
+  type SpecLifecyclePhase,
+  type SpecLifecycleStatus,
+  type SpecListEntry,
+  type SpecTaskRunbook,
+} from '../ideClient';
 import { useIdeChat, type IdeChatTab } from '../useIdeChat';
 import MemorySessionDrawer from '../memory/MemorySessionDrawer';
+import {
+  isStrictIdeModeEnabled,
+  setStrictIdeModeEnabled,
+} from '@/renderer/pages/conversation/platforms/strictIdeModeGuard';
 
 type IdeChatPanelProps = {
   rootPath: string | null;
@@ -59,6 +70,16 @@ const IdeChatPanel: React.FC<IdeChatPanelProps> = ({ rootPath, activeFile, repoF
   const [pickerOpen, setPickerOpen] = useState(false);
   // Session-memory drawer (per active tab).
   const [memoryOpen, setMemoryOpen] = useState(false);
+  // Strict IDE Mode: hard-deny any non-`ide_*` tool call (per workspace).
+  const [strictMode, setStrictMode] = useState(false);
+  useEffect(() => {
+    setStrictMode(isStrictIdeModeEnabled(rootPath ?? undefined));
+  }, [rootPath]);
+  const toggleStrictMode = (enabled: boolean): void => {
+    if (!rootPath) return;
+    setStrictIdeModeEnabled(rootPath, enabled);
+    setStrictMode(enabled);
+  };
   const activeMemId = useMemo(() => chat.tabs.find((tab) => tab.id === chat.activeId)?.memId ?? null, [chat.tabs, chat.activeId]);
 
   // Default tab: when no tab is open and at least one agent exists, do nothing
@@ -162,6 +183,13 @@ const IdeChatPanel: React.FC<IdeChatPanelProps> = ({ rootPath, activeFile, repoF
                 />
               </span>
             </Tooltip>
+            <Tooltip content={t('ide.chat.strictModeHint')} mini>
+              <span className='inline-flex items-center gap-6px px-8px py-4px rd-8px bg-fill-1 border border-arco-2'>
+                <Shield theme='outline' size={13} />
+                <span className='text-12px font-500 text-t-secondary'>{t('ide.chat.strictMode')}</span>
+                <Switch size='small' checked={strictMode} disabled={noFolder} onChange={toggleStrictMode} />
+              </span>
+            </Tooltip>
             <Dropdown
               position='br'
               popupVisible={pickerOpen}
@@ -243,7 +271,19 @@ const IdeChatPanel: React.FC<IdeChatPanelProps> = ({ rootPath, activeFile, repoF
 
 const executeCommandFor = (slug?: string): string => (slug ? `/execute @.aionui/specs/${slug}/ ` : '/execute @');
 
-/** Planning Mode status: mirrors the spec lifecycle bridge into the IDE chat UI. */
+/** The approval gate the user can act on while in a given phase (null = none). */
+const gateForPhase = (phase: SpecLifecyclePhase | null): SpecApprovalGate | null =>
+  phase === 'requirements' || phase === 'design' || phase === 'tasks' ? phase : null;
+
+/**
+ * Planning Mode status bar — the spec lifecycle command center for the IDE chat.
+ *
+ * Unlike the previous version (which silently surfaced whichever spec was
+ * touched most recently), this binds to the workspace's EXPLICIT active spec.
+ * It lets the user pick/clear the active spec, shows the Kiro-style lifecycle
+ * phase, gates `/execute` behind phase approvals, and surfaces the MTUI policy
+ * state — so planning is observable and deliberate, never accidental.
+ */
 const PlanningStatusBar: React.FC<{ rootPath: string }> = ({ rootPath }) => {
   const { t } = useTranslation();
   const { addToSendBox } = usePreviewContext();
@@ -254,25 +294,19 @@ const PlanningStatusBar: React.FC<{ rootPath: string }> = ({ rootPath }) => {
   const [mtuiViolationCount, setMtuiViolationCount] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    const refresh = async (): Promise<void> => {
+  const refresh = React.useCallback(
+    async (): Promise<void> => {
       const result = await ideClient.specStatus(rootPath).catch((): null => null);
-      if (!cancelled && result?.ok) {
+      if (result?.ok) {
         setStatus(result.data);
-        const listResult = await ideClient.specList(rootPath).catch((): null => null);
-        if (!cancelled && listResult?.ok) {
-          setSpecs(listResult.data);
-        }
         const tasksResult = result.data.exists
           ? await ideClient.specTaskList(rootPath, result.data.slug ?? undefined).catch((): null => null)
           : null;
-        if (!cancelled) {
-          setRunbook(tasksResult?.ok ? tasksResult.data : null);
-        }
+        setRunbook(tasksResult?.ok ? tasksResult.data : null);
       }
+      const listResult = await ideClient.specList(rootPath).catch((): null => null);
+      if (listResult?.ok) setSpecs(listResult.data);
       const gitResult = await ideClient.gitStatus(rootPath).catch((): null => null);
-      if (cancelled) return;
       const changedPaths = gitResult?.ok ? gitResult.data.map((change) => change.path) : [];
       if (changedPaths.length === 0) {
         setMtuiViolations([]);
@@ -280,21 +314,25 @@ const PlanningStatusBar: React.FC<{ rootPath: string }> = ({ rootPath }) => {
         return;
       }
       const policyResult = await ideClient.mtuiPolicyCheck(rootPath, changedPaths).catch((): null => null);
-      if (!cancelled) {
-        const policy = policyResult?.ok ? policyResult.data : null;
-        setMtuiViolations(policy?.violations ?? []);
-        setMtuiViolationCount(policy?.violationCount ?? policy?.violations.length ?? 0);
-      }
+      const policy = policyResult?.ok ? policyResult.data : null;
+      setMtuiViolations(policy?.violations ?? []);
+      setMtuiViolationCount(policy?.violationCount ?? policy?.violations.length ?? 0);
+    },
+    [rootPath]
+  );
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = (): void => {
+      if (!cancelled) void refresh();
     };
-    void refresh();
-    const timer = window.setInterval(() => {
-      void refresh();
-    }, 4000);
+    tick();
+    const timer = window.setInterval(tick, 4000);
     return () => {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [rootPath]);
+  }, [refresh]);
 
   const createScaffold = async (): Promise<void> => {
     if (busy) return;
@@ -306,47 +344,81 @@ const PlanningStatusBar: React.FC<{ rootPath: string }> = ({ rootPath }) => {
           .split(/[\\/]/)
           .pop() || 'planning';
       const result = await ideClient.specInit(rootPath, rootName);
-      if (result.ok) {
-        setStatus(result.data);
-      }
+      if (result.ok) setStatus(result.data);
+      await refresh();
     } finally {
       setBusy(false);
     }
   };
 
-  const executeSpecs =
-    status?.slug && !specs.some((spec) => spec.slug === status.slug)
-      ? [
-          {
-            slug: status.slug,
-            specDir: status.specDir ?? `.aionui/specs/${status.slug}`,
-            updatedAt: status.updatedAt ?? 0,
-            taskCounts: status.taskCounts,
-          },
-          ...specs,
-        ]
-      : specs;
+  const setActiveSpec = async (slug: string | null): Promise<void> => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await ideClient.specSetActive(rootPath, slug);
+      if (result.ok) setStatus(result.data);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
 
-  const executeMenu = (
+  const approveGate = async (gate: SpecApprovalGate): Promise<void> => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const result = await ideClient.specAdvancePhase(rootPath, gate, status?.slug ?? undefined);
+      if (result.ok) setStatus(result.data);
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const phase = status?.exists ? status.phase : null;
+  const activeGate = gateForPhase(phase);
+  const canExecute = phase === 'execution' || phase === 'complete';
+
+  const specSwitcherMenu = (
     <Menu>
-      {executeSpecs.length > 0 ? (
-        executeSpecs.map((spec) => (
-          <Menu.Item key={spec.slug} onClick={() => addToSendBox(executeCommandFor(spec.slug))}>
-            <div className='flex flex-col min-w-180px'>
-              <span className='text-12px font-600'>{`.aionui/specs/${spec.slug}/`}</span>
-              <span className='text-11px text-t-tertiary'>
-                {t('ide.chat.planningStatus.tasks', { done: spec.taskCounts.done, total: spec.taskCounts.total })}
-              </span>
+      {specs.length > 0 ? (
+        specs.map((spec) => (
+          <Menu.Item key={spec.slug} onClick={() => void setActiveSpec(spec.active ? null : spec.slug)}>
+            <div className='flex items-center gap-8px min-w-220px'>
+              {spec.active ? (
+                <Check theme='outline' size={13} className='text-primary shrink-0' />
+              ) : (
+                <span className='size-13px shrink-0' />
+              )}
+              <div className='flex flex-col flex-1 min-w-0'>
+                <span className='text-12px font-600 truncate'>{spec.title}</span>
+                <span className='text-11px text-t-tertiary truncate'>
+                  {`.aionui/specs/${spec.slug}/`}
+                  {` · ${t(`ide.chat.planningStatus.phase.${spec.phase}`)}`}
+                </span>
+              </div>
             </div>
           </Menu.Item>
         ))
       ) : (
-        <Menu.Item key='manual' onClick={() => addToSendBox(executeCommandFor())}>
-          {t('ide.chat.planningStatus.executeManual')}
+        <Menu.Item key='none' disabled>
+          {t('ide.chat.planningStatus.noSpecsYet')}
         </Menu.Item>
       )}
+      <Menu.Item key='__create' onClick={() => void createScaffold()}>
+        <span className='inline-flex items-center gap-6px text-primary'>
+          <Plus theme='outline' size={13} />
+          {t('ide.chat.planningStatus.create')}
+        </span>
+      </Menu.Item>
+      {status?.exists ? (
+        <Menu.Item key='__clear' onClick={() => void setActiveSpec(null)}>
+          {t('ide.chat.planningStatus.clearActive')}
+        </Menu.Item>
+      ) : null}
     </Menu>
   );
+
   const mtuiPolicyMenu = (
     <Menu>
       {mtuiViolationCount > 0 ? (
@@ -374,11 +446,60 @@ const PlanningStatusBar: React.FC<{ rootPath: string }> = ({ rootPath }) => {
     </Menu>
   );
 
-  const missingFiles = status
-    ? (Object.entries(status.files) as Array<[keyof SpecLifecycleStatus['files'], boolean]>)
-        .filter(([, exists]) => !exists)
-        .map(([file]) => file)
-    : [];
+  return <PlanningStatusBarView
+    t={t}
+    status={status}
+    phase={phase}
+    activeGate={activeGate}
+    canExecute={canExecute}
+    busy={busy}
+    runbook={runbook}
+    mtuiViolationCount={mtuiViolationCount}
+    specSwitcherMenu={specSwitcherMenu}
+    mtuiPolicyMenu={mtuiPolicyMenu}
+    onApprove={approveGate}
+    onExecute={() => status?.slug && addToSendBox(executeCommandFor(status.slug))}
+  />;
+};
+
+/** Human label + tone for the lifecycle phase chip. */
+const phaseTone = (phase: SpecLifecyclePhase): string => {
+  if (phase === 'complete') return 'text-success-6 bg-success-light-1 border-success-3';
+  if (phase === 'execution') return 'text-primary bg-primary-light-1 border-primary-6';
+  return 'text-warning-6 bg-warning-light-1 border-warning-3';
+};
+
+type PlanningStatusBarViewProps = {
+  t: (key: string, opts?: Record<string, unknown>) => string;
+  status: SpecLifecycleStatus | null;
+  phase: SpecLifecyclePhase | null;
+  activeGate: SpecApprovalGate | null;
+  canExecute: boolean;
+  busy: boolean;
+  runbook: SpecTaskRunbook | null;
+  mtuiViolationCount: number;
+  specSwitcherMenu: React.ReactNode;
+  mtuiPolicyMenu: React.ReactNode;
+  onApprove: (gate: SpecApprovalGate) => void;
+  onExecute: () => void;
+};
+
+/** Pure presentational layer of the planning bar (kept testable + lean). */
+const PlanningStatusBarView: React.FC<PlanningStatusBarViewProps> = ({
+  t,
+  status,
+  phase,
+  activeGate,
+  canExecute,
+  busy,
+  runbook,
+  mtuiViolationCount,
+  specSwitcherMenu,
+  mtuiPolicyMenu,
+  onApprove,
+  onExecute,
+}) => {
+  const exists = Boolean(status?.exists);
   const total = status?.taskCounts.total ?? 0;
   const done = status?.taskCounts.done ?? 0;
   const activeTask = runbook?.tasks.find((task) => task.id === runbook.activeTaskId) ?? null;
@@ -388,38 +509,45 @@ const PlanningStatusBar: React.FC<{ rootPath: string }> = ({ rootPath }) => {
     : nextTask
       ? `${nextTask.id}: ${nextTask.title}`
       : null;
-  const stateKey =
-    !status || !status.exists
-      ? 'missing'
-      : missingFiles.length > 0
-        ? 'incomplete'
-        : total > 0 && done === total
-          ? 'done'
-          : 'ready';
 
   return (
     <div className='shrink-0 flex items-center gap-8px px-12px py-7px border-b border-b-1 bg-fill-1'>
       <FileCode theme='outline' size={14} className='text-primary shrink-0' />
       <div className='flex-1 min-w-0 flex flex-col gap-2px'>
         <div className='flex items-center gap-8px min-w-0'>
-          <span className='text-12px font-600 text-t-primary'>{t('ide.chat.planningStatus.title')}</span>
-          <span className='text-12px text-t-secondary truncate'>
-            {status?.slug ? `.aionui/specs/${status.slug}/` : t('ide.chat.planningStatus.noSpec')}
-          </span>
+          <span className='text-12px font-600 text-t-primary shrink-0'>{t('ide.chat.planningStatus.title')}</span>
+          {exists && phase ? (
+            <span
+              className={`inline-flex items-center gap-3px shrink-0 px-6px py-1px rd-full border text-10px font-600 ${phaseTone(phase)}`}
+            >
+              {t(`ide.chat.planningStatus.phase.${phase}`)}
+            </span>
+          ) : null}
+          <Dropdown droplist={specSwitcherMenu} trigger='click' position='bl'>
+            <span
+              role='button'
+              tabIndex={0}
+              className='inline-flex items-center gap-4px min-w-0 text-12px text-t-secondary cursor-pointer hover:text-primary transition-colors'
+            >
+              <span className='truncate'>
+                {status?.slug ? `.aionui/specs/${status.slug}/` : t('ide.chat.planningStatus.noActiveSpec')}
+              </span>
+              <Down theme='outline' size={11} className='shrink-0' />
+            </span>
+          </Dropdown>
         </div>
         <span className='text-11px text-t-tertiary truncate'>
-          {t(`ide.chat.planningStatus.${stateKey}`)}
-          {status?.exists && total > 0 ? ` · ${t('ide.chat.planningStatus.tasks', { done, total })}` : ''}
-          {taskLabel ? ` · ${taskLabel}` : ''}
-          {missingFiles.length > 0
-            ? ` · ${t('ide.chat.planningStatus.missingFiles', { files: missingFiles.join(', ') })}`
-            : ''}
+          {exists ? t(`ide.chat.planningStatus.phaseHint.${phase}`) : t('ide.chat.planningStatus.noActiveHint')}
+          {exists && total > 0 ? ` · ${t('ide.chat.planningStatus.tasks', { done, total })}` : ''}
+          {canExecute && taskLabel ? ` · ${taskLabel}` : ''}
         </span>
       </div>
-      {!status?.exists ? (
-        <Button size='mini' type='secondary' loading={busy} onClick={() => void createScaffold()}>
-          {t('ide.chat.planningStatus.create')}
-        </Button>
+      {!exists ? (
+        <Dropdown droplist={specSwitcherMenu} trigger='click' position='br'>
+          <Button size='mini' type='secondary' loading={busy} icon={<Plus theme='outline' size={12} />}>
+            {t('ide.chat.planningStatus.startPlanning')}
+          </Button>
+        </Dropdown>
       ) : (
         <div className='shrink-0 flex items-center gap-6px'>
           <Dropdown droplist={mtuiPolicyMenu} trigger='click' position='br'>
@@ -434,19 +562,32 @@ const PlanningStatusBar: React.FC<{ rootPath: string }> = ({ rootPath }) => {
                 : t('ide.chat.planningStatus.mtuiOk')}
             </Button>
           </Dropdown>
-          <Dropdown droplist={executeMenu} trigger='click' position='br'>
-            <Button size='mini' type='primary'>
-              <span className='inline-flex items-center gap-4px'>
-                {t('ide.chat.planningStatus.execute')}
-                <Down theme='outline' size={11} />
-              </span>
+          {activeGate ? (
+            <Button
+              size='mini'
+              type='primary'
+              loading={busy}
+              icon={<CheckOne theme='outline' size={12} />}
+              onClick={() => onApprove(activeGate)}
+            >
+              {t(`ide.chat.planningStatus.approve.${activeGate}`)}
             </Button>
-          </Dropdown>
+          ) : (
+            <Tooltip content={canExecute ? undefined : t('ide.chat.planningStatus.executeLocked')} mini>
+              <Button size='mini' type='primary' disabled={!canExecute} onClick={onExecute}>
+                <span className='inline-flex items-center gap-4px'>
+                  {t('ide.chat.planningStatus.execute')}
+                  <Right theme='outline' size={11} />
+                </span>
+              </Button>
+            </Tooltip>
+          )}
         </div>
       )}
     </div>
   );
 };
+
 
 /** The tab strip across the top: list + close + a right-side action slot. */
 const ChatTabStrip: React.FC<{
