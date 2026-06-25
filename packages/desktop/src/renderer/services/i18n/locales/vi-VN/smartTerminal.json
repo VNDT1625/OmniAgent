@@ -1,0 +1,15 @@
+{
+  "smartFix": {
+    "errorLine": "`{{command}}` lỗi (thoát {{code}})",
+    "updatedTo": "đã đổi →",
+    "updateLink": "Xem cập nhật",
+    "run": "Chạy với {{program}}",
+    "dismiss": "Bỏ qua",
+    "tag": "Smart Fix",
+    "confirmQuestion": "chạy `{{program}}` thay thế? (y/N)",
+    "skipped": "Đã bỏ qua Smart Fix.",
+    "running": "Đang chạy `{{program}}`…"
+  },
+  "autoRerunLabel": "Gợi ý sửa khi lỗi",
+  "autoRerunHint": "Khi một lệnh lỗi và có lệnh thay thế đã biết, hỏi ngay trong terminal (y/N) để bạn — hoặc agent — gõ áp dụng."
+}

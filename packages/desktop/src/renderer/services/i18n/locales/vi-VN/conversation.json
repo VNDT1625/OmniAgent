@@ -1,0 +1,232 @@
+{
+  "welcome": {
+    "title": "Xin chào, hôm nay bạn có kế hoạch gì?",
+    "placeholder": "Gửi tin nhắn, tải tệp lên, mở thư mục, hoặc tạo tác vụ theo lịch...",
+    "linkFolder": "Mở thư mục",
+    "newConversation": "Trò chuyện mới",
+    "selectModel": "Chọn mô hình",
+    "useCliModel": "Chọn mô hình",
+    "specifyWorkspace": "Trò chuyện trong dự án",
+    "currentWorkspace": "Dự án hiện tại",
+    "clearWorkspace": "Gỡ dự án",
+    "openFolder": "Mở thư mục",
+    "none": "Không có",
+    "quickActionsTitle": "AionUi có thể làm gì?",
+    "quickActionFeedback": "Báo cáo sự cố",
+    "quickActionStar": "Thích chúng tôi? Hãy cho chúng tôi một ngôi sao!",
+    "skillsMarket": "Chợ kỹ năng AionUi",
+    "skillsMarketDesc": "Tìm kiếm và kích hoạt kỹ năng cộng đồng theo nhu cầu. Cấu hình một lần, dùng cho tất cả tác nhân.",
+    "skillsMarketDetails": "Xem thêm >>"
+  },
+  "history": {
+    "recents": "Gần đây",
+    "noHistory": "Không có lịch sử trò chuyện",
+    "deleteTitle": "Xóa",
+    "deleteConfirm": "Bạn có chắc muốn xóa cuộc trò chuyện này?",
+    "confirmDelete": "Xóa",
+    "cancelDelete": "Hủy",
+    "editName": "Chỉnh sửa tên",
+    "saveName": "Lưu",
+    "cancelEdit": "Hủy",
+    "rename": "Đổi tên",
+    "renameTitle": "Đổi tên cuộc trò chuyện",
+    "renamePlaceholder": "Vui lòng nhập tên mới",
+    "renameSuccess": "Đổi tên thành công",
+    "renameFailed": "Đổi tên thất bại",
+    "batchManage": "Quản lý hàng loạt",
+    "batchModeExit": "Thoát chế độ hàng loạt",
+    "selectAll": "Chọn tất cả",
+    "selectedCount": "Đã chọn {{count}}",
+    "batchExport": "Xuất hàng loạt",
+    "batchDelete": "Xóa hàng loạt",
+    "batchDeleteConfirm": "Xóa {{count}} chủ đề đã chọn?",
+    "batchDeleteSuccess": "Đã xóa {{count}} chủ đề",
+    "export": "Xuất",
+    "exportDialogTitle": "Xuất chủ đề",
+    "exporting": "Đang xuất...",
+    "exportSuccess": "Xuất thành công",
+    "exportFailed": "Xuất thất bại",
+    "pin": "Ghim",
+    "unpin": "Bỏ ghim",
+    "pinned": "Đã ghim",
+    "pinnedSection": "Đã ghim",
+    "deleteSuccess": "Đã xóa thành công",
+    "deleteFailed": "Xóa thất bại",
+    "today": "Hôm nay",
+    "yesterday": "Hôm qua",
+    "recent7Days": "7 ngày qua",
+    "earlier": "Trước đó",
+    "projectsSection": "Dự án",
+    "conversationsSection": "Cuộc trò chuyện",
+    "removeProjectTitle": "Gỡ dự án",
+    "removeProject": "Gỡ dự án",
+    "newConversationInProject": "Trò chuyện mới trong dự án này"
+  },
+  "historySearch": {
+    "tooltip": "Tìm kiếm tin nhắn",
+    "title": "Tìm kiếm nội dung cuộc trò chuyện",
+    "shortTitle": "Tìm kiếm",
+    "description": "Tìm kiếm tin nhắn lịch sử theo từ khóa.",
+    "placeholder": "Tìm kiếm nội dung tin nhắn...",
+    "idle": "Nhập từ khóa để tìm kiếm tin nhắn",
+    "empty": "Không tìm thấy tin nhắn phù hợp",
+    "loadingMore": "Đang tải thêm...",
+    "untitled": "Cuộc trò chuyện chưa đặt tên"
+  },
+  "dropdown": {
+    "cliAgents": "Tác nhân CLI",
+    "presetAssistants": "Trợ lý có sẵn"
+  },
+  "noAgentsAvailable": "Không có tác nhân nào khả dụng",
+  "noModelConfigured": "Chưa cấu hình mô hình. Vui lòng cấu hình trong cài đặt.",
+  "createFailed": "Tạo cuộc trò chuyện thất bại",
+  "workspace": {
+    "title": "Dự án",
+    "empty": "Trống",
+    "emptyDescription": "Tệp sẽ xuất hiện ở đây sau khi tải lên hoặc mở thư mục",
+    "searchPlaceholder": "Tìm kiếm tệp...",
+    "createNewConversation": "Tạo trò chuyện mới trong dự án hiện tại",
+    "addFile": "Thêm tệp",
+    "refresh": "Làm mới",
+    "temporarySpace": "Không gian tạm",
+    "dragOverlayTitle": "Thả để nhập",
+    "dragOverlayDesc": "Kéo tệp hoặc thư mục vào đây để sao chép vào dự án này.",
+    "contextMenu": {
+      "open": "Mở",
+      "openLocation": "Hiện trong thư mục",
+      "preview": "Xem trước",
+      "deleteTitle": "Xóa tệp",
+      "deleteConfirm": "Thao tác này sẽ xóa tệp khỏi hệ thống. Tiếp tục?",
+      "deleteSuccess": "Đã xóa thành công",
+      "deleteFailed": "Xóa thất bại",
+      "rename": "Đổi tên",
+      "renameTitle": "Đổi tên",
+      "renamePlaceholder": "Nhập tên mới",
+      "renameSuccess": "Đổi tên thành công",
+      "renameFailed": "Đổi tên thất bại",
+      "addToChat": "Thêm vào trò chuyện",
+      "addedToChat": "Đã thêm vào trò chuyện",
+      "download": "Tải xuống",
+      "downloadSuccess": "Tải xuống thành công",
+      "downloadFailed": "Tải xuống thất bại"
+    },
+    "changes": {
+      "tab": "Thay đổi",
+      "filesTab": "Tệp",
+      "currentBranchLabel": "Nhánh hiện tại",
+      "summary": "{{count}} tệp đã thay đổi",
+      "empty": "Chưa có thay đổi",
+      "emptyDescription": "Thay đổi tệp sẽ xuất hiện ở đây khi AI sửa đổi tệp",
+      "refresh": "Làm mới",
+      "staged": "Thay đổi đã stage",
+      "unstaged": "Thay đổi",
+      "changedFiles": "Tệp đã thay đổi",
+      "stage": "Stage",
+      "stageAll": "Stage tất cả thay đổi",
+      "unstage": "Unstage",
+      "unstageAll": "Unstage tất cả",
+      "discard": "Hủy thay đổi",
+      "reset": "Hoàn tác thay đổi"
+    },
+    "openWorkspace": "Mở thư mục dự án",
+    "openWith": {
+      "vscode": "VS Code",
+      "terminal": "Terminal",
+      "explorer": "Trình quản lý tệp"
+    }
+  },
+  "minimap": {
+    "searchAria": "Tìm kiếm cuộc trò chuyện",
+    "searchHint": "Nhấn vào đây để tìm kiếm từ khóa",
+    "empty": "Chưa có lượt hỏi đáp nào",
+    "noMatch": "Không tìm thấy nội dung phù hợp",
+    "count": "{{count}} lượt"
+  },
+  "chat": {
+    "noModelSelected": "Chưa chọn mô hình cho phiên hiện tại, không thể gửi tin nhắn",
+    "sendMessageTo": "Gửi tin nhắn đến {{model}}",
+    "processing": "Đang xử lý...",
+    "speech": {
+      "recordTooltip": "Bắt đầu nhập giọng nói",
+      "stopTooltip": "Dừng ghi âm",
+      "processing": "Đang chuyển âm thanh thành văn bản...",
+      "unsupported": "Nhập giọng nói không khả dụng trong môi trường này",
+      "startShort": "Mic",
+      "stopShort": "Dừng",
+      "audioCaptureError": "Không phát hiện microphone",
+      "emptyTranscript": "Không phát hiện giọng nói",
+      "permissionDenied": "Quyền microphone bị từ chối",
+      "transcriptionFailed": "Chuyển âm thanh thất bại",
+      "genericError": "Nhập giọng nói thất bại. Vui lòng thử lại"
+    }
+  },
+  "goalCommand": {
+    "description": "Tự chạy một yêu cầu đến khi gần như đạt hoàn toàn mục tiêu",
+    "allDescription": "Chế độ toàn quyền: tự quyết mọi thứ và vượt yêu cầu (101%)",
+    "autoResumeNotice": "Goal bị treo — tự động tiếp tục ({{count}}/{{max}})",
+    "autoResumeGiveup": "Goal vẫn treo sau {{max}} lần tự tiếp tục. Tạm dừng để bạn xử lý tay.",
+    "modeOff": "Đã tắt Goal Mode.",
+    "modeBadge": "Chế độ Goal",
+    "done": "Đã hoàn thành mục tiêu — test pass. Đã tắt Goal Mode.",
+    "blocked": "Agent báo mục tiêu bị chặn. Đã tắt Goal Mode — vui lòng kiểm tra.",
+    "maxTurns": "Đã chạm giới hạn tự lái của Goal. Đã tắt Goal Mode — vui lòng kiểm tra.",
+    "enforcing": "Đang ép tuân thủ quy trình goal — tự động tiếp tục.",
+    "verifySet": "Đã đặt lệnh kiểm chứng độc lập cho goal này.",
+    "verifyOff": "Đã tắt kiểm chứng độc lập.",
+    "verifyRunning": "Đang kiểm chứng goal độc lập…",
+    "verifyFailed": "Kiểm chứng độc lập thất bại — agent phải sửa và thử lại."
+  },
+  "sideQuestion": {
+    "title": "Câu hỏi phụ",
+    "description": "Đặt câu hỏi nhanh về cuộc trò chuyện hiện tại",
+    "loading": "Đang suy nghĩ...",
+    "unsupported": "Câu hỏi phụ không khả dụng cho cuộc trò chuyện này.",
+    "error": "Trả lời câu hỏi phụ thất bại."
+  },
+  "commandQueue": {
+    "title": "Lệnh đang chờ",
+    "clear": "Xóa hàng chờ",
+    "edit": "Chỉnh sửa",
+    "cancelEdit": "Hủy",
+    "saveEdit": "Lưu",
+    "remove": "Gỡ bỏ"
+  },
+  "contextUsage": {
+    "contextUsed": "ngữ cảnh đã dùng"
+  },
+  "thinking": {
+    "complete": "Đã suy nghĩ xong",
+    "label": "Đang suy nghĩ..."
+  },
+  "skills": {
+    "loaded": "Kỹ năng đã tải"
+  },
+  "mcp": {
+    "loaded": "MCP đã tải",
+    "openSettings": "Mở cài đặt Công cụ",
+    "status": {
+      "loaded": "Đã tải",
+      "failed": "Thất bại",
+      "unsupported": "Không hỗ trợ"
+    }
+  },
+  "sendbox": {
+    "hint": "Nhập / để xem lệnh, @ để tham chiếu tệp"
+  },
+  "notFound": "Không tìm thấy cuộc trò chuyện hoặc đã bị xóa",
+  "contextPack": {
+    "title": "Đang nạp IDE Context",
+    "subtitle": "{{count}} file được nạp cho agent",
+    "loaded": "Đã nạp {{count}} file context IDE.",
+    "truncated": "đã cắt",
+    "score": "điểm {{score}}",
+    "more": "+{{count}} file nữa",
+    "reason": {
+      "seed": "hạt giống",
+      "dependency": "phụ thuộc",
+      "dependent": "được phụ thuộc",
+      "changed": "đã đổi",
+      "entry": "điểm vào"
+    }
+  }
+}

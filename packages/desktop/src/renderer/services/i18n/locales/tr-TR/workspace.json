@@ -1,0 +1,48 @@
+{
+  "navTitle": "Paralel ekranlar",
+  "openHint": "Bu sohbetin içinde birden çok alt aracıyı paralel çalıştırın — her biri kendi canlı çerçevesinde.",
+  "title": "Paralel ekranlar",
+  "subtitle": "Birden çok alt aracıyı paralel çalıştırın — her biri kendi canlı çerçevesinde.",
+  "watch": "İzle",
+  "watchHint": "Aracının kullandığı canlı tarayıcıyı izleyin.",
+  "watchSubtitle": "Aracının web'de yaptıklarının canlı görünümü.",
+  "watchTitle": "Aracının tarayıcısı",
+  "watchEmpty": "Henüz canlı tarayıcı yok. Super açıkken, aracı ihtiyaç duyduğunda burada bir tarayıcı açar — arama yapmak, bir site açmak veya video izlemek için.",
+  "watchLiveBadge": "Canlı",
+  "watchUntitled": "Başlıksız",
+  "watchFullscreen": "Tam ekran",
+  "watchRestore": "Sohbete sığacak şekilde küçült",
+  "super": {
+    "label": "Super",
+    "onHint": "Super AÇIK: aracı sizin adınıza canlı bir tarayıcı açıp kullanabilir. Normal sohbet için kapatın.",
+    "offHint": "Aracının sizin adınıza canlı bir tarayıcı açıp kullanabilmesi için Super'i açın.",
+    "enabled": "Super AÇIK — aracı artık canlı tarayıcıyı kullanabilir.",
+    "disabled": "Super KAPALI — aracı normal şekilde sohbet edecek.",
+    "toggleError": "Super değiştirilemedi. Lütfen tekrar deneyin."
+  },
+  "desktopOnly": "Çalışma Alanı, alt aracıları yerel tarayıcı görünümlerinde çalıştırdığından yalnızca masaüstü uygulamasında kullanılabilir.",
+  "bridgeUnavailable": "Çalışma Alanı hizmeti henüz hazır değil. Masaüstü köprüsü bağlandığında özellik kullanılabilir olacak.",
+  "empty": "Aşağıya bir talimat yazın — örneğin \"glassdoor.com'da iş ara ve notes.md dosyasını düzenle\" — ardından paralel çerçevelere bölmek için çalıştırın.",
+  "composer": {
+    "placeholder": "Ne yapılacağını açıklayın. Yan yana çalıştırmak için bir site (ör. glassdoor.com) ve bir dosya (ör. notes.md) belirtin.",
+    "pickModel": "Bir model seçin",
+    "noModels": "Yapılandırılmış model yok. Ayarlar → Model'i açın.",
+    "run": "Çalıştır",
+    "stop": "Durdur",
+    "hint": "İpucu: hem bir web sitesi hem de bir dosya belirtirseniz iki alt aracı aynı anda başlatılır. Çalıştırmak için Ctrl/Cmd+Enter."
+  },
+  "status": {
+    "queued": "Sırada",
+    "starting": "Başlatılıyor",
+    "running": "Çalışıyor",
+    "done": "Tamamlandı",
+    "error": "Hata",
+    "stopped": "Durduruldu"
+  },
+  "surface": {
+    "preparing": "Hazırlanıyor…",
+    "idleSteps": "Alt aracının işlem yapması bekleniyor…",
+    "noView": "Bu çerçevede tarayıcı görünümü yok.",
+    "noFile": "Bu çerçevede dosya yok."
+  }
+}

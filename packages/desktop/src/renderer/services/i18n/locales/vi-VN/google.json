@@ -1,0 +1,7 @@
+{
+  "mode": {
+    "autoGemini3Desc": "Để Gemini CLI tự chọn mô hình tốt nhất: gemini-3-pro, gemini-3-flash",
+    "autoGemini25Desc": "Để Gemini CLI tự chọn mô hình tốt nhất: gemini-2.5-pro, gemini-2.5-flash",
+    "manualDesc": "Chọn mô hình thủ công"
+  }
+}

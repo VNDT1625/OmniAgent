@@ -1,0 +1,60 @@
+{
+  "navTitle": "モニター",
+  "title": "バグモニター",
+  "subtitle": "自動収集されたエラー、提案された修正、承認ゲート。",
+  "refresh": "更新",
+  "desktopOnly": "バグモニターはデスクトップアプリでのみ利用できます。",
+  "unavailable": "モニターサービスはまだ利用できません。",
+  "noReports": "バグ報告はまだありません。",
+  "noProposals": "提案された修正はまだありません。",
+  "section": {
+    "proposals": "提案された修正",
+    "reports": "バグ報告"
+  },
+  "report": {
+    "occurrences": "{{count}} 回発生",
+    "source": "ソース",
+    "knownFix": "既知の修正があります",
+    "fix": "修正"
+  },
+  "fix": {
+    "startedToast": "エラーを分析して修正を準備しています…"
+  },
+  "risk": {
+    "low": "低",
+    "medium": "中",
+    "high": "高"
+  },
+  "status": {
+    "proposed": "提案済み",
+    "pending-review": "レビュー待ち",
+    "approved": "承認済み",
+    "applied": "適用済み",
+    "rejected": "却下済み",
+    "rolled-back": "ロールバック済み"
+  },
+  "patch": {
+    "title": "提案された修正",
+    "risk": "リスク",
+    "approve": "承認して適用",
+    "approveConfirm": "この修正をアプリに適用しますか？先にロールバックポイントを保存します。",
+    "cancel": "キャンセル",
+    "reject": "却下",
+    "rollback": "ロールバック",
+    "publish": "公開",
+    "pendingReview": "レビュー待ち",
+    "applied": "適用済み",
+    "rejected": "却下済み",
+    "rolledBack": "ロールバック済み",
+    "appliedToast": "修正を適用しました。必要に応じてロールバックできます。",
+    "rejectedToast": "提案を却下しました。",
+    "rolledBackToast": "修正をロールバックしました。",
+    "actionError": "操作を完了できませんでした。"
+  },
+  "publish": {
+    "confirm": "修正ブランチを作成し、レビュー用にあなたの fork にプッシュしますか？",
+    "pushedToast": "ブランチ「{{branch}}」をプッシュしました。プルリクエストページを開いています…",
+    "notPushed": "ブランチ「{{branch}}」をローカルに準備しました。準備ができたら fork にプッシュしてください。",
+    "error": "修正を公開できませんでした。"
+  }
+}

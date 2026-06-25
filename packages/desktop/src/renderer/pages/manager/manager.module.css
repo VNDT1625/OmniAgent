@@ -1,0 +1,491 @@
+/**
+ * Manager workspace — Notion-inspired visual layer.
+ *
+ * Principles distilled from the Notion design system (hairline borders instead
+ * of heavy boxes, warm-charcoal ink rather than pure black, an 8px spacing
+ * rhythm, sober 8px/12px radii, flat surfaces with shadow used sparingly, and a
+ * clear type hierarchy with tight heading leading + relaxed body leading).
+ *
+ * Everything is driven by the project's Arco/Uno CSS variables + the per-user
+ * `--mgr-accent*` variables set on the root by `components/appearance.ts`, so it
+ * honours light/dark theme and the user's accent. No hardcoded brand colours.
+ *
+ * Scope: classes are applied within the Manager page only (CSS Module → hashed
+ * names), so nothing leaks to the rest of the app.
+ */
+
+/* ----------------------------------------------------------------------- *
+ * Root — typographic baseline + accent-aware text selection.
+ * ----------------------------------------------------------------------- */
+.root {
+  --mgr-radius-card: 12px;
+  --mgr-radius-control: 8px;
+  letter-spacing: -0.1px;
+
+  /* ---- Notion-style aliases, mapped to the APP THEME -----------------------
+   * The Manager components reference local `--paper / --ink / --line` aliases to
+   * get a calm, Notion-like surface hierarchy. Instead of pinning a white
+   * canvas (which forced the workspace to stay light even in dark mode), each
+   * alias now points at the global theme token, so the workspace follows the
+   * app's light/dark theme. Scoped via CSS Module → no leak. */
+  --canvas: var(--bg-base);
+  --paper: var(--bg-1);
+  --paper-soft: var(--bg-2);
+  --paper-hover: var(--bg-hover);
+  --ink: var(--text-primary);
+  --ink-2: var(--text-secondary);
+  --ink-3: var(--bg-6);
+  --line: var(--border-base);
+  --line-strong: var(--bg-4);
+  --mgr-hairline: var(--line);
+
+  background: var(--canvas);
+  color: var(--ink);
+}
+.root ::selection {
+  background: var(--mgr-accent-light-2, rgba(59, 108, 246, 0.18));
+}
+
+/* Primary buttons inside Manager adopt the user's accent (Notion's signature
+ * single dominant CTA colour). Scoped to the Manager root so it never recolours
+ * the rest of the app. */
+.root :global(.arco-btn-primary) {
+  background-color: var(--mgr-accent, var(--primary));
+  border-color: var(--mgr-accent, var(--primary));
+}
+.root :global(.arco-btn-primary:hover) {
+  filter: brightness(1.08);
+  background-color: var(--mgr-accent, var(--primary));
+  border-color: var(--mgr-accent, var(--primary));
+}
+.root :global(.arco-btn-primary:active) {
+  filter: brightness(0.94);
+}
+
+/* ----------------------------------------------------------------------- *
+ * Header — editorial title block with a calm icon chip.
+ * ----------------------------------------------------------------------- */
+.header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 28px 14px;
+}
+.headerChip {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mgr-accent-light-1, rgba(59, 108, 246, 0.1));
+  color: var(--mgr-accent, var(--primary));
+  flex-shrink: 0;
+}
+.title {
+  font-size: 19px;
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.4px;
+  color: var(--color-text-1);
+}
+.subtitle {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--color-text-3);
+  margin-top: 1px;
+}
+
+/* A quiet toolbar button (Arco text Button) — text-secondary, accent on hover. */
+.toolBtn {
+  color: var(--color-text-2) !important;
+  font-weight: 500 !important;
+  border-radius: var(--mgr-radius-control) !important;
+}
+.toolBtn:hover {
+  color: var(--color-text-1) !important;
+  background: var(--color-fill-2) !important;
+}
+
+/* ----------------------------------------------------------------------- *
+ * Segmented tabs — Notion's underline tabs, not Arco's default card tabs.
+ * Applied by adding `.tabs` to the Arco <Tabs> wrapper.
+ * ----------------------------------------------------------------------- */
+.tabs :global(.arco-tabs-header-nav)::before {
+  background-color: var(--mgr-hairline);
+}
+.tabs :global(.arco-tabs-header-title) {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-text-3);
+  padding: 8px 4px;
+  margin: 0 14px;
+  transition: color 0.14s ease;
+}
+.tabs :global(.arco-tabs-header-title-active),
+.tabs :global(.arco-tabs-header-title:hover) {
+  color: var(--color-text-1);
+}
+.tabs :global(.arco-tabs-header-ink) {
+  background: var(--mgr-accent, var(--primary));
+  height: 2px;
+  border-radius: 2px;
+}
+.tabs :global(.arco-tabs-header) {
+  padding: 0 28px;
+}
+
+/* ----------------------------------------------------------------------- *
+ * Surface card — the workhorse container. Hairline border, soft canvas,
+ * 12px radius, generous padding. Replaces ad-hoc border-arco-2 boxes.
+ * ----------------------------------------------------------------------- */
+.card {
+  background: var(--color-bg-1);
+  border: 1px solid var(--mgr-hairline);
+  border-radius: var(--mgr-radius-card);
+  padding: var(--mgr-density-pad, 16px);
+  transition:
+    border-color 0.14s ease,
+    box-shadow 0.14s ease;
+}
+.cardHover:hover {
+  border-color: var(--color-border-3);
+  box-shadow: rgba(15, 15, 15, 0.06) 0px 2px 8px 0px;
+}
+
+/* Section eyebrow label — uppercase micro caption (Notion's quiet headers). */
+.eyebrow {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--color-text-3);
+}
+
+/* A subtle row that reads as a list item — used by task/note/event rows. */
+.row {
+  border: 1px solid var(--mgr-hairline);
+  border-radius: 10px;
+  background: var(--color-bg-1);
+  transition:
+    background 0.14s ease,
+    border-color 0.14s ease;
+}
+.row:hover {
+  background: var(--color-fill-1);
+  border-color: var(--color-border-3);
+}
+
+/* Gentle completion pulse, respects reduced-motion (criterion 4.3). */
+.completePulse {
+  animation: mgrComplete 0.6s ease;
+}
+@keyframes mgrComplete {
+  0% {
+    background: var(--mgr-accent-light-1, rgba(59, 108, 246, 0.1));
+  }
+  100% {
+    background: transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .completePulse {
+    animation: none;
+  }
+  .toolBtn,
+  .card,
+  .cardHover,
+  .row {
+    transition: none;
+  }
+}
+
+/* ----------------------------------------------------------------------- *
+ * Segmented control (category switcher) — Notion's pill-in-a-track look.
+ * Applied to an Arco Radio.Group via `.segmented`.
+ * ----------------------------------------------------------------------- */
+.segmented :global(.arco-radio-group-button) {
+  background: var(--paper-soft);
+  border-radius: 8px;
+  padding: 3px;
+  border: 1px solid var(--line);
+}
+.segmented :global(.arco-radio-button) {
+  border-radius: 6px !important;
+  color: var(--ink-2);
+  font-weight: 500;
+  font-size: 13px;
+}
+.segmented :global(.arco-radio-button::before) {
+  display: none; /* remove Arco's divider line */
+}
+.segmented :global(.arco-radio-button.arco-radio-checked) {
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 1px 3px rgba(15, 15, 15, 0.1);
+}
+
+/* ----------------------------------------------------------------------- *
+ * Note list pane (LearnView left column) — quiet, roomy rows.
+ * ----------------------------------------------------------------------- */
+.listItem {
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.listItem:hover {
+  background: var(--paper-soft);
+}
+.listItemActive {
+  background: var(--mgr-accent-light-1);
+  box-shadow: inset 2px 0 0 var(--mgr-accent, var(--primary));
+}
+
+/* Inputs inside Manager read as quiet Notion fields. */
+.root :global(.arco-input-inner-wrapper),
+.root :global(.arco-input) {
+  border-radius: 8px;
+}
+.root :global(.arco-input-inner-wrapper) {
+  background: var(--paper-soft);
+  border-color: var(--line);
+}
+
+/* Empty / placeholder area gets a touch more air. */
+.emptyHint {
+  color: var(--ink-3);
+  font-size: 13.5px;
+}
+
+/* ----------------------------------------------------------------------- *
+ * Right auto-hide panel — Notion-style edge dock.
+ *
+ * Default state: panel is collapsed (translateX(100%)) against the right
+ * edge. A 14px invisible trigger zone (.edgeTrigger) sits next to it; when the
+ * cursor enters it, the adjacent-sibling selector slides the panel in. Hovering
+ * the panel itself keeps it open. Pinning (`.rightPanelPinned`) overrides the
+ * transform so the panel stays put.
+ *
+ * The panel paints itself with shadow rather than borders so it reads as a
+ * floating overlay (it does NOT push content — the layout below is unchanged).
+ * ----------------------------------------------------------------------- */
+.edgeTrigger {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 14px;
+  z-index: 5;
+}
+.edgeHint {
+  position: absolute;
+  top: 50%;
+  right: 5px;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 44px;
+  border-radius: 3px;
+  background: var(--line-strong);
+  opacity: 0.6;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+  z-index: 4;
+}
+.root:hover .edgeHint {
+  opacity: 0.85;
+}
+.rightPanel {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 304px;
+  background: var(--paper);
+  border-left: 1px solid var(--line);
+  box-shadow: -14px 0 36px -18px rgba(15, 15, 15, 0.18);
+  transform: translateX(calc(100% - 0px));
+  transition: transform 0.22s ease;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* Reveal: hovering the trigger zone (which sits just before the panel in the
+ * DOM) or the panel itself slides it in. */
+.edgeTrigger:hover + .rightPanel,
+.rightPanel:hover,
+.rightPanelPinned {
+  transform: translateX(0);
+}
+/* When pinned, hide the hint (it would sit behind the visible panel anyway). */
+.rightPanelPinned ~ .edgeHint,
+.root:has(.rightPanelPinned) .edgeHint {
+  opacity: 0;
+}
+/* The panel header — title + pin button. */
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 12px 10px;
+  border-bottom: 1px solid var(--line);
+}
+.panelChip {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--mgr-accent-light-1, rgba(59, 108, 246, 0.1));
+  color: var(--mgr-accent, var(--primary));
+  flex-shrink: 0;
+}
+.panelTitle {
+  flex: 1;
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: -0.1px;
+  color: var(--ink);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pinBtn {
+  color: var(--ink-3) !important;
+}
+.pinBtn:hover {
+  color: var(--mgr-accent, var(--primary)) !important;
+  background: var(--paper-hover) !important;
+}
+.panelTools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px 4px;
+}
+.panelNav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.navSection {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-top: 8px;
+}
+.navSectionLabel {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.45px;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 8px 10px 4px;
+}
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 13.5px;
+  color: var(--ink);
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    color 0.12s ease;
+  user-select: none;
+}
+.navItem:hover {
+  background: var(--paper-hover);
+}
+.navItem:focus-visible {
+  outline: 2px solid var(--mgr-accent, var(--primary));
+  outline-offset: -2px;
+}
+.navItemActive {
+  background: var(--mgr-accent-light-1, rgba(59, 108, 246, 0.1));
+  color: var(--mgr-accent, var(--primary));
+  font-weight: 500;
+}
+.navChild {
+  padding-left: 28px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.navIcon {
+  width: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+  flex-shrink: 0;
+}
+.navLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.navBadge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  background: var(--paper-soft);
+  padding: 1px 7px;
+  border-radius: 9px;
+  flex-shrink: 0;
+}
+
+/* ----------------------------------------------------------------------- *
+ * Workspace shell — main column hosts the live section, panel overlays it.
+ * ----------------------------------------------------------------------- */
+.workspace {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.workspaceMain {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+/* Breadcrumb / topbar above the active section. */
+.crumbBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+  color: var(--ink-2);
+  flex-shrink: 0;
+}
+.crumbBar .crumbActive {
+  color: var(--ink);
+  font-weight: 500;
+}
+.crumbBar .crumbSep {
+  color: var(--ink-3);
+}
+.sectionBody {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rightPanel {
+    transition: none;
+  }
+}

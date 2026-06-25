@@ -1,0 +1,59 @@
+{
+  "loadError": "无法读取系统状态，观测服务可能尚未启动。",
+  "refresh": "刷新",
+  "refreshed": "已刷新系统信息。",
+  "refreshError": "刷新系统信息失败。",
+  "static": {
+    "title": "本机",
+    "subtitle": "硬件与软件信息，很少变化——点击“刷新”可重新读取。",
+    "os": "操作系统",
+    "hostname": "主机 · 用户",
+    "cpu": "处理器",
+    "cores": "{{count}} 个逻辑核心",
+    "memory": "总内存",
+    "gpu": "显卡",
+    "gpuNone": "未检测到 GPU",
+    "disk": "存储（可用 / 总计）",
+    "network": "网络",
+    "noNetwork": "无活动网络接口",
+    "versions": "版本"
+  },
+  "live": {
+    "title": "实时指标",
+    "subtitle": "页面打开时实时更新。",
+    "cpu": "CPU",
+    "memory": "内存",
+    "perCore": "各核心负载",
+    "loadAvg": "平均负载",
+    "uptime": "运行时间",
+    "battery": "电源",
+    "onBattery": "电池供电",
+    "plugged": "已接电源",
+    "waiting": "正在等待首个实时采样…"
+  },
+  "process": {
+    "title": "进程",
+    "subtitle": "应用的进程，最耗资源的排在前面。设置优先级以约束占用过高的进程。",
+    "name": "进程",
+    "cpu": "CPU",
+    "memory": "内存",
+    "priority": "优先级",
+    "none": "暂无进程数据。",
+    "prioritySet": "已更新 {{name}} 的优先级。",
+    "priorityError": "无法更改优先级（可能需要更高权限）。"
+  },
+  "priority": {
+    "high": "高",
+    "aboveNormal": "高于正常",
+    "normal": "正常",
+    "belowNormal": "低于正常",
+    "low": "低"
+  },
+  "units": {
+    "mb": "MB",
+    "gb": "GB",
+    "day": "天",
+    "hour": "时",
+    "min": "分"
+  }
+}

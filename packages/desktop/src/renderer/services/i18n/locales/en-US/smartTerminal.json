@@ -1,0 +1,15 @@
+{
+  "smartFix": {
+    "errorLine": "`{{command}}` failed (exit {{code}})",
+    "updatedTo": "updated →",
+    "updateLink": "What's new",
+    "run": "Run with {{program}}",
+    "dismiss": "Dismiss",
+    "tag": "Smart Fix",
+    "confirmQuestion": "run `{{program}}` instead? (y/N)",
+    "skipped": "Smart Fix skipped.",
+    "running": "Running `{{program}}`…"
+  },
+  "autoRerunLabel": "Suggest fix on error",
+  "autoRerunHint": "When a command fails and has a known replacement, ask in the terminal (y/N) so you — or an agent — can apply it by typing."
+}

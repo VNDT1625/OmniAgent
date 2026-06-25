@@ -1,0 +1,84 @@
+{
+  "action": {
+    "save": "Lưu",
+    "retry": "Thử lại"
+  },
+  "state": {
+    "loading": "Đang tải…",
+    "errorTitle": "Không mở được tệp"
+  },
+  "adapter": {
+    "comingSoonTitle": "Trình soạn này sắp có",
+    "comingSoonSubtitle": "Trình soạn riêng cho tệp \"{{kind}}\" sắp ra mắt. Bạn vẫn có thể sửa dưới dạng chữ thô bên dưới."
+  },
+  "rawText": {
+    "placeholder": "Nội dung tệp…"
+  },
+  "image": {
+    "rotate": "Xoay 90°",
+    "size": "Kích cỡ",
+    "apply": "Đổi kích cỡ"
+  },
+  "docx": {
+    "editNotice": "Đang sửa nội dung văn bản. Khi lưu sẽ tạo lại tệp .docx sạch (không giữ định dạng phong phú).",
+    "placeholder": "Nội dung tài liệu…",
+    "openFailed": "Không mở được tài liệu Word này"
+  },
+  "spreadsheet": {
+    "addRow": "Thêm hàng",
+    "editNotice": "Đang sửa trang tính đầu tiên dạng bảng. Khi lưu sẽ tạo lại tệp .xlsx sạch (không giữ định dạng phong phú và các trang tính khác).",
+    "openFailed": "Không mở được bảng tính này"
+  },
+  "slide": {
+    "addSlide": "Thêm slide",
+    "slideLabel": "Slide {{index}}",
+    "empty": "(trống)",
+    "placeholder": "Nội dung slide…",
+    "openFailed": "Không mở được bản trình chiếu này"
+  },
+  "pdf": {
+    "viewerTitle": "Trình xem PDF",
+    "tooLargeForViewer": "PDF này quá lớn để xem trong app ({{size}} MB). Hãy mở bằng trình soạn Office hoặc dùng trình xem PDF bên ngoài.",
+    "openExternal": "Mở bằng trình xem hệ thống"
+  },
+  "media": {
+    "local": "Trên máy",
+    "online": "Trên mạng",
+    "transcribe": "Bóc lời",
+    "summarize": "Tóm tắt",
+    "heavyNotice": "Bóc lời và tóm tắt chạy nền, do bộ điều phối tài nguyên xếp lịch.",
+    "transcriptIdle": "Chưa có bản bóc lời. Chọn chế độ rồi bắt đầu bóc lời."
+  },
+  "binary": {
+    "readOnlyNotice": "Tệp này hiển thị ở chế độ xem/phân tích, chỉ đọc.",
+    "type": "Loại",
+    "size": "Dung lượng",
+    "unknownType": "Nhị phân",
+    "empty": "(tệp rỗng)",
+    "truncated": "Hiển thị {{count}} byte đầu tiên."
+  },
+  "office": {
+    "fallbackTitle": "Đang dùng trình soạn đơn giản",
+    "fallbackGeneric": "Không mở được trình soạn Office đầy đủ nên đang dùng trình soạn nhẹ. Một số định dạng có thể không hiển thị.",
+    "retry": "Thử lại Office"
+  },
+  "onlyoffice": {
+    "connecting": "Đang kết nối trình soạn Office…",
+    "noServerTitle": "Chưa cấu hình trình soạn Office",
+    "noServerHint": "Đặt URL của ONLYOFFICE Document Server để sửa tệp này bằng trình soạn Office đầy đủ.",
+    "failedTitle": "Không mở được trình soạn Office",
+    "settingsTitle": "Cài đặt trình soạn Office",
+    "settingsHint": "Nhập URL gốc của ONLYOFFICE Document Server. Nó chạy riêng và chỉ được kết nối khi đang sửa.",
+    "dockerHint": "Nếu Document Server chạy trong Docker, hãy đảm bảo nó truy cập được app này (máy chủ tích hợp lắng nghe mọi giao diện mạng).",
+    "save": "Lưu",
+    "cancel": "Hủy",
+    "resolving": "Đang chuẩn bị trình soạn Office…",
+    "reason": {
+      "docker-missing": "Chưa cài Docker. Hãy cài Docker hoặc đặt URL Document Server trong cài đặt.",
+      "docker-stopped": "Docker đang khởi động. Lần đầu có thể mất chút thời gian — hãy thử lại sau giây lát, hoặc đặt URL Document Server trong cài đặt.",
+      "start-failed": "Không khởi động được container Document Server.",
+      "timeout": "Document Server không sẵn sàng kịp thời."
+    },
+    "startingHint": "Lần chạy đầu có thể mất vài phút để khởi động engine Office (và tải về nếu cần)."
+  }
+}

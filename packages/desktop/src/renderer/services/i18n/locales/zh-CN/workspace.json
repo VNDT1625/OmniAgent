@@ -1,0 +1,48 @@
+{
+  "navTitle": "并行画面",
+  "openHint": "在此对话中并行运行多个子代理——每个都在自己的实时画面中。",
+  "title": "并行画面",
+  "subtitle": "并行运行多个子代理——每个都在自己的实时画面中。",
+  "watch": "查看",
+  "watchHint": "查看代理正在操作的实时浏览器。",
+  "watchSubtitle": "实时查看代理在网页上的操作。",
+  "watchTitle": "代理浏览器",
+  "watchEmpty": "暂无实时浏览器。开启 Super 后，代理在需要时会在这里打开浏览器——用于搜索、打开网站或观看视频。",
+  "watchLiveBadge": "实时",
+  "watchUntitled": "未命名",
+  "watchFullscreen": "全屏",
+  "watchRestore": "缩回聊天框内",
+  "super": {
+    "label": "Super",
+    "onHint": "Super 已开启：代理可以为你打开并操作实时浏览器。关闭则正常聊天。",
+    "offHint": "开启 Super，让代理可以代你打开并操作实时浏览器。",
+    "enabled": "Super 已开启——代理现在可以使用实时浏览器。",
+    "disabled": "Super 已关闭——代理将正常聊天。",
+    "toggleError": "无法更改 Super，请重试。"
+  },
+  "desktopOnly": "工作区在原生浏览器视图中运行子代理，因此仅在桌面应用中可用。",
+  "bridgeUnavailable": "工作区服务尚未就绪。桌面桥接连接后该功能即可使用。",
+  "empty": "在下方输入指令——例如“在 glassdoor.com 上搜索职位并编辑 notes.md”——然后运行以拆分为并行画面。",
+  "composer": {
+    "placeholder": "描述要做的事。提及一个网站（如 glassdoor.com）和一个文件（如 notes.md）即可并行运行。",
+    "pickModel": "选择模型",
+    "noModels": "未配置模型。请打开 设置 → 模型。",
+    "run": "运行",
+    "stop": "停止",
+    "hint": "提示：同时提及网站和文件可一次启动两个子代理。按 Ctrl/Cmd+Enter 运行。"
+  },
+  "status": {
+    "queued": "排队中",
+    "starting": "启动中",
+    "running": "运行中",
+    "done": "完成",
+    "error": "错误",
+    "stopped": "已停止"
+  },
+  "surface": {
+    "preparing": "准备中…",
+    "idleSteps": "等待子代理执行…",
+    "noView": "此画面没有浏览器视图。",
+    "noFile": "此画面没有文件。"
+  }
+}

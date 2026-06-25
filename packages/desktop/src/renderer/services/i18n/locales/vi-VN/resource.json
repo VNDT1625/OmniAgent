@@ -1,0 +1,83 @@
+{
+  "navTitle": "Tài nguyên",
+  "title": "Bảng tài nguyên",
+  "subtitle": "Xem cách AionUi cân bằng các tác vụ nặng trên máy của bạn và tinh chỉnh giới hạn.",
+  "loadError": "Không tải được trạng thái tài nguyên. Bộ điều phối tài nguyên có thể chưa khởi động.",
+  "coordinatorTitle": "Điều phối tài nguyên",
+  "coordinatorSubtitle": "Ngân sách lease và tự cân bằng cho các tác vụ nặng.",
+  "mode": {
+    "title": "Chế độ cân bằng",
+    "detailed": "Chi tiết",
+    "detailedDesc": "Bạn tự đặt từng giới hạn.",
+    "suggest": "Gợi ý",
+    "suggestDesc": "AionUi đọc cấu hình máy và tự cân bằng.",
+    "changeError": "Không đổi được chế độ."
+  },
+  "preset": {
+    "title": "Mức nhanh",
+    "subtitle": "Áp dụng ngân sách dựng sẵn chỉ với một cú nhấp.",
+    "saver": "Tiết kiệm",
+    "balanced": "Cân bằng",
+    "performance": "Hiệu năng cao",
+    "custom": "Tùy chỉnh",
+    "current": "Hiện tại",
+    "applied": "Đã áp dụng mức.",
+    "applyError": "Không áp dụng được mức."
+  },
+  "machine": {
+    "title": "Cấu hình máy",
+    "ram": "Tổng RAM",
+    "cpu": "Số nhân CPU",
+    "gpu": "GPU rời",
+    "disk": "Đĩa trống",
+    "gpuPresent": "Có",
+    "gpuNone": "Không"
+  },
+  "budget": {
+    "title": "Ngân sách hiện tại",
+    "subtitle": "Trần bộ nhớ và số tác vụ nặng được chạy cùng lúc.",
+    "memoryCeiling": "Trần bộ nhớ cho tác vụ nặng",
+    "userReserve": "Dành riêng cho bạn",
+    "concurrency": "Số tác vụ song song theo loại",
+    "save": "Lưu ngân sách",
+    "saved": "Đã cập nhật ngân sách.",
+    "saveError": "Không cập nhật được ngân sách.",
+    "readOnlyHint": "Chuyển sang chế độ Chi tiết để sửa các giới hạn này."
+  },
+  "leases": {
+    "title": "Hoạt động",
+    "subtitle": "Các tác vụ đang giữ vé (lease) và các tác vụ đang chờ trong hàng đợi.",
+    "activeTotal": "Vé đang hoạt động",
+    "queuedTotal": "Tác vụ trong hàng chờ",
+    "none": "Không có tác vụ nặng nào đang chạy.",
+    "kindHeader": "Loại tác vụ",
+    "activeHeader": "Hoạt động",
+    "queuedHeader": "Chờ"
+  },
+  "adjustments": {
+    "title": "Vì sao mức cân bằng thay đổi",
+    "subtitle": "Mỗi lần tự điều chỉnh đều được ghi lại kèm lý do.",
+    "empty": "Chưa có điều chỉnh tự động nào.",
+    "reasonLabel": "Lý do",
+    "memoryChange": "Trần bộ nhớ: {{from}} → {{to}} MB",
+    "reserveChange": "Dành riêng cho người dùng: {{from}} → {{to}} MB",
+    "concurrencyChange": "{{kind}}: {{from}} → {{to}}",
+    "noFieldChange": "Không có trường ngân sách nào thay đổi."
+  },
+  "taskKind": {
+    "agent": "Tác nhân",
+    "browser": "Thẻ trình duyệt",
+    "emulator": "Giả lập Android",
+    "windowsTest": "Kiểm thử Windows",
+    "patchBuild": "Dựng bản vá",
+    "ocr": "OCR",
+    "transcription": "Bóc lời",
+    "docConvert": "Chuyển đổi tài liệu",
+    "semanticIndex": "Lập chỉ mục ngữ nghĩa"
+  },
+  "units": {
+    "mb": "MB",
+    "gb": "GB",
+    "cores": "nhân"
+  }
+}

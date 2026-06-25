@@ -1,0 +1,702 @@
+<!doctype html>
+<!-- MOCKUP TĨNH v2 — chỉ duyệt BỐ CỤC kiểu Notion/Obsidian. Chưa phải code thật. -->
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <title>Manager — layout v2</title>
+    <style>
+      :root {
+        --canvas: #ffffff;
+        --paper: #fbfbfa;
+        --soft: #f5f5f3;
+        --hover: #eeedea;
+        --line: #ebeae8;
+        --line2: #e0dfdc;
+        --ink: #37352f;
+        --ink2: #73726c;
+        --ink3: #a4a29b;
+        --accent: #2b6fd6;
+        --accent-soft: #eaf1fb;
+        --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: var(--font);
+        color: var(--ink);
+        background: #dfdedb;
+        padding: 24px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+      .lbl {
+        max-width: 1240px;
+        margin: 0 auto 8px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        color: #8a8980;
+      }
+      .frame {
+        max-width: 1240px;
+        margin: 0 auto 28px;
+        height: 700px;
+        background: var(--canvas);
+        border: 1px solid var(--line2);
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 14px 44px -16px rgba(0, 0, 0, 0.25);
+        display: flex;
+      }
+
+      /* app rail (đã có sẵn) */
+      .rail {
+        width: 52px;
+        background: #f3f3f1;
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 16px;
+        padding: 14px 0;
+      }
+      .rail .d {
+        width: 24px;
+        height: 24px;
+        border-radius: 7px;
+        background: #e3e2df;
+      }
+      .rail .d.b {
+        background: var(--ink);
+      }
+      .rail .d.on {
+        background: var(--accent-soft);
+        border: 1px solid var(--accent);
+      }
+
+      /* MANAGER SIDEBAR — 1 cây điều hướng duy nhất */
+      .nav {
+        width: 248px;
+        background: var(--paper);
+        border-right: 1px solid var(--line);
+        display: flex;
+        flex-direction: column;
+      }
+      .nav .head {
+        padding: 14px 14px 10px;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+      }
+      .nav .head .ic {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+      }
+      .nav .head .tt {
+        font-size: 14.5px;
+        font-weight: 650;
+        letter-spacing: -0.2px;
+      }
+      .nav .head .sb {
+        font-size: 11px;
+        color: var(--ink3);
+      }
+      .nav .search {
+        margin: 0 12px 8px;
+        height: 30px;
+        border: 1px solid var(--line2);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 0 9px;
+        color: var(--ink3);
+        font-size: 12.5px;
+      }
+      .nav .search kbd {
+        margin-left: auto;
+        border: 1px solid var(--line2);
+        border-radius: 4px;
+        padding: 0 5px;
+        font-size: 10px;
+      }
+      .scroll {
+        flex: 1;
+        overflow: auto;
+        padding: 4px 8px;
+      }
+      .sec {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        color: var(--ink3);
+        padding: 12px 8px 4px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      .sec span.add {
+        font-size: 14px;
+        color: var(--ink3);
+        cursor: pointer;
+      }
+      .nv {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        padding: 6px 8px;
+        border-radius: 7px;
+        font-size: 13.5px;
+        color: var(--ink);
+        cursor: pointer;
+      }
+      .nv:hover {
+        background: var(--hover);
+      }
+      .nv.on {
+        background: var(--accent-soft);
+        color: var(--accent);
+        font-weight: 500;
+      }
+      .nv .em {
+        width: 18px;
+        text-align: center;
+      }
+      .nv.child {
+        padding-left: 26px;
+        color: var(--ink2);
+        font-size: 13px;
+      }
+      .count {
+        margin-left: auto;
+        font-size: 11px;
+        color: var(--ink3);
+      }
+      .nav .foot {
+        border-top: 1px solid var(--line);
+        padding: 8px 12px;
+        font-size: 12.5px;
+        color: var(--ink2);
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      /* MAIN */
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        background: var(--canvas);
+      }
+      .bar {
+        height: 44px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 0 16px;
+        color: var(--ink3);
+        font-size: 13px;
+      }
+      .bar .crumb {
+        color: var(--ink2);
+      }
+      .bar .sp {
+        flex: 1;
+      }
+      .bar .a {
+        height: 28px;
+        padding: 0 9px;
+        border-radius: 7px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        color: var(--ink2);
+        font-size: 12.5px;
+      }
+      .bar .a:hover {
+        background: var(--soft);
+      }
+      .body {
+        flex: 1;
+        overflow: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="lbl">Bố cục v2 — Sidebar điều hướng 1 cây (như Notion/Obsidian) · vùng nội dung phải</div>
+
+    <!-- ========== FRAME A: TASKS ========== -->
+    <div class="lbl" style="margin-top: 18px">A · Nhiệm vụ (chọn từ sidebar)</div>
+    <div class="frame">
+      <div class="rail">
+        <div class="d b"></div>
+        <div class="d"></div>
+        <div class="d"></div>
+        <div class="d on"></div>
+      </div>
+      <div class="nav">
+        <div class="head">
+          <div class="ic">◆</div>
+          <div>
+            <div class="tt">Quản lý cá nhân</div>
+            <div class="sb">không gian của bạn</div>
+          </div>
+        </div>
+        <div class="search">⌕ Tìm nhanh<kbd>⌘K</kbd></div>
+        <div class="scroll">
+          <div class="nv on"><span class="em">✓</span> Nhiệm vụ <span class="count">5</span></div>
+          <div class="nv"><span class="em">🗓️</span> Lịch trình</div>
+          <div class="sec">Ghi chú <span class="add">+</span></div>
+          <div class="nv"><span class="em">📓</span> Hằng ngày</div>
+          <div class="nv"><span class="em">📘</span> Học tập</div>
+          <div class="nv child">• C4 Model</div>
+          <div class="nv child">• Class Diagram</div>
+          <div class="nv"><span class="em">🗂️</span> Tài liệu</div>
+        </div>
+        <div class="foot">⚙ Cài đặt · 🎨 Giao diện</div>
+      </div>
+      <div class="main">
+        <div class="bar">
+          <span class="crumb">Nhiệm vụ</span><span class="sp"></span><span class="a">⌕ Tìm</span
+          ><span class="a">🎨</span>
+        </div>
+        <div class="body" style="padding: 36px 0">
+          <div style="max-width: 720px; margin: 0 auto; padding: 0 28px">
+            <div style="font-size: 40px">🗂️</div>
+            <div style="font-size: 34px; font-weight: 700; letter-spacing: -0.7px; margin-top: 6px">Nhiệm vụ</div>
+            <div style="color: var(--ink3); font-size: 14px; margin-top: 4px">Hôm nay, thứ Hai · 1 tháng 6</div>
+            <div
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-end;
+                border: 1px solid var(--line);
+                border-radius: 12px;
+                padding: 16px 18px;
+                background: var(--paper);
+                margin: 22px 0 18px;
+              "
+            >
+              <div>
+                <div
+                  style="
+                    font-size: 11px;
+                    font-weight: 700;
+                    letter-spacing: 0.4px;
+                    text-transform: uppercase;
+                    color: var(--ink3);
+                  "
+                >
+                  Tiến độ hôm nay
+                </div>
+                <div style="font-size: 30px; font-weight: 700; margin-top: 4px">
+                  3 <span style="font-size: 15px; font-weight: 500; color: var(--ink3)">/ 5</span>
+                </div>
+              </div>
+              <div
+                style="
+                  width: 44px;
+                  height: 44px;
+                  border-radius: 50%;
+                  background: conic-gradient(var(--accent) 60%, var(--soft) 0);
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                "
+              >
+                <div
+                  style="
+                    width: 33px;
+                    height: 33px;
+                    border-radius: 50%;
+                    background: var(--paper);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: var(--ink2);
+                  "
+                >
+                  60%
+                </div>
+              </div>
+            </div>
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                border: 1px solid var(--line2);
+                border-radius: 10px;
+                padding: 9px 12px;
+                color: var(--ink3);
+                font-size: 14px;
+                margin-bottom: 18px;
+              "
+            >
+              + &nbsp;Thêm nhiệm vụ — “Nộp báo cáo mai 5pm !cao #work”
+            </div>
+            <div
+              style="
+                font-size: 12px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 0.4px;
+                color: var(--ink3);
+                margin: 6px 0;
+              "
+            >
+              Hôm nay
+            </div>
+            <div style="display: flex; gap: 11px; padding: 9px 6px; border-top: 1px solid var(--line)">
+              <div
+                style="width: 18px; height: 18px; border-radius: 50%; border: 1.6px solid var(--line2); margin-top: 1px"
+              ></div>
+              <div>
+                <div style="font-size: 14.5px">Hoàn thiện slide quý</div>
+                <div style="display: flex; gap: 10px; margin-top: 3px; font-size: 12px; color: var(--ink3)">
+                  <span
+                    style="
+                      background: #fbe6e5;
+                      color: #d44c47;
+                      padding: 1px 8px;
+                      border-radius: 999px;
+                      font-weight: 600;
+                    "
+                    >Khẩn</span
+                  ><span>📅 17:00</span><span>#work</span>
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 11px; padding: 9px 6px; border-top: 1px solid var(--line)">
+              <div
+                style="width: 18px; height: 18px; border-radius: 50%; border: 1.6px solid var(--line2); margin-top: 1px"
+              ></div>
+              <div>
+                <div style="font-size: 14.5px">Gọi nha sĩ</div>
+                <div style="display: flex; gap: 10px; margin-top: 3px; font-size: 12px; color: var(--ink3)">
+                  <span style="background: var(--soft); padding: 1px 8px; border-radius: 999px; font-weight: 600"
+                    >Thấp</span
+                  ><span>📅 09:00</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== FRAME B: NOTE READING PAGE ========== -->
+    <div class="lbl" style="margin-top: 18px">
+      B · Trang đọc note (cover + icon + block + bảng + bookmark) — vùng nội dung kiểu Notion
+    </div>
+    <div class="frame">
+      <div class="rail">
+        <div class="d b"></div>
+        <div class="d"></div>
+        <div class="d"></div>
+        <div class="d on"></div>
+      </div>
+      <div class="nav">
+        <div class="head">
+          <div class="ic">◆</div>
+          <div>
+            <div class="tt">Quản lý cá nhân</div>
+            <div class="sb">không gian của bạn</div>
+          </div>
+        </div>
+        <div class="search">⌕ Tìm nhanh<kbd>⌘K</kbd></div>
+        <div class="scroll">
+          <div class="nv"><span class="em">✓</span> Nhiệm vụ</div>
+          <div class="nv"><span class="em">🗓️</span> Lịch trình</div>
+          <div class="sec">Ghi chú <span class="add">+</span></div>
+          <div class="nv"><span class="em">📓</span> Hằng ngày</div>
+          <div class="nv"><span class="em">📘</span> Học tập</div>
+          <div class="nv child on">• C4 Model</div>
+          <div class="nv child">• Class Diagram</div>
+          <div class="nv child">• REST vs gRPC</div>
+          <div class="nv"><span class="em">🗂️</span> Tài liệu</div>
+        </div>
+        <div class="foot">⚙ Cài đặt · 🎨 Giao diện</div>
+      </div>
+      <div class="main">
+        <div class="bar">
+          <span class="crumb">Ghi chú / Học tập / C4 Model</span><span class="sp"></span><span class="a">⤢ Sơ đồ</span
+          ><span class="a">⋯</span>
+        </div>
+        <div class="body">
+          <div style="height: 170px; background: linear-gradient(120deg, #4b6cb7, #182848)"></div>
+          <div style="max-width: 720px; margin: 0 auto; padding: 0 28px 60px">
+            <div
+              style="
+                width: 66px;
+                height: 66px;
+                border-radius: 16px;
+                background: #fff;
+                border: 1px solid var(--line);
+                box-shadow: 0 4px 14px -4px rgba(0, 0, 0, 0.2);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 38px;
+                margin-top: -34px;
+              "
+            >
+              📘
+            </div>
+            <div style="font-size: 36px; font-weight: 700; letter-spacing: -0.7px; margin: 10px 0 16px">C4 Model</div>
+            <p style="font-size: 15.5px; color: #2f2e2b; margin-bottom: 12px">
+              C4 mô tả kiến trúc theo 4 mức: Context, Container, Component, Code. Mỗi mức zoom sâu dần.
+            </p>
+            <div
+              style="
+                background: var(--soft);
+                border: 1px solid var(--line);
+                border-radius: 8px;
+                padding: 12px 14px;
+                display: flex;
+                gap: 10px;
+                margin: 14px 0;
+              "
+            >
+              💡
+              <div>
+                Mức Component thường gắn
+                <span style="color: var(--accent); border-bottom: 1px solid var(--accent-soft)">[[Class Diagram]]</span
+                >.
+              </div>
+            </div>
+            <table
+              style="
+                width: 100%;
+                border: 1px solid var(--line2);
+                border-radius: 8px;
+                border-collapse: separate;
+                border-spacing: 0;
+                overflow: hidden;
+                margin: 8px 0 16px;
+                font-size: 13.5px;
+              "
+            >
+              <tr style="background: var(--soft)">
+                <th style="text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line)">Mức</th>
+                <th style="text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line)">Mô tả</th>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px; border-bottom: 1px solid var(--line)">Context</td>
+                <td style="padding: 8px 12px; border-bottom: 1px solid var(--line)">Hệ thống & bên ngoài</td>
+              </tr>
+              <tr>
+                <td style="padding: 8px 12px">Container</td>
+                <td style="padding: 8px 12px">App, service, DB</td>
+              </tr>
+            </table>
+            <div
+              style="
+                display: flex;
+                border: 1px solid var(--line2);
+                border-radius: 8px;
+                overflow: hidden;
+                margin: 14px 0;
+              "
+            >
+              <div style="flex: 1; padding: 12px 14px">
+                <div style="font-size: 14px; font-weight: 600">c4model.com</div>
+                <div style="font-size: 12.5px; color: var(--ink3); margin: 3px 0 6px">
+                  The C4 model for visualising software architecture
+                </div>
+                <div style="font-size: 12px; color: var(--ink3)">🔗 c4model.com</div>
+              </div>
+              <div style="width: 120px; background: linear-gradient(135deg, #2b6fd6, #182848)"></div>
+            </div>
+            <div
+              style="display: flex; gap: 14px; margin-top: 24px; padding-top: 18px; border-top: 1px solid var(--line)"
+            >
+              <div style="flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 12px">
+                <div
+                  style="
+                    font-size: 11px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: var(--ink3);
+                    margin-bottom: 8px;
+                  "
+                >
+                  🔗 Liên kết đi
+                </div>
+                <a style="color: var(--accent); font-size: 13px; display: block">[[Class Diagram]]</a>
+              </div>
+              <div style="flex: 1; border: 1px solid var(--line); border-radius: 8px; padding: 12px">
+                <div
+                  style="
+                    font-size: 11px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    color: var(--ink3);
+                    margin-bottom: 8px;
+                  "
+                >
+                  ↩ Liên kết ngược
+                </div>
+                <a style="color: var(--accent); font-size: 13px; display: block">Sprint Planning</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ========== FRAME C: SCHEDULE ========== -->
+    <div class="lbl" style="margin-top: 18px">C · Lịch trình (tuần)</div>
+    <div class="frame">
+      <div class="rail">
+        <div class="d b"></div>
+        <div class="d"></div>
+        <div class="d"></div>
+        <div class="d on"></div>
+      </div>
+      <div class="nav">
+        <div class="head">
+          <div class="ic">◆</div>
+          <div>
+            <div class="tt">Quản lý cá nhân</div>
+            <div class="sb">không gian của bạn</div>
+          </div>
+        </div>
+        <div class="search">⌕ Tìm nhanh<kbd>⌘K</kbd></div>
+        <div class="scroll">
+          <div class="nv"><span class="em">✓</span> Nhiệm vụ</div>
+          <div class="nv on"><span class="em">🗓️</span> Lịch trình</div>
+          <div class="sec">Ghi chú <span class="add">+</span></div>
+          <div class="nv"><span class="em">📓</span> Hằng ngày</div>
+          <div class="nv"><span class="em">📘</span> Học tập</div>
+          <div class="nv"><span class="em">🗂️</span> Tài liệu</div>
+        </div>
+        <div class="foot">⚙ Cài đặt · 🎨 Giao diện</div>
+      </div>
+      <div class="main">
+        <div class="bar">
+          <span class="crumb">Lịch trình</span><span class="sp"></span><span class="a">⬆ Nhập</span
+          ><span class="a">⚡ Tối ưu</span><span class="a">⚙</span>
+        </div>
+        <div class="body" style="padding: 20px 24px">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 14px">
+            <span style="border: 1px solid var(--line2); border-radius: 7px; padding: 4px 9px; font-size: 12.5px"
+              >Ngày</span
+            >
+            <span style="background: var(--ink); color: #fff; border-radius: 7px; padding: 4px 9px; font-size: 12.5px"
+              >Tuần</span
+            >
+            <span style="border: 1px solid var(--line2); border-radius: 7px; padding: 4px 9px">‹</span
+            ><span style="border: 1px solid var(--line2); border-radius: 7px; padding: 4px 9px; font-size: 12.5px"
+              >Hôm nay</span
+            ><span style="border: 1px solid var(--line2); border-radius: 7px; padding: 4px 9px">›</span>
+            <b style="margin-left: 4px; font-size: 13.5px">1 – 7 tháng 6</b>
+            <span style="flex: 1"></span>
+            <span
+              style="
+                background: var(--accent);
+                color: #fff;
+                border-radius: 8px;
+                padding: 6px 13px;
+                font-size: 13px;
+                font-weight: 500;
+              "
+              >+ Sự kiện</span
+            >
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px">
+            <div style="border: 1px solid var(--line); border-radius: 10px; min-height: 380px; padding: 8px">
+              <div style="text-align: center; font-size: 12px; color: var(--ink3); padding-bottom: 8px">
+                T2<b style="display: block; color: var(--accent); font-size: 15px">1</b>
+              </div>
+              <div
+                style="
+                  border-radius: 6px;
+                  padding: 6px 8px;
+                  margin-bottom: 6px;
+                  background: var(--soft);
+                  border-left: 3px solid #d9810a;
+                  font-size: 12px;
+                "
+              >
+                <b>🔒 Họp nhóm</b>
+                <div style="color: var(--ink3); font-size: 11px">09:00</div>
+              </div>
+              <div
+                style="
+                  border-radius: 6px;
+                  padding: 6px 8px;
+                  background: var(--soft);
+                  border-left: 3px solid var(--accent);
+                  font-size: 12px;
+                "
+              >
+                <b>Viết báo cáo</b>
+                <div style="color: var(--ink3); font-size: 11px">14:00</div>
+              </div>
+            </div>
+            <div style="border: 1px solid var(--line); border-radius: 10px; padding: 8px">
+              <div style="text-align: center; font-size: 12px; color: var(--ink3); padding-bottom: 8px">
+                T3<b style="display: block; color: var(--ink); font-size: 15px">2</b>
+              </div>
+              <div
+                style="
+                  border-radius: 6px;
+                  padding: 6px 8px;
+                  background: var(--soft);
+                  border-left: 3px solid #d9810a;
+                  font-size: 12px;
+                "
+              >
+                <b>🔒 Lớp C4</b>
+                <div style="color: var(--ink3); font-size: 11px">08:00</div>
+              </div>
+            </div>
+            <div style="border: 1px solid var(--line); border-radius: 10px; padding: 8px">
+              <div style="text-align: center; font-size: 12px; color: var(--ink3); padding-bottom: 8px">
+                T4<b style="display: block; font-size: 15px">3</b>
+              </div>
+            </div>
+            <div style="border: 1px solid var(--line); border-radius: 10px; padding: 8px">
+              <div style="text-align: center; font-size: 12px; color: var(--ink3); padding-bottom: 8px">
+                T5<b style="display: block; font-size: 15px">4</b>
+              </div>
+            </div>
+            <div style="border: 1px solid var(--line); border-radius: 10px; padding: 8px">
+              <div style="text-align: center; font-size: 12px; color: var(--ink3); padding-bottom: 8px">
+                T6<b style="display: block; font-size: 15px">5</b>
+              </div>
+            </div>
+            <div style="border: 1px solid var(--line); border-radius: 10px; padding: 8px">
+              <div style="text-align: center; font-size: 12px; color: var(--ink3); padding-bottom: 8px">
+                T7<b style="display: block; font-size: 15px">6</b>
+              </div>
+            </div>
+            <div style="border: 1px solid var(--line); border-radius: 10px; padding: 8px">
+              <div style="text-align: center; font-size: 12px; color: var(--ink3); padding-bottom: 8px">
+                CN<b style="display: block; font-size: 15px">7</b>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

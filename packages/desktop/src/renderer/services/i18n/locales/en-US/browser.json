@@ -1,0 +1,84 @@
+{
+  "navTitle": "Browser",
+  "title": "Browser",
+  "subtitle": "Browse the web in-app and let an AI model drive the page as a web agent.",
+  "desktopOnly": "The embedded browser is only available in the desktop app.",
+  "bridgeUnavailable": "The browser service is not running yet. It will be available once the desktop bridge is wired up.",
+  "retry": "Retry",
+  "address": {
+    "placeholder": "Search or type a URL",
+    "go": "Go",
+    "back": "Back",
+    "forward": "Forward",
+    "reload": "Reload"
+  },
+  "tab": {
+    "new": "New tab",
+    "close": "Close tab",
+    "untitled": "New tab"
+  },
+  "agent": {
+    "label": "Web agent",
+    "pickModel": "Pick a model",
+    "pickModelFirst": "Pick a model to enable the web agent.",
+    "noModels": "No models available. Add one in Settings → Model.",
+    "toggleHint": "Let this model control the page: click, scroll, type, and read.",
+    "enabled": "Web agent enabled for this tab.",
+    "disabled": "Web agent disabled.",
+    "toggleError": "Could not change the web agent mode.",
+    "providerGroup": "API models",
+    "cliGroup": "CLI agents",
+    "cliSuffix": "CLI"
+  },
+  "toolbar": {
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "zoomReset": "Reset zoom to 100%",
+    "fullscreen": "Fullscreen",
+    "exitFullscreen": "Exit fullscreen (Esc)",
+    "showChat": "Show web agent chat",
+    "hideChat": "Hide web agent chat",
+    "showAiOverlay": "Ask AI about this page",
+    "hideAiOverlay": "Hide AI overlay",
+    "expandControls": "Show agent controls",
+    "collapseControls": "Hide agent controls"
+  },
+  "aiOverlay": {
+    "title": "Ask AI",
+    "placeholder": "Ask about this page…"
+  },
+  "chat": {
+    "title": "Web agent",
+    "emptyTitle": "Ask the web agent",
+    "emptyHint": "Type the URL bar for normal browsing. Here, tell the agent what to do — e.g. \"Open Facebook, read my messages and summarize them.\"",
+    "placeholder": "Tell the agent what to do on the page…",
+    "pickModelFirst": "Pick a model above to chat with the web agent.",
+    "send": "Send",
+    "stop": "Stop",
+    "clear": "Clear conversation",
+    "close": "Hide panel",
+    "swapSide": "Move to the other side",
+    "working": "The agent is working…",
+    "enterHint": "Enter to send · Shift+Enter for a new line",
+    "allowControl": "Allow control",
+    "controlOnHint": "Control granted: the agent may click, scroll, type and navigate this tab.",
+    "controlOffHint": "Invisible mode: the agent only reads/scrapes and uses hidden tabs. Turn on to let it control this page.",
+    "stepFailed": "failed",
+    "persona": "Persona & rules",
+    "personaTitle": "Agent persona & standing rules",
+    "personaHint": "These instructions are applied to the web agent on every turn (e.g. language, tone, things it must never do).",
+    "personaPlaceholder": "e.g. Always answer in Vietnamese. Be concise. Never buy anything or submit forms without asking first.",
+    "personaSave": "Save",
+    "personaCancel": "Cancel"
+  },
+  "subtitle_overlay": {
+    "enable": "Show Vietnamese subtitles",
+    "disable": "Hide Vietnamese subtitles",
+    "idle": "Waiting for video audio to caption…"
+  },
+  "viewport": {
+    "emptyTitle": "No page open",
+    "emptyHint": "Open a tab to start browsing. The page renders here, controlled by the app.",
+    "openFirst": "Open a tab"
+  }
+}

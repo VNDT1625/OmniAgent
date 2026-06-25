@@ -1,0 +1,84 @@
+{
+  "action": {
+    "save": "保存",
+    "retry": "再試行"
+  },
+  "state": {
+    "loading": "読み込み中…",
+    "errorTitle": "ファイルを開けませんでした"
+  },
+  "adapter": {
+    "comingSoonTitle": "このエディターは近日公開",
+    "comingSoonSubtitle": "\"{{kind}}\" ファイル専用のエディターは近日公開予定です。下のプレーンテキストで編集できます。"
+  },
+  "rawText": {
+    "placeholder": "ファイルの内容…"
+  },
+  "image": {
+    "rotate": "90°回転",
+    "size": "サイズ",
+    "apply": "リサイズ"
+  },
+  "docx": {
+    "editNotice": "ドキュメントの本文を編集しています。保存時にクリーンな .docx を再生成します（高度な書式は保持されません）。",
+    "placeholder": "ドキュメントの内容…",
+    "openFailed": "この Word ドキュメントを開けませんでした"
+  },
+  "spreadsheet": {
+    "addRow": "行を追加",
+    "editNotice": "最初のシートを表として編集しています。保存時にクリーンな .xlsx を再生成します（高度な書式や他のシートは保持されません）。",
+    "openFailed": "このスプレッドシートを開けませんでした"
+  },
+  "slide": {
+    "addSlide": "スライドを追加",
+    "slideLabel": "スライド {{index}}",
+    "empty": "（空）",
+    "placeholder": "スライドの内容…",
+    "openFailed": "このプレゼンテーションを開けませんでした"
+  },
+  "pdf": {
+    "viewerTitle": "PDF ビューアー",
+    "tooLargeForViewer": "この PDF はアプリ内でプレビューするには大きすぎます（{{size}} MB）。Office エディターまたは外部 PDF ビューアーで開いてください。",
+    "openExternal": "システムビューアーで開く"
+  },
+  "media": {
+    "local": "デバイス",
+    "online": "オンライン",
+    "transcribe": "文字起こし",
+    "summarize": "要約",
+    "heavyNotice": "文字起こしと要約はバックグラウンドで実行され、リソースコーディネーターがスケジュールします。",
+    "transcriptIdle": "まだ文字起こしがありません。モードを選択して開始してください。"
+  },
+  "binary": {
+    "readOnlyNotice": "このファイルは読み取り専用の検査モードで表示されています。",
+    "type": "種類",
+    "size": "サイズ",
+    "unknownType": "バイナリ",
+    "empty": "（空のファイル）",
+    "truncated": "先頭 {{count}} バイトを表示しています。"
+  },
+  "office": {
+    "fallbackTitle": "簡易エディターを使用中",
+    "fallbackGeneric": "完全な Office エディターを開けなかったため、軽量エディターを使用しています。一部の書式は表示されない場合があります。",
+    "retry": "Office を再試行"
+  },
+  "onlyoffice": {
+    "connecting": "Office エディターに接続中…",
+    "noServerTitle": "Office エディターが未設定",
+    "noServerHint": "ONLYOFFICE Document Server の URL を設定すると、完全な Office エディターで編集できます。",
+    "failedTitle": "Office エディターを開けませんでした",
+    "settingsTitle": "Office エディター設定",
+    "settingsHint": "ONLYOFFICE Document Server のベース URL を入力してください。別途実行され、編集中のみ接続します。",
+    "dockerHint": "Document Server を Docker で実行している場合、本アプリに到達できることを確認してください（統合ホストは全インターフェースで待ち受けます）。",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "resolving": "Office エディターを準備中…",
+    "reason": {
+      "docker-missing": "Docker がインストールされていません。Docker をインストールするか、設定で Document Server の URL を指定してください。",
+      "docker-stopped": "Dockerを起動しています。初回は時間がかかる場合があります。少し待って再試行するか、設定でDocument ServerのURLを指定してください。",
+      "start-failed": "Document Server コンテナを起動できませんでした。",
+      "timeout": "Document Server が時間内に準備できませんでした。"
+    },
+    "startingHint": "初回はOfficeエンジンの起動（必要に応じてダウンロード）に数分かかることがあります。"
+  }
+}

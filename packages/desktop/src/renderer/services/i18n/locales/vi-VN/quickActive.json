@@ -1,0 +1,20 @@
+{
+  "trigger": "Truy cập nhanh",
+  "title": "Trang đang hoạt động",
+  "subtitle": "Đi nhanh tới những gì đang chạy",
+  "empty": "Chưa có gì hoạt động",
+  "desktopOnly": "Trang đang hoạt động chỉ có trên ứng dụng máy tính.",
+  "group": {
+    "browser": "Trình duyệt",
+    "testing": "Kiểm thử"
+  },
+  "browser": {
+    "untitled": "Tab mới",
+    "open": "Mở trình duyệt",
+    "emptyHint": "Không có tab nào đang mở"
+  },
+  "testing": {
+    "open": "Mở kiểm thử",
+    "emptyHint": "Chưa có phiên kiểm thử"
+  }
+}

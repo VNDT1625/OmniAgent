@@ -1,0 +1,48 @@
+{
+  "navTitle": "Khung tác nhân",
+  "openHint": "Chạy nhiều tác nhân con song song ngay trong cuộc trò chuyện này — mỗi cái một khung trực tiếp riêng.",
+  "title": "Khung song song",
+  "subtitle": "Chạy nhiều tác nhân con song song — mỗi cái trong một khung trực tiếp riêng.",
+  "watch": "Xem",
+  "watchHint": "Xem trình duyệt trực tiếp mà tác nhân đang điều khiển.",
+  "watchSubtitle": "Xem trực tiếp những gì tác nhân đang làm trên web.",
+  "watchTitle": "Trình duyệt của tác nhân",
+  "watchEmpty": "Chưa có trình duyệt trực tiếp. Khi bật Super, tác nhân sẽ mở trình duyệt ở đây khi cần — để tìm kiếm, mở trang web hoặc xem video.",
+  "watchLiveBadge": "Trực tiếp",
+  "watchUntitled": "Không tên",
+  "watchFullscreen": "Toàn màn hình",
+  "watchRestore": "Thu gọn trong khung chat",
+  "super": {
+    "label": "Super",
+    "onHint": "Super đang BẬT: tác nhân có thể tự mở và điều khiển trình duyệt cho bạn. Tắt để chat bình thường.",
+    "offHint": "Bật Super để cho phép tác nhân tự mở và điều khiển trình duyệt thay bạn.",
+    "enabled": "Super BẬT — tác nhân giờ có thể dùng trình duyệt trực tiếp.",
+    "disabled": "Super TẮT — tác nhân sẽ chat bình thường.",
+    "toggleError": "Không đổi được Super. Vui lòng thử lại."
+  },
+  "desktopOnly": "Không gian làm việc chạy tác nhân trên khung trình duyệt gốc, nên chỉ có ở ứng dụng desktop.",
+  "bridgeUnavailable": "Dịch vụ không gian làm việc chưa sẵn sàng. Tính năng sẽ hoạt động khi cầu nối desktop được kết nối.",
+  "empty": "Nhập yêu cầu bên dưới — ví dụ \"tìm việc trên glassdoor.com và sửa notes.md\" — rồi chạy để tách thành các khung song song.",
+  "composer": {
+    "placeholder": "Mô tả việc cần làm. Nêu một trang web (vd glassdoor.com) và một tệp (vd notes.md) để chạy song song.",
+    "pickModel": "Chọn mô hình",
+    "noModels": "Chưa cấu hình mô hình. Mở Cài đặt → Mô hình.",
+    "run": "Chạy",
+    "stop": "Dừng",
+    "hint": "Mẹo: nêu cả trang web lẫn tệp để khởi chạy hai tác nhân con cùng lúc. Nhấn Ctrl/Cmd+Enter để chạy."
+  },
+  "status": {
+    "queued": "Đang chờ",
+    "starting": "Đang khởi động",
+    "running": "Đang chạy",
+    "done": "Hoàn tất",
+    "error": "Lỗi",
+    "stopped": "Đã dừng"
+  },
+  "surface": {
+    "preparing": "Đang chuẩn bị…",
+    "idleSteps": "Đang chờ tác nhân con thao tác…",
+    "noView": "Khung này chưa có trình duyệt.",
+    "noFile": "Khung này chưa có tệp."
+  }
+}

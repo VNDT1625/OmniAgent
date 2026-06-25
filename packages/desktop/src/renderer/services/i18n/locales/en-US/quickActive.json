@@ -1,0 +1,20 @@
+{
+  "trigger": "Quick Active",
+  "title": "Active pages",
+  "subtitle": "Jump to what's running now",
+  "empty": "Nothing active yet",
+  "desktopOnly": "Active pages live in the desktop app.",
+  "group": {
+    "browser": "Browser",
+    "testing": "Testing"
+  },
+  "browser": {
+    "untitled": "New tab",
+    "open": "Open browser",
+    "emptyHint": "No open tabs"
+  },
+  "testing": {
+    "open": "Open testing",
+    "emptyHint": "No test sessions"
+  }
+}

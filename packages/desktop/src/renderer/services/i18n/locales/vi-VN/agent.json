@@ -1,0 +1,30 @@
+{
+  "health": {
+    "detectedError": "Phát hiện lỗi với tác nhân hiện tại ({{agent}})",
+    "autoSwitching": ". Hệ thống sẽ cố gắng chuyển đổi tự động.",
+    "evaluating": "Đang đánh giá độ trễ mạng và tính khả dụng của mô hình...",
+    "checking": "Đang kiểm tra endpoint {{agent}}...",
+    "foundBest": "Đã tìm thấy lựa chọn thay thế tốt nhất",
+    "recommendSwitch": "Được đề xuất",
+    "available": "Khả dụng",
+    "lowLatency": "Độ trễ thấp",
+    "mediumLatency": "Độ trễ trung bình",
+    "highLatency": "Độ trễ cao",
+    "bestMatch": "Phù hợp nhất",
+    "noAvailable": "Không có tác nhân nào khả dụng trong môi trường hiện tại",
+    "checkConfig": "Vui lòng kiểm tra cấu hình hoặc thử lại sau"
+  },
+  "setup": {
+    "connectionError": "Lỗi kết nối",
+    "notConfigured": "{{agent}} chưa được cấu hình",
+    "authRequired": "Cần xác thực hoặc API key để sử dụng tác nhân này.",
+    "findingAlternatives": "Đang tìm kiếm lựa chọn thay thế khả dụng...",
+    "checkingAgent": "Đang kiểm tra {{agent}}...",
+    "alternativesFound": "Tìm thấy {{count}} lựa chọn thay thế khả dụng",
+    "autoSwitching": "Đang tự động chuyển sang tác nhân tốt nhất...",
+    "configError": "Lỗi cấu hình. Vui lòng kiểm tra cài đặt hoặc chọn lựa chọn thay thế:",
+    "noAlternatives": "Không tìm thấy tác nhân nào khả dụng",
+    "configureFirst": "Vui lòng cấu hình tác nhân trong Cài đặt trước.",
+    "switching": "Đang chuyển tác nhân..."
+  }
+}

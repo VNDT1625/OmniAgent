@@ -1,0 +1,60 @@
+{
+  "sider": {
+    "title": "Nhóm",
+    "createTeam": "Nhóm mới",
+    "pin": "Ghim",
+    "unpin": "Bỏ ghim",
+    "rename": "Đổi tên",
+    "delete": "Xóa",
+    "renameTitle": "Đổi tên nhóm",
+    "renamePlaceholder": "Tên nhóm",
+    "deleteConfirm": "Xóa nhóm này?",
+    "deleteConfirmContent": "Hành động này không thể hoàn tác.",
+    "deleteOk": "Xóa",
+    "deleteCancel": "Hủy",
+    "renameOk": "Lưu",
+    "renameCancel": "Hủy",
+    "renameSuccess": "Đã đổi tên nhóm",
+    "deleteSuccess": "Đã xóa nhóm"
+  },
+  "newAgent": "Tác nhân mới",
+  "noMessages": "Chưa có tin nhắn.",
+  "agentNotConfigured": "Tác nhân chưa được cấu hình.",
+  "sendBox": {
+    "placeholder": "Gửi tin nhắn đến tác nhân điều phối..."
+  },
+  "create": {
+    "title": "Tạo nhóm",
+    "namePlaceholder": "Tên nhóm",
+    "dispatchAgentPlaceholder": "Chọn trưởng nhóm",
+    "subAgentsPlaceholder": "Chọn tác nhân phụ",
+    "workspacePlaceholder": "Đường dẫn thư mục dự án (tùy chọn)",
+    "confirm": "Tạo nhóm",
+    "noSupportedAgents": "Không có tác nhân nào được hỗ trợ",
+    "supportedAgentsHint": "Hiện hỗ trợ Claude và Codex. Sẽ có thêm tác nhân sớm.",
+    "leaderDesc": "Hiểu mục tiêu của bạn và điều phối các tác nhân để hoàn thành nhiệm vụ",
+    "step": {
+      "dispatch": "Trưởng nhóm",
+      "subAgents": "Tác nhân phụ",
+      "workspace": "Dự án"
+    },
+    "nameRequired": "Vui lòng nhập tên nhóm",
+    "leaderRequired": "Vui lòng chọn trưởng nhóm",
+    "selectFolder": "Chọn thư mục",
+    "recentLabel": "Gần đây",
+    "chooseDifferentFolder": "Chọn thư mục khác",
+    "error": "Tạo nhóm thất bại"
+  },
+  "removeAgent": {
+    "confirmTitle": "Xóa thành viên nhóm",
+    "confirmContent": "Thành viên này đang hoạt động. Buộc xóa?"
+  },
+  "emptyState": {
+    "subtitle": "Mô tả mục tiêu của bạn và nhóm sẽ bắt đầu làm việc",
+    "suggestions": {
+      "debate": "Tổ chức cuộc tranh luận với các tác nhân đứng ở các phía khác nhau",
+      "interview": "Lên kế hoạch phỏng vấn chuyên sâu giữa các tác nhân",
+      "expert_review": "Để nhiều chuyên gia phân tích cùng một vấn đề"
+    }
+  }
+}

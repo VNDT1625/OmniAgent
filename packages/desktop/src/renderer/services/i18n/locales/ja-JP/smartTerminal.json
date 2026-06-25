@@ -1,0 +1,15 @@
+{
+  "smartFix": {
+    "errorLine": "`{{command}}` が失敗しました（終了コード {{code}}）",
+    "updatedTo": "更新 →",
+    "updateLink": "更新情報",
+    "run": "{{program}} で実行",
+    "dismiss": "閉じる",
+    "tag": "Smart Fix",
+    "confirmQuestion": "代わりに `{{program}}` を実行しますか？(y/N)",
+    "skipped": "Smart Fix をスキップしました。",
+    "running": "`{{program}}` を実行中…"
+  },
+  "autoRerunLabel": "エラー時に修正を提案",
+  "autoRerunHint": "コマンドが失敗し既知の代替がある場合、ターミナルで (y/N) と尋ねます。あなたやエージェントが入力して適用できます。"
+}

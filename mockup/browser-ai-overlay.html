@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <title>Mockup — AI overlay trong trình duyệt AionUi</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --panel: #161a21;
+        --line: #2a2f3a;
+        --line2: #363c49;
+        --t1: #e7eaf0;
+        --t2: #9aa3b2;
+        --t3: #6b7384;
+        --primary: #e8633a;
+        --primary-soft: #2a1c16;
+        --chip: #1e2430;
+      }
+      * {
+        box-sizing: border-box;
+        font-family: 'Segoe UI', system-ui, sans-serif;
+      }
+      body {
+        margin: 0;
+        background: #070809;
+        color: var(--t1);
+        padding: 28px;
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        align-items: center;
+      }
+      h2 {
+        font-size: 15px;
+        color: var(--t2);
+        font-weight: 600;
+        margin: 0 0 4px;
+        text-align: center;
+        letter-spacing: 0.2px;
+      }
+      .cap {
+        font-size: 12.5px;
+        color: var(--t3);
+        margin: 0 0 12px;
+        text-align: center;
+        max-width: 560px;
+      }
+      .window {
+        width: 760px;
+        background: var(--bg);
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+      }
+      /* toolbar */
+      .bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 9px 12px;
+        border-bottom: 1px solid var(--line);
+        background: var(--panel);
+      }
+      .addr {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #11151c;
+        border: 1px solid var(--line2);
+        border-radius: 9px;
+        padding: 7px 12px;
+        font-size: 12.5px;
+        color: var(--t2);
+      }
+      .iconbtn {
+        width: 30px;
+        height: 30px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #1b212b;
+        color: var(--t2);
+        font-size: 14px;
+      }
+      .iconbtn.on {
+        background: var(--primary);
+        color: #fff;
+      }
+      /* viewport area */
+      .vp {
+        position: relative;
+        height: 430px;
+        background: #0c0e12;
+      }
+      /* the website (9Router) painted region */
+      .web {
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 50% 38%, #15171c, #0a0b0e);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 14px;
+        transition: bottom 0.25s ease;
+      }
+      .web h1 {
+        color: var(--primary);
+        font-size: 30px;
+        margin: 0;
+        font-weight: 800;
+      }
+      .web p {
+        color: var(--t2);
+        font-size: 13px;
+        margin: 0;
+      }
+      .web .login {
+        margin-top: 8px;
+        width: 300px;
+        background: #161a20;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .web .login .lbl {
+        font-size: 11px;
+        color: var(--t2);
+      }
+      .web .login .inp {
+        height: 34px;
+        border-radius: 8px;
+        border: 1px solid var(--primary);
+        background: #11151c;
+      }
+      .web .login .btn {
+        height: 34px;
+        border-radius: 8px;
+        background: var(--primary);
+        color: #fff;
+        font-size: 13px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .webtag {
+        position: absolute;
+        top: 10px;
+        left: 12px;
+        font-size: 10.5px;
+        color: var(--t3);
+        background: #11151c;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 3px 7px;
+        letter-spacing: 0.3px;
+      }
+      /* AI overlay docked at bottom */
+      .ai {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        pointer-events: none;
+      }
+      .ai .answer {
+        margin: 0 12px;
+        background: #11151c;
+        border: 1px solid var(--line2);
+        border-radius: 14px 14px 0 0;
+        box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+        overflow: hidden;
+      }
+      .ai .ans-h {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 9px 14px;
+        border-bottom: 1px solid var(--line);
+        background: #161b22;
+      }
+      .ai .ans-h .left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12.5px;
+        font-weight: 600;
+      }
+      .dot {
+        width: 20px;
+        height: 20px;
+        border-radius: 6px;
+        background: var(--primary-soft);
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+      }
+      .ai .ans-b {
+        padding: 12px 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+        max-height: 170px;
+        overflow: auto;
+      }
+      .q {
+        align-self: flex-end;
+        background: var(--primary);
+        color: #fff;
+        font-size: 12.5px;
+        padding: 7px 11px;
+        border-radius: 10px 10px 2px 10px;
+        max-width: 75%;
+      }
+      .a {
+        font-size: 12.5px;
+        color: var(--t1);
+        line-height: 1.6;
+      }
+      .a b {
+        color: #fff;
+      }
+      .src {
+        display: flex;
+        gap: 6px;
+        margin-top: 4px;
+        flex-wrap: wrap;
+      }
+      .src .s {
+        font-size: 10.5px;
+        color: var(--t2);
+        background: var(--chip);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 3px 8px;
+      }
+      /* composer */
+      .composer {
+        margin: 0 12px 12px;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        background: #11151c;
+        border: 1px solid var(--line2);
+        border-radius: 14px;
+        padding: 9px 13px;
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
+      }
+      .composer .ph {
+        flex: 1;
+        font-size: 13px;
+        color: var(--t3);
+      }
+      .composer .send {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: var(--primary);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+      }
+      .composer .mglass {
+        color: var(--t3);
+        font-size: 14px;
+      }
+      .note {
+        font-size: 11.5px;
+        color: var(--t3);
+        max-width: 740px;
+        line-height: 1.6;
+      }
+      .arrow {
+        color: var(--primary);
+        font-size: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div>
+      <h2>TRẠNG THÁI 1 — Vừa bấm nút hỏi AI (chưa hỏi gì)</h2>
+      <p class="cap">
+        Trang web (9Router) <b>co lại</b> nhường chỗ phía dưới. Một thanh hỏi AI gọn xuất hiện ở đáy. Bạn vẫn thấy gần
+        như toàn bộ trang.
+      </p>
+    </div>
+    <div class="window">
+      <div class="bar">
+        <div class="iconbtn">‹</div>
+        <div class="iconbtn">›</div>
+        <div class="addr">🔒 localhost:3000 — 9Router</div>
+        <div class="iconbtn on">🔍</div>
+        <div class="iconbtn">🤖</div>
+        <div class="iconbtn">⛶</div>
+      </div>
+      <div class="vp">
+        <!-- web co lại, chừa ~64px đáy cho thanh hỏi -->
+        <div class="web" style="bottom: 64px">
+          <div class="webtag">NỘI DUNG TRANG WEB (9Router)</div>
+          <h1>9Router</h1>
+          <p>Enter your password to access the dashboard</p>
+          <div class="login">
+            <div class="lbl">Password</div>
+            <div class="inp"></div>
+            <div class="btn">Login</div>
+          </div>
+        </div>
+        <!-- chỉ có thanh composer -->
+        <div class="ai">
+          <div class="composer">
+            <span class="mglass">🔍</span>
+            <span class="ph">Hỏi về trang này…</span>
+            <span class="send">↑</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height: 6px"></div>
+
+    <div>
+      <h2>TRẠNG THÁI 2 — Sau khi hỏi, AI trả lời</h2>
+      <p class="cap">
+        Khung trả lời trượt lên phía trên thanh hỏi. Trang web co lại nhiều hơn. Trả lời dạng Markdown + nguồn tham
+        khảo, giống Perplexity. Đóng lại thì trang giãn full.
+      </p>
+    </div>
+    <div class="window">
+      <div class="bar">
+        <div class="iconbtn">‹</div>
+        <div class="iconbtn">›</div>
+        <div class="addr">🔒 cnbc.com/softbank-ai-boom</div>
+        <div class="iconbtn on">🔍</div>
+        <div class="iconbtn">🤖</div>
+        <div class="iconbtn">⛶</div>
+      </div>
+      <div class="vp">
+        <div class="web" style="bottom: 250px">
+          <div class="webtag">NỘI DUNG TRANG WEB</div>
+          <h1 style="font-size: 22px; color: var(--t1); max-width: 480px; text-align: center; line-height: 1.3">
+            SoftBank CEO says AI boom will be '50 times bigger' than dotcom era
+          </h1>
+          <p>cnbc.com · 3 hours ago</p>
+        </div>
+        <div class="ai">
+          <div class="answer">
+            <div class="ans-h">
+              <div class="left"><span class="dot">✦</span> Hỏi AI</div>
+              <div style="color: var(--t3); font-size: 14px">✕</div>
+            </div>
+            <div class="ans-b">
+              <div class="q">tóm tắt trang này</div>
+              <div class="a">
+                CEO SoftBank <b>Masayoshi Son</b> tuyên bố cuộc cách mạng AI sẽ <b>"lớn gấp 50 lần"</b> thời dotcom —
+                biến động công nghệ lớn nhất lịch sử. Ông nói điều này một ngày sau khi SoftBank công bố cam kết
+                <b>75 tỉ euro (87 tỉ USD)</b> xây hạ tầng trung tâm dữ liệu AI tại Pháp.
+                <div class="src">
+                  <span class="s">cnbc.com</span>
+                  <span class="s">businesstimes.com</span>
+                  <span class="s">tribuneindia</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="composer">
+            <span class="mglass">🔍</span>
+            <span class="ph">Hỏi tiếp…</span>
+            <span class="send">↑</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height: 6px"></div>
+
+    <div>
+      <h2>TRẠNG THÁI 3 — Đóng AI (bấm ✕ hoặc nút 🔍 lần nữa)</h2>
+      <p class="cap">Thanh hỏi AI biến mất, trang web giãn ra <b>full màn hình</b> như bình thường.</p>
+    </div>
+    <div class="window">
+      <div class="bar">
+        <div class="iconbtn">‹</div>
+        <div class="iconbtn">›</div>
+        <div class="addr">🔒 localhost:3000 — 9Router</div>
+        <div class="iconbtn">🔍</div>
+        <div class="iconbtn">🤖</div>
+        <div class="iconbtn">⛶</div>
+      </div>
+      <div class="vp">
+        <div class="web" style="bottom: 0">
+          <div class="webtag">NỘI DUNG TRANG WEB (full)</div>
+          <h1>9Router</h1>
+          <p>Enter your password to access the dashboard</p>
+          <div class="login">
+            <div class="lbl">Password</div>
+            <div class="inp"></div>
+            <div class="btn">Login</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="note">
+      Tóm tắt cách hoạt động: nút <b>🔍</b> trên thanh công cụ bật/tắt khung hỏi AI. Khi bật → trang web tự co lại để
+      chừa chỗ (không bị che) → bạn hỏi → AI đọc nội dung trang rồi trả lời ngay tại đó. Đây khác với nút
+      <b>🤖</b> (chat tác nhân điều khiển trang) — cái này chỉ để <b>hỏi nhanh về nội dung trang</b>, gọn như
+      Perplexity.
+    </p>
+  </body>
+</html>

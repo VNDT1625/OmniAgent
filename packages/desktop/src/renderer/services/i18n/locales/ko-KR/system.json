@@ -1,0 +1,59 @@
+{
+  "loadError": "시스템 상태를 읽을 수 없습니다. 관찰 서비스가 아직 실행되지 않았을 수 있습니다.",
+  "refresh": "새로 고침",
+  "refreshed": "시스템 정보를 새로 고쳤습니다.",
+  "refreshError": "시스템 정보를 새로 고치지 못했습니다.",
+  "static": {
+    "title": "장치",
+    "subtitle": "하드웨어 및 소프트웨어 정보입니다. 거의 변하지 않으며 새로 고침으로 다시 읽을 수 있습니다.",
+    "os": "운영 체제",
+    "hostname": "호스트 · 사용자",
+    "cpu": "프로세서",
+    "cores": "논리 코어 {{count}}개",
+    "memory": "총 메모리",
+    "gpu": "그래픽",
+    "gpuNone": "GPU가 감지되지 않음",
+    "disk": "저장소 (여유 / 전체)",
+    "network": "네트워크",
+    "noNetwork": "활성 인터페이스 없음",
+    "versions": "버전"
+  },
+  "live": {
+    "title": "실시간 지표",
+    "subtitle": "이 페이지가 열려 있는 동안 실시간으로 업데이트됩니다.",
+    "cpu": "CPU",
+    "memory": "메모리",
+    "perCore": "코어별 부하",
+    "loadAvg": "평균 부하",
+    "uptime": "가동 시간",
+    "battery": "전원",
+    "onBattery": "배터리 사용",
+    "plugged": "전원 연결됨",
+    "waiting": "첫 샘플을 기다리는 중…"
+  },
+  "process": {
+    "title": "프로세스",
+    "subtitle": "앱의 프로세스를 부하가 큰 순으로 표시합니다. 우선순위를 설정해 과도한 프로세스를 제어하세요.",
+    "name": "프로세스",
+    "cpu": "CPU",
+    "memory": "메모리",
+    "priority": "우선순위",
+    "none": "프로세스 데이터가 없습니다.",
+    "prioritySet": "{{name}}의 우선순위를 업데이트했습니다.",
+    "priorityError": "우선순위를 변경할 수 없습니다(더 높은 권한이 필요할 수 있음)."
+  },
+  "priority": {
+    "high": "높음",
+    "aboveNormal": "보통보다 높음",
+    "normal": "보통",
+    "belowNormal": "보통보다 낮음",
+    "low": "낮음"
+  },
+  "units": {
+    "mb": "MB",
+    "gb": "GB",
+    "day": "일",
+    "hour": "시간",
+    "min": "분"
+  }
+}

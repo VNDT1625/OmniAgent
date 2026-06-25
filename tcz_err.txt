@@ -1,0 +1,4 @@
+packages/desktop/src/process/services/contentExtract/ytDlpTranscript.ts(227,64): error TS7011: Function expression, which lacks return-type annotation, implicitly has an 'any' return type.
+packages/desktop/src/renderer/pages/manager/notes/editor/embed/EmbedBlock.tsx(40,16): error TS7011: Function expression, which lacks return-type annotation, implicitly has an 'any' return type.
+packages/desktop/src/renderer/pages/music/MusicStudioPage.tsx(38,42): error TS2339: Property 'error' does not exist on type '{ ok: true; data: T; } | { ok: false; error: string; }'.
+packages/desktop/src/renderer/pages/settings/router9/Router9ConnectorPanel.tsx(91,72): error TS2339: Property 'error' does not exist on type 'Router9Result<ApplyResult>'.

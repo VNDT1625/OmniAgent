@@ -1,0 +1,83 @@
+{
+  "navTitle": "Resources",
+  "title": "Resource Dashboard",
+  "subtitle": "See how AionUi balances heavy tasks across your machine, and tune the limits.",
+  "loadError": "Could not load the resource state. The resource coordinator may not be running yet.",
+  "coordinatorTitle": "Resource coordinator",
+  "coordinatorSubtitle": "Lease budget and automatic balancing for heavy tasks.",
+  "mode": {
+    "title": "Balancing mode",
+    "detailed": "Detailed",
+    "detailedDesc": "You set every limit manually.",
+    "suggest": "Suggested",
+    "suggestDesc": "AionUi reads your machine and balances automatically.",
+    "changeError": "Could not switch mode."
+  },
+  "preset": {
+    "title": "Quick levels",
+    "subtitle": "Apply a ready-made budget in one click.",
+    "saver": "Saver",
+    "balanced": "Balanced",
+    "performance": "Performance",
+    "custom": "Custom",
+    "current": "Current",
+    "applied": "Preset applied.",
+    "applyError": "Could not apply the preset."
+  },
+  "machine": {
+    "title": "Machine profile",
+    "ram": "Total RAM",
+    "cpu": "CPU cores",
+    "gpu": "Discrete GPU",
+    "disk": "Free disk",
+    "gpuPresent": "Present",
+    "gpuNone": "None"
+  },
+  "budget": {
+    "title": "Current budget",
+    "subtitle": "Memory ceilings and how many heavy tasks may run at once.",
+    "memoryCeiling": "Memory ceiling for heavy tasks",
+    "userReserve": "Reserved for you",
+    "concurrency": "Concurrent tasks per type",
+    "save": "Save budget",
+    "saved": "Budget updated.",
+    "saveError": "Could not update the budget.",
+    "readOnlyHint": "Switch to Detailed mode to edit these limits."
+  },
+  "leases": {
+    "title": "Activity",
+    "subtitle": "Tasks holding a lease right now, and tasks waiting in the queue.",
+    "activeTotal": "Active leases",
+    "queuedTotal": "Queued tasks",
+    "none": "No heavy tasks are running.",
+    "kindHeader": "Task type",
+    "activeHeader": "Active",
+    "queuedHeader": "Queued"
+  },
+  "adjustments": {
+    "title": "Why the balance changed",
+    "subtitle": "Every automatic adjustment is recorded with its reason.",
+    "empty": "No automatic adjustments yet.",
+    "reasonLabel": "Reason",
+    "memoryChange": "Memory ceiling: {{from}} → {{to}} MB",
+    "reserveChange": "User reserve: {{from}} → {{to}} MB",
+    "concurrencyChange": "{{kind}}: {{from}} → {{to}}",
+    "noFieldChange": "No budget fields changed."
+  },
+  "taskKind": {
+    "agent": "Agents",
+    "browser": "Browser tabs",
+    "emulator": "Android emulators",
+    "windowsTest": "Windows tests",
+    "patchBuild": "Patch builds",
+    "ocr": "OCR",
+    "transcription": "Transcription",
+    "docConvert": "Document conversion",
+    "semanticIndex": "Semantic index"
+  },
+  "units": {
+    "mb": "MB",
+    "gb": "GB",
+    "cores": "cores"
+  }
+}

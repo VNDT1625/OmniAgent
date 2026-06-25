@@ -1,0 +1,93 @@
+{
+  "title": "Video Yap",
+  "newProject": "Yeni proje",
+  "emptyGallery": "Henüz proje yok. AI filminize başlamak için bir tane oluşturun.",
+  "retry": "Yeniden dene",
+  "unavailableTitle": "Video Yap hizmeti kullanılamıyor",
+  "unavailableSubtitle": "Video Yap motoru henüz bağlı değil. Masaüstü köprüsü kurulduğunda kullanılabilir hale gelir.",
+  "noScenes": "Henüz sahne yok. Başlamak için bir senaryo oluşturun.",
+  "generatingScript": "Senaryo yazılıyor…",
+  "new": {
+    "title": "Yeni video projesi",
+    "create": "Oluştur",
+    "cancel": "İptal",
+    "topic": "Konu",
+    "topicPlaceholder": "Film ne hakkında? örn. Yalnız bir robot bir arkadaş bulur.",
+    "style": "Stil",
+    "stylePlaceholder": "örn. anime, sinematik, hamur animasyonu",
+    "language": "Anlatım dili"
+  },
+  "remove": {
+    "title": "Projeyi sil",
+    "content": "\"{{topic}}\" silinsin mi? Bu işlem geri alınamaz.",
+    "confirm": "Sil",
+    "cancel": "İptal"
+  },
+  "card": {
+    "scenes": "{{count}} sahne · {{rendered}} işlendi",
+    "clips": "{{count}} klip"
+  },
+  "controls": {
+    "scriptModel": "Senaryo modeli",
+    "imageModel": "Görsel modeli",
+    "pickModel": "Bir model seçin",
+    "scenes": "Sahneler",
+    "generateScript": "Senaryo oluştur",
+    "regenerateScript": "Senaryoyu yeniden oluştur",
+    "renderAll": "Tüm görselleri işle",
+    "voiceConfig": "Ses ayarları",
+    "genAllVoices": "Tüm sesleri oluştur",
+    "clipConfig": "Video klip ayarları",
+    "genAllClips": "Tüm klipleri oluştur",
+    "exportFinal": "MP4 olarak dışa aktar",
+    "exporting": "Dışa aktarılıyor…",
+    "providerGroup": "Sağlayıcı modelleri",
+    "cliGroup": "CLI ajanları",
+    "noModels": "Model yok. Ayarlardan bir sağlayıcı veya CLI ajanı ekleyin.",
+    "stop": "Durdur",
+    "stopping": "Durduruluyor…"
+  },
+  "scene": {
+    "index": "Sahne {{n}}",
+    "untitled": "Adsız sahne",
+    "rendering": "İşleniyor…",
+    "render": "Görseli işle",
+    "regenerate": "Yeniden oluştur",
+    "generatingClip": "Klip oluşturuluyor…",
+    "genVoice": "Ses oluştur",
+    "regenVoice": "Sesi yeniden oluştur",
+    "genClip": "Video klip oluştur",
+    "regenClip": "Klibi yeniden oluştur",
+    "showVideo": "Videoyu göster",
+    "showImage": "Görseli göster",
+    "frameEndSet": "Bitiş karesi ayarlandı",
+    "clearFrameEnd": "Temizle",
+    "voiceNotConfigured": "Önce ses sağlayıcısını yapılandırın",
+    "clipNotConfigured": "Önce video klip sağlayıcısını yapılandırın",
+    "clipNeedsImage": "Önce bir görsel işleyin"
+  },
+  "voiceConfig": {
+    "title": "Ses (TTS) Sağlayıcısı",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "provider": "Sağlayıcı",
+    "baseUrl": "Base URL",
+    "apiKey": "API Key",
+    "model": "Model",
+    "voice": "Ses",
+    "voiceId": "Voice ID"
+  },
+  "videoClipConfig": {
+    "title": "Video Klip Sağlayıcısı (fal.ai)",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "apiKey": "fal.ai API Key",
+    "apiKeyHint": "Anahtarınızı fal.ai/dashboard adresinden alın",
+    "model": "Model",
+    "duration": "Klip süresi",
+    "supportsEndFrame": "Bu model başlangıç + bitiş karesi enterpolasyonunu destekler"
+  },
+  "export": {
+    "success": "Video dışa aktarıldı: {{path}}"
+  }
+}

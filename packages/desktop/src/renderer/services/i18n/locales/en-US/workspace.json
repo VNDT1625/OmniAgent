@@ -1,0 +1,48 @@
+{
+  "navTitle": "Surfaces",
+  "openHint": "Run sub-agents in parallel inside this chat — each on its own live frame.",
+  "title": "Parallel surfaces",
+  "subtitle": "Run several sub-agents in parallel — each on its own live frame.",
+  "watch": "Watch",
+  "watchHint": "Watch the live browser the agent is driving.",
+  "watchSubtitle": "Live view of what the agent is doing on the web.",
+  "watchTitle": "Agent browser",
+  "watchEmpty": "No live browser yet. When Super is on, the agent opens a browser here when it needs one — to search, open a site, or watch a video.",
+  "watchLiveBadge": "Live",
+  "watchUntitled": "Untitled",
+  "watchFullscreen": "Fullscreen",
+  "watchRestore": "Shrink to fit chat",
+  "super": {
+    "label": "Super",
+    "onHint": "Super is ON: the agent can open and operate a live browser for you. Toggle off to chat normally.",
+    "offHint": "Turn Super ON to let the agent open and operate a live browser on your behalf.",
+    "enabled": "Super ON — the agent can now use the live browser.",
+    "disabled": "Super OFF — the agent will chat normally.",
+    "toggleError": "Could not change Super. Please try again."
+  },
+  "desktopOnly": "The Workspace runs sub-agents on native browser views, so it is only available in the desktop app.",
+  "bridgeUnavailable": "The workspace service is not ready yet. The feature will be available once the desktop bridge is connected.",
+  "empty": "Type an instruction below — for example \"search jobs on glassdoor.com and edit notes.md\" — then run it to fan out into parallel frames.",
+  "composer": {
+    "placeholder": "Describe what to do. Mention a site (e.g. glassdoor.com) and a file (e.g. notes.md) to run them side by side.",
+    "pickModel": "Pick a model",
+    "noModels": "No models configured. Open Settings → Model.",
+    "run": "Run",
+    "stop": "Stop",
+    "hint": "Tip: mention both a website and a file to launch two sub-agents at once. Press Ctrl/Cmd+Enter to run."
+  },
+  "status": {
+    "queued": "Queued",
+    "starting": "Starting",
+    "running": "Running",
+    "done": "Done",
+    "error": "Error",
+    "stopped": "Stopped"
+  },
+  "surface": {
+    "preparing": "Preparing…",
+    "idleSteps": "Waiting for the sub-agent to act…",
+    "noView": "No browser view for this frame.",
+    "noFile": "No file for this frame."
+  }
+}

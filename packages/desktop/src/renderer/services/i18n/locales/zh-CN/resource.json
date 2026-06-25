@@ -1,0 +1,83 @@
+{
+  "navTitle": "资源",
+  "title": "资源面板",
+  "subtitle": "查看 AionUi 如何在你的机器上平衡繁重任务，并调整限制。",
+  "loadError": "无法加载资源状态，资源协调器可能尚未启动。",
+  "coordinatorTitle": "资源协调器",
+  "coordinatorSubtitle": "重任务的租约预算与自动平衡。",
+  "mode": {
+    "title": "平衡模式",
+    "detailed": "详细",
+    "detailedDesc": "由你手动设置每一项限制。",
+    "suggest": "建议",
+    "suggestDesc": "AionUi 读取机器配置并自动平衡。",
+    "changeError": "无法切换模式。"
+  },
+  "preset": {
+    "title": "快捷档位",
+    "subtitle": "一键应用预设预算。",
+    "saver": "节能",
+    "balanced": "均衡",
+    "performance": "高性能",
+    "custom": "自定义",
+    "current": "当前",
+    "applied": "已应用档位。",
+    "applyError": "无法应用档位。"
+  },
+  "machine": {
+    "title": "机器配置",
+    "ram": "总内存",
+    "cpu": "CPU 核心",
+    "gpu": "独立显卡",
+    "disk": "可用磁盘",
+    "gpuPresent": "有",
+    "gpuNone": "无"
+  },
+  "budget": {
+    "title": "当前预算",
+    "subtitle": "内存上限以及可同时运行的繁重任务数量。",
+    "memoryCeiling": "繁重任务内存上限",
+    "userReserve": "为你预留",
+    "concurrency": "各类型并发任务数",
+    "save": "保存预算",
+    "saved": "预算已更新。",
+    "saveError": "无法更新预算。",
+    "readOnlyHint": "切换到详细模式即可编辑这些限制。"
+  },
+  "leases": {
+    "title": "活动",
+    "subtitle": "当前持有租约的任务，以及在队列中等待的任务。",
+    "activeTotal": "活动租约",
+    "queuedTotal": "排队任务",
+    "none": "当前没有运行中的繁重任务。",
+    "kindHeader": "任务类型",
+    "activeHeader": "活动",
+    "queuedHeader": "排队"
+  },
+  "adjustments": {
+    "title": "平衡为何变化",
+    "subtitle": "每次自动调整都会记录原因。",
+    "empty": "暂无自动调整。",
+    "reasonLabel": "原因",
+    "memoryChange": "内存上限：{{from}} → {{to}} MB",
+    "reserveChange": "用户预留：{{from}} → {{to}} MB",
+    "concurrencyChange": "{{kind}}：{{from}} → {{to}}",
+    "noFieldChange": "预算字段未发生变化。"
+  },
+  "taskKind": {
+    "agent": "代理",
+    "browser": "浏览器标签",
+    "emulator": "安卓模拟器",
+    "windowsTest": "Windows 测试",
+    "patchBuild": "补丁构建",
+    "ocr": "OCR",
+    "transcription": "语音转写",
+    "docConvert": "文档转换",
+    "semanticIndex": "语义索引"
+  },
+  "units": {
+    "mb": "MB",
+    "gb": "GB",
+    "cores": "核"
+  }
+}

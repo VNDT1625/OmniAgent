@@ -1,0 +1,1137 @@
+<!doctype html>
+<!--
+  MOCKUP TĨNH — KHÔNG PHẢI CODE THẬT.
+  Mục đích: duyệt bố cục "nội dung kiểu Notion" cho Manager (giữ nguyên chức năng).
+  Mở bằng trình duyệt. Sau khi bạn duyệt OK, tôi mới dựng lại bằng Arco + UnoCSS.
+-->
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Manager — Notion-style mockup</title>
+    <style>
+      :root {
+        --canvas: #ffffff;
+        --surface: #f7f7f5;
+        --surface-2: #efefed;
+        --hairline: #e9e9e7;
+        --hairline-strong: #dcdcd9;
+        --ink: #37352f; /* warm charcoal */
+        --ink-2: #6b6a64;
+        --ink-3: #9b9a93;
+        --accent: #2b6fd6;
+        --accent-soft: #e7f0fb;
+        --green: #2f9e5e;
+        --amber: #d9810a;
+        --red: #d44c47;
+        --radius: 10px;
+        --maxread: 720px;
+        --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', Roboto, sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: var(--font);
+        color: var(--ink);
+        background: #e9e9e7;
+        -webkit-font-smoothing: antialiased;
+        line-height: 1.5;
+        padding: 28px;
+      }
+      .note {
+        max-width: 1180px;
+        margin: 0 auto 14px;
+        color: var(--ink-2);
+        font-size: 13px;
+      }
+      .note b {
+        color: var(--ink);
+      }
+
+      /* ---- App frame ---- */
+      .frame {
+        max-width: 1180px;
+        margin: 0 auto 40px;
+        background: var(--canvas);
+        border: 1px solid var(--hairline-strong);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 12px 40px -12px rgba(15, 15, 15, 0.18);
+      }
+      .frame + .frame {
+        margin-top: 8px;
+      }
+      .screen-label {
+        max-width: 1180px;
+        margin: 28px auto 10px;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        text-transform: uppercase;
+        color: #8a8980;
+      }
+      .app {
+        display: flex;
+        height: 720px;
+      }
+
+      /* ---- Left rail (app sidebar — đã có sẵn, vẽ mờ để định vị) ---- */
+      .rail {
+        width: 56px;
+        background: #fbfbfa;
+        border-right: 1px solid var(--hairline);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 18px;
+        padding: 16px 0;
+      }
+      .rail .dot {
+        width: 26px;
+        height: 26px;
+        border-radius: 7px;
+        background: var(--surface-2);
+      }
+      .rail .dot.brand {
+        background: var(--ink);
+      }
+      .rail .dot.active {
+        background: var(--accent-soft);
+        border: 1px solid var(--accent);
+      }
+
+      /* ---- Main column ---- */
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+
+      /* topbar: breadcrumb + actions */
+      .topbar {
+        height: 46px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 0 18px;
+        border-bottom: 1px solid var(--hairline);
+        color: var(--ink-3);
+        font-size: 13px;
+      }
+      .topbar .crumb {
+        color: var(--ink-2);
+        font-weight: 500;
+      }
+      .topbar .spacer {
+        flex: 1;
+      }
+      .topbar .act {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 30px;
+        padding: 0 10px;
+        border-radius: 7px;
+        color: var(--ink-2);
+        font-size: 13px;
+      }
+      .topbar .act:hover {
+        background: var(--surface);
+      }
+      .topbar .act.search {
+        border: 1px solid var(--hairline-strong);
+        color: var(--ink-3);
+        min-width: 150px;
+      }
+
+      /* tabs (segmented underline) */
+      .tabs {
+        display: flex;
+        gap: 22px;
+        padding: 0 60px;
+        border-bottom: 1px solid var(--hairline);
+      }
+      .tabs .tab {
+        padding: 12px 2px;
+        font-size: 14px;
+        color: var(--ink-3);
+        border-bottom: 2px solid transparent;
+        cursor: default;
+      }
+      .tabs .tab.active {
+        color: var(--ink);
+        border-bottom-color: var(--ink);
+        font-weight: 500;
+      }
+
+      /* content scroll area */
+      .content {
+        flex: 1;
+        overflow: auto;
+      }
+      .reading {
+        max-width: var(--maxread);
+        margin: 0 auto;
+        padding: 40px 24px 80px;
+      }
+
+      /* Notion page title */
+      .page-emoji {
+        font-size: 40px;
+        line-height: 1;
+        margin-bottom: 8px;
+      }
+      .page-title {
+        font-size: 38px;
+        font-weight: 700;
+        letter-spacing: -0.8px;
+        line-height: 1.12;
+      }
+      .page-sub {
+        color: var(--ink-3);
+        font-size: 14.5px;
+        margin-top: 6px;
+      }
+
+      /* inline quick-add (Notion "type / ...") */
+      .quickadd {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 26px 0 8px;
+        padding: 9px 12px;
+        border: 1px solid var(--hairline-strong);
+        border-radius: var(--radius);
+        color: var(--ink-3);
+        font-size: 14px;
+      }
+      .quickadd .plus {
+        color: var(--ink-3);
+        font-size: 17px;
+      }
+      .quickadd kbd {
+        margin-left: auto;
+        font: inherit;
+        font-size: 11px;
+        color: var(--ink-3);
+        border: 1px solid var(--hairline-strong);
+        border-radius: 5px;
+        padding: 1px 6px;
+      }
+
+      /* group heading */
+      .group-h {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin: 26px 0 6px;
+        color: var(--ink-2);
+      }
+      .group-h .cap {
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.4px;
+        text-transform: uppercase;
+        color: var(--ink-3);
+      }
+      .group-h .count {
+        color: var(--ink-3);
+        font-size: 12px;
+      }
+
+      /* task row (block) */
+      .row {
+        display: flex;
+        align-items: flex-start;
+        gap: 11px;
+        padding: 8px 8px;
+        border-radius: 8px;
+      }
+      .row:hover {
+        background: var(--surface);
+      }
+      .row + .row {
+        border-top: 1px solid var(--hairline);
+      }
+      .check {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        border: 1.6px solid var(--hairline-strong);
+        margin-top: 1px;
+        flex: none;
+      }
+      .check.done {
+        background: var(--accent);
+        border-color: var(--accent);
+        position: relative;
+      }
+      .check.done::after {
+        content: '✓';
+        color: #fff;
+        font-size: 11px;
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .row .body {
+        flex: 1;
+        min-width: 0;
+      }
+      .row .t {
+        font-size: 14.5px;
+      }
+      .row.done .t {
+        color: var(--ink-3);
+        text-decoration: line-through;
+      }
+      .row .meta {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        margin-top: 3px;
+        color: var(--ink-3);
+        font-size: 12.5px;
+      }
+      .pill {
+        font-size: 11.5px;
+        padding: 1px 8px;
+        border-radius: 999px;
+        font-weight: 600;
+      }
+      .pill.high {
+        background: #fdeedf;
+        color: var(--amber);
+      }
+      .pill.urgent {
+        background: #fbe6e5;
+        color: var(--red);
+      }
+      .pill.low {
+        background: var(--surface-2);
+        color: var(--ink-2);
+      }
+      .tag {
+        color: var(--ink-3);
+        font-size: 12.5px;
+      }
+
+      /* today hero strip */
+      .hero {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        border: 1px solid var(--hairline);
+        border-radius: var(--radius);
+        padding: 16px 18px;
+        background: var(--surface);
+      }
+      .hero .big {
+        font-size: 30px;
+        font-weight: 700;
+        letter-spacing: -0.5px;
+        line-height: 1;
+      }
+      .hero .big span {
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--ink-3);
+      }
+      .ring {
+        width: 46px;
+        height: 46px;
+        border-radius: 50%;
+        background: conic-gradient(var(--accent) 60%, var(--surface-2) 0);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .ring i {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background: var(--surface);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 700;
+        font-style: normal;
+        color: var(--ink-2);
+      }
+
+      /* ---- Notes/Learn layout: list + reading page ---- */
+      .split {
+        display: flex;
+        height: 100%;
+      }
+      .listpane {
+        width: 260px;
+        border-right: 1px solid var(--hairline);
+        display: flex;
+        flex-direction: column;
+      }
+      .listpane .lp-top {
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        border-bottom: 1px solid var(--hairline);
+      }
+      .field {
+        height: 32px;
+        border: 1px solid var(--hairline-strong);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        color: var(--ink-3);
+        font-size: 13px;
+        gap: 6px;
+      }
+      .seg {
+        display: flex;
+        gap: 4px;
+      }
+      .seg .s {
+        flex: 1;
+        text-align: center;
+        font-size: 12.5px;
+        padding: 5px 0;
+        border-radius: 7px;
+        color: var(--ink-2);
+        background: var(--surface);
+      }
+      .seg .s.active {
+        background: var(--ink);
+        color: #fff;
+      }
+      .li {
+        padding: 9px 12px;
+        cursor: default;
+      }
+      .li:hover {
+        background: var(--surface);
+      }
+      .li.active {
+        background: var(--accent-soft);
+        box-shadow: inset 2px 0 0 var(--accent);
+      }
+      .li .l-t {
+        font-size: 13.5px;
+        font-weight: 500;
+      }
+      .li .l-s {
+        font-size: 11.5px;
+        color: var(--ink-3);
+        margin-top: 2px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .docpane {
+        flex: 1;
+        overflow: auto;
+        min-width: 0;
+      }
+
+      /* Cover banner (gif/video/image) — full bleed across the doc pane */
+      .cover {
+        height: 180px;
+        width: 100%;
+        background: linear-gradient(120deg, #4b6cb7 0%, #182848 45%, #2b6fd6 100%);
+        position: relative;
+        overflow: hidden;
+      }
+      .cover .badge {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        background: rgba(0, 0, 0, 0.35);
+        color: #fff;
+        font-size: 11px;
+        padding: 3px 9px;
+        border-radius: 999px;
+        backdrop-filter: blur(4px);
+      }
+      .cover .covertools {
+        position: absolute;
+        bottom: 10px;
+        right: 12px;
+        display: flex;
+        gap: 6px;
+        opacity: 0.9;
+      }
+      .cover .covertools span {
+        background: rgba(255, 255, 255, 0.85);
+        color: var(--ink-2);
+        font-size: 11.5px;
+        padding: 3px 9px;
+        border-radius: 6px;
+      }
+      .cover .play {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .cover .play i {
+        width: 54px;
+        height: 54px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.9);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-style: normal;
+        font-size: 20px;
+        color: var(--ink);
+      }
+
+      .doc {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 0 28px 90px;
+      }
+      /* page icon overlaps the cover (Notion signature) */
+      .pageicon {
+        width: 68px;
+        height: 68px;
+        border-radius: 16px;
+        background: #fff;
+        border: 1px solid var(--hairline);
+        box-shadow: 0 4px 14px -4px rgba(15, 15, 15, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 38px;
+        margin-top: -38px;
+        position: relative;
+      }
+      .doc .addmeta {
+        display: flex;
+        gap: 14px;
+        color: var(--ink-3);
+        font-size: 13px;
+        margin: 10px 0 4px;
+      }
+      .doc .addmeta span:hover {
+        color: var(--ink-2);
+      }
+      .doc h1 {
+        font-size: 36px;
+        font-weight: 700;
+        letter-spacing: -0.7px;
+        margin: 8px 0 6px;
+        line-height: 1.1;
+      }
+
+      /* property table (Notion page props) */
+      .props {
+        margin: 8px 0 22px;
+      }
+      .prop {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 4px 0;
+        font-size: 13.5px;
+      }
+      .prop .k {
+        width: 110px;
+        color: var(--ink-3);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .prop .v {
+        color: var(--ink);
+      }
+      .prop .v .chip2 {
+        background: var(--surface-2);
+        border-radius: 5px;
+        padding: 1px 8px;
+        font-size: 12.5px;
+      }
+
+      .doc p {
+        font-size: 15.5px;
+        color: #2f2e2b;
+        margin: 0 0 12px;
+      }
+      .doc h2 {
+        font-size: 22px;
+        margin: 24px 0 8px;
+        font-weight: 650;
+      }
+      .doc .wiki {
+        color: var(--accent);
+        border-bottom: 1px solid var(--accent-soft);
+        cursor: default;
+      }
+      .doc ul {
+        margin: 0 0 12px 18px;
+      }
+      .doc li {
+        font-size: 15px;
+        margin: 4px 0;
+      }
+      .callout {
+        background: var(--surface);
+        border: 1px solid var(--hairline);
+        border-radius: 8px;
+        padding: 12px 14px;
+        display: flex;
+        gap: 10px;
+        margin: 14px 0;
+      }
+
+      /* content table block */
+      .tbl {
+        width: 100%;
+        border: 1px solid var(--hairline-strong);
+        border-radius: 8px;
+        border-collapse: separate;
+        border-spacing: 0;
+        overflow: hidden;
+        margin: 8px 0 16px;
+        font-size: 13.5px;
+      }
+      .tbl th,
+      .tbl td {
+        text-align: left;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--hairline);
+      }
+      .tbl th {
+        background: var(--surface);
+        color: var(--ink-2);
+        font-weight: 600;
+      }
+      .tbl tr:last-child td {
+        border-bottom: none;
+      }
+
+      /* URL embed / bookmark card */
+      .bookmark {
+        display: flex;
+        border: 1px solid var(--hairline-strong);
+        border-radius: 8px;
+        overflow: hidden;
+        margin: 14px 0;
+      }
+      .bookmark .bm-info {
+        flex: 1;
+        padding: 12px 14px;
+      }
+      .bookmark .bm-t {
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .bookmark .bm-d {
+        font-size: 12.5px;
+        color: var(--ink-3);
+        margin: 3px 0 8px;
+      }
+      .bookmark .bm-u {
+        font-size: 12px;
+        color: var(--ink-3);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .bookmark .bm-img {
+        width: 140px;
+        background: linear-gradient(135deg, #2b6fd6, #182848);
+      }
+
+      /* image / video embed block */
+      .embed {
+        border-radius: 8px;
+        overflow: hidden;
+        margin: 14px 0;
+        border: 1px solid var(--hairline);
+      }
+      .embed .ph {
+        height: 200px;
+        background: repeating-linear-gradient(45deg, #f0f0ee, #f0f0ee 12px, #e9e9e7 12px, #e9e9e7 24px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--ink-3);
+        font-size: 13px;
+      }
+      .embed .cap {
+        font-size: 12px;
+        color: var(--ink-3);
+        padding: 6px 10px;
+      }
+
+      /* toggle block */
+      .toggle {
+        margin: 8px 0;
+      }
+      .toggle .th {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 15px;
+        font-weight: 500;
+      }
+      .toggle .tc {
+        margin: 6px 0 0 22px;
+        color: #2f2e2b;
+        font-size: 14.5px;
+      }
+
+      /* slash-command hint */
+      .slash {
+        color: var(--ink-3);
+        font-size: 14px;
+        padding: 8px 4px;
+        border-radius: 6px;
+      }
+      .slash:hover {
+        background: var(--surface);
+      }
+
+      .linkbar {
+        display: flex;
+        gap: 14px;
+        margin-top: 28px;
+        padding-top: 20px;
+        border-top: 1px solid var(--hairline);
+      }
+      .linkcard {
+        flex: 1;
+        border: 1px solid var(--hairline);
+        border-radius: 8px;
+        padding: 12px;
+      }
+      .linkcard .h {
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        color: var(--ink-3);
+        margin-bottom: 8px;
+      }
+      .linkcard a {
+        color: var(--accent);
+        font-size: 13px;
+        display: block;
+        padding: 2px 0;
+        text-decoration: none;
+      }
+
+      /* ---- Schedule week grid ---- */
+      .sched {
+        padding: 24px 28px;
+      }
+      .wk {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+      }
+      .wk .col {
+        border: 1px solid var(--hairline);
+        border-radius: 10px;
+        min-height: 360px;
+        padding: 8px;
+      }
+      .wk .col .d {
+        text-align: center;
+        padding: 4px 0 8px;
+        color: var(--ink-3);
+        font-size: 12px;
+      }
+      .wk .col .d b {
+        display: block;
+        color: var(--ink);
+        font-size: 15px;
+        font-weight: 600;
+      }
+      .wk .col.today .d b {
+        color: var(--accent);
+      }
+      .ev {
+        border-radius: 6px;
+        padding: 6px 8px;
+        margin-bottom: 6px;
+        background: var(--surface);
+        border-left: 3px solid var(--accent);
+        font-size: 12px;
+      }
+      .ev .et {
+        font-weight: 600;
+      }
+      .ev .em {
+        color: var(--ink-3);
+        font-size: 11px;
+      }
+      .ev.fixed {
+        border-left-color: var(--amber);
+      }
+      .btn-primary {
+        background: var(--accent);
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 7px 14px;
+        font: inherit;
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .toolbar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+      .chip {
+        border: 1px solid var(--hairline-strong);
+        border-radius: 8px;
+        padding: 5px 10px;
+        font-size: 13px;
+        color: var(--ink-2);
+      }
+      .spacer {
+        flex: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="note">
+      <b>MOCKUP TĨNH</b> — chỉ để duyệt bố cục kiểu Notion (chức năng giữ nguyên). Chưa phải code thật. 3 màn: Nhiệm vụ
+      · Ghi chú (Learn) · Lịch trình.
+    </div>
+
+    <!-- ================= SCREEN 1: TASKS ================= -->
+    <div class="screen-label">1 · Nhiệm vụ</div>
+    <div class="frame">
+      <div class="app">
+        <div class="rail">
+          <div class="dot brand"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot active"></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <span class="crumb">Quản lý cá nhân</span>
+            <span class="spacer"></span>
+            <span class="act search"
+              >⌕ &nbsp;Tìm nhanh… &nbsp;<kbd
+                style="
+                  margin-left: auto;
+                  border: 1px solid var(--hairline-strong);
+                  border-radius: 5px;
+                  padding: 0 5px;
+                  font-size: 11px;
+                "
+                >⌘K</kbd
+              ></span
+            >
+            <span class="act">🎨</span>
+          </div>
+          <div class="tabs">
+            <div class="tab active">Nhiệm vụ</div>
+            <div class="tab">Ghi chú</div>
+            <div class="tab">Lịch trình</div>
+          </div>
+          <div class="content">
+            <div class="reading">
+              <div class="page-emoji">🗂️</div>
+              <div class="page-title">Nhiệm vụ</div>
+              <div class="page-sub">Hôm nay, thứ Hai · 1 tháng 6</div>
+
+              <div class="hero" style="margin-top: 22px">
+                <div>
+                  <div
+                    style="
+                      font-size: 12px;
+                      font-weight: 700;
+                      letter-spacing: 0.4px;
+                      text-transform: uppercase;
+                      color: var(--ink-3);
+                      margin-bottom: 6px;
+                    "
+                  >
+                    Tiến độ hôm nay
+                  </div>
+                  <div class="big">3<span> / 5 việc</span></div>
+                </div>
+                <div class="ring"><i>60%</i></div>
+              </div>
+
+              <div class="quickadd">
+                <span class="plus">+</span> Thêm nhiệm vụ — thử “Nộp báo cáo mai 5pm !cao #work”
+                <kbd>Enter</kbd>
+              </div>
+
+              <div class="group-h"><span class="cap">Hôm nay</span><span class="count">2</span></div>
+              <div>
+                <div class="row">
+                  <div class="check"></div>
+                  <div class="body">
+                    <div class="t">Hoàn thiện slide thuyết trình quý</div>
+                    <div class="meta">
+                      <span class="pill urgent">Khẩn</span><span>📅 17:00</span><span class="tag">#work</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="row">
+                  <div class="check"></div>
+                  <div class="body">
+                    <div class="t">Gọi nha sĩ đặt lịch</div>
+                    <div class="meta">
+                      <span class="pill low">Thấp</span><span>📅 09:00</span><span class="tag">#health</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="group-h"><span class="cap">Sắp tới</span><span class="count">1</span></div>
+              <div>
+                <div class="row">
+                  <div class="check"></div>
+                  <div class="body">
+                    <div class="t">Đọc tài liệu kiến trúc C4</div>
+                    <div class="meta">
+                      <span class="pill high">Cao</span><span>📅 Thứ Tư</span><span class="tag">#study</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="group-h"><span class="cap">Đã xong</span><span class="count">2</span></div>
+              <div>
+                <div class="row done">
+                  <div class="check done"></div>
+                  <div class="body"><div class="t">Trả lời email khách hàng</div></div>
+                </div>
+                <div class="row done">
+                  <div class="check done"></div>
+                  <div class="body"><div class="t">Cập nhật bảng chi tiêu</div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= SCREEN 2: NOTES / LEARN ================= -->
+    <div class="screen-label">2 · Ghi chú — Learn (đọc kiểu trang Notion)</div>
+    <div class="frame">
+      <div class="app">
+        <div class="rail">
+          <div class="dot brand"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot active"></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <span class="crumb">Quản lý cá nhân</span><span style="color: var(--ink-3)"> / Ghi chú / Learn</span>
+            <span class="spacer"></span>
+            <span class="act search"
+              >⌕ &nbsp;Tìm nhanh…
+              <kbd
+                style="
+                  margin-left: auto;
+                  border: 1px solid var(--hairline-strong);
+                  border-radius: 5px;
+                  padding: 0 5px;
+                  font-size: 11px;
+                "
+                >⌘K</kbd
+              ></span
+            >
+            <span class="act">🎨</span>
+          </div>
+          <div class="tabs">
+            <div class="tab">Nhiệm vụ</div>
+            <div class="tab active">Ghi chú</div>
+            <div class="tab">Lịch trình</div>
+          </div>
+          <div class="content">
+            <div class="split">
+              <div class="listpane">
+                <div class="lp-top">
+                  <div class="field">⌕ Tìm ghi chú</div>
+                  <div class="seg">
+                    <div class="s">Đọc</div>
+                    <div class="s">Sơ đồ</div>
+                  </div>
+                  <button class="btn-primary" style="width: 100%">+ Ghi chú mới</button>
+                </div>
+                <div class="li active">
+                  <div class="l-t">C4 Model</div>
+                  <div class="l-s">Mô hình kiến trúc 4 mức…</div>
+                </div>
+                <div class="li">
+                  <div class="l-t">Class Diagram</div>
+                  <div class="l-s">Sơ đồ lớp, quan hệ…</div>
+                </div>
+                <div class="li">
+                  <div class="l-t">Spaced Repetition</div>
+                  <div class="l-s">Lặp lại ngắt quãng…</div>
+                </div>
+                <div class="li">
+                  <div class="l-t">REST vs gRPC</div>
+                  <div class="l-s">So sánh giao thức…</div>
+                </div>
+              </div>
+              <div class="docpane">
+                <div class="doc">
+                  <h1>C4 Model</h1>
+                  <p>
+                    C4 là cách mô tả kiến trúc phần mềm theo bốn mức: Context, Container, Component và Code. Mỗi mức
+                    zoom sâu dần vào hệ thống.
+                  </p>
+                  <div class="callout">
+                    💡
+                    <div>Mức Component thường chứa <span class="wiki">[[Class Diagram]]</span> để mô tả chi tiết.</div>
+                  </div>
+                  <h2>Bốn mức</h2>
+                  <ul>
+                    <li><b>Context</b> — hệ thống & người dùng/đối tác bên ngoài.</li>
+                    <li><b>Container</b> — ứng dụng, service, database.</li>
+                    <li>
+                      <b>Component</b> — khối bên trong một container — xem <span class="wiki">[[Class Diagram]]</span>.
+                    </li>
+                    <li><b>Code</b> — chi tiết lớp/hàm.</li>
+                  </ul>
+                  <p>Liên quan: <span class="wiki">[[REST vs gRPC]]</span> khi chọn giao tiếp giữa container.</p>
+
+                  <div class="linkbar">
+                    <div class="linkcard">
+                      <div class="h">🔗 Liên kết đi</div>
+                      <a>[[Class Diagram]]</a>
+                      <a>[[REST vs gRPC]]</a>
+                    </div>
+                    <div class="linkcard">
+                      <div class="h">↩ Liên kết ngược</div>
+                      <a>Sprint Planning</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= SCREEN 3: SCHEDULE ================= -->
+    <div class="screen-label">3 · Lịch trình (tuần)</div>
+    <div class="frame">
+      <div class="app">
+        <div class="rail">
+          <div class="dot brand"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot"></div>
+          <div class="dot active"></div>
+        </div>
+        <div class="main">
+          <div class="topbar">
+            <span class="crumb">Quản lý cá nhân</span>
+            <span class="spacer"></span>
+            <span class="act search"
+              >⌕ &nbsp;Tìm nhanh…
+              <kbd
+                style="
+                  margin-left: auto;
+                  border: 1px solid var(--hairline-strong);
+                  border-radius: 5px;
+                  padding: 0 5px;
+                  font-size: 11px;
+                "
+                >⌘K</kbd
+              ></span
+            >
+            <span class="act">🎨</span>
+          </div>
+          <div class="tabs">
+            <div class="tab">Nhiệm vụ</div>
+            <div class="tab">Ghi chú</div>
+            <div class="tab active">Lịch trình</div>
+          </div>
+          <div class="content">
+            <div class="sched">
+              <div class="toolbar">
+                <span class="chip">Ngày</span
+                ><span class="chip" style="background: var(--ink); color: #fff; border-color: var(--ink)">Tuần</span>
+                <span class="chip">‹</span><span class="chip">Hôm nay</span><span class="chip">›</span>
+                <b style="margin-left: 6px">1 – 7 tháng 6</b>
+                <span class="spacer"></span>
+                <span class="chip">⬆ Nhập</span><span class="chip">⚡ Tối ưu</span><span class="chip">⚙ Cài đặt</span>
+                <button class="btn-primary">+ Sự kiện</button>
+              </div>
+              <div class="wk">
+                <div class="col today">
+                  <div class="d">T2<b>1</b></div>
+                  <div class="ev fixed">
+                    <div class="et">🔒 Họp nhóm</div>
+                    <div class="em">09:00–10:00</div>
+                  </div>
+                  <div class="ev">
+                    <div class="et">Viết báo cáo</div>
+                    <div class="em">14:00–16:00</div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="d">T3<b>2</b></div>
+                  <div class="ev fixed">
+                    <div class="et">🔒 Lớp C4</div>
+                    <div class="em">08:00–11:00</div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="d">T4<b>3</b></div>
+                  <div class="ev">
+                    <div class="et">Gym</div>
+                    <div class="em">17:30–18:30</div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="d">T5<b>4</b></div>
+                </div>
+                <div class="col">
+                  <div class="d">T6<b>5</b></div>
+                  <div class="ev fixed">
+                    <div class="et">🔒 Review</div>
+                    <div class="em">15:00–16:00</div>
+                  </div>
+                </div>
+                <div class="col">
+                  <div class="d">T7<b>6</b></div>
+                </div>
+                <div class="col">
+                  <div class="d">CN<b>7</b></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top: 24px">
+      Đây là <b>bản phác bố cục</b> (light theme, Notion-style). Bạn duyệt: bố cục cột, vùng đọc giới hạn bề rộng, tiêu
+      đề trang lớn, block-row, callout, week-grid. OK thì tôi dựng lại bằng Arco + UnoCSS và hỗ trợ cả dark theme.
+    </div>
+  </body>
+</html>

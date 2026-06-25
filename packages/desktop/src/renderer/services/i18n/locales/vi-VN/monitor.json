@@ -1,0 +1,60 @@
+{
+  "navTitle": "Giám sát",
+  "title": "Giám sát lỗi",
+  "subtitle": "Lỗi tự thu thập, đề xuất bản vá và cổng duyệt.",
+  "refresh": "Làm mới",
+  "desktopOnly": "Giám sát lỗi chỉ có trên ứng dụng desktop.",
+  "unavailable": "Dịch vụ giám sát chưa sẵn sàng.",
+  "noReports": "Chưa có báo cáo lỗi nào.",
+  "noProposals": "Chưa có bản vá đề xuất nào.",
+  "section": {
+    "proposals": "Bản vá đề xuất",
+    "reports": "Báo cáo lỗi"
+  },
+  "report": {
+    "occurrences": "Gặp {{count}} lần",
+    "source": "Nguồn",
+    "knownFix": "Đã có cách sửa",
+    "fix": "Vá lỗi"
+  },
+  "fix": {
+    "startedToast": "Đang phân tích lỗi và chuẩn bị bản vá…"
+  },
+  "risk": {
+    "low": "Thấp",
+    "medium": "Trung bình",
+    "high": "Cao"
+  },
+  "status": {
+    "proposed": "Đã đề xuất",
+    "pending-review": "Chờ duyệt",
+    "approved": "Đã duyệt",
+    "applied": "Đã áp dụng",
+    "rejected": "Đã từ chối",
+    "rolled-back": "Đã lùi lại"
+  },
+  "patch": {
+    "title": "Bản vá đề xuất",
+    "risk": "Rủi ro",
+    "approve": "Duyệt & áp dụng",
+    "approveConfirm": "Áp bản vá này vào ứng dụng? Hệ thống lưu điểm khôi phục trước.",
+    "cancel": "Hủy",
+    "reject": "Từ chối",
+    "rollback": "Lùi lại",
+    "publish": "Phát hành",
+    "pendingReview": "Chờ duyệt",
+    "applied": "Đã áp dụng",
+    "rejected": "Đã từ chối",
+    "rolledBack": "Đã lùi lại",
+    "appliedToast": "Đã áp bản vá. Có thể lùi lại nếu cần.",
+    "rejectedToast": "Đã từ chối đề xuất.",
+    "rolledBackToast": "Đã lùi lại bản vá.",
+    "actionError": "Không thể hoàn tất thao tác."
+  },
+  "publish": {
+    "confirm": "Tạo nhánh sửa lỗi và đẩy lên fork của bạn để review?",
+    "pushedToast": "Đã đẩy nhánh \"{{branch}}\". Đang mở trang pull request…",
+    "notPushed": "Đã chuẩn bị nhánh \"{{branch}}\" tại máy. Hãy đẩy lên fork khi sẵn sàng.",
+    "error": "Không thể phát hành bản vá."
+  }
+}

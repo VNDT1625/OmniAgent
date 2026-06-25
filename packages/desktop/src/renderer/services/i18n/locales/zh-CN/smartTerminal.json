@@ -1,0 +1,15 @@
+{
+  "smartFix": {
+    "errorLine": "`{{command}}` 失败（退出码 {{code}}）",
+    "updatedTo": "已更新 →",
+    "updateLink": "更新说明",
+    "run": "用 {{program}} 运行",
+    "dismiss": "忽略",
+    "tag": "Smart Fix",
+    "confirmQuestion": "改用 `{{program}}` 运行？(y/N)",
+    "skipped": "已跳过 Smart Fix。",
+    "running": "正在运行 `{{program}}`…"
+  },
+  "autoRerunLabel": "出错时建议修复",
+  "autoRerunHint": "当命令失败且存在已知替代命令时，在终端中询问 (y/N)，以便你或智能体输入应用。"
+}

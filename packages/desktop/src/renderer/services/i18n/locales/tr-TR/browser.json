@@ -1,0 +1,84 @@
+{
+  "navTitle": "Tarayıcı",
+  "title": "Tarayıcı",
+  "subtitle": "Web'de uygulama içinde gezinin ve bir yapay zeka modelinin sayfayı web aracısı olarak yönetmesini sağlayın.",
+  "desktopOnly": "Gömülü tarayıcı yalnızca masaüstü uygulamasında kullanılabilir.",
+  "bridgeUnavailable": "Tarayıcı hizmeti henüz çalışmıyor. Masaüstü köprüsü bağlandığında kullanılabilir olacak.",
+  "retry": "Yeniden dene",
+  "address": {
+    "placeholder": "Arayın veya bir URL yazın",
+    "go": "Git",
+    "back": "Geri",
+    "forward": "İleri",
+    "reload": "Yeniden yükle"
+  },
+  "tab": {
+    "new": "Yeni sekme",
+    "close": "Sekmeyi kapat",
+    "untitled": "Yeni sekme"
+  },
+  "agent": {
+    "label": "Web aracısı",
+    "pickModel": "Model seçin",
+    "pickModelFirst": "Web aracısını etkinleştirmek için bir model seçin.",
+    "noModels": "Kullanılabilir model yok. Ayarlar → Model bölümünden ekleyin.",
+    "toggleHint": "Bu modelin sayfayı kontrol etmesine izin verin: tıklama, kaydırma, yazma ve okuma.",
+    "enabled": "Bu sekme için web aracısı etkinleştirildi.",
+    "disabled": "Web aracısı devre dışı bırakıldı.",
+    "toggleError": "Web aracısı modu değiştirilemedi.",
+    "providerGroup": "API modelleri",
+    "cliGroup": "CLI ajanları",
+    "cliSuffix": "CLI"
+  },
+  "toolbar": {
+    "zoomIn": "Yakınlaştır",
+    "zoomOut": "Uzaklaştır",
+    "zoomReset": "Yakınlaştırmayı %100'e sıfırla",
+    "fullscreen": "Tam ekran",
+    "exitFullscreen": "Tam ekrandan çık (Esc)",
+    "showChat": "Web aracısı sohbetini göster",
+    "hideChat": "Web aracısı sohbetini gizle",
+    "showAiOverlay": "Bu sayfa hakkında AI'ya sor",
+    "hideAiOverlay": "AI panelini gizle",
+    "expandControls": "Aracı denetimlerini göster",
+    "collapseControls": "Aracı denetimlerini gizle"
+  },
+  "aiOverlay": {
+    "title": "AI'ya Sor",
+    "placeholder": "Bu sayfa hakkında sor…"
+  },
+  "chat": {
+    "title": "Web aracısı",
+    "emptyTitle": "Web aracısına sor",
+    "emptyHint": "Normal gezinme için adres çubuğuna yazın. Burada aracıya ne yapacağını söyleyin — örn. \"Facebook'u aç, mesajlarımı oku ve özetle.\"",
+    "placeholder": "Aracının sayfada ne yapacağını yazın…",
+    "pickModelFirst": "Web aracısıyla sohbet etmek için yukarıdan bir model seçin.",
+    "send": "Gönder",
+    "stop": "Durdur",
+    "clear": "Konuşmayı temizle",
+    "close": "Paneli gizle",
+    "swapSide": "Diğer tarafa taşı",
+    "working": "Aracı çalışıyor…",
+    "enterHint": "Göndermek için Enter · Yeni satır için Shift+Enter",
+    "allowControl": "Kontrole izin ver",
+    "controlOnHint": "İzin verildi: aracı bu sekmede tıklayabilir, kaydırabilir, yazabilir ve gezinebilir.",
+    "controlOffHint": "Görünmez mod: aracı yalnızca okur/tarar ve gizli sekmeler kullanır. Bu sayfayı kontrol etmesi için açın.",
+    "stepFailed": "başarısız",
+    "persona": "Kişilik ve kurallar",
+    "personaTitle": "Aracı kişiliği ve sabit kurallar",
+    "personaHint": "Bu talimatlar her turda web aracısına uygulanır (dil, üslup, asla yapmaması gerekenler).",
+    "personaPlaceholder": "örn. Her zaman Vietnamca yanıtla. Kısa ol. Sormadan asla satın alma yapma veya form gönderme.",
+    "personaSave": "Kaydet",
+    "personaCancel": "İptal"
+  },
+  "subtitle_overlay": {
+    "enable": "Vietnamca altyazıları göster",
+    "disable": "Vietnamca altyazıları gizle",
+    "idle": "Altyazı için video sesi bekleniyor…"
+  },
+  "viewport": {
+    "emptyTitle": "Açık sayfa yok",
+    "emptyHint": "Göz atmaya başlamak için bir sekme açın. Sayfa burada görüntülenir ve uygulama tarafından kontrol edilir.",
+    "openFirst": "Sekme aç"
+  }
+}

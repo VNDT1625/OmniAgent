@@ -1,0 +1,40 @@
+{
+  "navTitle": "リアルタイム知識",
+  "title": "リアルタイム知識",
+  "subtitle": "エージェントが最新に保つ時事的な事実——鮮度・出典・有効期限を確認し、検索や手動更新ができます。",
+  "desktopOnly": "リアルタイム知識はデスクトップアプリでのみ利用できます。",
+  "reload": "再読み込み",
+  "retry": "再試行",
+  "searchPlaceholder": "事実を検索（例：最新の Node LTS、現在の価格…）",
+  "loadError": "ナレッジストアを読み込めませんでした。",
+  "empty": "まだ事実が登録されていません。エージェントが時事的な情報を検証した後、rtk_record ツールで追加します。",
+  "noMatches": "検索に一致する事実はありません。",
+  "freshness": {
+    "fresh": "新鮮",
+    "stale": "古くなりつつある",
+    "expired": "期限切れ",
+    "unknown": "不明"
+  },
+  "class": {
+    "version": "バージョン",
+    "price": "価格",
+    "role_holder": "役職者",
+    "spec_api": "API / 仕様",
+    "status_event": "イベント状況",
+    "stat_metric": "統計",
+    "other": "その他"
+  },
+  "status": {
+    "active": "有効",
+    "needs_review": "要確認",
+    "superseded": "置き換え済み",
+    "archived": "アーカイブ済み"
+  },
+  "card": {
+    "validAsOf": "{{date}} 時点で有効",
+    "confidence": "信頼度 {{percent}}%",
+    "sources": "出典",
+    "refresh": "更新",
+    "refreshHint": "リサーチパイプラインでこの事実を再検証します。"
+  }
+}

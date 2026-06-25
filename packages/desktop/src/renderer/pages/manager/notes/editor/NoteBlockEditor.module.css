@@ -1,0 +1,59 @@
+/**
+ * Scoped styling for the BlockNote-powered note editor (the only place in the
+ * app that renders a non-Arco editor surface — an intentional, documented
+ * exception, see `.kiro/steering/manager-editor-exception.md`). All overrides
+ * are nested under `.host` so nothing leaks to the rest of the app.
+ *
+ * The goal is a Notion-style reading/writing page: generous reading column,
+ * warm-charcoal ink via the app's theme variables, and the editor chrome tuned
+ * to match the Manager's accent (`--mgr-accent`).
+ */
+
+.host {
+  /* Map BlockNote's CSS variables onto the app theme so light/dark follow the
+   * app, and the accent follows the user's Manager appearance choice. */
+  --bn-colors-editor-text: var(--color-text-1);
+  --bn-colors-editor-background: transparent;
+  --bn-colors-menu-text: var(--color-text-1);
+  --bn-colors-menu-background: var(--color-bg-popup, #fff);
+  --bn-colors-tooltip-text: var(--color-text-1);
+  --bn-colors-tooltip-background: var(--color-bg-popup, #fff);
+  --bn-colors-hovered-background: var(--color-fill-2);
+  --bn-colors-selected-text: #fff;
+  --bn-colors-selected-background: var(--mgr-accent, var(--primary));
+  --bn-colors-highlights-blue-background: var(--mgr-accent-light-1);
+  --bn-font-family: inherit;
+  width: 100%;
+}
+
+/* The editor's own outer padding is handled by our reading wrapper, so trim it. */
+.host :global(.bn-editor) {
+  padding-inline: 0;
+}
+
+/* Headings: tighter leading + slight negative tracking (Notion feel). */
+.host :global(.bn-block-content[data-content-type='heading'] h1),
+.host :global(.bn-block-content[data-content-type='heading'] h2),
+.host :global(.bn-block-content[data-content-type='heading'] h3) {
+  letter-spacing: -0.4px;
+  font-weight: 650;
+}
+
+/* Body text size for comfortable reading. */
+.host :global(.bn-block-content[data-content-type='paragraph']) {
+  font-size: 15.5px;
+  line-height: 1.6;
+}
+
+/* Slash-menu + side-menu adopt the accent on hover/active. */
+.host :global(.bn-suggestion-menu-item[aria-selected='true']),
+.host :global(.mantine-Menu-item[data-hovered]) {
+  background: var(--mgr-accent-light-1);
+}
+
+/* Make the formatting toolbar / side menu corners match our 8px radius. */
+.host :global(.bn-toolbar),
+.host :global(.bn-suggestion-menu) {
+  border-radius: 10px;
+  border: 1px solid var(--color-border-2);
+}

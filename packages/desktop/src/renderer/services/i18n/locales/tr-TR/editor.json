@@ -1,0 +1,84 @@
+{
+  "action": {
+    "save": "Kaydet",
+    "retry": "Yeniden dene"
+  },
+  "state": {
+    "loading": "Yükleniyor…",
+    "errorTitle": "Dosya açılamadı"
+  },
+  "adapter": {
+    "comingSoonTitle": "Bu düzenleyici yakında geliyor",
+    "comingSoonSubtitle": "\"{{kind}}\" dosyaları için özel bir düzenleyici yakında geliyor. Aşağıda düz metin olarak düzenleyebilirsiniz."
+  },
+  "rawText": {
+    "placeholder": "Dosya içeriği…"
+  },
+  "image": {
+    "rotate": "90° döndür",
+    "size": "Boyut",
+    "apply": "Yeniden boyutlandır"
+  },
+  "docx": {
+    "editNotice": "Belge metni düzenleniyor. Kaydetme temiz bir .docx yeniden oluşturur (zengin biçimlendirme korunmaz).",
+    "placeholder": "Belge içeriği…",
+    "openFailed": "Bu Word belgesi açılamadı"
+  },
+  "spreadsheet": {
+    "addRow": "Satır ekle",
+    "editNotice": "İlk sayfa tablo olarak düzenleniyor. Kaydetme temiz bir .xlsx yeniden oluşturur (zengin biçimlendirme ve ek sayfalar korunmaz).",
+    "openFailed": "Bu elektronik tablo açılamadı"
+  },
+  "slide": {
+    "addSlide": "Slayt ekle",
+    "slideLabel": "Slayt {{index}}",
+    "empty": "(boş)",
+    "placeholder": "Slayt içeriği…",
+    "openFailed": "Bu sunu açılamadı"
+  },
+  "pdf": {
+    "viewerTitle": "PDF görüntüleyici",
+    "tooLargeForViewer": "Bu PDF, uygulama içinde önizlemek için çok büyük ({{size}} MB). Office düzenleyicide veya harici bir PDF görüntüleyicide açın.",
+    "openExternal": "Sistem görüntüleyiciyle aç"
+  },
+  "media": {
+    "local": "Cihazda",
+    "online": "Çevrimiçi",
+    "transcribe": "Deşifre et",
+    "summarize": "Özetle",
+    "heavyNotice": "Deşifre ve özet arka planda çalışır ve kaynak koordinatörü tarafından zamanlanır.",
+    "transcriptIdle": "Henüz deşifre yok. Bir mod seçip deşifreyi başlatın."
+  },
+  "binary": {
+    "readOnlyNotice": "Bu dosya salt okunur inceleme modunda gösterilir.",
+    "type": "Tür",
+    "size": "Boyut",
+    "unknownType": "İkili",
+    "empty": "(boş dosya)",
+    "truncated": "İlk {{count}} bayt gösteriliyor."
+  },
+  "office": {
+    "fallbackTitle": "Basit düzenleyici kullanılıyor",
+    "fallbackGeneric": "Tam Office düzenleyici açılamadı, bu yüzden hafif bir düzenleyici kullanılıyor. Bazı biçimlendirmeler görünmeyebilir.",
+    "retry": "Office'i yeniden dene"
+  },
+  "onlyoffice": {
+    "connecting": "Office düzenleyiciye bağlanılıyor…",
+    "noServerTitle": "Office düzenleyici yapılandırılmadı",
+    "noServerHint": "Bu dosyayı tam Office düzenleyiciyle düzenlemek için ONLYOFFICE Document Server URL’sini ayarlayın.",
+    "failedTitle": "Office düzenleyici açılamadı",
+    "settingsTitle": "Office düzenleyici ayarları",
+    "settingsHint": "ONLYOFFICE Document Server temel URL’sini girin. Ayrı çalışır ve yalnızca düzenleme sırasında bağlanılır.",
+    "dockerHint": "Document Server Docker’da çalışıyorsa bu uygulamaya erişebildiğinden emin olun (entegrasyon ana bilgisayarı tüm arabirimleri dinler).",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "resolving": "Office düzenleyici hazırlanıyor…",
+    "reason": {
+      "docker-missing": "Docker yüklü değil. Docker’ı kurun veya ayarlarda bir Document Server URL’si belirtin.",
+      "docker-stopped": "Docker başlatılıyor. İlk denemede biraz sürebilir; lütfen kısa süre sonra tekrar deneyin veya ayarlarda bir Document Server URL’si girin.",
+      "start-failed": "Document Server konteyneri başlatılamadı.",
+      "timeout": "Document Server zamanında hazır olmadı."
+    },
+    "startingHint": "İlk çalıştırmada Office motoru başlatılırken (gerekirse indirilirken) birkaç dakika sürebilir."
+  }
+}

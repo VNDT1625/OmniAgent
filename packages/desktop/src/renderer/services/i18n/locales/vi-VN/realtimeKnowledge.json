@@ -1,0 +1,40 @@
+{
+  "navTitle": "Kiến thức thời gian thực",
+  "title": "Kiến thức thời gian thực",
+  "subtitle": "Các dữ kiện dễ thay đổi mà agent giữ cập nhật — xem độ tươi, nguồn và thời hạn, tìm kiếm, hoặc làm mới.",
+  "desktopOnly": "Kiến thức thời gian thực chỉ khả dụng trong ứng dụng desktop.",
+  "reload": "Tải lại",
+  "retry": "Thử lại",
+  "searchPlaceholder": "Tìm dữ kiện (vd: Node LTS mới nhất, giá hiện tại…)",
+  "loadError": "Không tải được kho kiến thức.",
+  "empty": "Chưa có dữ kiện nào. Agent thêm bằng công cụ rtk_record sau khi xác minh thông tin dễ thay đổi.",
+  "noMatches": "Không có dữ kiện nào khớp tìm kiếm.",
+  "freshness": {
+    "fresh": "Mới",
+    "stale": "Sắp cũ",
+    "expired": "Hết hạn",
+    "unknown": "Không rõ"
+  },
+  "class": {
+    "version": "Phiên bản",
+    "price": "Giá",
+    "role_holder": "Người giữ vai trò",
+    "spec_api": "API / spec",
+    "status_event": "Trạng thái sự kiện",
+    "stat_metric": "Thống kê",
+    "other": "Khác"
+  },
+  "status": {
+    "active": "Đang dùng",
+    "needs_review": "Cần xem lại",
+    "superseded": "Đã thay thế",
+    "archived": "Đã lưu trữ"
+  },
+  "card": {
+    "validAsOf": "Có hiệu lực từ {{date}}",
+    "confidence": "Độ tin cậy {{percent}}%",
+    "sources": "Nguồn",
+    "refresh": "Làm mới",
+    "refreshHint": "Xác minh lại dữ kiện này bằng pipeline nghiên cứu."
+  }
+}

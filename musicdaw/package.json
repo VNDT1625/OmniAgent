@@ -1,0 +1,23 @@
+{
+  "name": "musicdaw",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Desktop music-making app (BandLab-like). Forked base: beets (Apache-2.0). Realtime in renderer (Web Audio/Tone.js), heavy DSP in Rust sidecar.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify": "bun run src/verify.ts",
+    "verify:audio": "bun run src/verifyAudio.ts",
+    "verify:render": "bun run src/verifyRender.ts",
+    "verify:theory": "bun run src/verifyTheory.ts",
+    "verify:producer": "bun run src/verifyProducer.ts",
+    "verify:tools": "bun run src/verifyTools.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2",
+    "vitest": "^4.0.18"
+  }
+}

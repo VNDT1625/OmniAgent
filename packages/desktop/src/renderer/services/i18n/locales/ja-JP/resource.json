@@ -1,0 +1,83 @@
+{
+  "navTitle": "リソース",
+  "title": "リソースダッシュボード",
+  "subtitle": "AionUi がマシン上で重いタスクをどのようにバランスしているかを確認し、上限を調整します。",
+  "loadError": "リソース状態を読み込めませんでした。リソースコーディネーターがまだ起動していない可能性があります。",
+  "coordinatorTitle": "リソースコーディネーター",
+  "coordinatorSubtitle": "重いタスクのリース予算と自動バランス調整。",
+  "mode": {
+    "title": "バランスモード",
+    "detailed": "詳細",
+    "detailedDesc": "すべての上限を手動で設定します。",
+    "suggest": "おすすめ",
+    "suggestDesc": "AionUi がマシンを読み取り、自動でバランスします。",
+    "changeError": "モードを切り替えできませんでした。"
+  },
+  "preset": {
+    "title": "クイックレベル",
+    "subtitle": "既定の予算をワンクリックで適用します。",
+    "saver": "省電力",
+    "balanced": "バランス",
+    "performance": "高性能",
+    "custom": "カスタム",
+    "current": "現在",
+    "applied": "プリセットを適用しました。",
+    "applyError": "プリセットを適用できませんでした。"
+  },
+  "machine": {
+    "title": "マシンプロファイル",
+    "ram": "総メモリ",
+    "cpu": "CPU コア",
+    "gpu": "ディスクリート GPU",
+    "disk": "空きディスク",
+    "gpuPresent": "あり",
+    "gpuNone": "なし"
+  },
+  "budget": {
+    "title": "現在の予算",
+    "subtitle": "メモリ上限と、同時に実行できる重いタスクの数。",
+    "memoryCeiling": "重いタスクのメモリ上限",
+    "userReserve": "ユーザー用に確保",
+    "concurrency": "種類ごとの同時タスク数",
+    "save": "予算を保存",
+    "saved": "予算を更新しました。",
+    "saveError": "予算を更新できませんでした。",
+    "readOnlyHint": "これらの上限を編集するには詳細モードに切り替えてください。"
+  },
+  "leases": {
+    "title": "アクティビティ",
+    "subtitle": "現在リースを保持しているタスクと、キューで待機中のタスク。",
+    "activeTotal": "アクティブなリース",
+    "queuedTotal": "キュー内のタスク",
+    "none": "実行中の重いタスクはありません。",
+    "kindHeader": "タスクの種類",
+    "activeHeader": "アクティブ",
+    "queuedHeader": "キュー"
+  },
+  "adjustments": {
+    "title": "バランスが変わった理由",
+    "subtitle": "自動調整はすべて理由とともに記録されます。",
+    "empty": "自動調整はまだありません。",
+    "reasonLabel": "理由",
+    "memoryChange": "メモリ上限: {{from}} → {{to}} MB",
+    "reserveChange": "ユーザー確保: {{from}} → {{to}} MB",
+    "concurrencyChange": "{{kind}}: {{from}} → {{to}}",
+    "noFieldChange": "予算フィールドに変更はありません。"
+  },
+  "taskKind": {
+    "agent": "エージェント",
+    "browser": "ブラウザタブ",
+    "emulator": "Android エミュレーター",
+    "windowsTest": "Windows テスト",
+    "patchBuild": "パッチビルド",
+    "ocr": "OCR",
+    "transcription": "文字起こし",
+    "docConvert": "ドキュメント変換",
+    "semanticIndex": "セマンティックインデックス"
+  },
+  "units": {
+    "mb": "MB",
+    "gb": "GB",
+    "cores": "コア"
+  }
+}
