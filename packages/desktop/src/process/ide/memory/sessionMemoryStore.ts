@@ -72,7 +72,13 @@ import { cosineSimilarity, createLocalEmbedder } from './embedding';
 export type SuperMemoryKind = 'fact' | 'decision' | 'todo' | 'snippet' | 'note' | 'summary';
 
 /** Kinds an agent is allowed to record (the `summary` kind is reserved for compaction). */
-export const RECORDABLE_KINDS: ReadonlyArray<Exclude<SuperMemoryKind, 'summary'>> = ['fact', 'decision', 'todo', 'snippet', 'note'];
+export const RECORDABLE_KINDS: ReadonlyArray<Exclude<SuperMemoryKind, 'summary'>> = [
+  'fact',
+  'decision',
+  'todo',
+  'snippet',
+  'note',
+];
 
 /** One remembered note inside a session. */
 export type SuperMemoryItem = {
@@ -281,7 +287,8 @@ const DEDUP_MIN_CONTAINMENT_SIZE = 3;
 const defaultEstimateTokens = (text: string): number => {
   if (!text) return 1;
   const cjk = (text.match(/[\u3000-\u9fff\uac00-\ud7af]/g) ?? []).length;
-  const words = (text.replace(/[\u3000-\u9fff\uac00-\ud7af]/g, ' ').match(/[A-Za-z0-9_]+|[^\sA-Za-z0-9_]/g) ?? []).length;
+  const words = (text.replace(/[\u3000-\u9fff\uac00-\ud7af]/g, ' ').match(/[A-Za-z0-9_]+|[^\sA-Za-z0-9_]/g) ?? [])
+    .length;
   // ~0.75 word per token is a common ratio; bias slightly up for safety.
   return Math.max(1, Math.ceil(words / 0.75) + cjk);
 };
@@ -382,7 +389,17 @@ export const createSessionMemoryStore = (options: SessionMemoryStoreOptions): IS
     const id = requireSessionId(sessionId);
     let state = sessions.get(id);
     if (!state) {
-      state = { items: [], secrets: new Map(), embeddings: new Map(), counter: 0, compactions: 0, deduped: 0, recalls: 0, lastCompactedAt: null, tail: Promise.resolve() };
+      state = {
+        items: [],
+        secrets: new Map(),
+        embeddings: new Map(),
+        counter: 0,
+        compactions: 0,
+        deduped: 0,
+        recalls: 0,
+        lastCompactedAt: null,
+        tail: Promise.resolve(),
+      };
       sessions.set(id, state);
     }
     return state;
@@ -462,7 +479,9 @@ export const createSessionMemoryStore = (options: SessionMemoryStoreOptions): IS
       }
 
       // No ordinary notes left to fold — collapse the oldest summaries instead.
-      const summaries = state.items.filter((item) => item.kind === 'summary').toSorted((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
+      const summaries = state.items
+        .filter((item) => item.kind === 'summary')
+        .toSorted((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
       if (summaries.length >= 2) {
         const batch = summaries.slice(0, Math.max(2, Math.ceil(summaries.length / 2)));
         // eslint-disable-next-line no-await-in-loop
@@ -530,7 +549,14 @@ export const createSessionMemoryStore = (options: SessionMemoryStoreOptions): IS
         state.deduped++;
         if (duplicate.pinned) enforcePinnedCap(state);
         const compacted = await compact(state);
-        return { item: { ...duplicate }, deduped: true, truncated, compacted, tokensUsed: tokensOf(state), tokenBudget: policy.tokenBudget };
+        return {
+          item: { ...duplicate },
+          deduped: true,
+          truncated,
+          compacted,
+          tokensUsed: tokensOf(state),
+          tokenBudget: policy.tokenBudget,
+        };
       }
 
       const stamp = now();
@@ -559,7 +585,14 @@ export const createSessionMemoryStore = (options: SessionMemoryStoreOptions): IS
       }
 
       const compacted = await compact(state);
-      return { item: { ...item }, deduped: false, truncated, compacted, tokensUsed: tokensOf(state), tokenBudget: policy.tokenBudget };
+      return {
+        item: { ...item },
+        deduped: false,
+        truncated,
+        compacted,
+        tokensUsed: tokensOf(state),
+        tokenBudget: policy.tokenBudget,
+      };
     });
   };
 
@@ -744,16 +777,18 @@ export const createSessionMemoryStore = (options: SessionMemoryStoreOptions): IS
  * truncates to a bounded length. This still "shortens the context" (the explicit
  * requirement) without an extra model call.
  */
-export const heuristicSummarizer = (maxChars = 800): SuperMemorySummarizer => async (items) => {
-  const lines = items.map((item) => {
-    const firstSentence = item.text.split(/(?<=[.!?])\s/)[0] ?? item.text;
-    const condensed = firstSentence.length > 140 ? `${firstSentence.slice(0, 140)}…` : firstSentence;
-    return `- [${item.kind}] ${condensed}`;
-  });
-  const header = `Summary of ${items.length} earlier note(s):`;
-  const full = `${header}\n${lines.join('\n')}`;
-  return full.length > maxChars ? `${full.slice(0, maxChars)}…` : full;
-};
+export const heuristicSummarizer =
+  (maxChars = 800): SuperMemorySummarizer =>
+  async (items) => {
+    const lines = items.map((item) => {
+      const firstSentence = item.text.split(/(?<=[.!?])\s/)[0] ?? item.text;
+      const condensed = firstSentence.length > 140 ? `${firstSentence.slice(0, 140)}…` : firstSentence;
+      return `- [${item.kind}] ${condensed}`;
+    });
+    const header = `Summary of ${items.length} earlier note(s):`;
+    const full = `${header}\n${lines.join('\n')}`;
+    return full.length > maxChars ? `${full.slice(0, maxChars)}…` : full;
+  };
 
 /** Module-level singleton so the MCP wiring and the IPC bridge share one store. */
 let singleton: ISessionMemoryStore | undefined;
@@ -766,6 +801,7 @@ let singleton: ISessionMemoryStore | undefined;
  * the same memory.
  */
 export const getSessionMemoryStore = (): ISessionMemoryStore => {
-  if (!singleton) singleton = createSessionMemoryStore({ summarizer: heuristicSummarizer(), embedder: createLocalEmbedder() });
+  if (!singleton)
+    singleton = createSessionMemoryStore({ summarizer: heuristicSummarizer(), embedder: createLocalEmbedder() });
   return singleton;
 };

@@ -469,7 +469,7 @@ describe('createKnowledgeGraphBuilder.build', () => {
     expect(maxActive).toBe(2);
   });
 
-  it('fails fast and reports the CLI problem when a summary batch fails', async () => {
+  it('falls back deterministically when a summary batch fails', async () => {
     const events: Array<{ phase: KnowledgeBuildPhase; detail?: string }> = [];
     const chat = vi.fn(async (_model: string, system: string) => {
       if (system.includes('codebase folders')) {
@@ -483,18 +483,18 @@ describe('createKnowledgeGraphBuilder.build', () => {
       now: () => 1,
     });
 
-    await expect(
-      builder.build('/repo', 'gpt', undefined, {
-        onPhase: (phase, detail) => {
-          events.push({ phase, detail });
-        },
-      })
-    ).rejects.toThrow('Summary CLI failed for src');
+    const graph = await builder.build('/repo', 'gpt', undefined, {
+      onPhase: (phase, detail) => {
+        events.push({ phase, detail });
+      },
+    });
 
     expect(events).toContainEqual({
-      phase: 'error',
-      detail: 'Summary CLI failed for src: cli unavailable',
+      phase: 'summarizing',
+      detail: 'Summary CLI failed for src: cli unavailable; using fallback summaries',
     });
+    expect(graph.nodes.every((node) => node.summarySource === 'fallback')).toBe(true);
+    expect(graph.modules?.find((mod) => mod.id === 'src')?.summary.length).toBeGreaterThan(0);
   });
 
   it('keeps deterministic fallback for malformed summary output that is not a CLI failure', async () => {

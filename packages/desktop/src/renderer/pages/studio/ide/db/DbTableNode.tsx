@@ -49,7 +49,9 @@ const DbTableNode: React.FC<NodeProps<DbFlowNode>> = ({ data, selected }) => {
       <div className='flex items-center gap-6px px-10px h-30px bg-fill-2 border-b border-b-1'>
         <TableFile theme='outline' size={13} className='shrink-0 text-primary' />
         <span className='flex-1 truncate text-12px font-600 text-t-primary'>{name}</span>
-        {type === 'view' ? <span className='shrink-0 text-9px text-t-tertiary uppercase tracking-wide'>view</span> : null}
+        {type === 'view' ? (
+          <span className='shrink-0 text-9px text-t-tertiary uppercase tracking-wide'>view</span>
+        ) : null}
       </div>
       <div className='flex flex-col py-2px'>
         {columns.map((col) => (
@@ -61,7 +63,9 @@ const DbTableNode: React.FC<NodeProps<DbFlowNode>> = ({ data, selected }) => {
             ) : (
               <span className='shrink-0 inline-block size-10px' aria-hidden />
             )}
-            <span className={`flex-1 truncate ${col.primaryKey ? 'text-t-primary font-500' : 'text-t-secondary'}`}>{col.name}</span>
+            <span className={`flex-1 truncate ${col.primaryKey ? 'text-t-primary font-500' : 'text-t-secondary'}`}>
+              {col.name}
+            </span>
             <span className='shrink-0 text-t-tertiary'>{col.type}</span>
           </div>
         ))}

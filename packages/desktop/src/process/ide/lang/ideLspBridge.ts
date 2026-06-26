@@ -33,11 +33,7 @@
 import { bridge } from '@office-ai/platform';
 import { app } from 'electron';
 import { LSP_CATALOG, catalogForLanguage, type LspServerInfo } from './lspCatalog';
-import {
-  ensureServerInstalled,
-  listInstalledServerIds,
-  type InstallOutcome,
-} from './lspInstallManager';
+import { ensureServerInstalled, listInstalledServerIds, type InstallOutcome } from './lspInstallManager';
 import {
   disposeAllSessions,
   disposeSession,
@@ -87,7 +83,13 @@ export type LspEnsureResult = { serverId: string } | null;
 export type LspSyncRequest = { rootPath: string; serverId: string; filePath: string; content: string };
 export type LspPositionRequest = { rootPath: string; serverId: string; filePath: string; line: number; column: number };
 export type LspRenameRequest = LspPositionRequest & { newName: string };
-export type LspFormatRequest = { rootPath: string; serverId: string; filePath: string; tabSize?: number; insertSpaces?: boolean };
+export type LspFormatRequest = {
+  rootPath: string;
+  serverId: string;
+  filePath: string;
+  tabSize?: number;
+  insertSpaces?: boolean;
+};
 export type LspDocRequest = { rootPath: string; serverId: string; filePath: string };
 export type LspStopRequest = { rootPath: string; serverId: string };
 
@@ -143,7 +145,9 @@ export function registerIdeLspBridge(): void {
   ideLspChannels.list.provider(async (req): Promise<IdeLspResult<LspServerStatus[]>> => {
     try {
       const installed = new Set(await listInstalledServerIds());
-      const pool = req.language ? [catalogForLanguage(req.language)].filter((s): s is LspServerInfo => Boolean(s)) : [...LSP_CATALOG];
+      const pool = req.language
+        ? [catalogForLanguage(req.language)].filter((s): s is LspServerInfo => Boolean(s))
+        : [...LSP_CATALOG];
       return { ok: true, data: pool.map((server) => ({ server, installed: installed.has(server.id) })) };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };

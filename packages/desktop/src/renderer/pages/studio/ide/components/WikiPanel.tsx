@@ -322,7 +322,9 @@ const WikiReport: React.FC<{ wiki: UseRepoWiki }> = ({ wiki }) => {
         </Tag>
       ) : null}
       <div className='flex-1' />
-      {builtWhen ? <span className='text-11px text-t-tertiary'>{t('ide.wiki.savedAt', { when: builtWhen })}</span> : null}
+      {builtWhen ? (
+        <span className='text-11px text-t-tertiary'>{t('ide.wiki.savedAt', { when: builtWhen })}</span>
+      ) : null}
       {issueCount > fixedCount ? (
         <span className='text-11px text-t-tertiary'>· {issueCount - fixedCount} flagged</span>
       ) : null}

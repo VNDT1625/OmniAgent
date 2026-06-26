@@ -39,7 +39,8 @@
     "hooks": "Agent 鉤子",
     "spec": "規格",
     "lsp": "語言伺服器",
-    "expbase": "經驗庫"
+    "expbase": "經驗庫",
+    "team": "團隊"
   },
   "expbase": {
     "title": "經驗庫",
@@ -102,7 +103,11 @@
     "noFolder": "開啟一個資料夾以分析其規格。",
     "noSpec": "找不到規格目錄。請從對話中的「Planning」列建立一個。",
     "error": "無法分析規格：{{error}}",
-    "health": { "success": "健康", "warning": "需要改進", "error": "有風險" },
+    "health": {
+      "success": "健康",
+      "warning": "需要改進",
+      "error": "有風險"
+    },
     "metric": {
       "requirements": "需求",
       "earsCompliant": "符合 EARS",
@@ -140,7 +145,23 @@
     "emptyRequirements": "未解析到任何需求。請新增帶有驗收條件的需求。",
     "emptyPhases": "找不到任何階段。請將任務歸類在「## Phase N — …」標題之下。",
     "diagCount": "{{errors}} 個錯誤 · {{warnings}} 個警告",
-    "allClear": "規格嚴謹——未發現任何問題。"
+    "allClear": "規格嚴謹——未發現任何問題。",
+    "lifecycle": {
+      "title": "生命週期",
+      "approved": "已核准",
+      "phase": {
+        "requirements": "需求",
+        "design": "設計",
+        "tasks": "任務",
+        "execution": "執行",
+        "complete": "完成"
+      },
+      "approve": {
+        "requirements": "核准需求",
+        "design": "核准設計",
+        "tasks": "核准任務"
+      }
+    }
   },
   "hooks": {
     "title": "Agent 鉤子",
@@ -183,6 +204,33 @@
       "runCommand": "執行命令"
     }
   },
+  "quickrun": {
+    "title": "執行",
+    "platformDesktop": "桌面",
+    "run": "執行",
+    "runSaved": "執行（已儲存）",
+    "stop": "停止",
+    "cancel": "取消",
+    "launching": "正在終端機中啟動…",
+    "waiting": "正在等待 {{url}}…",
+    "running": "應用程式正在執行",
+    "runningSaved": "應用程式正在執行（已儲存設定）",
+    "manualToggle": "編輯執行指令",
+    "manualHint": "Wiki 尚無執行資料——請輸入如何啟動你的應用程式。它會被儲存以供下次使用。",
+    "commandPlaceholder": "啟動指令，例如 npm run dev",
+    "urlPlaceholder": "開發 URL，例如 http://localhost:5173",
+    "cwdPlaceholder": "子資料夾（選填）",
+    "editCommand": "編輯指令",
+    "failed": "執行失敗：{{detail}}",
+    "unsupportedWarn": "此專案無法以 {{picked}} 方式執行。已切換為 {{fallback}}。",
+    "unsupportedHint": "此專案不支援該平台。",
+    "setupWikiDone": "[wiki done]",
+    "setupSaved": "[saved]",
+    "setupPackage": "[package fallback]",
+    "setupLoading": "[checking wiki]",
+    "setupMissing": "[manual setup]",
+    "setupTooltip": "?? Quick Test ??????? wiki/runbook???????package.json?????????"
+  },
   "quicktest": {
     "title": "快速測試",
     "start": "開始",
@@ -213,6 +261,7 @@
     "events": "事件",
     "errorDetail": "錯誤",
     "interactionPath": "互動路徑",
+    "executedCode": "實際執行的程式碼",
     "suspectedFiles": "疑似檔案",
     "fixWithAgent": "用 Agent 修復",
     "restart": "新測試",
@@ -233,7 +282,22 @@
     "observationOnly": "Observation complete - no pass condition was set",
     "expectedTextFound": "Found expected text: {{text}}",
     "expectedTextMissing": "Expected text was not found: {{text}}",
-    "retry": "重試"
+    "retry": "重試",
+    "inspectTitle": "檢查元素",
+    "inspect": "檢查",
+    "inspectHint": "點擊應用中的某個元素，擷取其元件、檔案:行號、尺寸和樣式。",
+    "inspectNoTab": "請先在瀏覽器中載入你的應用。",
+    "inspectCancel": "取消",
+    "inspectActive": "點擊左側應用中的元素（按 Esc 取消）。",
+    "inspectUnresolved": "未關聯到原始檔",
+    "inspectExact": "精確",
+    "inspectHeuristic": "啟發式",
+    "inspectNone": "未對應",
+    "inspectClear": "清除選擇",
+    "inspectRequestPlaceholder": "描述對此元素的變更（例如：上移 20px、使用強調色）…",
+    "inspectAsk": "詢問智能體",
+    "viewportResponsive": "自適應",
+    "viewportHint": "預覽寬度：以桌面寬度渲染頁面（縮放以適應），使其版面與真實的寬螢幕瀏覽器一致，而非侷促的窄螢幕。自適應 = 按面板的實際寬度版面配置。"
   },
   "db": {
     "connections": "連線",
@@ -283,7 +347,64 @@
     "urlInvalid": "無法解析該連線 URL。",
     "urlFilled": "已根據連線 URL 填入表單。",
     "filterTables": "篩選資料表…",
-    "noMatch": "沒有符合篩選的資料表。"
+    "noMatch": "沒有符合篩選的資料表。",
+    "provider": "供應商",
+    "providerCustom": "自訂 / 自架",
+    "accountId": "帳戶 ID",
+    "accountIdPlaceholder": "Cloudflare 帳戶 ID",
+    "databaseId": "資料庫 ID",
+    "databaseIdPlaceholder": "Cloudflare D1 資料庫 ID",
+    "apiToken": "API 權杖",
+    "apiTokenPlaceholder": "具 D1 權限的 Cloudflare API 權杖",
+    "projectId": "專案 ID",
+    "projectIdPlaceholder": "Firebase / GCP 專案 ID",
+    "accessToken": "存取權杖",
+    "accessTokenPlaceholder": "Google OAuth 存取權杖",
+    "firestoreHint": "此處 Firestore 為唯讀：將集合作為資料表瀏覽。使用 \"SELECT * FROM <collection> [LIMIT n]\"。",
+    "diagramLoading": "正在產生 schema 圖…",
+    "diagramEmpty": "沒有可繪製的資料表。",
+    "diagramAria": "資料庫 schema 圖",
+    "moreColumns": "還有 {{n}} 欄",
+    "viewQuery": "查詢",
+    "viewDiagram": "圖表",
+    "viewGrid": "表格",
+    "viewChart": "圖表",
+    "analyze": "分析資料表",
+    "analyzing": "正在分析資料表…",
+    "analyzeEmpty": "尚無分析結果。",
+    "profileRows": "{{n}} 列",
+    "sampled": "抽樣",
+    "fillRate": "填充率",
+    "distinctCount": "{{n}} 個去重值",
+    "nullCount": "{{n}} 個 null",
+    "topValues": "高頻值",
+    "retry": "重試",
+    "chartNeedsNumeric": "此結果沒有可繪圖的數值欄。",
+    "chartLabelColumn": "標籤",
+    "chartValueColumn": "數值",
+    "chartRowNumber": "列號",
+    "chartAria": "查詢結果長條圖",
+    "help": {
+      "learnMore": "開啟存放該資訊的頁面",
+      "pasteUrl": "從服務商控制台貼上完整連線字串，即可自動填入下方所有欄位。",
+      "provider": "選擇你的託管服務以自動設定引擎、連接埠和 SSL。自架伺服器請選擇「自訂」。",
+      "file": "本機上 .sqlite / .db 檔案的絕對路徑。",
+      "host": "資料庫服務商連線設定中的伺服器位址。",
+      "port": "服務商連線設定中的連接埠（預設 Postgres 5432，MySQL 3306）。",
+      "database": "服務商連線設定中顯示的資料庫名稱。",
+      "user": "服務商連線設定中的資料庫使用者名稱。",
+      "password": "建立資料庫時設定的密碼。服務商不會再次顯示，遺失請重設。",
+      "accountId": "在 Cloudflare 控制台側邊欄查看（Workers & Pages → 概覽）。",
+      "databaseId": "在 Cloudflare 控制台開啟你的 D1 資料庫，ID 在其設定頁面。",
+      "apiToken": "在 Cloudflare → 個人資料 → API 權杖中建立具有 D1 讀取權限的權杖。",
+      "projectId": "在 Firebase 控制台 → 專案設定 → 一般中查看。",
+      "accessToken": "具有 Firestore 存取權限的短期 Google OAuth 存取權杖。"
+    },
+    "stat": {
+      "min": "最小",
+      "avg": "平均",
+      "max": "最大"
+    }
   },
   "terminal": {
     "title": "終端機",
@@ -391,24 +512,51 @@
     "mentionEmpty": "找不到符合的檔案。",
     "planning": "Planning",
     "planningHint": "When enabled, new IDE chats must clarify requirements and create a Kiro-style spec directory before implementation.",
+    "strictMode": "嚴格",
+    "strictModeHint": "啟用後，代理自帶的工具（Bash、Write、Edit、Read 等）會被自動拒絕，必須使用內建的 ide_* / MTUI 工具。",
     "planningStatus": {
       "title": "Spec",
-      "noSpec": "No spec directory yet",
-      "missing": "Spec required before implementation",
-      "incomplete": "Spec files incomplete",
-      "ready": "Spec active",
-      "done": "All tasks done",
-      "tasks": "{{done}}/{{total}} tasks done",
-      "create": "Create spec",
-      "missingFiles": "Missing {{files}}",
-      "execute": "Execute",
-      "executeManual": "Type plan path",
-      "mtuiOk": "MTUI OK",
-      "mtuiOkHint": "Strict MTUI Mode has no current violations.",
+      "noSpec": "尚無規格目錄",
+      "noActiveSpec": "未選取規格",
+      "noActiveHint": "選取或建立規格以開始規劃",
+      "noSpecsYet": "此工作區尚無任何規格",
+      "startPlanning": "開始規劃",
+      "clearActive": "清除目前規格",
+      "missing": "實作前需要規格",
+      "incomplete": "規格檔案不完整",
+      "ready": "規格已啟用",
+      "done": "所有任務已完成",
+      "tasks": "{{done}}/{{total}} 個任務已完成",
+      "create": "新增規格",
+      "missingFiles": "缺少 {{files}}",
+      "execute": "執行",
+      "executeManual": "輸入計劃路徑",
+      "executeLocked": "請先核准需求、設計與任務關卡，然後再執行。",
+      "phase": {
+        "requirements": "需求",
+        "design": "設計",
+        "tasks": "任務",
+        "execution": "執行",
+        "complete": "完成"
+      },
+      "phaseHint": {
+        "requirements": "定義需求，然後核准以繼續",
+        "design": "撰寫設計，然後核准以繼續",
+        "tasks": "拆分任務，然後核准以繼續",
+        "execution": "已核准，可開始執行任務",
+        "complete": "規格已完成"
+      },
+      "approve": {
+        "requirements": "核准需求",
+        "design": "核准設計",
+        "tasks": "核准任務"
+      },
+      "mtuiOk": "MTUI 正常",
+      "mtuiOkHint": "嚴格 MTUI 模式目前沒有違規。",
       "mtuiViolation": "MTUI {{count}}",
-      "mtuiViolationSummary": "{{count}} file(s) changed without matching MTUI history.",
-      "mtuiHistory": "Inspect MTUI history",
-      "mtuiResolvePrompt": "Resolve Strict MTUI Mode: run `mtui --json policy status`. If these are pre-existing user changes, ask before running `mtui --json policy baseline`; otherwise repair via MTUI and re-check. "
+      "mtuiViolationSummary": "{{count}} 個檔案變更沒有對應的 MTUI 歷史。",
+      "mtuiHistory": "檢查 MTUI 歷史",
+      "mtuiResolvePrompt": "解決嚴格 MTUI 模式：執行 'mtui --json policy status'。如果這些是既有的使用者變更，請先詢問再執行 'mtui --json policy baseline'；否則透過 MTUI 修復並重新檢查。 "
     }
   },
   "memory": {
@@ -433,6 +581,11 @@
     "clear": "清除",
     "clearConfirm": "清除此對話分頁的所有筆記和密鑰？此操作無法復原。",
     "refresh": "重新整理",
+    "add": "新增筆記",
+    "addPlaceholder": "為智能體記下一個事實、決策或待辦（Enter 儲存，Shift+Enter 換行）…",
+    "added": "筆記已儲存到工作階段記憶。",
+    "pinNew": "釘選（避免被自動摘要）",
+    "kindLabel": "類別",
     "kind": {
       "fact": "事實",
       "decision": "決策",
@@ -666,5 +819,64 @@
       "completed": "completed",
       "pending": "pending"
     }
+  },
+  "team": {
+    "title": "團隊編輯",
+    "subtitle": "誰在編輯什麼——依檔案分工",
+    "noFolder": "開啟一個資料夾以協調團隊編輯。",
+    "refresh": "重新整理",
+    "you": "你",
+    "youTag": "你",
+    "userIntent": "手動編輯中",
+    "participants": "正在協作",
+    "noParticipants": "尚無人在此協作。",
+    "heldFiles": "佔用的檔案",
+    "noLeases": "目前沒有檔案被佔用。",
+    "heldBy": "由 {{who}} 佔用",
+    "claim": "佔用",
+    "release": "釋放",
+    "activityTitle": "動態",
+    "noActivity": "尚無動態。",
+    "time": {
+      "secondsAgo": "{{count}} 秒前",
+      "minutesAgo": "{{count}} 分鐘前"
+    },
+    "activity": {
+      "join": "{{who}} 加入了",
+      "claim": "{{who}} 佔用了 {{file}}",
+      "release": "{{who}} 釋放了 {{file}}",
+      "write": "{{who}} 寫入了 {{file}}",
+      "expire": "{{who}} 對 {{file}} 的佔用已過期",
+      "conflict": "{{who}} 在 {{file}} 上被阻擋（由 {{holder}} 佔用）"
+    }
+  },
+  "teamCollab": {
+    "publish": "發布",
+    "join": "加入",
+    "stop": "停止",
+    "leave": "離開",
+    "copy": "複製",
+    "copied": "已複製到剪貼簿",
+    "roleHost": "主持中",
+    "rolePeer": "已加入",
+    "roleNone": "單人",
+    "idleHint": "發布此儲存庫讓團隊一起編輯，或加入某個主機。",
+    "needFolder": "請先開啟一個資料夾再發布。",
+    "joinedRepo": "已加入 {{repo}}",
+    "readOnlyNote": "Wiki 與 Understand 為唯讀（歸主機所有）",
+    "lanCode": "區域網路代碼",
+    "publicUrl": "公網網址",
+    "weakPassword": "線上分享時請使用至少 6 位且非預設的密碼。",
+    "publishTitle": "將此儲存庫發布給團隊",
+    "password": "密碼",
+    "onlineLabel": "透過網際網路分享",
+    "onlineHint": "開啟安全通道，讓其他網路的夥伴也能加入。",
+    "joinTitle": "加入團隊儲存庫",
+    "joinCodeLabel": "加入代碼或網址",
+    "joinCodePlaceholder": "192.168.1.20:5066 或 https://…",
+    "yourName": "你的名字",
+    "namePlaceholder": "隊友看到的名稱",
+    "peerPresence": "已連接主機",
+    "peerReadOnly": "你正透過主機編輯。寫入前請先佔用檔案，避免被 Agent 覆蓋。"
   }
 }

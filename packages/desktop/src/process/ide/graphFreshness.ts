@@ -30,33 +30,20 @@ type StaleMarker = {
 };
 
 const readStaleMarker = async (rootPath: string): Promise<StaleMarker | null> => {
-  // Prefer .omni (new), fallback to legacy .aionui for compatibility during transition
-  const candidates = [
-    path.join(rootPath, '.omni', 'understand', 'stale.json'),
-    path.join(rootPath, '.aionui', 'understand', 'stale.json'),
-  ];
-  for (const markerPath of candidates) {
-    try {
-      const text = await fs.readFile(markerPath, 'utf-8');
-      if (!text) continue;
-      const parsed = JSON.parse(text) as Partial<StaleMarker> & { firstUpdatedAt?: string };
-      return {
-        updatedAt: typeof parsed.updatedAt === 'string'
-          ? parsed.updatedAt
-          : typeof parsed.firstUpdatedAt === 'string'
-            ? parsed.firstUpdatedAt
-            : undefined,
-        paths: Array.isArray(parsed.paths)
-          ? parsed.paths
-              .filter((item): item is string => typeof item === 'string')
-              .map((item) => item.replace(/\\/g, '/'))
-          : [],
-      };
-    } catch {
-      continue;
-    }
+  try {
+    const text = await fs.readFile(path.join(rootPath, '.aionui', 'understand', 'stale.json'), 'utf-8');
+    const parsed = JSON.parse(text) as Partial<StaleMarker>;
+    return {
+      updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : undefined,
+      paths: Array.isArray(parsed.paths)
+        ? parsed.paths
+            .filter((item): item is string => typeof item === 'string')
+            .map((item) => item.replace(/\\/g, '/'))
+        : [],
+    };
+  } catch {
+    return null;
   }
-  return null;
 };
 
 export const assessGraphFreshness = async (

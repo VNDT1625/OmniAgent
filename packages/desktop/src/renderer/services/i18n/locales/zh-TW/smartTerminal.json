@@ -11,5 +11,10 @@
     "running": "正在執行 `{{program}}`…"
   },
   "autoRerunLabel": "出錯時建議修復",
-  "autoRerunHint": "當指令失敗且有已知替代指令時，在終端機中詢問 (y/N)，方便你或智慧代理輸入套用。"
+  "autoRerunHint": "當指令失敗且有已知替代指令時，在終端機中詢問 (y/N)，方便你或智慧代理輸入套用。",
+  "suggest": {
+    "title": "建議",
+    "ariaLabel": "指令建議",
+    "runCount": "{{count}} 次"
+  }
 }

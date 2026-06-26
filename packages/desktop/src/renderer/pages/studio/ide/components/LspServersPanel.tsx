@@ -89,7 +89,7 @@ const LspServersPanel: React.FC<LspServersPanelProps> = ({ rootPath }) => {
           byServer.set(status.server.id, { status, languages: status.server.languages, fileCount: 0 });
         }
       }
-      setRecommendations([...byServer.values()].sort((a, b) => b.fileCount - a.fileCount));
+      setRecommendations([...byServer.values()].toSorted((a, b) => b.fileCount - a.fileCount));
     } finally {
       setLoading(false);
     }
@@ -154,10 +154,7 @@ const LspServersPanel: React.FC<LspServersPanelProps> = ({ rootPath }) => {
           <Empty description={t('ide.lsp.none')} />
         ) : (
           recommendations.map(({ status, languages, fileCount }) => (
-            <div
-              key={status.server.id}
-              className='flex items-center gap-12px p-12px rd-10px border border-b-1 bg-2'
-            >
+            <div key={status.server.id} className='flex items-center gap-12px p-12px rd-10px border border-b-1 bg-2'>
               <span className='size-36px shrink-0 flex-center rd-8px bg-primary-light-1 text-primary'>
                 <Lightning theme='outline' size={18} />
               </span>

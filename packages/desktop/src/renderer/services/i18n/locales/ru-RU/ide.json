@@ -39,7 +39,8 @@
     "hooks": "Хуки агента",
     "spec": "Spec",
     "lsp": "Языковые серверы",
-    "expbase": "База опыта"
+    "expbase": "База опыта",
+    "team": "Команда"
   },
   "expbase": {
     "title": "База опыта",
@@ -102,12 +103,41 @@
     "noFolder": "Откройте папку, чтобы проанализировать её spec.",
     "noSpec": "Каталог spec не найден. Создайте его на панели планирования в Чате.",
     "error": "Не удалось проанализировать spec: {{error}}",
-    "health": { "success": "В порядке", "warning": "Требует доработки", "error": "Под угрозой" },
-    "metric": { "requirements": "Требования", "earsCompliant": "Соответствует EARS", "covered": "Покрыто", "verified": "Проверено", "activePhase": "Активная фаза", "allDone": "Всё готово" },
-    "section": { "requirements": "Требования EARS", "traceability": "Трассируемость (Требование ↔ Задача ↔ Тест)", "phases": "Фазовые гейты", "diagnostics": "Диагностика" },
-    "ears": { "ubiquitous": "Повсеместное", "event": "Событие", "state": "Состояние", "unwanted": "Нежелательное", "optional": "Опциональное", "unknown": "Не EARS" },
+    "health": {
+      "success": "В порядке",
+      "warning": "Требует доработки",
+      "error": "Под угрозой"
+    },
+    "metric": {
+      "requirements": "Требования",
+      "earsCompliant": "Соответствует EARS",
+      "covered": "Покрыто",
+      "verified": "Проверено",
+      "activePhase": "Активная фаза",
+      "allDone": "Всё готово"
+    },
+    "section": {
+      "requirements": "Требования EARS",
+      "traceability": "Трассируемость (Требование ↔ Задача ↔ Тест)",
+      "phases": "Фазовые гейты",
+      "diagnostics": "Диагностика"
+    },
+    "ears": {
+      "ubiquitous": "Повсеместное",
+      "event": "Событие",
+      "state": "Состояние",
+      "unwanted": "Нежелательное",
+      "optional": "Опциональное",
+      "unknown": "Не EARS"
+    },
     "criteriaCount": "{{count}} критериев",
-    "trace": { "tasks": "{{count}} задач(и)", "done": "В процессе / готово", "todo": "Нет выполненных задач", "verified": "Проверено в verification.md", "unverified": "Ещё не проверено" },
+    "trace": {
+      "tasks": "{{count}} задач(и)",
+      "done": "В процессе / готово",
+      "todo": "Нет выполненных задач",
+      "verified": "Проверено в verification.md",
+      "unverified": "Ещё не проверено"
+    },
     "dodPresent": "Определение готовности",
     "dodMissing": "Нет определения готовности",
     "checkpoint": "Контрольная точка",
@@ -115,7 +145,23 @@
     "emptyRequirements": "Требования не разобраны. Добавьте требования с критериями приёмки.",
     "emptyPhases": "Фазы не найдены. Сгруппируйте задачи под заголовками '## Phase N — …'.",
     "diagCount": "{{errors}} ошибок · {{warnings}} предупреждений",
-    "allClear": "Spec дисциплинирован — проблем не найдено."
+    "allClear": "Spec дисциплинирован — проблем не найдено.",
+    "lifecycle": {
+      "title": "Жизненный цикл",
+      "approved": "Одобрено",
+      "phase": {
+        "requirements": "Требования",
+        "design": "Дизайн",
+        "tasks": "Задачи",
+        "execution": "Выполнение",
+        "complete": "Готово"
+      },
+      "approve": {
+        "requirements": "Одобрить требования",
+        "design": "Одобрить дизайн",
+        "tasks": "Одобрить задачи"
+      }
+    }
   },
   "hooks": {
     "title": "Хуки агента",
@@ -158,6 +204,33 @@
       "runCommand": "Выполнить команду"
     }
   },
+  "quickrun": {
+    "title": "Запуск",
+    "platformDesktop": "Десктоп",
+    "run": "Запустить",
+    "runSaved": "Запустить (сохранено)",
+    "stop": "Остановить",
+    "cancel": "Отмена",
+    "launching": "Запуск в терминале…",
+    "waiting": "Ожидание {{url}}…",
+    "running": "Приложение запущено",
+    "runningSaved": "Приложение запущено (сохранённый рецепт)",
+    "manualToggle": "Изменить команду запуска",
+    "manualHint": "В вики пока нет данных о запуске — укажите, как запустить приложение. Команда сохранится на будущее.",
+    "commandPlaceholder": "Команда запуска, напр. npm run dev",
+    "urlPlaceholder": "URL разработки, напр. http://localhost:5173",
+    "cwdPlaceholder": "Подпапка (необязательно)",
+    "editCommand": "Изменить команду",
+    "failed": "Сбой запуска: {{detail}}",
+    "unsupportedWarn": "Этот проект не запускается как {{picked}}. Переключено на {{fallback}}.",
+    "unsupportedHint": "Этот проект не поддерживает эту платформу.",
+    "setupWikiDone": "[wiki done]",
+    "setupSaved": "[saved]",
+    "setupPackage": "[package fallback]",
+    "setupLoading": "[checking wiki]",
+    "setupMissing": "[manual setup]",
+    "setupTooltip": "??????????, ?????? Quick Test ???? ??????: wiki/runbook, ??????????? ??????, package.json ??? ?????? ????."
+  },
   "quicktest": {
     "title": "Быстрый тест",
     "start": "Начать",
@@ -188,6 +261,7 @@
     "events": "событий",
     "errorDetail": "Ошибка",
     "interactionPath": "Путь взаимодействия",
+    "executedCode": "Код, который действительно выполнялся",
     "suspectedFiles": "Подозреваемые файлы",
     "fixWithAgent": "Исправить с агентом",
     "restart": "Новый тест",
@@ -208,7 +282,22 @@
     "observationOnly": "Observation complete - no pass condition was set",
     "expectedTextFound": "Found expected text: {{text}}",
     "expectedTextMissing": "Expected text was not found: {{text}}",
-    "retry": "Повторить"
+    "retry": "Повторить",
+    "inspectTitle": "Инспектировать элемент",
+    "inspect": "Инспектировать",
+    "inspectHint": "Кликните по элементу в приложении, чтобы получить его компонент, file:строку, размеры и стили.",
+    "inspectNoTab": "Сначала загрузите приложение в браузере.",
+    "inspectCancel": "Отмена",
+    "inspectActive": "Кликните по элементу в приложении слева (Esc для отмены).",
+    "inspectUnresolved": "Не привязано к файлу исходного кода",
+    "inspectExact": "точно",
+    "inspectHeuristic": "эвристика",
+    "inspectNone": "без привязки",
+    "inspectClear": "Очистить выбор",
+    "inspectRequestPlaceholder": "Опишите изменение для этого элемента (напр.: поднять на 20px, использовать акцентный цвет)…",
+    "inspectAsk": "Спросить агента",
+    "viewportResponsive": "Адаптивная",
+    "viewportHint": "Ширина предпросмотра: рендер страницы в десктопной ширине (с масштабированием по размеру), чтобы её макет соответствовал настоящему широкому браузеру, а не узкому. Адаптивная = макет по фактической ширине панели."
   },
   "db": {
     "connections": "Соединения",
@@ -258,7 +347,64 @@
     "urlInvalid": "Не удалось разобрать этот URL подключения.",
     "urlFilled": "Форма заполнена из URL подключения.",
     "filterTables": "Фильтр таблиц…",
-    "noMatch": "Нет таблиц, соответствующих фильтру."
+    "noMatch": "Нет таблиц, соответствующих фильтру.",
+    "provider": "Провайдер",
+    "providerCustom": "Свой / собственный хостинг",
+    "accountId": "ID аккаунта",
+    "accountIdPlaceholder": "ID аккаунта Cloudflare",
+    "databaseId": "ID базы данных",
+    "databaseIdPlaceholder": "ID базы данных Cloudflare D1",
+    "apiToken": "API-токен",
+    "apiTokenPlaceholder": "API-токен Cloudflare с доступом к D1",
+    "projectId": "ID проекта",
+    "projectIdPlaceholder": "ID проекта Firebase / GCP",
+    "accessToken": "Токен доступа",
+    "accessTokenPlaceholder": "Токен доступа Google OAuth",
+    "firestoreHint": "Firestore доступен только для чтения. Коллекции отображаются как таблицы. Используйте \"SELECT * FROM <collection> [LIMIT n]\".",
+    "diagramLoading": "Построение диаграммы схемы…",
+    "diagramEmpty": "Нет таблиц для отображения.",
+    "diagramAria": "Диаграмма схемы базы данных",
+    "moreColumns": "ещё {{n}} столбцов",
+    "viewQuery": "Запрос",
+    "viewDiagram": "Диаграмма",
+    "viewGrid": "Таблица",
+    "viewChart": "График",
+    "analyze": "Анализ таблицы",
+    "analyzing": "Анализ таблицы…",
+    "analyzeEmpty": "Пока нет результатов анализа.",
+    "profileRows": "{{n}} строк",
+    "sampled": "выборка",
+    "fillRate": "Заполненность",
+    "distinctCount": "{{n}} уникальных",
+    "nullCount": "{{n}} null",
+    "topValues": "Частые значения",
+    "retry": "Повторить",
+    "chartNeedsNumeric": "В этом результате нет числовых столбцов для графика.",
+    "chartLabelColumn": "Метка",
+    "chartValueColumn": "Значение",
+    "chartRowNumber": "Номер строки",
+    "chartAria": "Столбчатая диаграмма результата запроса",
+    "help": {
+      "learnMore": "Открыть страницу, где находится это значение",
+      "pasteUrl": "Вставьте полную строку подключения из панели вашего провайдера, чтобы автоматически заполнить все поля ниже.",
+      "provider": "Выберите управляемый хостинг, чтобы автоматически задать движок, порт и SSL. Выберите «Свой» для собственного сервера.",
+      "file": "Абсолютный путь к локальному файлу .sqlite / .db на этом компьютере.",
+      "host": "Адрес сервера из настроек подключения вашего провайдера базы данных.",
+      "port": "Порт из настроек подключения провайдера (по умолчанию Postgres 5432, MySQL 3306).",
+      "database": "Имя базы данных, показанное в настройках подключения провайдера.",
+      "user": "Имя пользователя базы данных из настроек подключения провайдера.",
+      "password": "Пароль, заданный при создании базы данных. Провайдеры не показывают его повторно — сбросьте, если потеряли.",
+      "accountId": "Найдите на боковой панели Cloudflare (Workers & Pages → Обзор).",
+      "databaseId": "Откройте базу D1 в панели Cloudflare; идентификатор на странице её настроек.",
+      "apiToken": "Создайте API-токен с доступом на чтение D1 в Cloudflare → Мой профиль → API Tokens.",
+      "projectId": "Найдите в Firebase console → Настройки проекта → Общие.",
+      "accessToken": "Краткосрочный токен доступа Google OAuth с доступом к Firestore."
+    },
+    "stat": {
+      "min": "Мин",
+      "avg": "Сред",
+      "max": "Макс"
+    }
   },
   "terminal": {
     "title": "Терминал",
@@ -366,24 +512,51 @@
     "mentionEmpty": "Совпадений не найдено.",
     "planning": "Planning",
     "planningHint": "When enabled, new IDE chats must clarify requirements and create a Kiro-style spec directory before implementation.",
+    "strictMode": "Строгий",
+    "strictModeHint": "When enabled, the agent's own tools (Bash, Write, Edit, Read, …) are auto-denied and it must use the built-in ide_* / MTUI tools.",
     "planningStatus": {
       "title": "Spec",
-      "noSpec": "No spec directory yet",
-      "missing": "Spec required before implementation",
-      "incomplete": "Spec files incomplete",
-      "ready": "Spec active",
-      "done": "All tasks done",
-      "tasks": "{{done}}/{{total}} tasks done",
-      "create": "Create spec",
-      "missingFiles": "Missing {{files}}",
-      "execute": "Execute",
-      "executeManual": "Type plan path",
+      "noSpec": "Каталога spec пока нет",
+      "noActiveSpec": "Активный spec не выбран",
+      "noActiveHint": "Выберите или создайте spec, чтобы начать планирование",
+      "noSpecsYet": "В этой рабочей области пока нет spec",
+      "startPlanning": "Начать планирование",
+      "clearActive": "Сбросить активный spec",
+      "missing": "Перед реализацией нужен spec",
+      "incomplete": "Файлы spec неполные",
+      "ready": "Spec активен",
+      "done": "Все задачи завершены",
+      "tasks": "{{done}}/{{total}} задач завершено",
+      "create": "Новый spec",
+      "missingFiles": "Отсутствуют {{files}}",
+      "execute": "Выполнить",
+      "executeManual": "Введите путь к плану",
+      "executeLocked": "Перед выполнением одобрите шлюзы требований, дизайна и задач.",
+      "phase": {
+        "requirements": "Требования",
+        "design": "Дизайн",
+        "tasks": "Задачи",
+        "execution": "Выполнение",
+        "complete": "Готово"
+      },
+      "phaseHint": {
+        "requirements": "Опишите требования, затем одобрите для продолжения",
+        "design": "Подготовьте дизайн, затем одобрите для продолжения",
+        "tasks": "Разбейте работу на задачи, затем одобрите для продолжения",
+        "execution": "Одобрено, можно выполнять задачи",
+        "complete": "Spec завершен"
+      },
+      "approve": {
+        "requirements": "Одобрить требования",
+        "design": "Одобрить дизайн",
+        "tasks": "Одобрить задачи"
+      },
       "mtuiOk": "MTUI OK",
-      "mtuiOkHint": "Strict MTUI Mode has no current violations.",
+      "mtuiOkHint": "В строгом режиме MTUI сейчас нет нарушений.",
       "mtuiViolation": "MTUI {{count}}",
-      "mtuiViolationSummary": "{{count}} file(s) changed without matching MTUI history.",
-      "mtuiHistory": "Inspect MTUI history",
-      "mtuiResolvePrompt": "Resolve Strict MTUI Mode: run `mtui --json policy status`. If these are pre-existing user changes, ask before running `mtui --json policy baseline`; otherwise repair via MTUI and re-check. "
+      "mtuiViolationSummary": "{{count}} файл(ов) изменены без соответствующей истории MTUI.",
+      "mtuiHistory": "Проверить историю MTUI",
+      "mtuiResolvePrompt": "Устраните строгий режим MTUI: выполните 'mtui --json policy status'. Если это существующие пользовательские изменения, спросите перед 'mtui --json policy baseline'; иначе исправьте через MTUI и проверьте снова. "
     }
   },
   "memory": {
@@ -408,6 +581,11 @@
     "clear": "Очистить",
     "clearConfirm": "Очистить все заметки и секреты этой вкладки чата? Это нельзя отменить.",
     "refresh": "Обновить",
+    "add": "Добавить заметку",
+    "addPlaceholder": "Запишите факт, решение или задачу для агента (Enter — сохранить, Shift+Enter — новая строка)…",
+    "added": "Заметка сохранена в память сессии.",
+    "pinNew": "Закрепить (защитить от автосвёртки)",
+    "kindLabel": "Категория",
     "kind": {
       "fact": "факт",
       "decision": "решение",
@@ -641,5 +819,64 @@
       "completed": "completed",
       "pending": "pending"
     }
+  },
+  "team": {
+    "title": "Командное редактирование",
+    "subtitle": "Кто что редактирует — делите работу по файлам",
+    "noFolder": "Откройте папку, чтобы координировать командное редактирование.",
+    "refresh": "Обновить",
+    "you": "Вы",
+    "youTag": "вы",
+    "userIntent": "редактирую вручную",
+    "participants": "Работают здесь",
+    "noParticipants": "Здесь пока никто не работает.",
+    "heldFiles": "Занятые файлы",
+    "noLeases": "Сейчас нет занятых файлов.",
+    "heldBy": "занят {{who}}",
+    "claim": "Занять",
+    "release": "Освободить",
+    "activityTitle": "Активность",
+    "noActivity": "Пока нет активности.",
+    "time": {
+      "secondsAgo": "{{count}} с назад",
+      "minutesAgo": "{{count}} мин назад"
+    },
+    "activity": {
+      "join": "{{who}} присоединился",
+      "claim": "{{who}} занял {{file}}",
+      "release": "{{who}} освободил {{file}}",
+      "write": "{{who}} записал {{file}}",
+      "expire": "Аренда {{file}} у {{who}} истекла",
+      "conflict": "{{who}} заблокирован на {{file}} (занят {{holder}})"
+    }
+  },
+  "teamCollab": {
+    "publish": "Опубликовать",
+    "join": "Присоединиться",
+    "stop": "Остановить",
+    "leave": "Выйти",
+    "copy": "Копировать",
+    "copied": "Скопировано в буфер обмена",
+    "roleHost": "Хостинг",
+    "rolePeer": "Присоединён",
+    "roleNone": "Соло",
+    "idleHint": "Опубликуйте этот репозиторий, чтобы команда редактировала его вместе, или присоединитесь к хосту.",
+    "needFolder": "Сначала откройте папку, чтобы опубликовать её.",
+    "joinedRepo": "Присоединились к {{repo}}",
+    "readOnlyNote": "Wiki и Understand доступны только для чтения (принадлежат хосту)",
+    "lanCode": "Код LAN",
+    "publicUrl": "Публичный URL",
+    "weakPassword": "При публикации в интернете используйте пароль не менее 6 символов (не стандартный).",
+    "publishTitle": "Опубликовать этот репозиторий для команды",
+    "password": "Пароль",
+    "onlineLabel": "Поделиться через интернет",
+    "onlineHint": "Открывает защищённый туннель, чтобы участники из другой сети могли присоединиться.",
+    "joinTitle": "Присоединиться к репозиторию команды",
+    "joinCodeLabel": "Код подключения или URL",
+    "joinCodePlaceholder": "192.168.1.20:5066 или https://…",
+    "yourName": "Ваше имя",
+    "namePlaceholder": "Как вас видят коллеги",
+    "peerPresence": "Активен на хосте",
+    "peerReadOnly": "Вы редактируете через хост. Займите файл перед записью, чтобы агенты его не перезаписали."
   }
 }

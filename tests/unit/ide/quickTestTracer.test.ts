@@ -90,7 +90,10 @@ describe('createQuickTestTracer', () => {
     const { wc, fireMessage } = makeFakeWc();
     const tracer = createQuickTestTracer({ getWebContents: () => wc, now: () => 1000 });
     await tracer.start('/repo');
-    fireMessage('Network.loadingFailed', { request: { url: 'http://localhost/api/x' }, errorText: 'net::ERR_CONNECTION_REFUSED' });
+    fireMessage('Network.loadingFailed', {
+      request: { url: 'http://localhost/api/x' },
+      errorText: 'net::ERR_CONNECTION_REFUSED',
+    });
     const ev = tracer.currentEvents().find((e) => e.kind === 'network');
     expect(ev).toMatchObject({ kind: 'network', status: 0, error: 'net::ERR_CONNECTION_REFUSED' });
     // A transport failure (status 0 + error) now counts as an error → early-exit.
@@ -198,7 +201,11 @@ describe('createQuickTestTracer', () => {
   it('parses DOM markers at record time (live), not only on stop', async () => {
     const { wc, fireMessage } = makeFakeWc();
     const streamed: TraceEvent[] = [];
-    const tracer = createQuickTestTracer({ getWebContents: () => wc, now: () => 1000, onEvent: (e) => streamed.push(e) });
+    const tracer = createQuickTestTracer({
+      getWebContents: () => wc,
+      now: () => 1000,
+      onEvent: (e) => streamed.push(e),
+    });
     await tracer.start('/repo');
     fireMessage('Runtime.consoleAPICalled', {
       type: 'log',
@@ -213,7 +220,10 @@ describe('createQuickTestTracer', () => {
     const { wc, fireMessage } = makeFakeWc();
     const tracer = createQuickTestTracer({ getWebContents: () => wc, now: () => 1000 });
     await tracer.start('/repo');
-    fireMessage('Runtime.consoleAPICalled', { type: 'log', args: [{ value: '[omni-qt-click]{"selector":"button#buy","text":"Buy"}' }] });
+    fireMessage('Runtime.consoleAPICalled', {
+      type: 'log',
+      args: [{ value: '[omni-qt-click]{"selector":"button#buy","text":"Buy"}' }],
+    });
     // Flood with routine logs well past the buffer cap.
     for (let i = 0; i < 300; i += 1) {
       fireMessage('Runtime.consoleAPICalled', { type: 'log', args: [{ value: `noise ${i}` }] });
@@ -254,7 +264,9 @@ describe('createQuickTestTracer', () => {
     expect(tracer.hasError()).toBe(false);
     expect(tracer.recordedCount()).toBe(1);
 
-    fireMessage('Runtime.exceptionThrown', { exceptionDetails: { text: 'boom', exception: { description: 'Error: boom' } } });
+    fireMessage('Runtime.exceptionThrown', {
+      exceptionDetails: { text: 'boom', exception: { description: 'Error: boom' } },
+    });
     expect(tracer.hasError()).toBe(true);
     expect(tracer.recordedCount()).toBe(2);
   });
@@ -269,7 +281,10 @@ describe('createQuickTestTracer', () => {
     });
     await tracer.start('/repo');
     fireMessage('Runtime.consoleAPICalled', { type: 'error', args: [{ value: 'err' }] });
-    fireMessage('Network.responseReceived', { response: { url: 'http://localhost/x', status: 200 }, request: { method: 'GET' } });
+    fireMessage('Network.responseReceived', {
+      response: { url: 'http://localhost/x', status: 200 },
+      request: { method: 'GET' },
+    });
     expect(seen).toEqual(['console', 'network']);
   });
 
@@ -290,5 +305,69 @@ describe('createQuickTestTracer', () => {
     const trace = tracer.stop();
     expect(trace.platform).toBe('web');
     expect(tracer.isActive()).toBe(false);
+  });
+
+  it('attributes per-interaction coverage to the click that triggered it', async () => {
+    // A fake WC whose Profiler returns a GROWING cumulative coverage, so each
+    // take yields a delta. handleA runs after click A, handleB after click B.
+    let take = 0;
+    const wc: CdpWebContents = {
+      debugger: {
+        attach: vi.fn(),
+        detach: vi.fn(),
+        isAttached: vi.fn(() => true),
+        removeAllListeners: vi.fn(),
+        on: vi.fn(),
+        sendCommand: vi.fn(async (method: string) => {
+          if (method === 'Debugger.getScriptSource') {
+            return { scriptSource: 'function handleA(){}\nfunction handleB(){}' };
+          }
+          if (method === 'Profiler.takePreciseCoverage') {
+            take += 1;
+            // Take 1 (after click B closes click A): handleA ran once.
+            // Take 2 (finalize pending B): handleB ran once too (cumulative).
+            const handleA = { functionName: 'handleA', ranges: [{ startOffset: 0, endOffset: 18, count: 1 }] };
+            const handleB = {
+              functionName: 'handleB',
+              ranges: [{ startOffset: 20, endOffset: 38, count: take >= 2 ? 1 : 0 }],
+            };
+            return {
+              result: [{ scriptId: '1', url: 'http://localhost:5173/src/app.js', functions: [handleA, handleB] }],
+            };
+          }
+          return {};
+        }),
+      },
+      executeJavaScript: vi.fn(async () => undefined),
+    };
+    let listener: ((e: unknown, m: string, p: Record<string, unknown>) => void) | null = null;
+    (wc.debugger.on as ReturnType<typeof vi.fn>).mockImplementation((_e, l) => {
+      listener = l;
+    });
+    const tracer = createQuickTestTracer({ getWebContents: () => wc, now: () => 1000 });
+    await tracer.start('/repo');
+    const fire = (m: string, p: Record<string, unknown>): void => listener?.(null, m, p);
+
+    // Click A, then Click B (B closes A → A's delta = handleA).
+    fire('Runtime.consoleAPICalled', {
+      type: 'log',
+      args: [{ value: '[omni-qt-click]' + JSON.stringify({ selector: 'button#a', text: 'A' }) }],
+    });
+    fire('Runtime.consoleAPICalled', {
+      type: 'log',
+      args: [{ value: '[omni-qt-click]' + JSON.stringify({ selector: 'button#b', text: 'B' }) }],
+    });
+    await tracer.finalizeCoverage();
+    const trace = tracer.stop();
+
+    const clickA = trace.events.find((e) => e.kind === 'click' && e.text === 'A');
+    const clickB = trace.events.find((e) => e.kind === 'click' && e.text === 'B');
+    // Click A carries the function that ran because of it (handleA), not handleB.
+    expect(clickA?.coverage?.some((f) => f.functionName === 'handleA')).toBe(true);
+    expect(clickA?.coverage?.some((f) => f.functionName === 'handleB')).toBe(false);
+    // Click B (the last interaction) carries its own delta (handleB).
+    expect(clickB?.coverage?.some((f) => f.functionName === 'handleB')).toBe(true);
+    // The session total is still present on the trace.
+    expect(trace.coverage && trace.coverage.length > 0).toBe(true);
   });
 });

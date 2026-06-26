@@ -1,0 +1,154 @@
+{
+  "title": "External MCP Gateway",
+  "description": "Lets external AI hosts (Claude Desktop, Cursor, ChatGPT) call AionUi's IDE tools through a token-protected loopback endpoint. Disabled by default; only reachable from this machine (127.0.0.1).",
+  "internalHint": "AionUi's built-in AI already uses MTUI, Terminal and IDE tools directly. Enable this gateway only for other local apps or Web AI.",
+  "enable": "Enable gateway",
+  "enableHint": "When on, the loopback HTTP+SSE server starts and external hosts can connect with the bearer token below.",
+  "port": "Loopback port",
+  "portHint": "Pick any free port between 1024 and 65535. Default 47821.",
+  "rootPath": {
+    "label": "Workspace folder",
+    "pick": "Pick folder",
+    "hint": "External sessions are pinned to this folder. The bootstrap response reports it as the workspace root.",
+    "empty": "No folder selected — pick one before enabling the gateway."
+  },
+  "token": {
+    "label": "Bearer token",
+    "reveal": "Reveal",
+    "hide": "Hide",
+    "copy": "Copy",
+    "regenerate": "Regenerate",
+    "confirmRegenerate": "Regenerate the token? Every external client will lose its connection and must paste the new token.",
+    "copied": "Token copied to clipboard.",
+    "missing": "No token yet — enable the gateway to mint one."
+  },
+  "dangerous": {
+    "label": "Allow dangerous tools",
+    "hint": "Off by default. When on, external hosts can call ide_command (shell), team_write_file (full-file write), db_* (SQL), and ide_memory_set_secret."
+  },
+  "status": {
+    "running": "Running",
+    "stopped": "Stopped",
+    "error": "Error"
+  },
+  "mcpJson": {
+    "title": "Claude Desktop / Cursor mcp.json snippet",
+    "hint": "Paste this into your client's MCP config, then restart the client.",
+    "copy": "Copy snippet"
+  },
+  "web": {
+    "title": "Web AI access",
+    "description": "Publish a temporary HTTPS MCP endpoint for ChatGPT, Claude, Grok and other Web AI connectors.",
+    "active": "Public session active",
+    "inactive": "Not published",
+    "start": "Start Web session",
+    "stop": "Stop and revoke",
+    "rotate": "Rotate session",
+    "started": "Web AI session started.",
+    "stopped": "Web AI session stopped and all public tokens were revoked.",
+    "startFailed": "Could not start Web AI access.",
+    "timeout": "Timed out waiting for the tunnel to start. Check your network, or restart the app and try again.",
+    "securityHint": "Web Access exposes the same in-app IDE tools (search, read, terminal, edit, etc.) as your local agent — only through a Cloudflare quick tunnel. The session stays open until you disable it.",
+    "mcpUrl": "Streamable HTTP MCP URL",
+    "sessionToken": "Temporary Bearer token",
+    "rotateToReveal": "Rotate the Web session to reveal a new token",
+    "debugTitle": "Browser link fallback",
+    "debugHint": "For Web AIs without an MCP connector, create a short-lived read-only bootstrap URL.",
+    "createDebug": "Create browser link",
+    "revokeDebug": "Revoke links",
+    "debugCreated": "Read-only browser link created.",
+    "debugRevoked": "All browser links were revoked.",
+    "debugLimits": "Browser-friendly read-only links. Active until you revoke them or disable Web Access.",
+    "tokenLifetime": "The token stays valid until you disable Web Access or rotate it.",
+    "progress": {
+      "checkingCloudflared": "Checking the cloudflared binary…",
+      "installingCloudflared": "Installing cloudflared (one-time, ~5 MB)…",
+      "mintingToken": "Generating session token…",
+      "spawningTunnel": "Starting Cloudflare tunnel…",
+      "waitingTunnelUrl": "Waiting for Cloudflare to assign a public URL (~10–20 s)…",
+      "ready": "Web Access ready.",
+      "failed": "Web Access failed: {{error}}",
+      "stopping": "Stopping Web Access…",
+      "stopped": "Web Access stopped."
+    }
+  },
+  "auth": {
+    "title": "인증 모드",
+    "description": "Web AI 클라이언트가 공개 터널에 인증하는 방식을 선택합니다. 로컬 Bearer 토큰은 Claude Desktop / Cursor에 항상 유효합니다.",
+    "modeLabel": "인증 모드",
+    "mode": {
+      "bearer": "Bearer 토큰",
+      "oauth": "OAuth 2.1",
+      "mixed": "혼합",
+      "none": "인증 없음"
+    },
+    "modeHint": {
+      "bearer": "기존의 단기 Bearer 토큰. 클라이언트의 Authorization 헤더에 붙여넣으세요.",
+      "oauth": "PKCE 기반 OAuth 2.1. ChatGPT MCP 커넥터와 호환되며 클라이언트가 스스로 등록·인가합니다.",
+      "mixed": "유효한 OAuth 액세스 토큰 또는 Bearer 토큰을 모두 허용합니다.",
+      "none": "인증 없음——모든 요청을 허용합니다. 터널 뒤의 일회성 로컬 데모에만 사용하세요."
+    },
+    "ttlLabel": "유휴 세션 수명",
+    "ttlHint": "부트스트랩된 세션이 활동 없이 유효하게 유지되는 시간. 새 세션에 적용됩니다.",
+    "ttlUnit": "시간",
+    "oauth": {
+      "title": "등록된 OAuth 클라이언트",
+      "hint": "OAuth 흐름을 완료한 클라이언트. 클라이언트를 취소하면 모든 토큰이 즉시 무효화됩니다.",
+      "empty": "아직 등록된 OAuth 클라이언트가 없습니다.",
+      "copyMetadata": "디스커버리 URL 복사",
+      "tokenCount": "활성 토큰 {{count}}개",
+      "revoke": "취소",
+      "revokeTitle": "OAuth 클라이언트를 취소하시겠습니까?",
+      "revokeConfirm": "이 클라이언트와 모든 토큰이 즉시 취소됩니다. 다시 연결하려면 재등록 및 재인가가 필요합니다.",
+      "revoked": "OAuth 클라이언트를 취소했습니다."
+    },
+    "tools": {
+      "title": "도구별 권한",
+      "hint": "개별 도구를 허용하거나 거부합니다. '기본값'은 위험 도구 설정을 따릅니다(기본 도구 허용, 위험 도구 제한).",
+      "colTool": "도구",
+      "colPermission": "권한",
+      "dangerous": "위험",
+      "permDefault": "기본값",
+      "permAllow": "허용",
+      "permDeny": "거부"
+    }
+  },
+  "errors": {
+    "portInUse": "Port is already in use. Pick a different port.",
+    "noRootPath": "Pick a workspace folder first."
+  },
+  "remote": {
+    "mode": {
+      "label": "원격 접속 모드",
+      "quick": "빠른",
+      "setup": "설정",
+      "quickHint": "임시 테스트 URL. 앱이 Quick Tunnel을 시작하고 일회용 HTTPS URL을 표시합니다. 빠른 테스트에 적합하며 영구 커넥터에는 권장되지 않습니다.",
+      "setupHint": "자신의 안정적인 공개 URL을 사용하세요. Cloudflare 명명된 터널, VPS 리버스 프록시, Tailscale Funnel, ngrok 커스텀 도메인을 이 컴퓨터로 향하게 하고 URL을 여기에 붙여넣으세요."
+    },
+    "quick": {
+      "warning": "이 URL은 임시이며 앱이나 터널을 다시 시작하면 바뀔 수 있습니다. 장기 ChatGPT/Grok MCP 커넥터에는 권장되지 않으며, 그 용도로는 자신의 안정적인 URL을 사용하는 설정 모드를 이용하세요."
+    },
+    "setup": {
+      "intro": "DNS/터널이 이 컴퓨터를 가리키는 동안 유지됩니다. 이 모드에서는 앱이 터널을 관리하지 않고 URL을 저장해 복사 가능한 엔드포인트만 생성합니다.",
+      "mcpBaseUrl": "고정 MCP 기본 URL",
+      "webuiBaseUrl": "고정 WebUI 기본 URL",
+      "save": "저장",
+      "saved": "안정 URL이 저장되었습니다.",
+      "invalidUrl": "유효한 URL을 입력하세요.",
+      "missingProtocol": "프로토콜을 포함하세요. 예: https://mcp.example.online",
+      "unsupportedProtocol": "http:// 및 https://만 지원됩니다.",
+      "pathNotAllowed": "오리진만 입력하세요(경로 제외). 예: https://mcp.example.online",
+      "insecureHttpWarning": "공개 호스트에 http://를 사용하면 토큰이 평문으로 전송됩니다. https://를 권장합니다.",
+      "trycloudflareWarning": "임시 Quick Tunnel URL로 보입니다. 재시작 후 바뀔 수 있습니다.",
+      "connectorUpdateWarning": "MCP 클라이언트가 커넥터를 업데이트하거나 다시 만들어야 할 수 있습니다.",
+      "localTargetHint": "공개 터널/리버스 프록시를 로컬 MCP 서비스로 향하게 하세요: {{target}}",
+      "localWebuiTargetHint": "공개 터널/리버스 프록시를 로컬 WebUI 서비스로 향하게 하세요: {{target}}",
+      "generatedMcp": "생성된 MCP 엔드포인트",
+      "generatedWebui": "생성된 WebUI URL",
+      "connectorConfig": "ChatGPT / Grok / Claude 커넥터 설정",
+      "configurationNeeded": "유효한 안정 MCP 기본 URL을 입력하고 저장하면 엔드포인트가 생성됩니다.",
+      "mcpBaseUrlPlaceholder": "https://mcp.example.online",
+      "webuiBaseUrlPlaceholder": "https://webui.example.online"
+    }
+  }
+}

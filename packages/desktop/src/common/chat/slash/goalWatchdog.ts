@@ -65,7 +65,11 @@ export type GoalWatchdogAction =
 /**
  * Decide what the watchdog should do right now. Does not mutate state.
  */
-export const evaluateWatchdog = (state: GoalWatchdogState, now: number, config: GoalWatchdogConfig): GoalWatchdogAction => {
+export const evaluateWatchdog = (
+  state: GoalWatchdogState,
+  now: number,
+  config: GoalWatchdogConfig
+): GoalWatchdogAction => {
   if (state.phase === 'running') {
     if (now - state.lastActivityAt >= config.stallTimeoutMs) {
       return state.resumeCount >= config.maxResumes ? { type: 'giveup' } : { type: 'stop' };
@@ -92,7 +96,8 @@ export const armWatchdog = (now: number): GoalWatchdogState => ({
 });
 
 /** Record stream activity (heartbeat) while running. */
-export const recordActivity = (state: GoalWatchdogState, now: number): GoalWatchdogState => (state.phase === 'running' ? { ...state, lastActivityAt: now } : state);
+export const recordActivity = (state: GoalWatchdogState, now: number): GoalWatchdogState =>
+  state.phase === 'running' ? { ...state, lastActivityAt: now } : state;
 
 /** Transition into cooldown after cancelling a stalled turn. */
 export const enterCooldown = (state: GoalWatchdogState, now: number): GoalWatchdogState => ({

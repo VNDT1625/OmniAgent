@@ -20,7 +20,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ideClient, type SuperMemorySnapshot } from '../ideClient';
+import { ideClient, type IdeMemoryRecordableKind, type SuperMemorySnapshot } from '../ideClient';
 
 /** Poll interval (ms) while the memory view is open. */
 const POLL_MS = 3000;
@@ -35,6 +35,8 @@ export type UseIdeMemory = {
   refresh: () => Promise<void>;
   /** Clear the whole session memory, then refresh. */
   clear: () => Promise<void>;
+  /** Manually jot a note (user-facing equivalent of the agent's ide_memory_remember). Returns an error string on failure, or null on success, then refreshes. */
+  remember: (text: string, opts?: { kind?: IdeMemoryRecordableKind; pinned?: boolean }) => Promise<string | null>;
 };
 
 /**
@@ -76,6 +78,22 @@ export const useIdeMemory = (memId: string | null, enabled: boolean): UseIdeMemo
     await refresh();
   }, [memId, refresh]);
 
+  const remember = useCallback(
+    async (text: string, opts?: { kind?: IdeMemoryRecordableKind; pinned?: boolean }): Promise<string | null> => {
+      if (!memId) return 'No active session.';
+      const trimmed = text.trim();
+      if (!trimmed) return 'Note is empty.';
+      const res = await ideClient.memoryRemember(memId, trimmed, opts).catch((error): { ok: false; error: string } => ({
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      }));
+      if (res.ok === false) return res.error;
+      await refresh();
+      return null;
+    },
+    [memId, refresh]
+  );
+
   useEffect(() => {
     if (!enabled || !memId) return;
     void refresh();
@@ -83,7 +101,7 @@ export const useIdeMemory = (memId: string | null, enabled: boolean): UseIdeMemo
     return () => clearInterval(timer);
   }, [enabled, memId, refresh]);
 
-  return { snapshot, loading, refresh, clear };
+  return { snapshot, loading, refresh, clear, remember };
 };
 
 export default useIdeMemory;

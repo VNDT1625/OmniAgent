@@ -11,5 +11,10 @@
     "running": "Running `{{program}}`…"
   },
   "autoRerunLabel": "Suggest fix on error",
-  "autoRerunHint": "When a command fails and has a known replacement, ask in the terminal (y/N) so you — or an agent — can apply it by typing."
+  "autoRerunHint": "When a command fails and has a known replacement, ask in the terminal (y/N) so you — or an agent — can apply it by typing.",
+  "suggest": {
+    "title": "Suggestions",
+    "ariaLabel": "Command suggestions",
+    "runCount": "{{count}}×"
+  }
 }

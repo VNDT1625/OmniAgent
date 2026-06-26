@@ -1,11 +1,11 @@
 {
-  "name": "AionUi",
-  "version": "2.1.7",
-  "description": "Transform your command-line AI agent into a modern, efficient AI Chat interface.",
+  "name": "omni-agentic",
+  "version": "2.1.8",
+  "description": "Omni Agentic desktop AI agent interface.",
   "keywords": [],
   "license": "Apache-2.0",
   "author": {
-    "name": "AionUi",
+    "name": "Omni Agentic",
     "email": "service@aionui.com"
   },
   "workspaces": [
@@ -69,6 +69,7 @@
     "test:bun": "bun test packages/desktop/src/process/services/database/drivers/*.bun.test.ts"
   },
   "dependencies": {
+    "@agentclientprotocol/claude-agent-acp": "0.33.1",
     "@agentclientprotocol/sdk": "^0.18.2",
     "@aionui/music-core": "workspace:*",
     "@aionui/web-host": "workspace:*",
@@ -278,5 +279,5 @@
   "patchedDependencies": {
     "7zip-bin@5.2.0": "patches/7zip-bin@5.2.0.patch"
   },
-  "productName": "AionUi"
+  "productName": "Omni Agentic"
 }

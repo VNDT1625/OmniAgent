@@ -38,7 +38,8 @@ export type GoalCommandVariant = 'goal' | 'goal-all';
  * The agent MUST end every turn with this marker so the renderer can gate the
  * run by code (see `goalCompliance.ts`).
  */
-export const GOAL_STATUS_CONTRACT = 'BẮT BUỘC — kết thúc MỖI lượt bằng đúng MỘT dòng trạng thái máy đọc được: [[GOAL next=continue|done|blocked tests=pass|fail|none phase=<số pha 1-9>]]. Dùng next=done CHỈ khi mọi Definition of Done đạt VÀ tests=pass; chưa xong dùng next=continue; bị chặn cứng dùng next=blocked. Thiếu dòng này lượt sẽ bị từ chối và bắt làm lại.';
+export const GOAL_STATUS_CONTRACT =
+  'BẮT BUỘC — kết thúc MỖI lượt bằng đúng MỘT dòng trạng thái máy đọc được: [[GOAL next=continue|done|blocked tests=pass|fail|none phase=<số pha 1-9>]]. Dùng next=done CHỈ khi mọi Definition of Done đạt VÀ tests=pass; chưa xong dùng next=continue; bị chặn cứng dùng next=blocked. Thiếu dòng này lượt sẽ bị từ chối và bắt làm lại.';
 
 export type ParsedGoalCommand = {
   variant: GoalCommandVariant;
@@ -122,16 +123,23 @@ type GoalVariantSpec = {
   tail: string;
 };
 
-const buildTail = (intro: string, doneLine: string): string => '\n\n' + [intro, '', MANDATORY_PIPELINE, '', doneLine, '', RECOVERY_AND_RULES].join('\n');
+const buildTail = (intro: string, doneLine: string): string =>
+  '\n\n' + [intro, '', MANDATORY_PIPELINE, '', doneLine, '', RECOVERY_AND_RULES].join('\n');
 
 const GOAL_VARIANT_SPECS: Record<GoalCommandVariant, GoalVariantSpec> = {
   goal: {
     head: 'MỤC TIÊU (GOAL) của phiên này: ',
-    tail: buildTail('Hãy TỰ THỰC HIỆN theo vòng lặp khép kín (làm → kiểm tra → sửa → phát triển tiếp), lặp đến khi kết quả TIỆM CẬN HOÀN TOÀN (≈100%) so với mục tiêu trên, hoặc hết credit. Bắt đầu ngay, không hỏi lại.', 'Điều kiện dừng: mọi tiêu chí Definition of Done PASS + test tracker xanh + typecheck/lint/i18n sạch; hoặc hết credit; hoặc gặp quyết định kiến trúc lớn không thể tự quyết an toàn.'),
+    tail: buildTail(
+      'Hãy TỰ THỰC HIỆN theo vòng lặp khép kín (làm → kiểm tra → sửa → phát triển tiếp), lặp đến khi kết quả TIỆM CẬN HOÀN TOÀN (≈100%) so với mục tiêu trên, hoặc hết credit. Bắt đầu ngay, không hỏi lại.',
+      'Điều kiện dừng: mọi tiêu chí Definition of Done PASS + test tracker xanh + typecheck/lint/i18n sạch; hoặc hết credit; hoặc gặp quyết định kiến trúc lớn không thể tự quyết an toàn.'
+    ),
   },
   'goal-all': {
     head: 'MỤC TIÊU (GOAL-ALL — chế độ toàn quyền, khó tính hơn) của phiên này: ',
-    tail: buildTail('Bạn được TOÀN QUYỀN tự quyết mọi thứ để đạt 101% so với yêu cầu trên: kết quả tối thiểu phải NGANG mục tiêu, ưu tiên VƯỢT mục tiêu (chủ động bổ sung edge case, độ bền, test, tài liệu, trải nghiệm — miễn không phá vỡ ràng buộc dự án). Tự đặt tiêu chuẩn nghiệm thu nghiêm ngặt hơn mức tối thiểu. Bắt đầu ngay, tuyệt đối không hỏi lại; chạy đến khi xong hoặc hết credit.', 'Tiêu chí "xong" của GOAL-ALL: vượt Definition of Done tự đặt (≥101%), test tracker xanh, typecheck/lint/i18n sạch, đã chủ động phủ các trường hợp biên/độ bền hợp lý. Chỉ dừng khi đạt mức này, hết credit, hoặc gặp quyết định kiến trúc lớn không thể tự quyết an toàn.'),
+    tail: buildTail(
+      'Bạn được TOÀN QUYỀN tự quyết mọi thứ để đạt 101% so với yêu cầu trên: kết quả tối thiểu phải NGANG mục tiêu, ưu tiên VƯỢT mục tiêu (chủ động bổ sung edge case, độ bền, test, tài liệu, trải nghiệm — miễn không phá vỡ ràng buộc dự án). Tự đặt tiêu chuẩn nghiệm thu nghiêm ngặt hơn mức tối thiểu. Bắt đầu ngay, tuyệt đối không hỏi lại; chạy đến khi xong hoặc hết credit.',
+      'Tiêu chí "xong" của GOAL-ALL: vượt Definition of Done tự đặt (≥101%), test tracker xanh, typecheck/lint/i18n sạch, đã chủ động phủ các trường hợp biên/độ bền hợp lý. Chỉ dừng khi đạt mức này, hết credit, hoặc gặp quyết định kiến trúc lớn không thể tự quyết an toàn.'
+    ),
   },
 };
 

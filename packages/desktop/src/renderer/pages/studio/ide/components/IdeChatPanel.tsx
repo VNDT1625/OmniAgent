@@ -25,7 +25,20 @@
  */
 
 import { Button, Dropdown, Empty, Input, Menu, Spin, Switch, Tooltip } from '@arco-design/web-react';
-import { Brain, Check, CheckOne, CloseSmall, Down, FileCode, FolderClose, Plus, Right, Robot, Search, Shield } from '@icon-park/react';
+import {
+  Brain,
+  Check,
+  CheckOne,
+  CloseSmall,
+  Down,
+  FileCode,
+  FolderClose,
+  Plus,
+  Right,
+  Robot,
+  Search,
+  Shield,
+} from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import useSWR from 'swr';
@@ -47,6 +60,7 @@ import {
 import { useIdeChat, type IdeChatTab } from '../useIdeChat';
 import MemorySessionDrawer from '../memory/MemorySessionDrawer';
 import {
+  enforceStrictIdeSessionMode,
   isStrictIdeModeEnabled,
   setStrictIdeModeEnabled,
 } from '@/renderer/pages/conversation/platforms/strictIdeModeGuard';
@@ -80,7 +94,14 @@ const IdeChatPanel: React.FC<IdeChatPanelProps> = ({ rootPath, activeFile, repoF
     setStrictIdeModeEnabled(rootPath, enabled);
     setStrictMode(enabled);
   };
-  const activeMemId = useMemo(() => chat.tabs.find((tab) => tab.id === chat.activeId)?.memId ?? null, [chat.tabs, chat.activeId]);
+  useEffect(() => {
+    if (!strictMode) return;
+    for (const tab of chat.tabs) void enforceStrictIdeSessionMode(tab.id);
+  }, [chat.tabs, strictMode]);
+  const activeMemId = useMemo(
+    () => chat.tabs.find((tab) => tab.id === chat.activeId)?.memId ?? null,
+    [chat.tabs, chat.activeId]
+  );
 
   // Default tab: when no tab is open and at least one agent exists, do nothing
   // (the user explicitly picks). A click on "+" opens a tab with the chosen
@@ -294,32 +315,29 @@ const PlanningStatusBar: React.FC<{ rootPath: string }> = ({ rootPath }) => {
   const [mtuiViolationCount, setMtuiViolationCount] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  const refresh = React.useCallback(
-    async (): Promise<void> => {
-      const result = await ideClient.specStatus(rootPath).catch((): null => null);
-      if (result?.ok) {
-        setStatus(result.data);
-        const tasksResult = result.data.exists
-          ? await ideClient.specTaskList(rootPath, result.data.slug ?? undefined).catch((): null => null)
-          : null;
-        setRunbook(tasksResult?.ok ? tasksResult.data : null);
-      }
-      const listResult = await ideClient.specList(rootPath).catch((): null => null);
-      if (listResult?.ok) setSpecs(listResult.data);
-      const gitResult = await ideClient.gitStatus(rootPath).catch((): null => null);
-      const changedPaths = gitResult?.ok ? gitResult.data.map((change) => change.path) : [];
-      if (changedPaths.length === 0) {
-        setMtuiViolations([]);
-        setMtuiViolationCount(0);
-        return;
-      }
-      const policyResult = await ideClient.mtuiPolicyCheck(rootPath, changedPaths).catch((): null => null);
-      const policy = policyResult?.ok ? policyResult.data : null;
-      setMtuiViolations(policy?.violations ?? []);
-      setMtuiViolationCount(policy?.violationCount ?? policy?.violations.length ?? 0);
-    },
-    [rootPath]
-  );
+  const refresh = React.useCallback(async (): Promise<void> => {
+    const result = await ideClient.specStatus(rootPath).catch((): null => null);
+    if (result?.ok) {
+      setStatus(result.data);
+      const tasksResult = result.data.exists
+        ? await ideClient.specTaskList(rootPath, result.data.slug ?? undefined).catch((): null => null)
+        : null;
+      setRunbook(tasksResult?.ok ? tasksResult.data : null);
+    }
+    const listResult = await ideClient.specList(rootPath).catch((): null => null);
+    if (listResult?.ok) setSpecs(listResult.data);
+    const gitResult = await ideClient.gitStatus(rootPath).catch((): null => null);
+    const changedPaths = gitResult?.ok ? gitResult.data.map((change) => change.path) : [];
+    if (changedPaths.length === 0) {
+      setMtuiViolations([]);
+      setMtuiViolationCount(0);
+      return;
+    }
+    const policyResult = await ideClient.mtuiPolicyCheck(rootPath, changedPaths).catch((): null => null);
+    const policy = policyResult?.ok ? policyResult.data : null;
+    setMtuiViolations(policy?.violations ?? []);
+    setMtuiViolationCount(policy?.violationCount ?? policy?.violations.length ?? 0);
+  }, [rootPath]);
 
   useEffect(() => {
     let cancelled = false;
@@ -446,20 +464,22 @@ const PlanningStatusBar: React.FC<{ rootPath: string }> = ({ rootPath }) => {
     </Menu>
   );
 
-  return <PlanningStatusBarView
-    t={t}
-    status={status}
-    phase={phase}
-    activeGate={activeGate}
-    canExecute={canExecute}
-    busy={busy}
-    runbook={runbook}
-    mtuiViolationCount={mtuiViolationCount}
-    specSwitcherMenu={specSwitcherMenu}
-    mtuiPolicyMenu={mtuiPolicyMenu}
-    onApprove={approveGate}
-    onExecute={() => status?.slug && addToSendBox(executeCommandFor(status.slug))}
-  />;
+  return (
+    <PlanningStatusBarView
+      t={t}
+      status={status}
+      phase={phase}
+      activeGate={activeGate}
+      canExecute={canExecute}
+      busy={busy}
+      runbook={runbook}
+      mtuiViolationCount={mtuiViolationCount}
+      specSwitcherMenu={specSwitcherMenu}
+      mtuiPolicyMenu={mtuiPolicyMenu}
+      onApprove={approveGate}
+      onExecute={() => status?.slug && addToSendBox(executeCommandFor(status.slug))}
+    />
+  );
 };
 
 /** Human label + tone for the lifecycle phase chip. */
@@ -587,7 +607,6 @@ const PlanningStatusBarView: React.FC<PlanningStatusBarViewProps> = ({
     </div>
   );
 };
-
 
 /** The tab strip across the top: list + close + a right-side action slot. */
 const ChatTabStrip: React.FC<{

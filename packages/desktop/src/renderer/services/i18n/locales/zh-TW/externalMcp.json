@@ -1,0 +1,154 @@
+{
+  "title": "External MCP Gateway",
+  "description": "Lets external AI hosts (Claude Desktop, Cursor, ChatGPT) call AionUi's IDE tools through a token-protected loopback endpoint. Disabled by default; only reachable from this machine (127.0.0.1).",
+  "internalHint": "AionUi's built-in AI already uses MTUI, Terminal and IDE tools directly. Enable this gateway only for other local apps or Web AI.",
+  "enable": "Enable gateway",
+  "enableHint": "When on, the loopback HTTP+SSE server starts and external hosts can connect with the bearer token below.",
+  "port": "Loopback port",
+  "portHint": "Pick any free port between 1024 and 65535. Default 47821.",
+  "rootPath": {
+    "label": "Workspace folder",
+    "pick": "Pick folder",
+    "hint": "External sessions are pinned to this folder. The bootstrap response reports it as the workspace root.",
+    "empty": "No folder selected — pick one before enabling the gateway."
+  },
+  "token": {
+    "label": "Bearer token",
+    "reveal": "Reveal",
+    "hide": "Hide",
+    "copy": "Copy",
+    "regenerate": "Regenerate",
+    "confirmRegenerate": "Regenerate the token? Every external client will lose its connection and must paste the new token.",
+    "copied": "Token copied to clipboard.",
+    "missing": "No token yet — enable the gateway to mint one."
+  },
+  "dangerous": {
+    "label": "Allow dangerous tools",
+    "hint": "Off by default. When on, external hosts can call ide_command (shell), team_write_file (full-file write), db_* (SQL), and ide_memory_set_secret."
+  },
+  "status": {
+    "running": "Running",
+    "stopped": "Stopped",
+    "error": "Error"
+  },
+  "mcpJson": {
+    "title": "Claude Desktop / Cursor mcp.json snippet",
+    "hint": "Paste this into your client's MCP config, then restart the client.",
+    "copy": "Copy snippet"
+  },
+  "web": {
+    "title": "Web AI access",
+    "description": "Publish a temporary HTTPS MCP endpoint for ChatGPT, Claude, Grok and other Web AI connectors.",
+    "active": "Public session active",
+    "inactive": "Not published",
+    "start": "Start Web session",
+    "stop": "Stop and revoke",
+    "rotate": "Rotate session",
+    "started": "Web AI session started.",
+    "stopped": "Web AI session stopped and all public tokens were revoked.",
+    "startFailed": "Could not start Web AI access.",
+    "timeout": "Timed out waiting for the tunnel to start. Check your network, or restart the app and try again.",
+    "securityHint": "Web Access exposes the same in-app IDE tools (search, read, terminal, edit, etc.) as your local agent — only through a Cloudflare quick tunnel. The session stays open until you disable it.",
+    "mcpUrl": "Streamable HTTP MCP URL",
+    "sessionToken": "Temporary Bearer token",
+    "rotateToReveal": "Rotate the Web session to reveal a new token",
+    "debugTitle": "Browser link fallback",
+    "debugHint": "For Web AIs without an MCP connector, create a short-lived read-only bootstrap URL.",
+    "createDebug": "Create browser link",
+    "revokeDebug": "Revoke links",
+    "debugCreated": "Read-only browser link created.",
+    "debugRevoked": "All browser links were revoked.",
+    "debugLimits": "Browser-friendly read-only links. Active until you revoke them or disable Web Access.",
+    "tokenLifetime": "The token stays valid until you disable Web Access or rotate it.",
+    "progress": {
+      "checkingCloudflared": "Checking the cloudflared binary…",
+      "installingCloudflared": "Installing cloudflared (one-time, ~5 MB)…",
+      "mintingToken": "Generating session token…",
+      "spawningTunnel": "Starting Cloudflare tunnel…",
+      "waitingTunnelUrl": "Waiting for Cloudflare to assign a public URL (~10–20 s)…",
+      "ready": "Web Access ready.",
+      "failed": "Web Access failed: {{error}}",
+      "stopping": "Stopping Web Access…",
+      "stopped": "Web Access stopped."
+    }
+  },
+  "auth": {
+    "title": "認證模式",
+    "description": "選擇 Web AI 用戶端如何向公共隧道進行認證。本機 Bearer 權杖始終對 Claude Desktop / Cursor 有效。",
+    "modeLabel": "認證模式",
+    "mode": {
+      "bearer": "Bearer 權杖",
+      "oauth": "OAuth 2.1",
+      "mixed": "混合",
+      "none": "無認證"
+    },
+    "modeHint": {
+      "bearer": "經典的短期 Bearer 權杖。將其貼到用戶端的 Authorization 標頭中。",
+      "oauth": "帶 PKCE 的 OAuth 2.1。適用於 ChatGPT MCP 連接器——用戶端自行註冊並授權。",
+      "mixed": "同時接受有效的 OAuth 存取權杖或 Bearer 權杖。",
+      "none": "無認證——接受所有請求。僅用於隧道後的臨時本機示範。"
+    },
+    "ttlLabel": "閒置工作階段有效期",
+    "ttlHint": "已引導的工作階段在無活動情況下保持有效的時長。適用於新工作階段。",
+    "ttlUnit": "小時",
+    "oauth": {
+      "title": "已註冊的 OAuth 用戶端",
+      "hint": "完成 OAuth 流程的用戶端。撤銷用戶端會立即使其所有權杖失效。",
+      "empty": "尚無 OAuth 用戶端註冊。",
+      "copyMetadata": "複製探索 URL",
+      "tokenCount": "{{count}} 個作用中權杖",
+      "revoke": "撤銷",
+      "revokeTitle": "撤銷 OAuth 用戶端？",
+      "revokeConfirm": "該用戶端及其所有權杖將立即被撤銷。它必須重新註冊並授權才能重新連線。",
+      "revoked": "已撤銷 OAuth 用戶端。"
+    },
+    "tools": {
+      "title": "依工具的權限",
+      "hint": "允許或拒絕個別工具。「預設」遵循危險工具設定（基礎工具允許，危險工具受控）。",
+      "colTool": "工具",
+      "colPermission": "權限",
+      "dangerous": "危險",
+      "permDefault": "預設",
+      "permAllow": "允許",
+      "permDeny": "拒絕"
+    }
+  },
+  "errors": {
+    "portInUse": "Port is already in use. Pick a different port.",
+    "noRootPath": "Pick a workspace folder first."
+  },
+  "remote": {
+    "mode": {
+      "label": "遠端存取模式",
+      "quick": "快速",
+      "setup": "自訂",
+      "quickHint": "暫時測試網址。應用程式會啟動 Quick Tunnel 並顯示一個暫時的 HTTPS 網址，適合快速測試，不適合長期連接器。",
+      "setupHint": "使用你自己的穩定公開網址。將 Cloudflare 具名通道、VPS 反向代理、Tailscale Funnel 或 ngrok 自訂網域指向本機，並在此貼上該網址。"
+    },
+    "quick": {
+      "warning": "此網址為暫時網址，重新啟動應用程式或通道後可能改變。不建議用於長期的 ChatGPT/Grok MCP 連接器，請改用「自訂」模式填入你自己的穩定網址。"
+    },
+    "setup": {
+      "intro": "只要你的 DNS/通道指向本機即可持續有效。此模式下應用程式不管理任何通道，僅儲存你的網址並產生可複製的端點。",
+      "mcpBaseUrl": "穩定 MCP 基礎 URL",
+      "webuiBaseUrl": "穩定 WebUI 基礎 URL",
+      "save": "儲存",
+      "saved": "穩定網址已儲存。",
+      "invalidUrl": "請輸入有效的 URL。",
+      "missingProtocol": "請包含通訊協定，例如 https://mcp.example.online",
+      "unsupportedProtocol": "僅支援 http:// 與 https://。",
+      "pathNotAllowed": "請僅填入來源網址（不含路徑），例如 https://mcp.example.online",
+      "insecureHttpWarning": "對公開主機使用 http:// 會以明文傳輸權杖，建議使用 https://。",
+      "trycloudflareWarning": "這看起來是暫時的 Quick Tunnel 網址，重新啟動後可能改變。",
+      "connectorUpdateWarning": "MCP 用戶端可能需要更新或重新建立連接器。",
+      "localTargetHint": "將公開通道/反向代理指向本機 MCP 服務：{{target}}",
+      "localWebuiTargetHint": "將公開通道/反向代理指向本機 WebUI 服務：{{target}}",
+      "generatedMcp": "產生的 MCP 端點",
+      "generatedWebui": "產生的 WebUI 網址",
+      "connectorConfig": "ChatGPT / Grok / Claude 連接器設定",
+      "configurationNeeded": "請輸入並儲存有效的穩定 MCP 基礎網址以產生端點。",
+      "mcpBaseUrlPlaceholder": "https://mcp.example.online",
+      "webuiBaseUrlPlaceholder": "https://webui.example.online"
+    }
+  }
+}

@@ -98,10 +98,7 @@ export type FileRelations = {
 };
 
 /** Compute a file's depends-on / used-by sets from the graph's import edges. */
-export const relationsFor = (
-  activeRel: string,
-  edges: ReadonlyArray<{ from: string; to: string }>
-): FileRelations => {
+export const relationsFor = (activeRel: string, edges: ReadonlyArray<{ from: string; to: string }>): FileRelations => {
   const dependsOn = new Set<string>();
   const usedBy = new Set<string>();
   for (const edge of edges) {

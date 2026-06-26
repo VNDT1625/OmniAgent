@@ -6,7 +6,7 @@
 
 /**
  * IDE spec-lifecycle bridge — manages Kiro-style planning directories under
- * `.omni/specs/<slug>/` (with .aionui legacy fallback) so Planning Mode has observable state instead of
+ * `.aionui/specs/<slug>/` so Planning Mode has observable state instead of
  * being only prompt text.
  *
  * Process boundary: Main-process (Node.js) module. No DOM APIs.
@@ -25,6 +25,8 @@ export const SPEC_CHANNELS = {
   read: 'ide.spec-read',
   write: 'ide.spec-write',
   list: 'ide.spec-list',
+  setActive: 'ide.spec-set-active',
+  advancePhase: 'ide.spec-advance-phase',
   taskList: 'ide.spec-task-list',
   taskClaim: 'ide.spec-task-claim',
   taskUpdate: 'ide.spec-task-update',
@@ -33,6 +35,42 @@ export const SPEC_CHANNELS = {
 
 export type SpecFileName = 'requirements.md' | 'design.md' | 'tasks.md' | 'verification.md';
 export type SpecTaskStatus = 'pending' | 'in_progress' | 'done' | 'blocked';
+
+/**
+ * Kiro-style spec lifecycle phases. A spec flows strictly through these gates;
+ * each phase but `complete` requires an explicit approval before the next phase
+ * unlocks, so Planning Mode has observable, gated progress instead of a loose
+ * pile of markdown files.
+ */
+export type SpecLifecyclePhase = 'requirements' | 'design' | 'tasks' | 'execution' | 'complete';
+
+/** Ordered list of lifecycle phases (document order = gate order). */
+export const SPEC_PHASE_ORDER: readonly SpecLifecyclePhase[] = [
+  'requirements',
+  'design',
+  'tasks',
+  'execution',
+  'complete',
+] as const;
+
+/** Which phase each approval gate unlocks (approving `requirements` opens `design`, …). */
+export type SpecApprovalGate = 'requirements' | 'design' | 'tasks';
+
+/** Per-spec manifest persisted at `.aionui/specs/<slug>/spec.json`. */
+export type SpecManifest = {
+  /** Schema version for forward compatibility. */
+  version: number;
+  /** Directory slug (mirrors the folder name). */
+  slug: string;
+  /** Human title captured at creation. */
+  title: string;
+  /** Current lifecycle phase. */
+  phase: SpecLifecyclePhase;
+  /** Which gates the user has explicitly approved. */
+  approvals: Record<SpecApprovalGate, boolean>;
+  createdAt: number;
+  updatedAt: number;
+};
 
 export type SpecTaskCounts = {
   total: number;
@@ -50,13 +88,23 @@ export type SpecLifecycleStatus = {
   files: Record<SpecFileName, boolean>;
   taskCounts: SpecTaskCounts;
   updatedAt: number | null;
+  /** Current lifecycle phase of the active spec (null when no active spec). */
+  phase: SpecLifecyclePhase | null;
+  /** Approval gates of the active spec (null when no active spec). */
+  approvals: Record<SpecApprovalGate, boolean> | null;
+  /** True when the workspace has at least one spec directory on disk. */
+  hasAnySpec: boolean;
 };
 
 export type SpecListEntry = {
   slug: string;
+  title: string;
   specDir: string;
   updatedAt: number;
   taskCounts: SpecTaskCounts;
+  phase: SpecLifecyclePhase;
+  /** True when this entry is the workspace's active spec. */
+  active: boolean;
 };
 
 export type SpecStatusRequest = {
@@ -66,6 +114,20 @@ export type SpecStatusRequest = {
 export type SpecInitRequest = {
   rootPath: string;
   title: string;
+};
+
+/** Request to set (or clear, when `slug` is null) the workspace's active spec. */
+export type SpecSetActiveRequest = {
+  rootPath: string;
+  slug: string | null;
+};
+
+/** Request to approve the current phase gate and advance the active/named spec. */
+export type SpecAdvancePhaseRequest = {
+  rootPath: string;
+  slug?: string;
+  /** The gate being approved; must match the spec's current phase. */
+  gate: SpecApprovalGate;
 };
 
 export type SpecReadRequest = {
@@ -129,6 +191,10 @@ export const specChannels = {
   read: bridge.buildProvider<SpecResult<string>, SpecReadRequest>(SPEC_CHANNELS.read),
   write: bridge.buildProvider<SpecResult<SpecLifecycleStatus>, SpecWriteRequest>(SPEC_CHANNELS.write),
   list: bridge.buildProvider<SpecResult<SpecListEntry[]>, SpecStatusRequest>(SPEC_CHANNELS.list),
+  setActive: bridge.buildProvider<SpecResult<SpecLifecycleStatus>, SpecSetActiveRequest>(SPEC_CHANNELS.setActive),
+  advancePhase: bridge.buildProvider<SpecResult<SpecLifecycleStatus>, SpecAdvancePhaseRequest>(
+    SPEC_CHANNELS.advancePhase
+  ),
   taskList: bridge.buildProvider<SpecResult<SpecTaskRunbook>, SpecTaskListRequest>(SPEC_CHANNELS.taskList),
   taskClaim: bridge.buildProvider<SpecResult<SpecTaskRunbook>, SpecTaskClaimRequest>(SPEC_CHANNELS.taskClaim),
   taskUpdate: bridge.buildProvider<SpecResult<SpecTaskRunbook>, SpecTaskUpdateRequest>(SPEC_CHANNELS.taskUpdate),
@@ -137,8 +203,16 @@ export const specChannels = {
 
 const SPEC_FILES: SpecFileName[] = ['requirements.md', 'design.md', 'tasks.md', 'verification.md'];
 const TASK_STATE_FILE = 'task-state.json';
+const SPEC_MANIFEST_FILE = 'spec.json';
+const ACTIVE_POINTER_FILE = 'active.json';
 const SPEC_TEMPORARY_DIR = path.join('plan', 'temporary');
 const SEMANTIC_REFRESH_FILE = path.join('plan', 'semantic-refresh.json');
+
+const emptyApprovals = (): Record<SpecApprovalGate, boolean> => ({
+  requirements: false,
+  design: false,
+  tasks: false,
+});
 
 const emptyTaskCounts = (): SpecTaskCounts => ({
   total: 0,
@@ -148,16 +222,7 @@ const emptyTaskCounts = (): SpecTaskCounts => ({
   blocked: 0,
 });
 
-const specsRoot = (rootPath: string): string => {
-  // Prefer new .omni/specs, fallback to legacy .aionui/specs
-  const omni = path.join(rootPath, '.omni', 'specs');
-  const legacy = path.join(rootPath, '.aionui', 'specs');
-  try {
-    if (existsSync(omni)) return omni;
-  } catch {}
-  if (existsSync(legacy)) return legacy;
-  return omni;
-};
+const specsRoot = (rootPath: string): string => path.join(rootPath, '.aionui', 'specs');
 
 const slugify = (title: string): string => {
   const slug = title
@@ -199,32 +264,167 @@ const readTextIfExists = async (filePath: string): Promise<string | null> => {
   }
 };
 
+// ── Lifecycle phase helpers ────────────────────────────────────────────────
+
+/** The phase reached after a gate is approved. */
+const phaseAfterGate = (gate: SpecApprovalGate): SpecLifecyclePhase => {
+  if (gate === 'requirements') return 'design';
+  if (gate === 'design') return 'tasks';
+  return 'execution';
+};
+
+/** True when a spec file holds real content (not just the empty scaffold headings). */
+const fileHasContent = (text: string | null): boolean => {
+  if (!text) return false;
+  return text.split(/\r?\n/).some((line) => line.trim().length > 0 && !line.trimStart().startsWith('#'));
+};
+
+const sanitizeManifest = (raw: unknown, slug: string): SpecManifest | null => {
+  if (!raw || typeof raw !== 'object') return null;
+  const obj = raw as Partial<SpecManifest> & { approvals?: Partial<Record<SpecApprovalGate, unknown>> };
+  const phase = SPEC_PHASE_ORDER.includes(obj.phase as SpecLifecyclePhase)
+    ? (obj.phase as SpecLifecyclePhase)
+    : 'requirements';
+  const approvals = emptyApprovals();
+  if (obj.approvals && typeof obj.approvals === 'object') {
+    approvals.requirements = obj.approvals.requirements === true;
+    approvals.design = obj.approvals.design === true;
+    approvals.tasks = obj.approvals.tasks === true;
+  }
+  const now = Date.now();
+  return {
+    version: 1,
+    slug,
+    title: typeof obj.title === 'string' && obj.title.trim() ? obj.title : slug,
+    phase,
+    approvals,
+    createdAt: typeof obj.createdAt === 'number' ? obj.createdAt : now,
+    updatedAt: typeof obj.updatedAt === 'number' ? obj.updatedAt : now,
+  };
+};
+
+/**
+ * Infer a manifest for a legacy spec directory that predates `spec.json`, so
+ * existing specs keep working. Phase + approvals are derived from which files
+ * already hold real content, treating filled phases as already approved.
+ */
+const inferLegacyManifest = async (rootPath: string, slug: string): Promise<SpecManifest> => {
+  const dir = safeSpecPath(rootPath, slug);
+  const [requirements, design, tasks] = await Promise.all([
+    readTextIfExists(path.join(dir, 'requirements.md')),
+    readTextIfExists(path.join(dir, 'design.md')),
+    readTextIfExists(path.join(dir, 'tasks.md')),
+  ]);
+  const approvals = emptyApprovals();
+  approvals.requirements = fileHasContent(requirements);
+  approvals.design = approvals.requirements && fileHasContent(design);
+  approvals.tasks = approvals.design && fileHasContent(tasks);
+  const phase: SpecLifecyclePhase = approvals.tasks
+    ? 'execution'
+    : approvals.design
+      ? 'tasks'
+      : approvals.requirements
+        ? 'design'
+        : 'requirements';
+  const stat = await fsp.stat(dir).catch((): null => null);
+  const created = stat?.birthtimeMs || stat?.mtimeMs || Date.now();
+  return { version: 1, slug, title: slug, phase, approvals, createdAt: created, updatedAt: Date.now() };
+};
+
+/** Read a spec's manifest, inferring + persisting one for legacy specs. */
+const readManifest = async (rootPath: string, slug: string): Promise<SpecManifest> => {
+  const text = await readTextIfExists(safeSpecInternalPath(rootPath, slug, SPEC_MANIFEST_FILE));
+  if (text) {
+    try {
+      const parsed = sanitizeManifest(JSON.parse(text), slug);
+      if (parsed) return parsed;
+    } catch {
+      /* corrupt manifest — fall through to inference */
+    }
+  }
+  const inferred = await inferLegacyManifest(rootPath, slug);
+  await writeManifest(rootPath, slug, inferred).catch((): void => undefined);
+  return inferred;
+};
+
+const writeManifest = async (rootPath: string, slug: string, manifest: SpecManifest): Promise<void> => {
+  const target = safeSpecInternalPath(rootPath, slug, SPEC_MANIFEST_FILE);
+  await fsp.mkdir(path.dirname(target), { recursive: true });
+  await fsp.writeFile(target, `${JSON.stringify(manifest, null, 2)}\n`, 'utf-8');
+};
+
+// ── Active-spec pointer ────────────────────────────────────────────────────
+
+const activePointerPath = (rootPath: string): string => path.join(specsRoot(rootPath), ACTIVE_POINTER_FILE);
+
+const specDirExists = async (rootPath: string, slug: string): Promise<boolean> => {
+  try {
+    const stat = await fsp.stat(safeSpecPath(rootPath, slug));
+    return stat.isDirectory();
+  } catch {
+    return false;
+  }
+};
+
+/** Read the workspace's active spec slug, or null when unset/invalid. */
+export const readActiveSlug = async (rootPath: string): Promise<string | null> => {
+  const text = await readTextIfExists(activePointerPath(rootPath));
+  if (!text) return null;
+  try {
+    const parsed = JSON.parse(text) as { activeSlug?: unknown };
+    const slug = typeof parsed.activeSlug === 'string' ? parsed.activeSlug : null;
+    if (slug && (await specDirExists(rootPath, slug))) return slug;
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+/** Persist (or clear, when slug is null) the workspace's active spec slug. */
+export const writeActiveSlug = async (rootPath: string, slug: string | null): Promise<void> => {
+  const target = activePointerPath(rootPath);
+  await fsp.mkdir(path.dirname(target), { recursive: true });
+  await fsp.writeFile(
+    target,
+    `${JSON.stringify({ version: 1, activeSlug: slug, updatedAt: Date.now() }, null, 2)}\n`,
+    'utf-8'
+  );
+};
+
+/**
+ * Resolve which spec a request operates on:
+ *  1. an explicitly requested slug (validated), else
+ *  2. the workspace's active spec pointer.
+ *
+ * Crucially there is NO "newest by mtime" fallback: when nothing is active the
+ * result is null and the UI shows an empty state instead of silently surfacing
+ * an unrelated spec.
+ */
+const resolveActiveSlug = async (rootPath: string, requestedSlug?: string): Promise<string | null> => {
+  if (requestedSlug && (await specDirExists(rootPath, requestedSlug))) return requestedSlug;
+  return readActiveSlug(rootPath);
+};
+
 const normalizeRepoPath = (value: string): string => value.replace(/\\/g, '/').replace(/^\/+/, '').trim();
 
 const readUnderstandStalePaths = async (rootPath: string): Promise<string[]> => {
-  const candidates = [
-    path.join(rootPath, '.omni', 'understand', 'stale.json'),
-    path.join(rootPath, '.aionui', 'understand', 'stale.json'),
-  ];
-  for (const markerPath of candidates) {
-    const text = await readTextIfExists(markerPath);
-    if (!text) continue;
-    try {
-      const parsed = JSON.parse(text) as { paths?: unknown };
-      if (!Array.isArray(parsed.paths)) return [];
-      return Array.from(
-        new Set(
-          parsed.paths
-            .filter((item): item is string => typeof item === 'string')
-            .map(normalizeRepoPath)
-            .filter((item) => item.length > 0)
-        )
-      ).toSorted();
-    } catch {
-      continue;
-    }
+  const markerPath = path.join(rootPath, '.aionui', 'understand', 'stale.json');
+  const text = await readTextIfExists(markerPath);
+  if (!text) return [];
+  try {
+    const parsed = JSON.parse(text) as { paths?: unknown };
+    if (!Array.isArray(parsed.paths)) return [];
+    return Array.from(
+      new Set(
+        parsed.paths
+          .filter((item): item is string => typeof item === 'string')
+          .map(normalizeRepoPath)
+          .filter((item) => item.length > 0)
+      )
+    ).toSorted();
+  } catch {
+    return [];
   }
-  return [];
 };
 
 const parseSemanticRefreshEntries = (text: string | null): unknown[] => {
@@ -237,29 +437,10 @@ const parseSemanticRefreshEntries = (text: string | null): unknown[] => {
   }
 };
 
-const newestSpecSlug = async (rootPath: string): Promise<string | null> => {
-  const root = specsRoot(rootPath);
-  let entries: Array<{ name: string; mtimeMs: number }> = [];
-  try {
-    const dirents = await fsp.readdir(root, { withFileTypes: true });
-    entries = await Promise.all(
-      dirents
-        .filter((entry) => entry.isDirectory())
-        .map(async (entry) => {
-          const stat = await fsp.stat(path.join(root, entry.name)).catch((): null => null);
-          return { name: entry.name, mtimeMs: stat?.mtimeMs ?? 0 };
-        })
-    );
-  } catch {
-    return null;
-  }
-  entries.sort((a, b) => b.mtimeMs - a.mtimeMs || a.name.localeCompare(b.name));
-  return entries[0]?.name ?? null;
-};
-
 export const listSpecDirectories = async (rootPath: string): Promise<SpecListEntry[]> => {
   const root = specsRoot(rootPath);
   const dirents = await fsp.readdir(root, { withFileTypes: true }).catch((): Dirent[] => []);
+  const activeSlug = await readActiveSlug(rootPath);
   const entries = await Promise.all(
     dirents
       .filter((entry) => entry.isDirectory())
@@ -275,11 +456,15 @@ export const listSpecDirectories = async (rootPath: string): Promise<SpecListEnt
             return latest === null ? stat.mtimeMs : Math.max(latest, stat.mtimeMs);
           }, null) ?? 0;
         const tasksText = await readTextIfExists(path.join(dir, 'tasks.md'));
+        const manifest = await readManifest(rootPath, slug);
         return {
           slug,
+          title: manifest.title,
           specDir: dir,
           updatedAt,
           taskCounts: parseTaskCounts(tasksText),
+          phase: manifest.phase,
+          active: slug === activeSlug,
         };
       })
   );
@@ -409,9 +594,9 @@ const syncTasksMarkdown = async (rootPath: string, slug: string, tasks: readonly
 };
 
 export const buildSpecTaskRunbook = async (rootPath: string, requestedSlug?: string): Promise<SpecTaskRunbook> => {
-  const slug = requestedSlug ?? (await newestSpecSlug(rootPath));
+  const slug = await resolveActiveSlug(rootPath, requestedSlug);
   if (!slug) {
-    throw new Error('No spec directory exists.');
+    throw new Error('No active spec. Set one as active before working its tasks.');
   }
   const specDir = safeSpecPath(rootPath, slug);
   const parsedTasks = parseTasks(await readTextIfExists(path.join(specDir, 'tasks.md')));
@@ -521,8 +706,9 @@ export const updateSpecTask = async (req: SpecTaskUpdateRequest): Promise<SpecTa
 };
 
 export const buildSpecStatus = async (rootPath: string, requestedSlug?: string): Promise<SpecLifecycleStatus> => {
-  const slug = requestedSlug ?? (await newestSpecSlug(rootPath));
+  const slug = await resolveActiveSlug(rootPath, requestedSlug);
   if (!slug) {
+    const hasAnySpec = (await listSpecDirectories(rootPath)).length > 0;
     return {
       rootPath,
       exists: false,
@@ -536,6 +722,9 @@ export const buildSpecStatus = async (rootPath: string, requestedSlug?: string):
       },
       taskCounts: emptyTaskCounts(),
       updatedAt: null,
+      phase: null,
+      approvals: null,
+      hasAnySpec,
     };
   }
 
@@ -554,6 +743,7 @@ export const buildSpecStatus = async (rootPath: string, requestedSlug?: string):
     if (!stat) return latest;
     return latest === null ? stat.mtimeMs : Math.max(latest, stat.mtimeMs);
   }, null);
+  const manifest = await readManifest(rootPath, slug);
 
   return {
     rootPath,
@@ -563,6 +753,9 @@ export const buildSpecStatus = async (rootPath: string, requestedSlug?: string):
     files,
     taskCounts: parseTaskCounts(tasksText),
     updatedAt,
+    phase: manifest.phase,
+    approvals: manifest.approvals,
+    hasAnySpec: true,
   };
 };
 
@@ -617,6 +810,61 @@ export const initSpecDirectory = async (rootPath: string, title: string): Promis
       await fsp.writeFile(target, templateFor(file, title), 'utf-8');
     }
   }
+  // A brand-new spec starts at the requirements phase with no gates approved,
+  // and becomes the workspace's active spec so Planning Mode focuses on it.
+  const now = Date.now();
+  const existingManifest = await readTextIfExists(safeSpecInternalPath(rootPath, slug, SPEC_MANIFEST_FILE));
+  if (existingManifest === null) {
+    await writeManifest(rootPath, slug, {
+      version: 1,
+      slug,
+      title,
+      phase: 'requirements',
+      approvals: emptyApprovals(),
+      createdAt: now,
+      updatedAt: now,
+    });
+  }
+  await writeActiveSlug(rootPath, slug);
+  return buildSpecStatus(rootPath, slug);
+};
+
+/** Set (or clear) the workspace's active spec, returning the resulting status. */
+export const setActiveSpec = async (rootPath: string, slug: string | null): Promise<SpecLifecycleStatus> => {
+  if (slug && !(await specDirExists(rootPath, slug))) {
+    throw new Error(`Spec not found: ${slug}`);
+  }
+  await writeActiveSlug(rootPath, slug);
+  return buildSpecStatus(rootPath);
+};
+
+/**
+ * Approve the current phase gate of the active (or named) spec and advance it.
+ *
+ * Enforces strict ordering: the gate being approved MUST equal the spec's
+ * current phase. Approving `requirements` moves the spec to `design`, `design`
+ * to `tasks`, and `tasks` to `execution` (where `/execute` is unlocked).
+ */
+export const advanceSpecPhase = async (
+  rootPath: string,
+  gate: SpecApprovalGate,
+  requestedSlug?: string
+): Promise<SpecLifecycleStatus> => {
+  const slug = await resolveActiveSlug(rootPath, requestedSlug);
+  if (!slug) {
+    throw new Error('No active spec to advance.');
+  }
+  const manifest = await readManifest(rootPath, slug);
+  if (manifest.phase !== gate) {
+    throw new Error(`Cannot approve "${gate}" gate while the spec is in the "${manifest.phase}" phase.`);
+  }
+  const next: SpecManifest = {
+    ...manifest,
+    approvals: { ...manifest.approvals, [gate]: true },
+    phase: phaseAfterGate(gate),
+    updatedAt: Date.now(),
+  };
+  await writeManifest(rootPath, slug, next);
   return buildSpecStatus(rootPath, slug);
 };
 
@@ -625,9 +873,9 @@ export const initSpecDirectory = async (rootPath: string, title: string): Promis
  * traceability + phase-gate / Definition-of-Done readiness) for one spec.
  */
 export const buildSpecAnalysis = async (rootPath: string, requestedSlug?: string): Promise<SpecAnalysis> => {
-  const slug = requestedSlug ?? (await newestSpecSlug(rootPath));
+  const slug = await resolveActiveSlug(rootPath, requestedSlug);
   if (!slug) {
-    throw new Error('No spec directory exists.');
+    throw new Error('No active spec. Set one as active before analyzing it.');
   }
   const dir = safeSpecPath(rootPath, slug);
   const [requirementsMarkdown, tasksMarkdown, verificationMarkdown] = await Promise.all([
@@ -694,6 +942,27 @@ export function registerSpecLifecycleBridge(): void {
     if (!rootPath) return { ok: false, error: 'A folder path is required.' };
     try {
       return { ok: true, data: await listSpecDirectories(rootPath) };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  specChannels.setActive.provider(async (req): Promise<SpecResult<SpecLifecycleStatus>> => {
+    const rootPath = req.rootPath?.trim();
+    if (!rootPath) return { ok: false, error: 'A folder path is required.' };
+    try {
+      const slug = typeof req.slug === 'string' && req.slug.trim() ? req.slug.trim() : null;
+      return { ok: true, data: await setActiveSpec(rootPath, slug) };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  specChannels.advancePhase.provider(async (req): Promise<SpecResult<SpecLifecycleStatus>> => {
+    const rootPath = req.rootPath?.trim();
+    if (!rootPath) return { ok: false, error: 'A folder path is required.' };
+    try {
+      return { ok: true, data: await advanceSpecPhase(rootPath, req.gate, req.slug) };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }

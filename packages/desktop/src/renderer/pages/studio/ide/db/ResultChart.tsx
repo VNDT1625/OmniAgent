@@ -61,7 +61,13 @@ const ResultChart: React.FC<ResultChartProps> = ({ result }) => {
     <div className='flex-1 min-h-0 flex flex-col'>
       <div className='shrink-0 flex items-center gap-10px px-16px py-8px border-b border-b-1 bg-fill-1'>
         <span className='text-11px text-t-tertiary'>{t('ide.db.chartLabelColumn')}</span>
-        <Select size='mini' value={labelIndex} onChange={setLabelIndex} style={{ width: 150 }} getPopupContainer={() => document.body}>
+        <Select
+          size='mini'
+          value={labelIndex}
+          onChange={setLabelIndex}
+          style={{ width: 150 }}
+          getPopupContainer={() => document.body}
+        >
           <Select.Option value={-1}>{t('ide.db.chartRowNumber')}</Select.Option>
           {result.columns.map((name, i) => (
             <Select.Option key={i} value={i}>
@@ -70,7 +76,13 @@ const ResultChart: React.FC<ResultChartProps> = ({ result }) => {
           ))}
         </Select>
         <span className='text-11px text-t-tertiary'>{t('ide.db.chartValueColumn')}</span>
-        <Select size='mini' value={effectiveValue} onChange={setValueIndex} style={{ width: 150 }} getPopupContainer={() => document.body}>
+        <Select
+          size='mini'
+          value={effectiveValue}
+          onChange={setValueIndex}
+          style={{ width: 150 }}
+          getPopupContainer={() => document.body}
+        >
           {numeric.map((i) => (
             <Select.Option key={i} value={i}>
               {result.columns[i]}
@@ -86,11 +98,24 @@ const ResultChart: React.FC<ResultChartProps> = ({ result }) => {
             const y = BAR_GAP + i * (BAR_H + BAR_GAP);
             return (
               <g key={i}>
-                <text x={LABEL_W - 8} y={y + BAR_H / 2} textAnchor='end' dominantBaseline='central' fontSize={11} fill='var(--color-text-2)'>
+                <text
+                  x={LABEL_W - 8}
+                  y={y + BAR_H / 2}
+                  textAnchor='end'
+                  dominantBaseline='central'
+                  fontSize={11}
+                  fill='var(--color-text-2)'
+                >
                   {label.length > 22 ? `${label.slice(0, 21)}…` : label}
                 </text>
                 <rect x={LABEL_W} y={y} width={w} height={BAR_H} rx={3} fill='var(--primary)' opacity={0.85} />
-                <text x={LABEL_W + w + 6} y={y + BAR_H / 2} dominantBaseline='central' fontSize={10} fill='var(--color-text-3)'>
+                <text
+                  x={LABEL_W + w + 6}
+                  y={y + BAR_H / 2}
+                  dominantBaseline='central'
+                  fontSize={10}
+                  fill='var(--color-text-3)'
+                >
                   {value}
                 </text>
               </g>

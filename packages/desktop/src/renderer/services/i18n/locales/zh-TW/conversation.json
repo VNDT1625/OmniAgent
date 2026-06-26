@@ -97,6 +97,15 @@
     "retryable": "可重試",
     "notRetryable": "需先處理設定",
     "resolutionPrefix": "建議：",
+    "autoRetry": {
+      "countdown": "?????????????? {{seconds}} ???????",
+      "stop": "??",
+      "continue": "??",
+      "continuing": "??????????...",
+      "stopped": "???????????????? API key?",
+      "failed": "?????????????????",
+      "continuePrompt": "??"
+    },
     "resolution": {
       "retry": "Retry later, or send this message again.",
       "wait_for_current_response": "Wait for the current response to finish before sending another message.",
@@ -403,6 +412,11 @@
     "verifyRunning": "正在獨立驗證目標…",
     "verifyFailed": "獨立驗證失敗 — 智慧代理需修復後重試。"
   },
+  "interruptionRecovery": {
+    "interrupted": "對話已中斷且無法自動恢復，請重新傳送您的訊息。",
+    "retryScheduled": "連線已中斷 — 將在 {{seconds}} 秒後重試（第 {{retry}}/{{max}} 次）。",
+    "retrying": "正在重試…（第 {{retry}}/{{max}} 次）。"
+  },
   "sideQuestion": {
     "title": "順便問一下",
     "description": "針對目前對話快速提出一個小問題",
@@ -440,6 +454,13 @@
   },
   "contextUsage": {
     "contextUsed": "上下文已使用"
+  },
+  "turnStats": {
+    "tokensExact": "本次回覆使用的 token 數",
+    "tokensEstimated": "本次回覆的預估 token 數（依據上下文用量變化）",
+    "duration": "本次回覆的產生耗時",
+    "input": "輸入 token（餵給模型的上下文）",
+    "output": "輸出 token（模型產生的文字）"
   },
   "skill_generator": {
     "title": "Generate Skill/Rule",

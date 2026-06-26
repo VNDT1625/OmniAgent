@@ -35,7 +35,13 @@ import { useTranslation } from 'react-i18next';
 import useTheme from '@renderer/hooks/system/useTheme';
 import type { DbSchemaGraph } from './dbClient';
 import DbTableNode from './DbTableNode';
-import { computeHighlight, computeSchemaLayout, styleSchemaEdges, type DbFlowEdge, type DbFlowNode } from './dbSchemaLayout';
+import {
+  computeHighlight,
+  computeSchemaLayout,
+  styleSchemaEdges,
+  type DbFlowEdge,
+  type DbFlowNode,
+} from './dbSchemaLayout';
 
 type SchemaDiagramProps = {
   graph: DbSchemaGraph;

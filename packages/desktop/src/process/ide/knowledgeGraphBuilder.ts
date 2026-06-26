@@ -1181,8 +1181,8 @@ const commandRank = (command: ProjectRunCommand): number => {
 };
 
 const detectPackageManager = (contentByPath: Map<string, string>): string | undefined => {
-  const packageJson = contentByPath.get('package.json');
-  if (packageJson) {
+  for (const [relPath, packageJson] of contentByPath) {
+    if (!normalizeRel(relPath).endsWith('package.json')) continue;
     try {
       const parsed = JSON.parse(packageJson) as { packageManager?: unknown };
       if (typeof parsed.packageManager === 'string' && parsed.packageManager.length > 0) {
@@ -1192,10 +1192,11 @@ const detectPackageManager = (contentByPath: Map<string, string>): string | unde
       /* malformed package.json — continue with lockfile heuristics */
     }
   }
-  if (contentByPath.has('bun.lock') || contentByPath.has('bun.lockb')) return 'bun';
-  if (contentByPath.has('pnpm-lock.yaml')) return 'pnpm';
-  if (contentByPath.has('yarn.lock')) return 'yarn';
-  if (contentByPath.has('package-lock.json')) return 'npm';
+  const basenames = new Set(Array.from(contentByPath.keys(), (relPath) => normalizeRel(relPath).split('/').pop()));
+  if (basenames.has('bun.lock') || basenames.has('bun.lockb')) return 'bun';
+  if (basenames.has('pnpm-lock.yaml')) return 'pnpm';
+  if (basenames.has('yarn.lock')) return 'yarn';
+  if (basenames.has('package-lock.json')) return 'npm';
   return undefined;
 };
 
@@ -1751,9 +1752,8 @@ export const createKnowledgeGraphBuilder = (deps: KnowledgeGraphBuilderDeps): Kn
       } catch (error) {
         const message = error instanceof Error && error.message.length > 0 ? error.message : 'summary batch failed';
         if (!aborted()) {
-          emit('error', `Summary CLI failed for ${batchLabel}: ${message}`);
+          emit('summarizing', `Summary CLI failed for ${batchLabel}: ${message}; using fallback summaries`);
         }
-        throw new Error(`Summary CLI failed for ${batchLabel}: ${message}`, { cause: error });
       } finally {
         if (timeoutId !== undefined) {
           clearTimeout(timeoutId);

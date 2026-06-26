@@ -1,0 +1,154 @@
+{
+  "title": "External MCP Gateway",
+  "description": "Lets external AI hosts (Claude Desktop, Cursor, ChatGPT) call AionUi's IDE tools through a token-protected loopback endpoint. Disabled by default; only reachable from this machine (127.0.0.1).",
+  "internalHint": "AionUi's built-in AI already uses MTUI, Terminal and IDE tools directly. Enable this gateway only for other local apps or Web AI.",
+  "enable": "Enable gateway",
+  "enableHint": "When on, the loopback HTTP+SSE server starts and external hosts can connect with the bearer token below.",
+  "port": "Loopback port",
+  "portHint": "Pick any free port between 1024 and 65535. Default 47821.",
+  "rootPath": {
+    "label": "Workspace folder",
+    "pick": "Pick folder",
+    "hint": "External sessions are pinned to this folder. The bootstrap response reports it as the workspace root.",
+    "empty": "No folder selected — pick one before enabling the gateway."
+  },
+  "token": {
+    "label": "Bearer token",
+    "reveal": "Reveal",
+    "hide": "Hide",
+    "copy": "Copy",
+    "regenerate": "Regenerate",
+    "confirmRegenerate": "Regenerate the token? Every external client will lose its connection and must paste the new token.",
+    "copied": "Token copied to clipboard.",
+    "missing": "No token yet — enable the gateway to mint one."
+  },
+  "dangerous": {
+    "label": "Allow dangerous tools",
+    "hint": "Off by default. When on, external hosts can call ide_command (shell), team_write_file (full-file write), db_* (SQL), and ide_memory_set_secret."
+  },
+  "status": {
+    "running": "Running",
+    "stopped": "Stopped",
+    "error": "Error"
+  },
+  "mcpJson": {
+    "title": "Claude Desktop / Cursor mcp.json snippet",
+    "hint": "Paste this into your client's MCP config, then restart the client.",
+    "copy": "Copy snippet"
+  },
+  "web": {
+    "title": "Web AI access",
+    "description": "Publish a temporary HTTPS MCP endpoint for ChatGPT, Claude, Grok and other Web AI connectors.",
+    "active": "Public session active",
+    "inactive": "Not published",
+    "start": "Start Web session",
+    "stop": "Stop and revoke",
+    "rotate": "Rotate session",
+    "started": "Web AI session started.",
+    "stopped": "Web AI session stopped and all public tokens were revoked.",
+    "startFailed": "Could not start Web AI access.",
+    "timeout": "Timed out waiting for the tunnel to start. Check your network, or restart the app and try again.",
+    "securityHint": "Web Access exposes the same in-app IDE tools (search, read, terminal, edit, etc.) as your local agent — only through a Cloudflare quick tunnel. The session stays open until you disable it.",
+    "mcpUrl": "Streamable HTTP MCP URL",
+    "sessionToken": "Temporary Bearer token",
+    "rotateToReveal": "Rotate the Web session to reveal a new token",
+    "debugTitle": "Browser link fallback",
+    "debugHint": "For Web AIs without an MCP connector, create a short-lived read-only bootstrap URL.",
+    "createDebug": "Create browser link",
+    "revokeDebug": "Revoke links",
+    "debugCreated": "Read-only browser link created.",
+    "debugRevoked": "All browser links were revoked.",
+    "debugLimits": "Browser-friendly read-only links. Active until you revoke them or disable Web Access.",
+    "tokenLifetime": "The token stays valid until you disable Web Access or rotate it.",
+    "progress": {
+      "checkingCloudflared": "Checking the cloudflared binary…",
+      "installingCloudflared": "Installing cloudflared (one-time, ~5 MB)…",
+      "mintingToken": "Generating session token…",
+      "spawningTunnel": "Starting Cloudflare tunnel…",
+      "waitingTunnelUrl": "Waiting for Cloudflare to assign a public URL (~10–20 s)…",
+      "ready": "Web Access ready.",
+      "failed": "Web Access failed: {{error}}",
+      "stopping": "Stopping Web Access…",
+      "stopped": "Web Access stopped."
+    }
+  },
+  "auth": {
+    "title": "Authentication mode",
+    "description": "Choose how Web AI clients authenticate to the public tunnel. The local Bearer token always keeps working for Claude Desktop / Cursor.",
+    "modeLabel": "Auth mode",
+    "mode": {
+      "bearer": "Bearer token",
+      "oauth": "OAuth 2.1",
+      "mixed": "Mixed",
+      "none": "No auth"
+    },
+    "modeHint": {
+      "bearer": "Classic short-lived Bearer token. Paste it into the client's Authorization header.",
+      "oauth": "OAuth 2.1 with PKCE. Works with the ChatGPT MCP connector — clients register and authorize themselves.",
+      "mixed": "Accept either a valid OAuth access token or the Bearer token.",
+      "none": "No authentication — every request is accepted. Use only for a throwaway local demo behind the tunnel."
+    },
+    "ttlLabel": "Idle session lifetime",
+    "ttlHint": "How long a bootstrapped session stays valid without activity. Applies to new sessions.",
+    "ttlUnit": "h",
+    "oauth": {
+      "title": "Registered OAuth clients",
+      "hint": "Clients that completed the OAuth flow. Revoking a client invalidates all of its tokens immediately.",
+      "empty": "No OAuth clients have registered yet.",
+      "copyMetadata": "Copy discovery URL",
+      "tokenCount": "{{count}} active token(s)",
+      "revoke": "Revoke",
+      "revokeTitle": "Revoke OAuth client?",
+      "revokeConfirm": "This client and all of its tokens will be revoked immediately. It must register and authorize again to reconnect.",
+      "revoked": "OAuth client revoked."
+    },
+    "tools": {
+      "title": "Per-tool permissions",
+      "hint": "Allow or deny individual tools. 'Default' follows the dangerous-tools setting (base tools allowed, dangerous tools gated).",
+      "colTool": "Tool",
+      "colPermission": "Permission",
+      "dangerous": "Dangerous",
+      "permDefault": "Default",
+      "permAllow": "Allow",
+      "permDeny": "Deny"
+    }
+  },
+  "errors": {
+    "portInUse": "Port is already in use. Pick a different port.",
+    "noRootPath": "Pick a workspace folder first."
+  },
+  "remote": {
+    "mode": {
+      "label": "Remote Access Mode",
+      "quick": "Quick",
+      "setup": "Setup",
+      "quickHint": "Temporary test URL. The app starts a Quick Tunnel and shows a throwaway HTTPS URL — good for a quick test, not for a persistent connector.",
+      "setupHint": "Use your own stable public URL. Point a Cloudflare Named Tunnel, VPS reverse proxy, Tailscale Funnel, or ngrok custom domain at this machine and paste the URL here."
+    },
+    "quick": {
+      "warning": "This URL is temporary and may change after you restart the app or the tunnel. Not recommended for a long-lived ChatGPT/Grok MCP connector — use Setup mode with your own stable URL for that."
+    },
+    "setup": {
+      "intro": "Persistent while your DNS/tunnel points to this machine. The app does not manage any tunnel in this mode — it only stores your URLs and generates copyable endpoints.",
+      "mcpBaseUrl": "Stable MCP Base URL",
+      "webuiBaseUrl": "Stable WebUI Base URL",
+      "save": "Save",
+      "saved": "Stable URLs saved.",
+      "invalidUrl": "Enter a valid URL.",
+      "missingProtocol": "Include the protocol, e.g. https://mcp.example.online",
+      "unsupportedProtocol": "Only http:// and https:// are supported.",
+      "pathNotAllowed": "Enter the origin only (no path), e.g. https://mcp.example.online",
+      "insecureHttpWarning": "Plain http:// to a public host sends tokens in clear text. Prefer https://.",
+      "trycloudflareWarning": "This looks like a temporary Quick Tunnel URL. It may change after restart.",
+      "connectorUpdateWarning": "MCP clients may need to update or recreate their connector.",
+      "localTargetHint": "Point your public tunnel/reverse proxy to the local MCP service: {{target}}",
+      "localWebuiTargetHint": "Point your public tunnel/reverse proxy to the local WebUI service: {{target}}",
+      "generatedMcp": "Generated MCP endpoint",
+      "generatedWebui": "Generated WebUI URL",
+      "connectorConfig": "ChatGPT / Grok / Claude connector config",
+      "configurationNeeded": "Enter and save a valid Stable MCP Base URL to generate endpoints.",
+      "mcpBaseUrlPlaceholder": "https://mcp.example.online",
+      "webuiBaseUrlPlaceholder": "https://webui.example.online"
+    }
+  }
+}

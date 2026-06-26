@@ -16,8 +16,30 @@
  * Process boundary: Main-process (Node.js) types only — no DOM, no runtime.
  */
 
-/** Database engines the client can talk to directly. */
-export type DbKind = 'sqlite' | 'postgres' | 'mysql';
+/**
+ * Database engines the client can talk to directly.
+ *
+ * `sqlite` / `postgres` / `mysql` are native (driver wraps `better-sqlite3` /
+ * `pg` / `mysql2`). `d1` (Cloudflare D1) and `firestore` (Firebase Firestore)
+ * are **cloud HTTP** engines whose drivers talk to a REST API via `fetch` (no
+ * native module, no extra dependency). Supabase / Neon / PlanetScale are NOT
+ * separate kinds — they are reached through `postgres` / `mysql` (they ARE those
+ * engines); a UI preset just pre-fills their connection shape.
+ */
+export type DbKind = 'sqlite' | 'postgres' | 'mysql' | 'd1' | 'firestore';
+
+/** Engines whose driver speaks SQL (read-only guard + introspection apply). */
+export const SQL_KINDS: ReadonlySet<DbKind> = new Set<DbKind>(['sqlite', 'postgres', 'mysql', 'd1']);
+
+/** Engines reached over a cloud HTTP REST API (no native module). */
+export const CLOUD_HTTP_KINDS: ReadonlySet<DbKind> = new Set<DbKind>(['d1', 'firestore']);
+
+/**
+ * A known managed-Postgres/MySQL provider. Cosmetic: it only drives the
+ * connection-form preset (host shape, SSL default) — the underlying engine is
+ * still `postgres` / `mysql`, so no driver change is needed.
+ */
+export type DbProvider = 'supabase' | 'neon' | 'planetscale' | 'rds';
 
 /**
  * A saved connection definition. Secrets (passwords) are NEVER stored in this
@@ -53,6 +75,27 @@ export type DbConnectionConfig = {
   readOnly?: boolean;
   /** Repo root this connection belongs to (so the IDE can scope the list). */
   rootPath?: string;
+  /**
+   * Managed provider this connection targets (cosmetic; postgres/mysql only).
+   * Drives the connection-form preset, NOT the driver choice.
+   */
+  provider?: DbProvider;
+
+  // --- Cloudflare D1 (kind: 'd1') -----------------------------------------
+  /** Cloudflare account id (D1). */
+  accountId?: string;
+  /** Cloudflare D1 database id. */
+  databaseId?: string;
+  /**
+   * Cloudflare API token with D1 access (D1) / Firebase access token or web API
+   * key (firestore). Treated as a SECRET — encrypted at rest like `password`,
+   * never sent to the renderer in plaintext.
+   */
+  apiToken?: string;
+
+  // --- Firebase Firestore (kind: 'firestore') -----------------------------
+  /** Firebase / GCP project id (firestore). */
+  projectId?: string;
 };
 
 /** A column of a table, from schema introspection. */
@@ -188,4 +231,51 @@ export type DbConnectionState = {
   connected: boolean;
   /** Last error message (connect or query), if any. */
   lastError?: string;
+};
+
+/**
+ * A statistical profile of ONE column, computed by the data-analysis layer
+ * ({@link DbService.profileColumn}) with a single aggregate SQL query. This is
+ * what powers the "understand this table at a glance" panel for developers:
+ * how full is the column, how many distinct values, and (for numbers) the
+ * spread. Everything here is cheap to compute and JSON-safe.
+ */
+export type DbColumnProfile = {
+  /** Column name. */
+  column: string;
+  /** Engine-native type string (echoed from introspection). */
+  type: string;
+  /** Total rows considered (capped — see {@link DbColumnProfile.sampled}). */
+  total: number;
+  /** Count of NULL values in the sample. */
+  nulls: number;
+  /** Count of DISTINCT non-null values in the sample. */
+  distinct: number;
+  /** Min value (numeric columns; null when not applicable). */
+  min?: number | null;
+  /** Max value (numeric columns; null when not applicable). */
+  max?: number | null;
+  /** Mean of the values (numeric columns; null when not applicable). */
+  avg?: number | null;
+  /** Whether the profile was computed over a capped sample (very large table). */
+  sampled: boolean;
+  /**
+   * Top frequent values (value + count), for low-cardinality columns. Empty
+   * when the column is effectively unique (distinct ≈ total) or not profiled.
+   */
+  topValues: Array<{ value: string | number | boolean | null; count: number }>;
+};
+
+/** A whole-table profile: row count + a profile per column. */
+export type DbTableProfile = {
+  /** Schema/owner (postgres). */
+  schema?: string;
+  /** Table name. */
+  table: string;
+  /** Approximate/exact total row count of the table. */
+  rowCount: number;
+  /** Whether profiling sampled (capped) the table instead of scanning it all. */
+  sampled: boolean;
+  /** Per-column statistical profiles. */
+  columns: DbColumnProfile[];
 };

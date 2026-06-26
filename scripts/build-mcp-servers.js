@@ -57,6 +57,11 @@ async function main() {
       entryPoints: [path.join(ROOT, 'packages/desktop/src/process/system/systemInfoMcpServer.ts')],
       outfile: path.join(ROOT, 'out/main/builtin-mcp-system.js'),
     }),
+    esbuild.build({
+      ...SHARED_OPTIONS,
+      entryPoints: [path.join(ROOT, 'packages/desktop/src/process/ide/mcp/strictClaudeAcp.ts')],
+      outfile: path.join(ROOT, 'out/main/strict-claude-acp.js'),
+    }),
   ]);
 }
 

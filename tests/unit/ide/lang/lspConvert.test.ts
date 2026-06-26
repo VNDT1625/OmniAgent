@@ -30,9 +30,7 @@ describe('parseTextEditArray', () => {
   it('maps 0-based ranges to 1-based edits for one file', () => {
     const raw = [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 4 } }, newText: 'cost' }];
     const edits = parseTextEditArray('/x.ts', raw);
-    expect(edits).toEqual([
-      { path: '/x.ts', startLine: 1, startColumn: 1, endLine: 1, endColumn: 5, newText: 'cost' },
-    ]);
+    expect(edits).toEqual([{ path: '/x.ts', startLine: 1, startColumn: 1, endLine: 1, endColumn: 5, newText: 'cost' }]);
   });
 
   it('returns empty for non-array input', () => {
@@ -51,7 +49,9 @@ describe('parseWorkspaceEdit', () => {
   it('flattens the `changes` map across files', () => {
     const we = {
       changes: {
-        'file:///a.ts': [{ range: { start: { line: 1, character: 2 }, end: { line: 1, character: 5 } }, newText: 'foo' }],
+        'file:///a.ts': [
+          { range: { start: { line: 1, character: 2 }, end: { line: 1, character: 5 } }, newText: 'foo' },
+        ],
         'file:///b.ts': [{ range: { start: { line: 0, character: 0 }, end: { line: 0, character: 1 } }, newText: 'x' }],
       },
     };

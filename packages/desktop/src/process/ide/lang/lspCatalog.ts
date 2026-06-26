@@ -154,5 +154,5 @@ export const planLspPrompts = (
       });
     }
   }
-  return [...byServer.values()].sort((a, b) => b.fileCount - a.fileCount);
+  return [...byServer.values()].toSorted((a, b) => b.fileCount - a.fileCount);
 };

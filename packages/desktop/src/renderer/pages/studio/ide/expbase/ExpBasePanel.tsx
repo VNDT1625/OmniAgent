@@ -20,7 +20,12 @@ import { Button, Empty, Input, Message, Popconfirm, Progress, Spin, Tag, Tooltip
 import { Brain, CheckOne, Delete, Like, Refresh, Search, Lightning } from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { experienceClient, type ExperienceEntry, type ExperienceMetrics, type ExperienceSuggestion } from './experienceClient';
+import {
+  experienceClient,
+  type ExperienceEntry,
+  type ExperienceMetrics,
+  type ExperienceSuggestion,
+} from './experienceClient';
 
 type ExpBasePanelProps = { rootPath: string | null };
 
@@ -47,7 +52,10 @@ const ExpBasePanel: React.FC<ExpBasePanelProps> = ({ rootPath }) => {
     if (!rootPath) return;
     setLoading(true);
     try {
-      const [listRes, metricsRes] = await Promise.all([experienceClient.list(rootPath), experienceClient.metrics(rootPath)]);
+      const [listRes, metricsRes] = await Promise.all([
+        experienceClient.list(rootPath),
+        experienceClient.metrics(rootPath),
+      ]);
       if (listRes.ok) setEntries(listRes.data);
       if (metricsRes.ok) setMetrics(metricsRes.data);
     } finally {
@@ -124,7 +132,13 @@ const ExpBasePanel: React.FC<ExpBasePanelProps> = ({ rootPath }) => {
           </div>
           <div className='flex-1' />
           <Tooltip content={t('ide.expbase.refresh')} position='br'>
-            <Button type='text' size='small' icon={<Refresh theme='outline' size={15} />} loading={loading} onClick={() => void reload()} />
+            <Button
+              type='text'
+              size='small'
+              icon={<Refresh theme='outline' size={15} />}
+              loading={loading}
+              onClick={() => void reload()}
+            />
           </Tooltip>
         </div>
 
@@ -149,12 +163,7 @@ const ExpBasePanel: React.FC<ExpBasePanelProps> = ({ rootPath }) => {
             <Spin />
           </div>
         ) : showingSearch ? (
-          <SearchResults
-            suggestions={suggestions}
-            query={submittedQuery}
-            onFeedback={onFeedback}
-            onForget={onForget}
-          />
+          <SearchResults suggestions={suggestions} query={submittedQuery} onFeedback={onFeedback} onForget={onForget} />
         ) : (
           <EntryList entries={activeEntries} onForget={onForget} />
         )}
@@ -172,7 +181,11 @@ const MetricsStrip: React.FC<{ metrics: ExperienceMetrics | null }> = ({ metrics
   const accept = feedback > 0 ? Math.round((metrics.accepted / feedback) * 100) : 0;
   return (
     <div className='flex items-center gap-8px mt-12px flex-wrap'>
-      <Chip icon={<Brain theme='outline' size={13} />} label={t('ide.expbase.metric.captured')} value={String(metrics.captures)} />
+      <Chip
+        icon={<Brain theme='outline' size={13} />}
+        label={t('ide.expbase.metric.captured')}
+        value={String(metrics.captures)}
+      />
       <Chip icon={<Lightning theme='outline' size={13} />} label={t('ide.expbase.metric.hitRate')} value={`${hit}%`} />
       <Chip icon={<Like theme='outline' size={13} />} label={t('ide.expbase.metric.accepted')} value={`${accept}%`} />
     </div>
@@ -212,13 +225,18 @@ const SearchResults: React.FC<{
   return (
     <div className='flex flex-col gap-12px'>
       {suggestions.map((suggestion) => (
-        <article key={suggestion.entryId} className={`relative rd-12px bg-2 border border-b-1 overflow-hidden transition-shadow hover:shadow-sm`}>
+        <article
+          key={suggestion.entryId}
+          className={`relative rd-12px bg-2 border border-b-1 overflow-hidden transition-shadow hover:shadow-sm`}
+        >
           <span className={`absolute left-0 top-0 bottom-0 w-3px ${KIND_STYLE[suggestion.kind].rail}`} />
           <div className='pl-16px pr-14px py-13px flex flex-col gap-8px'>
             <div className='flex items-start gap-8px'>
               <KindBadge kind={suggestion.kind} />
               <span className='text-13px font-600 text-t-primary leading-snug flex-1'>{suggestion.symptom}</span>
-              <span className='shrink-0 text-11px text-t-tertiary tabular-nums'>{Math.round(suggestion.score * 100)}%</span>
+              <span className='shrink-0 text-11px text-t-tertiary tabular-nums'>
+                {Math.round(suggestion.score * 100)}%
+              </span>
             </div>
             <p className='m-0 text-13px text-t-secondary leading-relaxed'>{suggestion.lesson}</p>
 
@@ -268,12 +286,23 @@ const SearchResults: React.FC<{
 
             <div className='flex items-center gap-6px mt-4px'>
               <Tooltip content={t('ide.expbase.helpful')}>
-                <Button size='mini' type='text' icon={<Like theme='outline' size={14} />} onClick={() => onFeedback(suggestion.entryId, true)}>
+                <Button
+                  size='mini'
+                  type='text'
+                  icon={<Like theme='outline' size={14} />}
+                  onClick={() => onFeedback(suggestion.entryId, true)}
+                >
                   {t('ide.expbase.helpful')}
                 </Button>
               </Tooltip>
               <Tooltip content={t('ide.expbase.notHelpful')}>
-                <Button size='mini' type='text' className='!text-t-secondary' icon={<Like theme='outline' size={14} className='rotate-180' />} onClick={() => onFeedback(suggestion.entryId, false)}>
+                <Button
+                  size='mini'
+                  type='text'
+                  className='!text-t-secondary'
+                  icon={<Like theme='outline' size={14} className='rotate-180' />}
+                  onClick={() => onFeedback(suggestion.entryId, false)}
+                >
                   {t('ide.expbase.notHelpful')}
                 </Button>
               </Tooltip>

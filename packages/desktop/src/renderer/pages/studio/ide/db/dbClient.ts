@@ -21,6 +21,7 @@ import {
   type DbIdRequest,
   type DbListRequest,
   type DbQueryRequest,
+  type DbProfileTableRequest,
   type DbQueryScriptRequest,
   type DbSaveRequest,
   type DbSchemaGraphRequest,
@@ -39,6 +40,7 @@ import type {
   DbScriptResult,
   DbTable,
   DbTableDetail,
+  DbTableProfile,
 } from '@process/ide/db/dbTypes';
 
 /** Timeout (ms) for quick metadata ops (list/save/delete/tables/columns/close). */
@@ -56,6 +58,7 @@ const channels = {
   columns: bridge.buildProvider<DbResult<DbColumn[]>, DbColumnsRequest>(DB_CHANNELS.columns),
   tableDetail: bridge.buildProvider<DbResult<DbTableDetail>, DbTableDetailRequest>(DB_CHANNELS.tableDetail),
   schemaGraph: bridge.buildProvider<DbResult<DbSchemaGraph>, DbSchemaGraphRequest>(DB_CHANNELS.schemaGraph),
+  profileTable: bridge.buildProvider<DbResult<DbTableProfile>, DbProfileTableRequest>(DB_CHANNELS.profileTable),
   query: bridge.buildProvider<DbResult<DbQueryResult>, DbQueryRequest>(DB_CHANNELS.query),
   queryScript: bridge.buildProvider<DbResult<DbScriptResult>, DbQueryScriptRequest>(DB_CHANNELS.queryScript),
   close: bridge.buildProvider<DbResult<boolean>, DbIdRequest>(DB_CHANNELS.close),
@@ -96,6 +99,13 @@ export const dbClient = {
     withTimeout('Describe table', () => channels.tableDetail.invoke({ id, table, schema }), META_TIMEOUT_MS),
   schemaGraph: (id: string, maxTables?: number): Promise<DbResult<DbSchemaGraph>> =>
     withTimeout('Schema diagram', () => channels.schemaGraph.invoke({ id, maxTables }), QUERY_TIMEOUT_MS),
+  profileTable: (
+    id: string,
+    table: string,
+    schema?: string,
+    options?: { sampleLimit?: number; topValues?: number }
+  ): Promise<DbResult<DbTableProfile>> =>
+    withTimeout('Profile table', () => channels.profileTable.invoke({ id, table, schema, options }), QUERY_TIMEOUT_MS),
   query: (id: string, sql: string, options?: DbQueryOptions): Promise<DbResult<DbQueryResult>> =>
     withTimeout('Run query', () => channels.query.invoke({ id, sql, options }), QUERY_TIMEOUT_MS),
   queryScript: (id: string, script: string, options?: DbQueryOptions): Promise<DbResult<DbScriptResult>> =>
@@ -116,4 +126,8 @@ export type {
   DbScriptResult,
   DbTable,
   DbTableDetail,
+  DbTableProfile,
+  DbColumnProfile,
+  DbKind,
+  DbProvider,
 } from '@process/ide/db/dbTypes';

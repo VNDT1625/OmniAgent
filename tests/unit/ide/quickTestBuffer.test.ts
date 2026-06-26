@@ -9,14 +9,27 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { MAX_TRACE_EVENTS, findFirstError, isErrorEvent, isSignificantEvent, pushBounded } from '@/process/ide/quickTestBuffer';
+import {
+  MAX_TRACE_EVENTS,
+  findFirstError,
+  isErrorEvent,
+  isSignificantEvent,
+  pushBounded,
+} from '@/process/ide/quickTestBuffer';
 import type { TraceEvent } from '@/process/ide/quickTestTracer';
 
 const log = (message: string): TraceEvent => ({ kind: 'console', level: 'log', message, at: 0 });
 const errConsole = (message: string): TraceEvent => ({ kind: 'console', level: 'error', message, at: 0 });
 const ok200 = (url: string): TraceEvent => ({ kind: 'network', method: 'GET', url, status: 200, at: 0 });
 const http500 = (url: string): TraceEvent => ({ kind: 'network', method: 'GET', url, status: 500, at: 0 });
-const failedNet = (url: string): TraceEvent => ({ kind: 'network', method: 'GET', url, status: 0, error: 'ECONN', at: 0 });
+const failedNet = (url: string): TraceEvent => ({
+  kind: 'network',
+  method: 'GET',
+  url,
+  status: 0,
+  error: 'ECONN',
+  at: 0,
+});
 const click = (selector: string): TraceEvent => ({ kind: 'click', selector, text: '', at: 0 });
 const exception = (message: string): TraceEvent => ({ kind: 'exception', message, at: 0 });
 

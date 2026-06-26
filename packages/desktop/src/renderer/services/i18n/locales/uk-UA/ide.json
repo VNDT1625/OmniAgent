@@ -39,7 +39,8 @@
     "hooks": "Хуки агента",
     "spec": "Специфікація",
     "lsp": "Мовні сервери",
-    "expbase": "База досвіду"
+    "expbase": "База досвіду",
+    "team": "Команда"
   },
   "expbase": {
     "title": "База досвіду",
@@ -102,7 +103,11 @@
     "noFolder": "Відкрийте теку, щоб проаналізувати її специфікацію.",
     "noSpec": "Теку специфікації не знайдено. Створіть її на панелі Planning у Чаті.",
     "error": "Не вдалося проаналізувати специфікацію: {{error}}",
-    "health": { "success": "Здорова", "warning": "Потребує доопрацювання", "error": "Під загрозою" },
+    "health": {
+      "success": "Здорова",
+      "warning": "Потребує доопрацювання",
+      "error": "Під загрозою"
+    },
     "metric": {
       "requirements": "Вимоги",
       "earsCompliant": "Відповідає EARS",
@@ -140,7 +145,23 @@
     "emptyRequirements": "Вимоги не розібрано. Додайте вимоги з критеріями приймання.",
     "emptyPhases": "Фази не знайдено. Згрупуйте завдання під заголовками '## Phase N — …'.",
     "diagCount": "{{errors}} помилок · {{warnings}} попереджень",
-    "allClear": "Специфікація дисциплінована — проблем не знайдено."
+    "allClear": "Специфікація дисциплінована — проблем не знайдено.",
+    "lifecycle": {
+      "title": "Життєвий цикл",
+      "approved": "Схвалено",
+      "phase": {
+        "requirements": "Вимоги",
+        "design": "Дизайн",
+        "tasks": "Завдання",
+        "execution": "Виконання",
+        "complete": "Завершено"
+      },
+      "approve": {
+        "requirements": "Схвалити вимоги",
+        "design": "Схвалити дизайн",
+        "tasks": "Схвалити завдання"
+      }
+    }
   },
   "hooks": {
     "title": "Хуки агента",
@@ -183,6 +204,33 @@
       "runCommand": "Виконати команду"
     }
   },
+  "quickrun": {
+    "title": "Запуск",
+    "platformDesktop": "Десктоп",
+    "run": "Запустити",
+    "runSaved": "Запустити (збережено)",
+    "stop": "Зупинити",
+    "cancel": "Скасувати",
+    "launching": "Запуск у терміналі…",
+    "waiting": "Очікування {{url}}…",
+    "running": "Застосунок працює",
+    "runningSaved": "Застосунок працює (збережений рецепт)",
+    "manualToggle": "Редагувати команду запуску",
+    "manualHint": "У вікі ще немає даних про запуск — вкажіть, як запустити застосунок. Команда збережеться на майбутнє.",
+    "commandPlaceholder": "Команда запуску, напр. npm run dev",
+    "urlPlaceholder": "URL розробки, напр. http://localhost:5173",
+    "cwdPlaceholder": "Підпапка (необов'язково)",
+    "editCommand": "Редагувати команду",
+    "failed": "Помилка запуску: {{detail}}",
+    "unsupportedWarn": "Цей проєкт не запускається як {{picked}}. Перемкнено на {{fallback}}.",
+    "unsupportedHint": "Цей проєкт не підтримує цю платформу.",
+    "setupWikiDone": "[wiki done]",
+    "setupSaved": "[saved]",
+    "setupPackage": "[package fallback]",
+    "setupLoading": "[checking wiki]",
+    "setupMissing": "[manual setup]",
+    "setupTooltip": "???????, ?????? Quick Test ???? ??????: wiki/runbook, ?????????? ??????, package.json ??? ????? ????????."
+  },
   "quicktest": {
     "title": "Швидкий тест",
     "start": "Почати",
@@ -213,6 +261,7 @@
     "events": "подій",
     "errorDetail": "Помилка",
     "interactionPath": "Шлях взаємодії",
+    "executedCode": "Код, який справді виконувався",
     "suspectedFiles": "Підозрювані файли",
     "fixWithAgent": "Виправити з агентом",
     "restart": "Новий тест",
@@ -233,7 +282,22 @@
     "observationOnly": "Observation complete - no pass condition was set",
     "expectedTextFound": "Found expected text: {{text}}",
     "expectedTextMissing": "Expected text was not found: {{text}}",
-    "retry": "Повторити"
+    "retry": "Повторити",
+    "inspectTitle": "Інспектувати елемент",
+    "inspect": "Інспектувати",
+    "inspectHint": "Клацніть елемент у застосунку, щоб отримати його компонент, file:рядок, розміри та стилі.",
+    "inspectNoTab": "Спочатку завантажте застосунок у браузері.",
+    "inspectCancel": "Скасувати",
+    "inspectActive": "Клацніть елемент у застосунку ліворуч (Esc для скасування).",
+    "inspectUnresolved": "Не прив'язано до файлу вихідного коду",
+    "inspectExact": "точно",
+    "inspectHeuristic": "евристика",
+    "inspectNone": "без прив'язки",
+    "inspectClear": "Очистити вибір",
+    "inspectRequestPlaceholder": "Опишіть зміну для цього елемента (напр.: підняти на 20px, використати акцентний колір)…",
+    "inspectAsk": "Запитати агента",
+    "viewportResponsive": "Адаптивна",
+    "viewportHint": "Ширина перегляду: рендер сторінки в десктопній ширині (масштабовано до розміру), щоб її макет відповідав справжньому широкому браузеру, а не вузькому. Адаптивна = макет за фактичною шириною панелі."
   },
   "db": {
     "connections": "З'єднання",
@@ -283,7 +347,64 @@
     "urlInvalid": "Не вдалося розібрати цей URL підключення.",
     "urlFilled": "Форму заповнено з URL підключення.",
     "filterTables": "Фільтрувати таблиці…",
-    "noMatch": "Немає таблиць, що відповідають фільтру."
+    "noMatch": "Немає таблиць, що відповідають фільтру.",
+    "provider": "Провайдер",
+    "providerCustom": "Власний / самостійний хостинг",
+    "accountId": "ID акаунта",
+    "accountIdPlaceholder": "ID акаунта Cloudflare",
+    "databaseId": "ID бази даних",
+    "databaseIdPlaceholder": "ID бази даних Cloudflare D1",
+    "apiToken": "API-токен",
+    "apiTokenPlaceholder": "API-токен Cloudflare з доступом до D1",
+    "projectId": "ID проєкту",
+    "projectIdPlaceholder": "ID проєкту Firebase / GCP",
+    "accessToken": "Токен доступу",
+    "accessTokenPlaceholder": "Токен доступу Google OAuth",
+    "firestoreHint": "Firestore доступний лише для читання. Колекції показані як таблиці. Використовуйте \"SELECT * FROM <collection> [LIMIT n]\".",
+    "diagramLoading": "Побудова діаграми схеми…",
+    "diagramEmpty": "Немає таблиць для відображення.",
+    "diagramAria": "Діаграма схеми бази даних",
+    "moreColumns": "ще {{n}} стовпців",
+    "viewQuery": "Запит",
+    "viewDiagram": "Діаграма",
+    "viewGrid": "Таблиця",
+    "viewChart": "Графік",
+    "analyze": "Аналіз таблиці",
+    "analyzing": "Аналіз таблиці…",
+    "analyzeEmpty": "Поки немає результатів аналізу.",
+    "profileRows": "{{n}} рядків",
+    "sampled": "вибірка",
+    "fillRate": "Заповненість",
+    "distinctCount": "{{n}} унікальних",
+    "nullCount": "{{n}} null",
+    "topValues": "Часті значення",
+    "retry": "Повторити",
+    "chartNeedsNumeric": "У цьому результаті немає числових стовпців для графіка.",
+    "chartLabelColumn": "Мітка",
+    "chartValueColumn": "Значення",
+    "chartRowNumber": "Номер рядка",
+    "chartAria": "Стовпчаста діаграма результату запиту",
+    "help": {
+      "learnMore": "Відкрити сторінку, де знаходиться це значення",
+      "pasteUrl": "Вставте повний рядок підключення з панелі вашого провайдера, щоб автоматично заповнити всі поля нижче.",
+      "provider": "Виберіть керований хостинг, щоб автоматично налаштувати рушій, порт і SSL. Виберіть «Власний» для самостійного сервера.",
+      "file": "Абсолютний шлях до локального файлу .sqlite / .db на цьому комп'ютері.",
+      "host": "Адреса сервера з налаштувань підключення вашого провайдера бази даних.",
+      "port": "Порт із налаштувань підключення провайдера (за замовчуванням Postgres 5432, MySQL 3306).",
+      "database": "Назва бази даних, показана в налаштуваннях підключення провайдера.",
+      "user": "Ім'я користувача бази даних із налаштувань підключення провайдера.",
+      "password": "Пароль, заданий під час створення бази даних. Провайдери не показують його повторно — скиньте, якщо втрачено.",
+      "accountId": "Знайдіть на бічній панелі Cloudflare (Workers & Pages → Огляд).",
+      "databaseId": "Відкрийте базу D1 у панелі Cloudflare; ідентифікатор на сторінці її налаштувань.",
+      "apiToken": "Створіть API-токен із доступом на читання D1 у Cloudflare → Мій профіль → API Tokens.",
+      "projectId": "Знайдіть у Firebase console → Налаштування проєкту → Загальні.",
+      "accessToken": "Короткочасний токен доступу Google OAuth із доступом до Firestore."
+    },
+    "stat": {
+      "min": "Мін",
+      "avg": "Сер",
+      "max": "Макс"
+    }
   },
   "terminal": {
     "title": "Термінал",
@@ -391,24 +512,51 @@
     "mentionEmpty": "Збігів не знайдено.",
     "planning": "Planning",
     "planningHint": "When enabled, new IDE chats must clarify requirements and create a Kiro-style spec directory before implementation.",
+    "strictMode": "Суворий",
+    "strictModeHint": "When enabled, the agent's own tools (Bash, Write, Edit, Read, …) are auto-denied and it must use the built-in ide_* / MTUI tools.",
     "planningStatus": {
       "title": "Spec",
-      "noSpec": "No spec directory yet",
-      "missing": "Spec required before implementation",
-      "incomplete": "Spec files incomplete",
-      "ready": "Spec active",
-      "done": "All tasks done",
-      "tasks": "{{done}}/{{total}} tasks done",
-      "create": "Create spec",
-      "missingFiles": "Missing {{files}}",
-      "execute": "Execute",
-      "executeManual": "Type plan path",
+      "noSpec": "Каталогу spec ще немає",
+      "noActiveSpec": "Активний spec не вибрано",
+      "noActiveHint": "Виберіть або створіть spec, щоб почати планування",
+      "noSpecsYet": "У цьому робочому просторі ще немає spec",
+      "startPlanning": "Почати планування",
+      "clearActive": "Очистити активний spec",
+      "missing": "Перед реалізацією потрібен spec",
+      "incomplete": "Файли spec неповні",
+      "ready": "Spec активний",
+      "done": "Усі завдання виконано",
+      "tasks": "{{done}}/{{total}} завдань виконано",
+      "create": "Новий spec",
+      "missingFiles": "Відсутні {{files}}",
+      "execute": "Виконати",
+      "executeManual": "Введіть шлях до плану",
+      "executeLocked": "Перед виконанням схваліть шлюзи вимог, дизайну та завдань.",
+      "phase": {
+        "requirements": "Вимоги",
+        "design": "Дизайн",
+        "tasks": "Завдання",
+        "execution": "Виконання",
+        "complete": "Завершено"
+      },
+      "phaseHint": {
+        "requirements": "Опишіть вимоги, потім схваліть, щоб продовжити",
+        "design": "Підготуйте дизайн, потім схваліть, щоб продовжити",
+        "tasks": "Розбийте роботу на завдання, потім схваліть, щоб продовжити",
+        "execution": "Схвалено, можна виконувати завдання",
+        "complete": "Spec завершено"
+      },
+      "approve": {
+        "requirements": "Схвалити вимоги",
+        "design": "Схвалити дизайн",
+        "tasks": "Схвалити завдання"
+      },
       "mtuiOk": "MTUI OK",
-      "mtuiOkHint": "Strict MTUI Mode has no current violations.",
+      "mtuiOkHint": "У строгому режимі MTUI зараз немає порушень.",
       "mtuiViolation": "MTUI {{count}}",
-      "mtuiViolationSummary": "{{count}} file(s) changed without matching MTUI history.",
-      "mtuiHistory": "Inspect MTUI history",
-      "mtuiResolvePrompt": "Resolve Strict MTUI Mode: run `mtui --json policy status`. If these are pre-existing user changes, ask before running `mtui --json policy baseline`; otherwise repair via MTUI and re-check. "
+      "mtuiViolationSummary": "{{count}} файл(ів) змінено без відповідної історії MTUI.",
+      "mtuiHistory": "Переглянути історію MTUI",
+      "mtuiResolvePrompt": "Усуньте строгий режим MTUI: виконайте 'mtui --json policy status'. Якщо це наявні зміни користувача, запитайте перед 'mtui --json policy baseline'; інакше виправте через MTUI та перевірте знову. "
     }
   },
   "memory": {
@@ -433,6 +581,11 @@
     "clear": "Очистити",
     "clearConfirm": "Очистити всі нотатки та секрети цієї вкладки чату? Це не можна скасувати.",
     "refresh": "Оновити",
+    "add": "Додати нотатку",
+    "addPlaceholder": "Запишіть факт, рішення або завдання для агента (Enter — зберегти, Shift+Enter — новий рядок)…",
+    "added": "Нотатку збережено в пам'ять сесії.",
+    "pinNew": "Закріпити (захистити від автозгортання)",
+    "kindLabel": "Категорія",
     "kind": {
       "fact": "факт",
       "decision": "рішення",
@@ -666,5 +819,64 @@
       "completed": "completed",
       "pending": "pending"
     }
+  },
+  "team": {
+    "title": "Командне редагування",
+    "subtitle": "Хто що редагує — діліть роботу за файлами",
+    "noFolder": "Відкрийте теку, щоб координувати командне редагування.",
+    "refresh": "Оновити",
+    "you": "Ви",
+    "youTag": "ви",
+    "userIntent": "редагую вручну",
+    "participants": "Працюють тут",
+    "noParticipants": "Тут поки що ніхто не працює.",
+    "heldFiles": "Зайняті файли",
+    "noLeases": "Зараз немає зайнятих файлів.",
+    "heldBy": "зайнято {{who}}",
+    "claim": "Зайняти",
+    "release": "Звільнити",
+    "activityTitle": "Активність",
+    "noActivity": "Поки немає активності.",
+    "time": {
+      "secondsAgo": "{{count}} с тому",
+      "minutesAgo": "{{count}} хв тому"
+    },
+    "activity": {
+      "join": "{{who}} приєднався",
+      "claim": "{{who}} зайняв {{file}}",
+      "release": "{{who}} звільнив {{file}}",
+      "write": "{{who}} записав {{file}}",
+      "expire": "Оренда {{file}} у {{who}} завершилася",
+      "conflict": "{{who}} заблоковано на {{file}} (зайнято {{holder}})"
+    }
+  },
+  "teamCollab": {
+    "publish": "Опублікувати",
+    "join": "Приєднатися",
+    "stop": "Зупинити",
+    "leave": "Вийти",
+    "copy": "Копіювати",
+    "copied": "Скопійовано в буфер обміну",
+    "roleHost": "Хостинг",
+    "rolePeer": "Приєднано",
+    "roleNone": "Соло",
+    "idleHint": "Опублікуйте цей репозиторій, щоб команда редагувала його разом, або приєднайтеся до хоста.",
+    "needFolder": "Спершу відкрийте папку, щоб опублікувати її.",
+    "joinedRepo": "Приєдналися до {{repo}}",
+    "readOnlyNote": "Wiki та Understand доступні лише для читання (належать хосту)",
+    "lanCode": "Код LAN",
+    "publicUrl": "Публічний URL",
+    "weakPassword": "Під час публікації в інтернеті використовуйте пароль щонайменше з 6 символів (не стандартний).",
+    "publishTitle": "Опублікувати цей репозиторій для команди",
+    "password": "Пароль",
+    "onlineLabel": "Поділитися через інтернет",
+    "onlineHint": "Відкриває захищений тунель, щоб учасники з іншої мережі могли приєднатися.",
+    "joinTitle": "Приєднатися до репозиторію команди",
+    "joinCodeLabel": "Код приєднання або URL",
+    "joinCodePlaceholder": "192.168.1.20:5066 або https://…",
+    "yourName": "Ваше ім'я",
+    "namePlaceholder": "Як вас бачать колеги",
+    "peerPresence": "Активний на хості",
+    "peerReadOnly": "Ви редагуєте через хост. Займіть файл перед записом, щоб агенти його не перезаписали."
   }
 }

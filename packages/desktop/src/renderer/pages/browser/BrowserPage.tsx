@@ -62,6 +62,8 @@ const BrowserPage: React.FC = () => {
     navigate,
     goBack,
     goForward,
+
+    reload,
     setAgentModel,
     toggleAgentMode,
     reportBounds,
@@ -249,7 +251,7 @@ const BrowserPage: React.FC = () => {
           onSubmit={(input) => void navigate(input)}
           onBack={goBack}
           onForward={goForward}
-          onReload={() => activeTab && void navigate(activeTab.url)}
+          onReload={reload}
           onToggleSubtitles={setSubtitlesEnabled}
           onToggleControls={() => setControlsExpanded((v) => !v)}
         />

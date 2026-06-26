@@ -64,7 +64,16 @@ import type {
 } from '../update/updateTypes';
 import type { ProtocolDetectionRequest, ProtocolDetectionResponse } from '../utils/protocolDetector';
 import type { ApplicablePreset, ResourceBudget, ResourceMode, ResourceState } from '@process/resource/leaseTypes';
-import type { LiveSystemMetrics, ProcessPriorityLevel, SetPriorityResult, StaticSystemInfo, SystemSnapshot } from '@process/system/systemInfoTypes';
+import type { OmniGatewayProgressEvent } from '@process/omni-gateway/omniGatewayProgress';
+import type { OmniAuthMode, OmniOAuthClientSummary, OmniToolPermissions } from '@process/omni-gateway/auth/authTypes';
+import type { RemoteAccessMode } from '@/common/config/remotePublicUrl';
+import type {
+  LiveSystemMetrics,
+  ProcessPriorityLevel,
+  SetPriorityResult,
+  StaticSystemInfo,
+  SystemSnapshot,
+} from '@process/system/systemInfoTypes';
 import { fromApiConversation, fromApiPaginatedConversations, toApiModelOptional } from './apiModelMapper';
 import {
   httpDelete,
@@ -1113,6 +1122,133 @@ export const notification = {
 };
 
 // ---------------------------------------------------------------------------
+// Omni External MCP Gateway — stays IPC (Electron-native: the gateway is a
+// loopback HTTP+SSE server that runs in the main process so external AI hosts
+// like Claude Desktop or Cursor can call our IDE tools without leaving the
+// machine). The renderer Settings panel uses this surface to toggle enable,
+// rotate the bearer token, pick a workspace folder, etc.
+// ---------------------------------------------------------------------------
+
+export type OmniGatewayStatusDto = {
+  enabled: boolean;
+  running: boolean;
+  port: number;
+  rootPath?: string;
+  allowDangerous: boolean;
+  /** Loopback SSE URL — local clients only (Cloudflare Quick Tunnel can't proxy SSE). */
+  ideSseUrl?: string;
+  /** Loopback Streamable HTTP URL — local + tunnel-safe. */
+  ideMcpUrl?: string;
+  hasToken: boolean;
+  tokenCreatedAt?: number;
+  tokenLastRotatedAt?: number;
+  /** External Test Mode (public tunnel) snapshot. */
+  externalMode?: {
+    enabled: boolean;
+    running: boolean;
+    tunnelUrl?: string;
+    mcpUrl?: string;
+    tokenExpiresAt?: number;
+    debugTokenCount: number;
+  };
+  /** Multi-mode auth snapshot for the Web Access plane. */
+  auth?: {
+    mode: OmniAuthMode;
+    sessionTtlMs: number;
+    toolPermissions: OmniToolPermissions;
+    oauthClients: OmniOAuthClientSummary[];
+    oauthMetadataUrl?: string;
+  };
+  /**
+   * Remote Access (Quick vs Setup) snapshot. `quick*` reflect the live Quick
+   * Tunnel (empty until it starts); `stable*` are the user-saved persistent
+   * URLs from Setup mode.
+   */
+  remote?: {
+    mode: RemoteAccessMode;
+    quickMcpBaseUrl?: string;
+    quickWebuiBaseUrl?: string;
+    stableMcpBaseUrl?: string;
+    stableWebuiBaseUrl?: string;
+  };
+  lastError?: string;
+};
+
+export type OmniGatewayConfigPatch = {
+  enabled?: boolean;
+  port?: number;
+  rootPath?: string;
+  allowDangerous?: boolean;
+};
+
+export const omniGateway = {
+  getStatus: bridge.buildProvider<OmniGatewayStatusDto, void>('omni-gateway.get-status'),
+  applyConfig: bridge.buildProvider<OmniGatewayStatusDto, OmniGatewayConfigPatch>('omni-gateway.apply-config'),
+  rotateToken: bridge.buildProvider<{ token: string; status: OmniGatewayStatusDto }, void>('omni-gateway.rotate-token'),
+  revealToken: bridge.buildProvider<string | undefined, void>('omni-gateway.reveal-token'),
+  enableWebAccess: bridge.buildProvider<{ token?: string; status: OmniGatewayStatusDto }, void>(
+    'omni-gateway.enable-web-access'
+  ),
+  disableWebAccess: bridge.buildProvider<OmniGatewayStatusDto, void>('omni-gateway.disable-web-access'),
+  createDebugAccess: bridge.buildProvider<
+    {
+      token: string;
+      expiresAt: number;
+      healthUrl: string;
+      bootstrapUrl: string;
+      status: OmniGatewayStatusDto;
+    },
+    void
+  >('omni-gateway.create-debug-access'),
+  revokeDebugAccess: bridge.buildProvider<OmniGatewayStatusDto, void>('omni-gateway.revoke-debug-access'),
+  /**
+   * Live progress events emitted while Web Access is starting up or shutting
+   * down. The Settings panel subscribes to this to replace its opaque spinner
+   * with per-phase text (checking cloudflared / installing / waiting URL / …).
+   */
+  progress: bridge.buildEmitter<OmniGatewayProgressEvent>('omni-gateway.progress'),
+  /**
+   * Last progress event the Main process emitted, cached so a Settings panel
+   * that mounts AFTER a phase fired (e.g. the user navigated away during the
+   * slow tunnel startup and came back) can re-seed its strip immediately
+   * instead of showing nothing until the next live event. Returns `undefined`
+   * when nothing has happened yet.
+   */
+  getProgress: bridge.buildProvider<OmniGatewayProgressEvent | undefined, void>('omni-gateway.get-progress'),
+  /** Set the Web Access auth mode (bearer | oauth | none | mixed). */
+  setAuthMode: bridge.buildProvider<OmniGatewayStatusDto, { mode: OmniAuthMode }>('omni-gateway.set-auth-mode'),
+  /** Set the idle session TTL (ms). */
+  setSessionTtl: bridge.buildProvider<OmniGatewayStatusDto, { ttlMs: number }>('omni-gateway.set-session-ttl'),
+  /**
+   * Set or clear a per-tool permission override. `allowed: null` removes the
+   * override so the tool follows the default policy.
+   */
+  setToolPermission: bridge.buildProvider<OmniGatewayStatusDto, { toolName: string; allowed: boolean | null }>(
+    'omni-gateway.set-tool-permission'
+  ),
+  /** List registered OAuth clients (secret-free summaries). */
+  listOAuthClients: bridge.buildProvider<OmniOAuthClientSummary[], void>('omni-gateway.list-oauth-clients'),
+  /** Revoke an OAuth client and all of its tokens. */
+  revokeOAuthClient: bridge.buildProvider<OmniGatewayStatusDto, { clientId: string }>(
+    'omni-gateway.revoke-oauth-client'
+  ),
+  /**
+   * Patch the Remote Access display preferences (Quick vs Setup mode and the
+   * user-provided stable URLs). Display-only: never starts/stops the tunnel.
+   */
+  setRemoteAccess: bridge.buildProvider<
+    OmniGatewayStatusDto,
+    { mode?: RemoteAccessMode; stableMcpBaseUrl?: string | null; stableWebuiBaseUrl?: string | null }
+  >('omni-gateway.set-remote-access'),
+};
+
+export type { OmniAuthMode, OmniOAuthClientSummary, OmniToolPermissions } from '@process/omni-gateway/auth/authTypes';
+
+export type { RemoteAccessMode };
+
+export type { OmniGatewayProgressEvent, OmniGatewayProgressPhase } from '@process/omni-gateway/omniGatewayProgress';
+
+// ---------------------------------------------------------------------------
 // Resource Coordinator — stays IPC (Electron-native main-process service that
 // gates every heavy task; see process/resource/resourceCoordinator). The
 // Dashboard UI reads/writes the budget here and subscribes to live state
@@ -1191,6 +1327,9 @@ export interface IWebUIStatus {
   localUrl: string;
   networkUrl?: string;
   lanIP?: string;
+  candidateLanIPs?: string[];
+  tailscaleIP?: string;
+  tailscaleUrl?: string;
   adminUsername: string;
   initialPassword?: string;
 }
@@ -1201,6 +1340,9 @@ export interface IWebUIStartResult {
   localUrl: string;
   networkUrl?: string;
   lanIP?: string;
+  candidateLanIPs?: string[];
+  tailscaleIP?: string;
+  tailscaleUrl?: string;
   initialPassword?: string;
 }
 
@@ -1210,10 +1352,14 @@ export const webui = {
   stop: bridge.buildProvider<void, void>('webui.stop'),
   statusChanged: bridge.buildEmitter<{
     running: boolean;
+    allowRemote?: boolean;
     port?: number;
     localUrl?: string;
     networkUrl?: string;
     lanIP?: string;
+    candidateLanIPs?: string[];
+    tailscaleIP?: string;
+    tailscaleUrl?: string;
     initialPassword?: string;
   }>('webui.status-changed'),
   changePassword: httpPost<void, { newPassword: string }>('/api/webui/change-password', (p) => ({

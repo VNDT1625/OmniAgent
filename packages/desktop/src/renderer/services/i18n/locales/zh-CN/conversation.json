@@ -97,6 +97,15 @@
     "retryable": "可重试",
     "notRetryable": "需先处理配置",
     "resolutionPrefix": "建议：",
+    "autoRetry": {
+      "countdown": "????????????? {{seconds}} ???????",
+      "stop": "??",
+      "continue": "??",
+      "continuing": "??????????...",
+      "stopped": "???????????????? API key?",
+      "failed": "?????????????????",
+      "continuePrompt": "??"
+    },
     "resolution": {
       "retry": "稍后重试，或重新发送这条消息。",
       "wait_for_current_response": "请等待当前回复结束后再发送下一条消息。",
@@ -403,6 +412,11 @@
     "verifyRunning": "正在独立验证目标…",
     "verifyFailed": "独立验证失败 — 智能体需修复后重试。"
   },
+  "interruptionRecovery": {
+    "interrupted": "对话已中断且无法自动恢复，请重新发送您的消息。",
+    "retryScheduled": "连接已中断 — 将在 {{seconds}} 秒后重试（第 {{retry}}/{{max}} 次）。",
+    "retrying": "正在重试…（第 {{retry}}/{{max}} 次）。"
+  },
   "sideQuestion": {
     "title": "顺便问一下",
     "description": "针对当前对话快速提一个小问题",
@@ -440,6 +454,13 @@
   },
   "contextUsage": {
     "contextUsed": "上下文已使用"
+  },
+  "turnStats": {
+    "tokensExact": "本次回复使用的 token 数",
+    "tokensEstimated": "本次回复的预估 token 数（基于上下文用量变化）",
+    "duration": "本次回复的生成耗时",
+    "input": "输入 token（喂给模型的上下文）",
+    "output": "输出 token（模型生成的文本）"
   },
   "skill_generator": {
     "title": "生成 Skill/规则",

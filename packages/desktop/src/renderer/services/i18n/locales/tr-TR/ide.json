@@ -39,7 +39,8 @@
     "hooks": "Agent Kancaları",
     "spec": "Spec",
     "lsp": "Dil Sunucuları",
-    "expbase": "Deneyim Tabanı"
+    "expbase": "Deneyim Tabanı",
+    "team": "Takım"
   },
   "expbase": {
     "title": "Deneyim Tabanı",
@@ -102,12 +103,41 @@
     "noFolder": "Spec'ini analiz etmek için bir klasör açın.",
     "noSpec": "Spec dizini bulunamadı. Sohbet'teki Planlama çubuğundan bir tane oluşturun.",
     "error": "Spec analiz edilemedi: {{error}}",
-    "health": { "success": "Sağlıklı", "warning": "İyileştirme gerekli", "error": "Riskli" },
-    "metric": { "requirements": "Gereksinimler", "earsCompliant": "EARS uyumlu", "covered": "Kapsanan", "verified": "Doğrulanan", "activePhase": "Etkin aşama", "allDone": "Tümü tamam" },
-    "section": { "requirements": "EARS Gereksinimleri", "traceability": "İzlenebilirlik (Gereksinim ↔ Görev ↔ Test)", "phases": "Aşama Geçitleri", "diagnostics": "Tanılama" },
-    "ears": { "ubiquitous": "Her yerde", "event": "Olay", "state": "Durum", "unwanted": "İstenmeyen", "optional": "İsteğe bağlı", "unknown": "EARS dışı" },
+    "health": {
+      "success": "Sağlıklı",
+      "warning": "İyileştirme gerekli",
+      "error": "Riskli"
+    },
+    "metric": {
+      "requirements": "Gereksinimler",
+      "earsCompliant": "EARS uyumlu",
+      "covered": "Kapsanan",
+      "verified": "Doğrulanan",
+      "activePhase": "Etkin aşama",
+      "allDone": "Tümü tamam"
+    },
+    "section": {
+      "requirements": "EARS Gereksinimleri",
+      "traceability": "İzlenebilirlik (Gereksinim ↔ Görev ↔ Test)",
+      "phases": "Aşama Geçitleri",
+      "diagnostics": "Tanılama"
+    },
+    "ears": {
+      "ubiquitous": "Her yerde",
+      "event": "Olay",
+      "state": "Durum",
+      "unwanted": "İstenmeyen",
+      "optional": "İsteğe bağlı",
+      "unknown": "EARS dışı"
+    },
     "criteriaCount": "{{count}} ölçüt",
-    "trace": { "tasks": "{{count}} görev", "done": "Devam ediyor / tamam", "todo": "Tamamlanmış görev yok", "verified": "verification.md içinde doğrulandı", "unverified": "Henüz doğrulanmadı" },
+    "trace": {
+      "tasks": "{{count}} görev",
+      "done": "Devam ediyor / tamam",
+      "todo": "Tamamlanmış görev yok",
+      "verified": "verification.md içinde doğrulandı",
+      "unverified": "Henüz doğrulanmadı"
+    },
     "dodPresent": "Bitiş Tanımı",
     "dodMissing": "Bitiş Tanımı yok",
     "checkpoint": "Kontrol noktası",
@@ -115,7 +145,23 @@
     "emptyRequirements": "Ayrıştırılan gereksinim yok. Kabul ölçütleriyle gereksinimler ekleyin.",
     "emptyPhases": "Aşama bulunamadı. Görevleri '## Phase N — …' başlıkları altında gruplayın.",
     "diagCount": "{{errors}} hata · {{warnings}} uyarı",
-    "allClear": "Spec disiplinli — sorun bulunamadı."
+    "allClear": "Spec disiplinli — sorun bulunamadı.",
+    "lifecycle": {
+      "title": "Yaşam döngüsü",
+      "approved": "Onaylandı",
+      "phase": {
+        "requirements": "Gereksinimler",
+        "design": "Tasarım",
+        "tasks": "Görevler",
+        "execution": "Yürütme",
+        "complete": "Tamamlandı"
+      },
+      "approve": {
+        "requirements": "Gereksinimleri onayla",
+        "design": "Tasarımı onayla",
+        "tasks": "Görevleri onayla"
+      }
+    }
   },
   "hooks": {
     "title": "Agent Kancaları",
@@ -158,6 +204,33 @@
       "runCommand": "Komut çalıştır"
     }
   },
+  "quickrun": {
+    "title": "Çalıştır",
+    "platformDesktop": "Masaüstü",
+    "run": "Çalıştır",
+    "runSaved": "Çalıştır (kayıtlı)",
+    "stop": "Durdur",
+    "cancel": "İptal",
+    "launching": "Terminalde başlatılıyor…",
+    "waiting": "{{url}} bekleniyor…",
+    "running": "Uygulama çalışıyor",
+    "runningSaved": "Uygulama çalışıyor (kayıtlı tarif)",
+    "manualToggle": "Çalıştırma komutunu düzenle",
+    "manualHint": "Wiki'de henüz çalıştırma verisi yok — uygulamanızı nasıl başlatacağınızı girin. Sonraki sefer için kaydedilir.",
+    "commandPlaceholder": "Başlatma komutu, örn. npm run dev",
+    "urlPlaceholder": "Geliştirme URL'si, örn. http://localhost:5173",
+    "cwdPlaceholder": "Alt klasör (isteğe bağlı)",
+    "editCommand": "Komutu düzenle",
+    "failed": "Çalıştırma başarısız: {{detail}}",
+    "unsupportedWarn": "Bu proje {{picked}} olarak çalışmıyor. {{fallback}} olarak değiştirildi.",
+    "unsupportedHint": "Bu proje bu platformu desteklemiyor.",
+    "setupWikiDone": "[wiki done]",
+    "setupSaved": "[saved]",
+    "setupPackage": "[package fallback]",
+    "setupLoading": "[checking wiki]",
+    "setupMissing": "[manual setup]",
+    "setupTooltip": "Quick Test ?al??t?rma ayar?n?n wiki/runbook, kay?tl? tarif, package.json ya da elle giri?ten geldi?ini g?sterir."
+  },
   "quicktest": {
     "title": "Hızlı Test",
     "start": "Başlat",
@@ -188,6 +261,7 @@
     "events": "olay",
     "errorDetail": "Hata",
     "interactionPath": "Etkileşim yolu",
+    "executedCode": "Gerçekten çalışan kod",
     "suspectedFiles": "Şüpheli dosyalar",
     "fixWithAgent": "Agent ile düzelt",
     "restart": "Yeni test",
@@ -208,7 +282,22 @@
     "observationOnly": "Observation complete - no pass condition was set",
     "expectedTextFound": "Found expected text: {{text}}",
     "expectedTextMissing": "Expected text was not found: {{text}}",
-    "retry": "Yeniden dene"
+    "retry": "Yeniden dene",
+    "inspectTitle": "Öğeyi incele",
+    "inspect": "İncele",
+    "inspectHint": "Uygulamadaki bir öğeye tıklayarak bileşenini, file:satırını, kutusunu ve stillerini yakalayın.",
+    "inspectNoTab": "Önce uygulamanızı tarayıcıda yükleyin.",
+    "inspectCancel": "İptal",
+    "inspectActive": "Soldaki uygulamada bir öğeye tıklayın (iptal için Esc).",
+    "inspectUnresolved": "Bir kaynak dosyaya bağlanamadı",
+    "inspectExact": "kesin",
+    "inspectHeuristic": "sezgisel",
+    "inspectNone": "eşlenmemiş",
+    "inspectClear": "Seçimi temizle",
+    "inspectRequestPlaceholder": "Bu öğe için değişikliği açıklayın (ör. 20px yukarı al, vurgu rengi kullan)…",
+    "inspectAsk": "Ajana sor",
+    "viewportResponsive": "Duyarlı",
+    "viewportHint": "Önizleme genişliği: sayfayı masaüstü genişliğinde (sığacak şekilde ölçeklenerek) işleyerek, dar değil gerçek geniş bir tarayıcıyla aynı düzende gösterir. Duyarlı = panelin gerçek genişliğine göre düzen."
   },
   "db": {
     "connections": "Bağlantılar",
@@ -258,7 +347,64 @@
     "urlInvalid": "Bu bağlantı URL'si ayrıştırılamadı.",
     "urlFilled": "Form bağlantı URL'sinden dolduruldu.",
     "filterTables": "Tabloları filtrele…",
-    "noMatch": "Filtreyle eşleşen tablo yok."
+    "noMatch": "Filtreyle eşleşen tablo yok.",
+    "provider": "Sağlayıcı",
+    "providerCustom": "Özel / kendi sunucunuz",
+    "accountId": "Hesap kimliği",
+    "accountIdPlaceholder": "Cloudflare hesap kimliği",
+    "databaseId": "Veritabanı kimliği",
+    "databaseIdPlaceholder": "Cloudflare D1 veritabanı kimliği",
+    "apiToken": "API belirteci",
+    "apiTokenPlaceholder": "D1 erişimli Cloudflare API belirteci",
+    "projectId": "Proje kimliği",
+    "projectIdPlaceholder": "Firebase / GCP proje kimliği",
+    "accessToken": "Erişim belirteci",
+    "accessTokenPlaceholder": "Google OAuth erişim belirteci",
+    "firestoreHint": "Firestore salt okunurdur. Koleksiyonlar tablo olarak gösterilir. \"SELECT * FROM <collection> [LIMIT n]\" kullanın.",
+    "diagramLoading": "Şema diyagramı oluşturuluyor…",
+    "diagramEmpty": "Görüntülenecek tablo yok.",
+    "diagramAria": "Veritabanı şema diyagramı",
+    "moreColumns": "{{n}} sütun daha",
+    "viewQuery": "Sorgu",
+    "viewDiagram": "Diyagram",
+    "viewGrid": "Tablo",
+    "viewChart": "Grafik",
+    "analyze": "Tabloyu analiz et",
+    "analyzing": "Tablo analiz ediliyor…",
+    "analyzeEmpty": "Henüz analiz sonucu yok.",
+    "profileRows": "{{n}} satır",
+    "sampled": "örneklem",
+    "fillRate": "Doluluk oranı",
+    "distinctCount": "{{n}} benzersiz",
+    "nullCount": "{{n}} null",
+    "topValues": "Sık değerler",
+    "retry": "Tekrar dene",
+    "chartNeedsNumeric": "Bu sonuçta grafik için sayısal sütun yok.",
+    "chartLabelColumn": "Etiket",
+    "chartValueColumn": "Değer",
+    "chartRowNumber": "Satır numarası",
+    "chartAria": "Sorgu sonucu çubuk grafiği",
+    "help": {
+      "learnMore": "Bu değerin bulunduğu sayfayı aç",
+      "pasteUrl": "Aşağıdaki tüm alanları otomatik doldurmak için sağlayıcınızın panosundaki tam bağlantı dizesini yapıştırın.",
+      "provider": "Motoru, portu ve SSL'yi otomatik ayarlamak için yönetilen sunucunuzu seçin. Kendi sunucunuz için Özel'i seçin.",
+      "file": "Bu makinedeki yerel .sqlite / .db dosyasının mutlak yolu.",
+      "host": "Veritabanı sağlayıcınızın bağlantı ayarlarındaki sunucu adresi.",
+      "port": "Sağlayıcınızın bağlantı ayarlarındaki port (varsayılan Postgres 5432, MySQL 3306).",
+      "database": "Sağlayıcınızın bağlantı ayarlarında gösterilen veritabanı adı.",
+      "user": "Sağlayıcınızın bağlantı ayarlarındaki veritabanı kullanıcı adı.",
+      "password": "Veritabanını oluştururken belirlenen parola. Sağlayıcılar tekrar göstermez — kaybolursa sıfırlayın.",
+      "accountId": "Cloudflare panosu kenar çubuğunda bulun (Workers & Pages → Genel Bakış).",
+      "databaseId": "Cloudflare panosunda D1 veritabanınızı açın; kimlik ayarlar sayfasındadır.",
+      "apiToken": "Cloudflare → Profilim → API Tokens altında D1 okuma erişimli bir API belirteci oluşturun.",
+      "projectId": "Firebase konsolu → Proje ayarları → Genel'de bulun.",
+      "accessToken": "Firestore erişimi olan kısa ömürlü bir Google OAuth erişim belirteci."
+    },
+    "stat": {
+      "min": "Min",
+      "avg": "Ort",
+      "max": "Maks"
+    }
   },
   "terminal": {
     "title": "Terminal",
@@ -366,24 +512,51 @@
     "mentionEmpty": "Eşleşen dosya bulunamadı.",
     "planning": "Planning",
     "planningHint": "When enabled, new IDE chats must clarify requirements and create a Kiro-style spec directory before implementation.",
+    "strictMode": "Katı",
+    "strictModeHint": "When enabled, the agent's own tools (Bash, Write, Edit, Read, …) are auto-denied and it must use the built-in ide_* / MTUI tools.",
     "planningStatus": {
       "title": "Spec",
-      "noSpec": "No spec directory yet",
-      "missing": "Spec required before implementation",
-      "incomplete": "Spec files incomplete",
-      "ready": "Spec active",
-      "done": "All tasks done",
-      "tasks": "{{done}}/{{total}} tasks done",
-      "create": "Create spec",
-      "missingFiles": "Missing {{files}}",
-      "execute": "Execute",
-      "executeManual": "Type plan path",
+      "noSpec": "Henüz spec dizini yok",
+      "noActiveSpec": "Aktif spec yok",
+      "noActiveHint": "Planlamaya başlamak için bir spec seçin veya oluşturun",
+      "noSpecsYet": "Bu çalışma alanında henüz spec yok",
+      "startPlanning": "Planlamayı başlat",
+      "clearActive": "Aktif spec'i temizle",
+      "missing": "Uygulamadan önce spec gerekli",
+      "incomplete": "Spec dosyaları eksik",
+      "ready": "Spec aktif",
+      "done": "Tüm görevler tamamlandı",
+      "tasks": "{{done}}/{{total}} görev tamamlandı",
+      "create": "Yeni spec",
+      "missingFiles": "Eksik {{files}}",
+      "execute": "Yürüt",
+      "executeManual": "Plan yolunu yaz",
+      "executeLocked": "Yürütmeden önce gereksinim, tasarım ve görev kapılarını onaylayın.",
+      "phase": {
+        "requirements": "Gereksinimler",
+        "design": "Tasarım",
+        "tasks": "Görevler",
+        "execution": "Yürütme",
+        "complete": "Tamamlandı"
+      },
+      "phaseHint": {
+        "requirements": "Gereksinimleri tanımlayın, sonra devam etmek için onaylayın",
+        "design": "Tasarımı hazırlayın, sonra devam etmek için onaylayın",
+        "tasks": "Görevleri ayırın, sonra devam etmek için onaylayın",
+        "execution": "Onaylandı, görevleri yürütmeye hazır",
+        "complete": "Spec tamamlandı"
+      },
+      "approve": {
+        "requirements": "Gereksinimleri onayla",
+        "design": "Tasarımı onayla",
+        "tasks": "Görevleri onayla"
+      },
       "mtuiOk": "MTUI OK",
-      "mtuiOkHint": "Strict MTUI Mode has no current violations.",
+      "mtuiOkHint": "Strict MTUI Mode'da şu anda ihlal yok.",
       "mtuiViolation": "MTUI {{count}}",
-      "mtuiViolationSummary": "{{count}} file(s) changed without matching MTUI history.",
-      "mtuiHistory": "Inspect MTUI history",
-      "mtuiResolvePrompt": "Resolve Strict MTUI Mode: run `mtui --json policy status`. If these are pre-existing user changes, ask before running `mtui --json policy baseline`; otherwise repair via MTUI and re-check. "
+      "mtuiViolationSummary": "{{count}} dosya değişikliğinin eşleşen MTUI geçmişi yok.",
+      "mtuiHistory": "MTUI geçmişini incele",
+      "mtuiResolvePrompt": "Strict MTUI Mode'u çöz: 'mtui --json policy status' çalıştır. Bunlar önceden var olan kullanıcı değişiklikleriyse 'mtui --json policy baseline' çalıştırmadan önce sor; aksi halde MTUI ile düzeltip yeniden kontrol et. "
     }
   },
   "memory": {
@@ -408,6 +581,11 @@
     "clear": "Temizle",
     "clearConfirm": "Bu sohbet sekmesindeki tüm notlar ve sırlar temizlensin mi? Bu geri alınamaz.",
     "refresh": "Yenile",
+    "add": "Not ekle",
+    "addPlaceholder": "Ajan için bir olgu, karar veya yapılacak iş not edin (kaydetmek için Enter, yeni satır için Shift+Enter)…",
+    "added": "Not oturum belleğine kaydedildi.",
+    "pinNew": "Sabitle (otomatik özetlemeden koru)",
+    "kindLabel": "Kategori",
     "kind": {
       "fact": "olgu",
       "decision": "karar",
@@ -641,5 +819,64 @@
       "completed": "completed",
       "pending": "pending"
     }
+  },
+  "team": {
+    "title": "Takım Düzenleme",
+    "subtitle": "Kim neyi düzenliyor — işi dosyaya göre bölün",
+    "noFolder": "Takım düzenlemesini koordine etmek için bir klasör açın.",
+    "refresh": "Yenile",
+    "you": "Sen",
+    "youTag": "sen",
+    "userIntent": "elle düzenliyor",
+    "participants": "Burada çalışanlar",
+    "noParticipants": "Burada henüz kimse çalışmıyor.",
+    "heldFiles": "Tutulan dosyalar",
+    "noLeases": "Şu anda tutulan dosya yok.",
+    "heldBy": "{{who}} tarafından tutuluyor",
+    "claim": "Talep et",
+    "release": "Bırak",
+    "activityTitle": "Etkinlik",
+    "noActivity": "Henüz etkinlik yok.",
+    "time": {
+      "secondsAgo": "{{count}} sn önce",
+      "minutesAgo": "{{count}} dk önce"
+    },
+    "activity": {
+      "join": "{{who}} katıldı",
+      "claim": "{{who}}, {{file}} dosyasını talep etti",
+      "release": "{{who}}, {{file}} dosyasını bıraktı",
+      "write": "{{who}}, {{file}} dosyasına yazdı",
+      "expire": "{{who}} kullanıcısının {{file}} üzerindeki kirası doldu",
+      "conflict": "{{who}}, {{file}} üzerinde engellendi ({{holder}} tutuyor)"
+    }
+  },
+  "teamCollab": {
+    "publish": "Yayınla",
+    "join": "Katıl",
+    "stop": "Durdur",
+    "leave": "Ayrıl",
+    "copy": "Kopyala",
+    "copied": "Panoya kopyalandı",
+    "roleHost": "Sunucu",
+    "rolePeer": "Katıldı",
+    "roleNone": "Tek başına",
+    "idleHint": "Bu depoyu yayınlayarak ekibinizle birlikte düzenleyin ya da bir sunucuya katılın.",
+    "needFolder": "Yayınlamadan önce bir klasör açın.",
+    "joinedRepo": "{{repo}} deposuna katıldınız",
+    "readOnlyNote": "Wiki ve Understand salt okunurdur (sunucuya ait)",
+    "lanCode": "LAN kodu",
+    "publicUrl": "Genel URL",
+    "weakPassword": "Çevrimiçi paylaşırken en az 6 karakterli (varsayılan olmayan) bir parola kullanın.",
+    "publishTitle": "Bu depoyu ekibinize yayınlayın",
+    "password": "Parola",
+    "onlineLabel": "İnternet üzerinden paylaş",
+    "onlineHint": "Güvenli bir tünel açar, böylece başka bir ağdaki ekip üyeleri de katılabilir.",
+    "joinTitle": "Bir ekip deposuna katıl",
+    "joinCodeLabel": "Katılım kodu veya URL",
+    "joinCodePlaceholder": "192.168.1.20:5066 veya https://…",
+    "yourName": "Adınız",
+    "namePlaceholder": "Takım arkadaşlarınızın gördüğü ad",
+    "peerPresence": "Sunucuda etkin",
+    "peerReadOnly": "Sunucu üzerinden düzenliyorsunuz. Ajanların üzerine yazmaması için yazmadan önce dosyayı talep edin."
   }
 }

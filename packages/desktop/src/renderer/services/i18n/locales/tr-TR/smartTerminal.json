@@ -11,5 +11,10 @@
     "running": "`{{program}}` çalıştırılıyor…"
   },
   "autoRerunLabel": "Hatada düzeltme öner",
-  "autoRerunHint": "Bir komut başarısız olur ve bilinen bir alternatifi varsa, terminalde (y/N) sorar; siz veya bir ajan yazarak uygulayabilir."
+  "autoRerunHint": "Bir komut başarısız olur ve bilinen bir alternatifi varsa, terminalde (y/N) sorar; siz veya bir ajan yazarak uygulayabilir.",
+  "suggest": {
+    "title": "Öneriler",
+    "ariaLabel": "Komut önerileri",
+    "runCount": "{{count}}×"
+  }
 }

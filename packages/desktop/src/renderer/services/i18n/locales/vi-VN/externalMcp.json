@@ -1,0 +1,154 @@
+{
+  "title": "External MCP Gateway",
+  "description": "Cho phép host AI bên ngoài (Claude Desktop, Cursor, ChatGPT) gọi vào tool IDE của AionUi qua một endpoint loopback có token bảo vệ. Mặc định tắt; chỉ máy này (127.0.0.1) gọi được.",
+  "internalHint": "AI tích hợp trong AionUi đã dùng trực tiếp MTUI, Terminal và tool IDE. Chỉ bật gateway này cho ứng dụng local khác hoặc AI Web.",
+  "enable": "Bật gateway",
+  "enableHint": "Khi bật, server loopback HTTP+SSE khởi động và host bên ngoài có thể kết nối bằng bearer token bên dưới.",
+  "port": "Cổng loopback",
+  "portHint": "Chọn cổng rảnh trong khoảng 1024–65535. Mặc định 47821.",
+  "rootPath": {
+    "label": "Thư mục workspace",
+    "pick": "Chọn thư mục",
+    "hint": "Mọi phiên external sẽ gắn vào thư mục này. Bootstrap response trả nó làm workspace root.",
+    "empty": "Chưa chọn thư mục — chọn trước khi bật gateway."
+  },
+  "token": {
+    "label": "Bearer token",
+    "reveal": "Hiện",
+    "hide": "Ẩn",
+    "copy": "Sao chép",
+    "regenerate": "Tạo lại",
+    "confirmRegenerate": "Tạo lại token? Mọi client ngoài sẽ mất kết nối và phải dán token mới.",
+    "copied": "Đã sao chép token.",
+    "missing": "Chưa có token — bật gateway để tạo."
+  },
+  "dangerous": {
+    "label": "Cho phép tool nguy hiểm",
+    "hint": "Mặc định tắt. Bật để host ngoài gọi được ide_command (shell), team_write_file (ghi đè file), db_* (SQL), ide_memory_set_secret."
+  },
+  "status": {
+    "running": "Đang chạy",
+    "stopped": "Đã dừng",
+    "error": "Lỗi"
+  },
+  "mcpJson": {
+    "title": "Đoạn mcp.json cho Claude Desktop / Cursor",
+    "hint": "Dán vào file cấu hình MCP của client rồi khởi động lại.",
+    "copy": "Copy đoạn JSON"
+  },
+  "web": {
+    "title": "Truy cập cho AI Web",
+    "description": "Xuất bản endpoint MCP HTTPS tạm thời cho ChatGPT, Claude, Grok và các AI Web khác.",
+    "active": "Phiên public đang chạy",
+    "inactive": "Chưa xuất bản",
+    "start": "Bật phiên Web",
+    "stop": "Dừng và thu hồi",
+    "rotate": "Đổi phiên",
+    "started": "Đã bật phiên AI Web.",
+    "stopped": "Đã dừng phiên AI Web và thu hồi toàn bộ token public.",
+    "startFailed": "Không thể bật truy cập AI Web.",
+    "timeout": "Quá thời gian chờ tunnel khởi động. Kiểm tra kết nối mạng, hoặc khởi động lại app rồi thử lại.",
+    "securityHint": "Web Access expose cùng bộ tool IDE in-app (search, read, terminal, edit, ...) như agent local — chỉ qua Cloudflare quick tunnel. Phiên giữ mở cho đến khi bạn tắt.",
+    "mcpUrl": "URL MCP Streamable HTTP",
+    "sessionToken": "Bearer token tạm thời",
+    "rotateToReveal": "Đổi phiên Web để nhận token mới",
+    "debugTitle": "Liên kết dự phòng cho trình duyệt",
+    "debugHint": "Với AI Web không hỗ trợ MCP connector, tạo URL bootstrap chỉ đọc và có thời hạn ngắn.",
+    "createDebug": "Tạo liên kết",
+    "revokeDebug": "Thu hồi liên kết",
+    "debugCreated": "Đã tạo liên kết trình duyệt chỉ đọc.",
+    "debugRevoked": "Đã thu hồi toàn bộ liên kết trình duyệt.",
+    "debugLimits": "Link đọc-dữ-liệu thân thiện với trình duyệt. Có hiệu lực đến khi bạn revoke hoặc tắt Web Access.",
+    "tokenLifetime": "Token có hiệu lực cho đến khi bạn tắt Web Access hoặc xoay token.",
+    "progress": {
+      "checkingCloudflared": "Đang kiểm tra cloudflared…",
+      "installingCloudflared": "Đang cài cloudflared (lần đầu, ~5 MB)…",
+      "mintingToken": "Đang tạo token phiên…",
+      "spawningTunnel": "Đang khởi tạo Cloudflare tunnel…",
+      "waitingTunnelUrl": "Đang chờ Cloudflare cấp URL công khai (~10–20 giây)…",
+      "ready": "Web Access đã sẵn sàng.",
+      "failed": "Web Access lỗi: {{error}}",
+      "stopping": "Đang tắt Web Access…",
+      "stopped": "Đã tắt Web Access."
+    }
+  },
+  "auth": {
+    "title": "Chế độ xác thực",
+    "description": "Chọn cách các AI Web xác thực với tunnel công khai. Bearer token cục bộ vẫn luôn hoạt động cho Claude Desktop / Cursor.",
+    "modeLabel": "Chế độ xác thực",
+    "mode": {
+      "bearer": "Bearer token",
+      "oauth": "OAuth 2.1",
+      "mixed": "Kết hợp",
+      "none": "Không xác thực"
+    },
+    "modeHint": {
+      "bearer": "Bearer token ngắn hạn cổ điển. Dán vào header Authorization của client.",
+      "oauth": "OAuth 2.1 với PKCE. Hoạt động với trình kết nối MCP của ChatGPT — client tự đăng ký và cấp quyền.",
+      "mixed": "Chấp nhận cả OAuth access token hợp lệ lẫn Bearer token.",
+      "none": "Không xác thực — mọi yêu cầu đều được chấp nhận. Chỉ dùng cho demo cục bộ tạm thời sau tunnel."
+    },
+    "ttlLabel": "Thời gian sống của phiên khi nhàn rỗi",
+    "ttlHint": "Phiên đã bootstrap còn hiệu lực bao lâu khi không hoạt động. Áp dụng cho phiên mới.",
+    "ttlUnit": "giờ",
+    "oauth": {
+      "title": "Client OAuth đã đăng ký",
+      "hint": "Các client đã hoàn tất luồng OAuth. Thu hồi một client sẽ vô hiệu hóa ngay toàn bộ token của nó.",
+      "empty": "Chưa có client OAuth nào đăng ký.",
+      "copyMetadata": "Sao chép URL discovery",
+      "tokenCount": "{{count}} token đang hoạt động",
+      "revoke": "Thu hồi",
+      "revokeTitle": "Thu hồi client OAuth?",
+      "revokeConfirm": "Client này và toàn bộ token của nó sẽ bị thu hồi ngay lập tức. Nó phải đăng ký và cấp quyền lại để kết nối.",
+      "revoked": "Đã thu hồi client OAuth."
+    },
+    "tools": {
+      "title": "Quyền theo từng tool",
+      "hint": "Cho phép hoặc chặn từng tool riêng lẻ. 'Mặc định' tuân theo thiết lập tool nguy hiểm (tool cơ bản được phép, tool nguy hiểm bị kiểm soát).",
+      "colTool": "Tool",
+      "colPermission": "Quyền",
+      "dangerous": "Nguy hiểm",
+      "permDefault": "Mặc định",
+      "permAllow": "Cho phép",
+      "permDeny": "Chặn"
+    }
+  },
+  "errors": {
+    "portInUse": "Cổng đã bị chiếm. Chọn cổng khác.",
+    "noRootPath": "Chọn thư mục workspace trước."
+  },
+  "remote": {
+    "mode": {
+      "label": "Chế độ truy cập từ xa",
+      "quick": "Quick",
+      "setup": "Setup",
+      "quickHint": "URL test tạm thời. Ứng dụng khởi động Quick Tunnel và hiển thị một URL HTTPS tạm — phù hợp để test nhanh, không phù hợp cho connector lâu dài.",
+      "setupHint": "Dùng URL công khai ổn định của riêng bạn. Trỏ Cloudflare Named Tunnel, reverse proxy VPS, Tailscale Funnel hoặc domain tùy chỉnh ngrok về máy này rồi dán URL vào đây."
+    },
+    "quick": {
+      "warning": "URL này là tạm thời và có thể đổi sau khi khởi động lại ứng dụng hoặc tunnel. Không khuyến nghị dùng cho connector ChatGPT/Grok MCP lâu dài — hãy dùng chế độ Setup với URL ổn định của bạn."
+    },
+    "setup": {
+      "intro": "Ổn định miễn là DNS/tunnel của bạn còn trỏ về máy này. Ở chế độ này ứng dụng không quản lý tunnel — chỉ lưu URL của bạn và tạo các endpoint có thể sao chép.",
+      "mcpBaseUrl": "URL gốc MCP ổn định",
+      "webuiBaseUrl": "URL gốc WebUI ổn định",
+      "save": "Lưu",
+      "saved": "Đã lưu URL ổn định.",
+      "invalidUrl": "Nhập một URL hợp lệ.",
+      "missingProtocol": "Thêm giao thức, ví dụ https://mcp.example.online",
+      "unsupportedProtocol": "Chỉ hỗ trợ http:// và https://.",
+      "pathNotAllowed": "Chỉ nhập origin (không kèm path), ví dụ https://mcp.example.online",
+      "insecureHttpWarning": "Dùng http:// tới host công khai sẽ gửi token dạng văn bản thuần. Hãy ưu tiên https://.",
+      "trycloudflareWarning": "URL này trông giống URL Quick Tunnel tạm thời. Nó có thể đổi sau khi khởi động lại.",
+      "connectorUpdateWarning": "Các client MCP có thể cần cập nhật hoặc tạo lại connector.",
+      "localTargetHint": "Trỏ tunnel/reverse proxy công khai về dịch vụ MCP cục bộ: {{target}}",
+      "localWebuiTargetHint": "Trỏ tunnel/reverse proxy công khai về dịch vụ WebUI cục bộ: {{target}}",
+      "generatedMcp": "MCP endpoint đã tạo",
+      "generatedWebui": "WebUI URL đã tạo",
+      "connectorConfig": "Cấu hình connector ChatGPT / Grok / Claude",
+      "configurationNeeded": "Nhập và lưu URL gốc MCP ổn định hợp lệ để tạo endpoint.",
+      "mcpBaseUrlPlaceholder": "https://mcp.example.online",
+      "webuiBaseUrlPlaceholder": "https://webui.example.online"
+    }
+  }
+}

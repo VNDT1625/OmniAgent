@@ -20,12 +20,25 @@
  * Renderer-only; Arco + @icon-park/react + UnoCSS tokens.
  */
 
-import { Button, Drawer, Empty, Popconfirm, Progress, Spin, Tag, Tooltip } from '@arco-design/web-react';
-import { Brain, Delete, Lock, Pin, Refresh } from '@icon-park/react';
-import React, { useMemo } from 'react';
+import {
+  Button,
+  Drawer,
+  Empty,
+  Input,
+  Message,
+  Popconfirm,
+  Progress,
+  Select,
+  Spin,
+  Switch,
+  Tag,
+  Tooltip,
+} from '@arco-design/web-react';
+import { Brain, Delete, Lock, Pin, Plus, Refresh } from '@icon-park/react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { SuperMemoryItem, SuperMemoryKind } from '../ideClient';
-import { useIdeMemory } from './useIdeMemory';
+import type { IdeMemoryRecordableKind, SuperMemoryItem, SuperMemoryKind } from '../ideClient';
+import { useIdeMemory, type UseIdeMemory } from './useIdeMemory';
 
 type MemorySessionDrawerProps = {
   /** Session-memory id of the active chat tab, or null when no tab is active. */
@@ -47,7 +60,8 @@ const KIND_COLOR: Record<SuperMemoryKind, string> = {
 };
 
 /** Progress status driven by how full the budget is (themed, not hardcoded). */
-const usageStatus = (pct: number): 'normal' | 'warning' | 'error' => (pct >= 90 ? 'error' : pct >= 70 ? 'warning' : 'normal');
+const usageStatus = (pct: number): 'normal' | 'warning' | 'error' =>
+  pct >= 90 ? 'error' : pct >= 70 ? 'warning' : 'normal';
 
 /** One small labelled stat chip. */
 const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
@@ -58,7 +72,11 @@ const Stat: React.FC<{ label: string; value: number }> = ({ label, value }) => (
 );
 
 /** One note row: kind tag + (pin) + text. */
-const NoteRow: React.FC<{ item: SuperMemoryItem; kindLabel: string; pinnedLabel: string }> = ({ item, kindLabel, pinnedLabel }) => (
+const NoteRow: React.FC<{ item: SuperMemoryItem; kindLabel: string; pinnedLabel: string }> = ({
+  item,
+  kindLabel,
+  pinnedLabel,
+}) => (
   <div className='flex items-start gap-8px px-10px py-8px rd-8px bg-2 border border-arco-2 hover:border-primary transition-colors'>
     <Tag color={KIND_COLOR[item.kind]} size='small' className='shrink-0 mt-1px'>
       {kindLabel}
@@ -78,7 +96,7 @@ const NoteRow: React.FC<{ item: SuperMemoryItem; kindLabel: string; pinnedLabel:
  */
 const MemorySessionDrawer: React.FC<MemorySessionDrawerProps> = ({ memId, visible, onClose }) => {
   const { t } = useTranslation();
-  const { snapshot, loading, refresh, clear } = useIdeMemory(memId, visible);
+  const { snapshot, loading, refresh, clear, remember } = useIdeMemory(memId, visible);
 
   const groups = useMemo(() => {
     const items = snapshot?.items ?? [];
@@ -106,6 +124,16 @@ const MemorySessionDrawer: React.FC<MemorySessionDrawerProps> = ({ memId, visibl
     [t]
   );
   const kindLabel = (kind: SuperMemoryKind): string => kindLabels[kind];
+  const recordableKindOptions = useMemo<ReadonlyArray<{ value: IdeMemoryRecordableKind; label: string }>>(
+    () => [
+      { value: 'note', label: kindLabels.note },
+      { value: 'fact', label: kindLabels.fact },
+      { value: 'decision', label: kindLabels.decision },
+      { value: 'todo', label: kindLabels.todo },
+      { value: 'snippet', label: kindLabels.snippet },
+    ],
+    [kindLabels]
+  );
   const isEmpty = !snapshot || snapshot.items.length === 0;
 
   return (
@@ -135,7 +163,9 @@ const MemorySessionDrawer: React.FC<MemorySessionDrawerProps> = ({ memId, visibl
           {/* Token-budget gauge */}
           <div className='flex flex-col gap-6px'>
             <div className='flex items-center justify-between'>
-              <span className='text-11px font-600 uppercase tracking-wide text-t-tertiary'>{t('ide.memory.usage')}</span>
+              <span className='text-11px font-600 uppercase tracking-wide text-t-tertiary'>
+                {t('ide.memory.usage')}
+              </span>
               <span className='text-12px font-500 text-t-secondary'>
                 {t('ide.memory.usageValue', { used: snapshot?.tokensUsed ?? 0, budget: snapshot?.tokenBudget ?? 0 })}
               </span>
@@ -164,21 +194,36 @@ const MemorySessionDrawer: React.FC<MemorySessionDrawerProps> = ({ memId, visibl
                 {groups.summaries.length > 0 ? (
                   <Section title={t('ide.memory.summaries')}>
                     {groups.summaries.map((item) => (
-                      <NoteRow key={item.id} item={item} kindLabel={kindLabel(item.kind)} pinnedLabel={t('ide.memory.pinnedTag')} />
+                      <NoteRow
+                        key={item.id}
+                        item={item}
+                        kindLabel={kindLabel(item.kind)}
+                        pinnedLabel={t('ide.memory.pinnedTag')}
+                      />
                     ))}
                   </Section>
                 ) : null}
                 {groups.pinned.length > 0 ? (
                   <Section title={t('ide.memory.pinned')}>
                     {groups.pinned.map((item) => (
-                      <NoteRow key={item.id} item={item} kindLabel={kindLabel(item.kind)} pinnedLabel={t('ide.memory.pinnedTag')} />
+                      <NoteRow
+                        key={item.id}
+                        item={item}
+                        kindLabel={kindLabel(item.kind)}
+                        pinnedLabel={t('ide.memory.pinnedTag')}
+                      />
                     ))}
                   </Section>
                 ) : null}
                 {groups.recent.length > 0 ? (
                   <Section title={t('ide.memory.notes')}>
                     {groups.recent.map((item) => (
-                      <NoteRow key={item.id} item={item} kindLabel={kindLabel(item.kind)} pinnedLabel={t('ide.memory.pinnedTag')} />
+                      <NoteRow
+                        key={item.id}
+                        item={item}
+                        kindLabel={kindLabel(item.kind)}
+                        pinnedLabel={t('ide.memory.pinnedTag')}
+                      />
                     ))}
                   </Section>
                 ) : null}
@@ -190,7 +235,9 @@ const MemorySessionDrawer: React.FC<MemorySessionDrawerProps> = ({ memId, visibl
           <div className='flex flex-col gap-6px'>
             <div className='flex items-center gap-6px'>
               <Lock theme='outline' size={13} className='text-t-tertiary' />
-              <span className='text-11px font-600 uppercase tracking-wide text-t-tertiary'>{t('ide.memory.secretKeys')}</span>
+              <span className='text-11px font-600 uppercase tracking-wide text-t-tertiary'>
+                {t('ide.memory.secretKeys')}
+              </span>
             </div>
             {snapshot && snapshot.secretKeys.length > 0 ? (
               <div className='flex flex-wrap gap-6px'>
@@ -206,9 +253,26 @@ const MemorySessionDrawer: React.FC<MemorySessionDrawerProps> = ({ memId, visibl
             <span className='text-11px text-t-tertiary leading-relaxed'>{t('ide.memory.secretsHint')}</span>
           </div>
 
+          {/* Quick-add a note for the agent */}
+          <QuickAddNote
+            remember={remember}
+            kindOptions={recordableKindOptions}
+            labels={{
+              placeholder: t('ide.memory.addPlaceholder'),
+              add: t('ide.memory.add'),
+              pin: t('ide.memory.pinNew'),
+              kind: t('ide.memory.kindLabel'),
+              saved: t('ide.memory.added'),
+            }}
+          />
+
           {/* Actions */}
           <div className='shrink-0 flex items-center justify-between gap-8px pt-8px border-t border-t-1'>
-            <Button size='small' icon={loading ? <Spin size={12} /> : <Refresh theme='outline' size={14} />} onClick={() => void refresh()}>
+            <Button
+              size='small'
+              icon={loading ? <Spin size={12} /> : <Refresh theme='outline' size={14} />}
+              onClick={() => void refresh()}
+            >
               {t('ide.memory.refresh')}
             </Button>
             <Popconfirm focusLock title={t('ide.memory.clearConfirm')} onOk={() => void clear()}>
@@ -230,5 +294,91 @@ const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title
     <div className='flex flex-col gap-6px'>{children}</div>
   </div>
 );
+
+/**
+ * Quick-add composer — the user-facing equivalent of the agent's
+ * `ide_memory_remember`. Lets a developer jot a fact / decision / todo straight
+ * into the session memory (with an optional pin) so the agent recalls it on its
+ * next turn, without having to type it into the chat. On success it clears the
+ * input and refreshes via {@link remember}.
+ */
+const QuickAddNote: React.FC<{
+  remember: UseIdeMemory['remember'];
+  kindOptions: ReadonlyArray<{ value: IdeMemoryRecordableKind; label: string }>;
+  labels: { placeholder: string; add: string; pin: string; kind: string; saved: string };
+}> = ({ remember, kindOptions, labels }) => {
+  const [text, setText] = useState('');
+  const [kind, setKind] = useState<IdeMemoryRecordableKind>('note');
+  const [pinned, setPinned] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const submit = useCallback(async (): Promise<void> => {
+    const trimmed = text.trim();
+    if (!trimmed || saving) return;
+    setSaving(true);
+    const error = await remember(trimmed, { kind, pinned });
+    setSaving(false);
+    if (error) {
+      Message.error(error);
+      return;
+    }
+    setText('');
+    setPinned(false);
+    Message.success(labels.saved);
+  }, [text, kind, pinned, saving, remember, labels.saved]);
+
+  return (
+    <div className='shrink-0 flex flex-col gap-8px pt-8px border-t border-t-1'>
+      <Input.TextArea
+        value={text}
+        onChange={setText}
+        placeholder={labels.placeholder}
+        autoSize={{ minRows: 2, maxRows: 4 }}
+        onPressEnter={(e) => {
+          if (!e.shiftKey) {
+            e.preventDefault();
+            void submit();
+          }
+        }}
+      />
+      <div className='flex items-center gap-8px'>
+        <Select
+          size='small'
+          value={kind}
+          onChange={(v) => setKind(v as IdeMemoryRecordableKind)}
+          className='w-110px'
+          aria-label={labels.kind}
+        >
+          {kindOptions.map((opt) => (
+            <Select.Option key={opt.value} value={opt.value}>
+              {opt.label}
+            </Select.Option>
+          ))}
+        </Select>
+        <Tooltip content={labels.pin} mini>
+          <span className='inline-flex items-center gap-4px'>
+            <Pin
+              theme={pinned ? 'filled' : 'outline'}
+              size={13}
+              className={pinned ? 'text-warning' : 'text-t-tertiary'}
+            />
+            <Switch size='small' checked={pinned} onChange={setPinned} />
+          </span>
+        </Tooltip>
+        <Button
+          type='primary'
+          size='small'
+          icon={<Plus theme='outline' size={14} />}
+          loading={saving}
+          disabled={text.trim().length === 0}
+          onClick={() => void submit()}
+          className='ml-auto'
+        >
+          {labels.add}
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 export default MemorySessionDrawer;

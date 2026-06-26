@@ -22,10 +22,13 @@
 import { Button, Empty, Input, Message, Spin, Table, Tag, Tooltip } from '@arco-design/web-react';
 import {
   Add,
+  ChartHistogram,
+  ChartProportion,
   DataSheet,
   Delete,
   Download,
   Edit,
+  GridFour,
   Key,
   Lightning,
   ListView,
@@ -33,18 +36,40 @@ import {
   Refresh,
   Right,
   Search,
+  Share,
   TableFile,
 } from '@icon-park/react';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toCsv, toJson } from '@process/ide/db/dbExport';
 import DbConnectionModal from './DbConnectionModal';
+import SchemaDiagram from './SchemaDiagram';
+import ResultChart from './ResultChart';
+import TableAnalyzePanel from './TableAnalyzePanel';
 import { useDatabasePanel, type TableWithColumns } from './useDatabasePanel';
-import type { DbConnectionConfig, DbConnectionState } from './dbClient';
+import type { DbConnectionConfig, DbConnectionState, DbKind } from './dbClient';
 
 type DatabasePanelProps = {
   rootPath: string | null;
 };
+
+/** Human-readable engine labels (covers native + cloud HTTP engines). */
+const KIND_LABEL: Record<DbKind, string> = {
+  sqlite: 'SQLite',
+  postgres: 'Postgres',
+  mysql: 'MySQL',
+  d1: 'Cloudflare D1',
+  firestore: 'Firestore',
+};
+
+/** A table the user asked to statistically profile (Analyze view). */
+type AnalyzeTarget = { table: string; schema?: string; primaryKeys: Set<string> };
+
+/** Which view the main pane shows. */
+type MainView = 'query' | 'diagram';
+
+/** How a row-returning result is rendered. */
+type ResultView = 'grid' | 'chart';
 
 const DatabasePanel: React.FC<DatabasePanelProps> = ({ rootPath }) => {
   const { t } = useTranslation();
@@ -52,6 +77,10 @@ const DatabasePanel: React.FC<DatabasePanelProps> = ({ rootPath }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<DbConnectionConfig | null>(null);
   const [sql, setSql] = useState('');
+  const [mainView, setMainView] = useState<MainView>('query');
+  const [analyze, setAnalyze] = useState<AnalyzeTarget | null>(null);
+
+  const activeConn = db.connections.find((c) => c.config.id === db.activeId) ?? null;
 
   const openAdd = useCallback(() => {
     setEditing(null);
@@ -68,6 +97,8 @@ const DatabasePanel: React.FC<DatabasePanelProps> = ({ rootPath }) => {
       Message.warning(t('ide.db.selectConnectionFirst'));
       return;
     }
+    setMainView('query');
+    setAnalyze(null);
     void db.runQuery(sql);
   }, [db, sql, t]);
 
@@ -81,26 +112,82 @@ const DatabasePanel: React.FC<DatabasePanelProps> = ({ rootPath }) => {
     [handleRun]
   );
 
+  // Switching to the Diagram view lazily fetches the whole-schema ER graph once.
+  const showDiagram = useCallback(() => {
+    setMainView('diagram');
+    setAnalyze(null);
+    if (db.activeId && !db.schemaGraph && !db.loadingGraph) void db.loadSchemaGraph();
+  }, [db]);
+
+  // Profile a table (Analyze view): a statistical read-out of its columns.
+  const handleAnalyze = useCallback((table: TableWithColumns) => {
+    setAnalyze({
+      table: table.name,
+      schema: table.schema,
+      primaryKeys: new Set((table.columns ?? []).filter((c) => c.primaryKey).map((c) => c.name)),
+    });
+  }, []);
+
   return (
     <div className='size-full flex min-h-0 bg-1'>
-      <ConnectionRail db={db} onAdd={openAdd} onEdit={openEdit} onSelectTable={(table) => setSql(buildSelect(table))} />
+      <ConnectionRail
+        db={db}
+        onAdd={openAdd}
+        onEdit={openEdit}
+        onSelectTable={(table) => {
+          setMainView('query');
+          setAnalyze(null);
+          setSql(buildSelect(table));
+        }}
+        onAnalyzeTable={handleAnalyze}
+      />
       <div className='flex-1 min-w-0 flex flex-col min-h-0'>
         <QueryHeader
-          connection={db.connections.find((c) => c.config.id === db.activeId) ?? null}
+          connection={activeConn}
           running={db.running}
+          mainView={mainView}
           onRun={handleRun}
+          onShowQuery={() => {
+            setMainView('query');
+            setAnalyze(null);
+          }}
+          onShowDiagram={showDiagram}
         />
-        <div className='shrink-0 border-b border-b-1'>
-          <Input.TextArea
-            value={sql}
-            onChange={setSql}
-            onKeyDown={onEditorKeyDown}
-            placeholder={t('ide.db.sqlPlaceholder')}
-            autoSize={{ minRows: 4, maxRows: 10 }}
-            className='!border-none !bg-transparent font-mono !text-13px !resize-none'
+
+        {analyze && db.activeId ? (
+          <TableAnalyzePanel
+            connectionId={db.activeId}
+            table={analyze.table}
+            schema={analyze.schema}
+            primaryKeys={analyze.primaryKeys}
           />
-        </div>
-        <ResultArea db={db} />
+        ) : mainView === 'diagram' ? (
+          db.loadingGraph ? (
+            <div className='flex-1 min-h-0 flex-center gap-8px text-12px text-t-tertiary'>
+              <Spin size={14} /> {t('ide.db.diagramLoading')}
+            </div>
+          ) : db.schemaGraph ? (
+            <SchemaDiagram graph={db.schemaGraph} />
+          ) : (
+            <div className='flex-1 min-h-0 flex-center'>
+              <Empty description={<span className='text-12px text-t-tertiary'>{t('ide.db.diagramEmpty')}</span>} />
+            </div>
+          )
+        ) : (
+          <>
+            <div className='shrink-0 border-b border-b-1'>
+              <Input.TextArea
+                value={sql}
+                onChange={setSql}
+                onKeyDown={onEditorKeyDown}
+                placeholder={t('ide.db.sqlPlaceholder')}
+                autoSize={{ minRows: 4, maxRows: 10 }}
+                className='!border-none !bg-transparent font-mono !text-13px !resize-none'
+              />
+            </div>
+            <ResultArea db={db} />
+          </>
+        )}
       </div>
 
       <DbConnectionModal
@@ -126,7 +213,8 @@ const ConnectionRail: React.FC<{
   onAdd: () => void;
   onEdit: (conn: DbConnectionState) => void;
   onSelectTable: (table: TableWithColumns) => void;
-}> = ({ db, onAdd, onEdit, onSelectTable }) => {
+  onAnalyzeTable: (table: TableWithColumns) => void;
+}> = ({ db, onAdd, onEdit, onSelectTable, onAnalyzeTable }) => {
   const { t } = useTranslation();
   return (
     <div className='shrink-0 w-260px flex flex-col min-h-0 border-r border-r-1 bg-fill-1'>
@@ -165,6 +253,7 @@ const ConnectionRail: React.FC<{
               onDelete={() => void db.deleteConnection(conn.config.id)}
               onExpandTable={(table) => void db.loadColumns(table)}
               onSelectTable={onSelectTable}
+              onAnalyzeTable={onAnalyzeTable}
             />
           ))
         )}
@@ -184,9 +273,21 @@ const ConnectionItem: React.FC<{
   onDelete: () => void;
   onExpandTable: (table: TableWithColumns) => void;
   onSelectTable: (table: TableWithColumns) => void;
-}> = ({ conn, active, tables, loadingTables, onSelect, onEdit, onDelete, onExpandTable, onSelectTable }) => {
+  onAnalyzeTable: (table: TableWithColumns) => void;
+}> = ({
+  conn,
+  active,
+  tables,
+  loadingTables,
+  onSelect,
+  onEdit,
+  onDelete,
+  onExpandTable,
+  onSelectTable,
+  onAnalyzeTable,
+}) => {
   const { t } = useTranslation();
-  const kindLabel = conn.config.kind === 'sqlite' ? 'SQLite' : conn.config.kind === 'postgres' ? 'Postgres' : 'MySQL';
+  const kindLabel = KIND_LABEL[conn.config.kind] ?? conn.config.kind;
   return (
     <div className='border-b border-b-1/40'>
       <div
@@ -236,7 +337,12 @@ const ConnectionItem: React.FC<{
           ) : tables.length === 0 ? (
             <div className='px-22px py-6px text-11px text-t-tertiary'>{t('ide.db.noTables')}</div>
           ) : (
-            <ActiveSchemaTree tables={tables} onExpandTable={onExpandTable} onSelectTable={onSelectTable} />
+            <ActiveSchemaTree
+              tables={tables}
+              onExpandTable={onExpandTable}
+              onSelectTable={onSelectTable}
+              onAnalyzeTable={onAnalyzeTable}
+            />
           )}
         </div>
       ) : null}
@@ -249,7 +355,8 @@ const ActiveSchemaTree: React.FC<{
   tables: TableWithColumns[];
   onExpandTable: (table: TableWithColumns) => void;
   onSelectTable: (table: TableWithColumns) => void;
-}> = ({ tables, onExpandTable, onSelectTable }) => {
+  onAnalyzeTable: (table: TableWithColumns) => void;
+}> = ({ tables, onExpandTable, onSelectTable, onAnalyzeTable }) => {
   const { t } = useTranslation();
   const [filter, setFilter] = useState('');
   const needle = filter.trim().toLowerCase();
@@ -277,6 +384,7 @@ const ActiveSchemaTree: React.FC<{
             table={table}
             onExpand={onExpandTable}
             onSelect={onSelectTable}
+            onAnalyze={onAnalyzeTable}
           />
         ))
       )}
@@ -289,7 +397,9 @@ const TableNode: React.FC<{
   table: TableWithColumns;
   onExpand: (table: TableWithColumns) => void;
   onSelect: (table: TableWithColumns) => void;
-}> = ({ table, onExpand, onSelect }) => {
+  onAnalyze: (table: TableWithColumns) => void;
+}> = ({ table, onExpand, onSelect, onAnalyze }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const toggle = (): void => {
     const next = !open;
@@ -306,6 +416,18 @@ const TableNode: React.FC<{
         />
         <TableFile theme='outline' size={12} className='text-t-tertiary' />
         <span className='flex-1 truncate text-11px text-t-secondary'>{table.name}</span>
+        <Tooltip content={t('ide.db.analyze')} mini>
+          <ChartHistogram
+            theme='outline'
+            size={12}
+            className='hidden group-hover:block text-t-tertiary hover:text-primary'
+            onClick={(e) => {
+              e.stopPropagation();
+              onExpand(table);
+              onAnalyze(table);
+            }}
+          />
+        </Tooltip>
         <Play
           theme='outline'
           size={12}
@@ -373,17 +495,20 @@ const TableNode: React.FC<{
   );
 };
 
-/** Header above the editor: active connection + Run button. */
-const QueryHeader: React.FC<{ connection: DbConnectionState | null; running: boolean; onRun: () => void }> = ({
-  connection,
-  running,
-  onRun,
-}) => {
+/** Header above the editor: active connection + Query/Diagram switch + Run. */
+const QueryHeader: React.FC<{
+  connection: DbConnectionState | null;
+  running: boolean;
+  mainView: MainView;
+  onRun: () => void;
+  onShowQuery: () => void;
+  onShowDiagram: () => void;
+}> = ({ connection, running, mainView, onRun, onShowQuery, onShowDiagram }) => {
   const { t } = useTranslation();
   return (
     <div className='shrink-0 flex items-center gap-10px px-16px h-44px border-b border-b-1'>
       <ListView theme='outline' size={15} className='text-t-tertiary' />
-      <span className='flex-1 text-12px text-t-secondary truncate'>
+      <span className='text-12px text-t-secondary truncate max-w-200px'>
         {connection ? connection.config.name : t('ide.db.noActiveConnection')}
       </span>
       {connection && connection.config.readOnly !== false ? (
@@ -391,6 +516,19 @@ const QueryHeader: React.FC<{ connection: DbConnectionState | null; running: boo
           {t('ide.db.readOnly')}
         </Tag>
       ) : null}
+      <div className='flex-1' />
+      <SegToggle
+        active={mainView === 'query'}
+        icon={<ListView theme='outline' size={13} />}
+        label={t('ide.db.viewQuery')}
+        onClick={onShowQuery}
+      />
+      <SegToggle
+        active={mainView === 'diagram'}
+        icon={<Share theme='outline' size={13} />}
+        label={t('ide.db.viewDiagram')}
+        onClick={onShowDiagram}
+      />
       <Button type='primary' size='small' loading={running} icon={<Play theme='outline' size={13} />} onClick={onRun}>
         {t('ide.db.run')}
       </Button>
@@ -398,9 +536,28 @@ const QueryHeader: React.FC<{ connection: DbConnectionState | null; running: boo
   );
 };
 
+/** A compact segmented toggle button used in the header + result toolbar. */
+const SegToggle: React.FC<{ active: boolean; icon: React.ReactNode; label: string; onClick: () => void }> = ({
+  active,
+  icon,
+  label,
+  onClick,
+}) => (
+  <button
+    type='button'
+    onClick={onClick}
+    aria-pressed={active}
+    className={`inline-flex items-center gap-4px h-26px px-9px rd-6px border-none cursor-pointer text-11px transition-colors ${active ? 'bg-primary-light-1 text-primary' : 'bg-transparent text-t-secondary hover:bg-fill-2'}`}
+  >
+    {icon}
+    {label}
+  </button>
+);
+
 /** Results grid + status line. */
 const ResultArea: React.FC<{ db: ReturnType<typeof useDatabasePanel> }> = ({ db }) => {
   const { t } = useTranslation();
+  const [view, setView] = useState<ResultView>('grid');
   if (db.error) {
     return (
       <div className='flex-1 min-h-0 flex-center flex-col gap-10px px-24px text-center'>
@@ -451,18 +608,22 @@ const ResultArea: React.FC<{ db: ReturnType<typeof useDatabasePanel> }> = ({ db 
   });
   return (
     <div className='flex-1 min-h-0 flex flex-col'>
-      <StatusLine result={result} />
-      <div className='flex-1 min-h-0 overflow-auto'>
-        <Table
-          columns={columns}
-          data={data}
-          pagination={false}
-          size='small'
-          border={{ cell: true }}
-          scroll={{ x: true }}
-          className='ide-db-result-table'
-        />
-      </div>
+      <StatusLine result={result} view={view} onView={setView} />
+      {view === 'chart' ? (
+        <ResultChart result={result} />
+      ) : (
+        <div className='flex-1 min-h-0 overflow-auto'>
+          <Table
+            columns={columns}
+            data={data}
+            pagination={false}
+            size='small'
+            border={{ cell: true }}
+            scroll={{ x: true }}
+            className='ide-db-result-table'
+          />
+        </div>
+      )}
     </div>
   );
 };
@@ -480,10 +641,15 @@ const downloadText = (filename: string, content: string, mime: string): void => 
   URL.revokeObjectURL(url);
 };
 
-/** One-line query status: timing, row count, truncation, and export actions. */
-const StatusLine: React.FC<{ result: NonNullable<ReturnType<typeof useDatabasePanel>['result']> }> = ({ result }) => {
+/** One-line query status: timing, row count, truncation, grid/chart switch + export. */
+const StatusLine: React.FC<{
+  result: NonNullable<ReturnType<typeof useDatabasePanel>['result']>;
+  view?: ResultView;
+  onView?: (view: ResultView) => void;
+}> = ({ result, view, onView }) => {
   const { t } = useTranslation();
   const canExport = result.columns.length > 0 && result.rows.length > 0;
+  const canChart = result.columns.length > 0 && result.rows.length > 0;
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   return (
     <div className='shrink-0 flex items-center gap-12px px-16px py-6px border-b border-b-1 bg-fill-1 text-11px text-t-tertiary'>
@@ -496,8 +662,24 @@ const StatusLine: React.FC<{ result: NonNullable<ReturnType<typeof useDatabasePa
           <span className='text-warning'>{t('ide.db.truncated')}</span>
         </>
       ) : null}
+      {canChart && view && onView ? (
+        <span className='ml-auto flex items-center gap-6px'>
+          <SegToggle
+            active={view === 'grid'}
+            icon={<GridFour theme='outline' size={12} />}
+            label={t('ide.db.viewGrid')}
+            onClick={() => onView('grid')}
+          />
+          <SegToggle
+            active={view === 'chart'}
+            icon={<ChartProportion theme='outline' size={12} />}
+            label={t('ide.db.viewChart')}
+            onClick={() => onView('chart')}
+          />
+        </span>
+      ) : null}
       {canExport ? (
-        <span className='ml-auto flex items-center gap-10px'>
+        <span className={`${canChart && view && onView ? '' : 'ml-auto'} flex items-center gap-10px`}>
           <Tooltip content={t('ide.db.exportCsv')}>
             <span
               className='inline-flex items-center gap-3px cursor-pointer hover:text-primary'

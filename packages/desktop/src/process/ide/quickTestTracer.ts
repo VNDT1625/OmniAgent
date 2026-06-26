@@ -48,8 +48,8 @@ export type TracePlatform = 'web' | 'android' | 'windows';
 
 /** One recorded event in the trace. */
 export type TraceEvent =
-  | { kind: 'click'; selector: string; text: string; at: number }
-  | { kind: 'input'; selector: string; value: string; at: number }
+  | { kind: 'click'; selector: string; text: string; at: number; coverage?: CoverageFunction[] }
+  | { kind: 'input'; selector: string; value: string; at: number; coverage?: CoverageFunction[] }
   | { kind: 'navigate'; url: string; at: number }
   | { kind: 'network'; method: string; url: string; status: number; error?: string; at: number }
   | { kind: 'console'; level: 'log' | 'warn' | 'error'; message: string; at: number }
@@ -69,13 +69,24 @@ export type RuntimeTrace = {
   startedAt: number;
   /** Timestamp when recording stopped. */
   stoppedAt: number;
+  /**
+   * The user's OWN functions that actually executed during the session
+   * (V8 precise coverage, web only). Ranked by call count. This answers "which
+   * code ran when I clicked" — including bugs that throw nothing. Empty when the
+   * platform/Profiler did not provide coverage.
+   */
+  coverage?: CoverageFunction[];
 };
 
 // The rolling-buffer policy + error precedence live in `quickTestBuffer` so the
 // web + native tracers and the agent service share ONE source of truth.
 import { findFirstError, isErrorEvent, pushBounded } from './quickTestBuffer';
+// V8 precise coverage — "which of the user's functions actually ran". Same CDP
+// session the tracer already owns, so it is driven from here on start/stop.
+import { createCoverageRecorder, type CoverageFunction, type CoverageRecorder } from './quickTestCoverage';
 
 export { findFirstError } from './quickTestBuffer';
+export type { CoverageFunction } from './quickTestCoverage';
 
 /** Minimal CDP-capable WebContents surface (Electron's `WebContents` satisfies this). */
 export type CdpWebContents = {
@@ -109,6 +120,13 @@ export type QuickTestTracerDeps = {
 export type QuickTestTracer = {
   /** Start recording. Returns false when no WebContents is available (native target). */
   start: (rootPath: string) => Promise<boolean>;
+  /**
+   * Drain V8 precise coverage (which of the user's functions ran) into the next
+   * trace. MUST be awaited BEFORE {@link stop}, while the debugger is still
+   * attached. Best-effort + idempotent; safe to call when coverage never
+   * started. The bridge calls this on the stop path before `stop()`.
+   */
+  finalizeCoverage: () => Promise<void>;
   /** Stop recording and return the completed trace. */
   stop: () => RuntimeTrace;
   /** Whether a recording is currently active. */
@@ -251,10 +269,40 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
   let recorded = 0;
   let errorSeen = false;
   const events: TraceEvent[] = [];
+  // V8 precise-coverage recorder for the active session (web/CDP only). Created
+  // on `start`, drained once by `finalizeCoverage`, embedded by `stop`.
+  let coverageRecorder: CoverageRecorder | null = null;
+  let coverageResult: CoverageFunction[] = [];
+  // The most recent interaction (click/input) whose triggered code has not yet
+  // been attributed. Our capture-phase page listener fires its marker BEFORE the
+  // target's own handler runs, so the code an interaction triggers only shows up
+  // in the delta taken at the NEXT event (interaction or error). We therefore
+  // attribute each delta to this PENDING interaction — making the interaction
+  // right before an error carry exactly the functions that broke.
+  let pendingInteraction: Extract<TraceEvent, { kind: 'click' | 'input' }> | null = null;
+  // Serialises per-interaction delta captures so their async assignments finish
+  // (and the recorder's delta baseline stays consistent) before finalize.
+  let coverageWork: Promise<unknown> = Promise.resolve();
 
   /** (Re-)inject the page-side DOM listeners. Fire-and-forget, never throws. */
   const injectDomListeners = (wc: CdpWebContents): void => {
     void wc.executeJavaScript(DOM_LISTENER_SCRIPT).catch((): void => undefined);
+  };
+
+  /**
+   * Attribute the coverage delta accumulated since the last capture to the
+   * PENDING interaction (the click/input that triggered it). Chained on
+   * {@link coverageWork} so assignments complete before finalize and the delta
+   * baseline advances in order. No-op when nothing is pending / coverage is off.
+   */
+  const capturePendingCoverage = (): void => {
+    const target = pendingInteraction;
+    const rec = coverageRecorder;
+    if (!target || !rec) return;
+    coverageWork = coverageWork.then(async () => {
+      const fns = await rec.takeDelta().catch((): CoverageFunction[] => []);
+      if (fns.length > 0) target.coverage = fns;
+    });
   };
 
   const push = (event: TraceEvent | null): void => {
@@ -275,6 +323,10 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
     events.length = 0;
     recorded = 0;
     errorSeen = false;
+    coverageResult = [];
+    coverageRecorder = null;
+    pendingInteraction = null;
+    coverageWork = Promise.resolve();
     active = true;
 
     try {
@@ -284,6 +336,18 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
       await wc.debugger.sendCommand('Network.enable');
       await wc.debugger.sendCommand('Runtime.enable');
       await wc.debugger.sendCommand('Page.enable');
+      // `Debugger.enable` is required for `Debugger.getScriptSource` (used by the
+      // coverage recorder to turn function offsets into line numbers).
+      await wc.debugger.sendCommand('Debugger.enable').catch((): void => undefined);
+
+      // Begin V8 precise coverage so we can report which of the user's own
+      // functions actually ran (the "which code was called" answer). Best-effort:
+      // if the Profiler can't start, tracing continues without coverage.
+      const recorder = createCoverageRecorder({
+        sendCommand: (method, params) => wc.debugger.sendCommand(method, params),
+      });
+      const ok = await recorder.start().catch((): boolean => false);
+      coverageRecorder = ok ? recorder : null;
 
       wc.debugger.on('message', (_evt, method, params) => {
         const now = clock();
@@ -300,10 +364,24 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
             // live correctly); all other console messages stay as-is.
             const consoleEv = mapConsole(params, now);
             const marker = consoleEv && consoleEv.kind === 'console' ? parseDomMarker(consoleEv.message, now) : null;
-            push(marker ?? consoleEv);
+            const ev = marker ?? consoleEv;
+            // A new DOM interaction closes the previous one: attribute the
+            // coverage delta accumulated since then to the PENDING interaction,
+            // then make THIS interaction pending so the next delta lands on it.
+            if (ev && (ev.kind === 'click' || ev.kind === 'input')) {
+              capturePendingCoverage();
+              push(ev);
+              pendingInteraction = ev;
+            } else {
+              push(ev);
+            }
             break;
           }
           case 'Runtime.exceptionThrown':
+            // Capture the code that ran up to the throw and attribute it to the
+            // interaction that triggered it (so the pre-error click carries the
+            // exact functions that broke), then record the exception.
+            capturePendingCoverage();
             push(mapException(params, now));
             break;
           case 'Page.frameNavigated': {
@@ -329,6 +407,26 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
     return true;
   };
 
+  /**
+   * Drain V8 precise coverage into the trace. MUST be called before {@link stop}
+   * (stop detaches the debugger). Async because it fetches script sources over
+   * CDP to resolve line numbers. Idempotent + best-effort: a second call or any
+   * CDP failure leaves `coverageResult` as-is (possibly empty). Safe to await
+   * even when coverage never started (returns immediately).
+   */
+  const finalizeCoverage = async (): Promise<void> => {
+    if (!coverageRecorder) return;
+    const recorder = coverageRecorder;
+    // Attribute the final pending interaction's delta (the last click/input had
+    // no successor to close it), then wait for all per-interaction captures to
+    // finish so their `coverage` assignments land before we read the trace.
+    capturePendingCoverage();
+    pendingInteraction = null;
+    await coverageWork.catch((): void => undefined);
+    coverageRecorder = null;
+    coverageResult = await recorder.finalize().catch((): CoverageFunction[] => []);
+  };
+
   const stop = (): RuntimeTrace => {
     const stoppedAt = clock();
     active = false;
@@ -347,12 +445,21 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
     const typed: TraceEvent[] = [...events];
     const firstError = findFirstError(typed);
 
-    return { platform: 'web', rootPath, events: typed, firstError, startedAt, stoppedAt };
+    return {
+      platform: 'web',
+      rootPath,
+      events: typed,
+      firstError,
+      startedAt,
+      stoppedAt,
+      ...(coverageResult.length > 0 ? { coverage: coverageResult } : {}),
+    };
   };
 
   return {
     start,
     stop,
+    finalizeCoverage,
     isActive: () => active,
     hasError: () => errorSeen,
     recordedCount: () => recorded,

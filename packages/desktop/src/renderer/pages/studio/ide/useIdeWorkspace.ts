@@ -29,6 +29,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ipcBridge } from '@/common';
 import { ideClient, type IdeDirEntry, type RepoGraph } from './ideClient';
+import { teamEditClient } from './teamEdit/teamEditClient';
 import type { EditorFsOverride } from '@renderer/pages/editor/UniversalEditor';
 
 /** Status of the repo (import-graph) scan. */
@@ -340,6 +341,10 @@ export const useIdeWorkspace = (): UseIdeWorkspace => {
   const closeFolder = useCallback((): void => {
     // Drop the whole session: editors, tabs, tree, graph — back to welcome.
     // (Callers warn about unsaved changes BEFORE invoking this.)
+    // Also drop this workspace's team-edit coordinator (leases + presence +
+    // activity) in Main so a re-open / next project never sees stale state.
+    // Best-effort: a failed reset must never block closing the folder.
+    if (rootPath) void teamEditClient.reset(rootPath).catch((): undefined => undefined);
     setOpenFiles([]);
     setDirtyFiles(new Set());
     setActiveFile(null);
@@ -349,7 +354,7 @@ export const useIdeWorkspace = (): UseIdeWorkspace => {
     setScanError(null);
     setRootPath(null);
     writeSession(null);
-  }, []);
+  }, [rootPath]);
 
   const refreshTree = useCallback(async (): Promise<void> => {
     if (rootPath) await loadRootTree(rootPath);

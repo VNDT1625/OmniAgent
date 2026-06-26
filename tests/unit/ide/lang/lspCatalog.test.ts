@@ -77,7 +77,7 @@ describe('planLspPrompts', () => {
     expect(prompts).toHaveLength(1);
     expect(prompts[0].server.id).toBe('clangd');
     expect(prompts[0].fileCount).toBe(40);
-    expect(prompts[0].languages.sort()).toEqual(['c', 'cpp']);
+    expect(prompts[0].languages.toSorted()).toEqual(['c', 'cpp']);
   });
 
   it('returns nothing when no language needs an lsp', () => {

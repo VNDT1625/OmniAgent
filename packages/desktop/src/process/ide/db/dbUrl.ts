@@ -26,9 +26,10 @@
  */
 
 import type { DbConnectionConfig, DbKind } from './dbTypes';
+import { providerFromHost } from './dbProviders';
 
-/** Default ports per engine, used when the URL omits one. */
-const DEFAULT_PORTS: Record<Exclude<DbKind, 'sqlite'>, number> = {
+/** Default ports per native SQL engine, used when the URL omits one. */
+const DEFAULT_PORTS: Record<'postgres' | 'mysql', number> = {
   postgres: 5432,
   mysql: 3306,
 };
@@ -121,15 +122,23 @@ export const parseDbUrl = (raw: string): Partial<DbConnectionConfig> | null => {
   }
 
   const database = decode(url.pathname.replace(/^\//, ''));
+  const defaultPort = kind === 'mysql' ? DEFAULT_PORTS.mysql : DEFAULT_PORTS.postgres;
   const config: Partial<DbConnectionConfig> = {
     kind,
     host: url.hostname || '127.0.0.1',
-    port: url.port ? Number(url.port) : DEFAULT_PORTS[kind],
+    port: url.port ? Number(url.port) : defaultPort,
   };
   if (database.length > 0) config.database = database;
   if (url.username) config.user = decode(url.username);
   if (url.password) config.password = decode(url.password);
   const ssl = resolveSsl(url.searchParams);
   if (ssl !== undefined) config.ssl = ssl;
+  // Recognise a managed provider from the host (Supabase / Neon / PlanetScale /
+  // RDS) so the form tags it + turns SSL on by default.
+  const provider = providerFromHost(config.host ?? '');
+  if (provider) {
+    config.provider = provider;
+    if (config.ssl === undefined) config.ssl = true;
+  }
   return config;
 };

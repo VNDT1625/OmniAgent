@@ -63,6 +63,8 @@ const bridgeMocks = vi.hoisted(() => ({
   navigate: vi.fn(),
   goBack: vi.fn(),
   goForward: vi.fn(),
+
+  reload: vi.fn(),
   setBounds: vi.fn(),
   setZoom: vi.fn(),
   show: vi.fn(),
@@ -112,6 +114,8 @@ const primeReadyBridge = (tabs: BrowserTabInfo[] = [buildTab()]) => {
   bridgeMocks.navigate.mockResolvedValue(undefined);
   bridgeMocks.goBack.mockResolvedValue({ navigated: true });
   bridgeMocks.goForward.mockResolvedValue({ navigated: true });
+
+  bridgeMocks.reload.mockResolvedValue(undefined);
   bridgeMocks.destroyTab.mockResolvedValue(undefined);
   bridgeMocks.setBounds.mockResolvedValue(undefined);
   bridgeMocks.setZoom.mockResolvedValue(undefined);
@@ -163,6 +167,17 @@ describe('BrowserPage — perception layers + agent mode (Requirement 1, criteri
     expect(screen.getByRole('switch', { name: 'browser.agent.label' })).toBeInTheDocument();
   });
 
+  it('reloads the active tab through the reload bridge instead of navigating to the URL again', async () => {
+    primeReadyBridge([buildTab({ id: 'tab-1', url: 'http://127.0.0.1:47821/ide/mcp' })]);
+    const user = userEvent.setup();
+    renderPage();
+
+    await screen.findByRole('heading', { name: 'browser.title' });
+    await user.click(screen.getByLabelText('browser.address.reload'));
+
+    await waitFor(() => expect(bridgeMocks.reload).toHaveBeenCalledWith({ id: 'tab-1' }));
+    expect(bridgeMocks.navigate).not.toHaveBeenCalled();
+  });
   it('shows the empty viewport state and opens a tab when no tabs exist', async () => {
     primeReadyBridge([]);
     const user = userEvent.setup();

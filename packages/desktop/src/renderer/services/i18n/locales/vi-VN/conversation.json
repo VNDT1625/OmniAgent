@@ -176,6 +176,11 @@
     "verifyRunning": "Đang kiểm chứng goal độc lập…",
     "verifyFailed": "Kiểm chứng độc lập thất bại — agent phải sửa và thử lại."
   },
+  "interruptionRecovery": {
+    "interrupted": "Cuộc trò chuyện đã bị ngắt và không thể tự động tiếp tục. Vui lòng gửi lại tin nhắn của bạn.",
+    "retryScheduled": "Kết nối bị ngắt — sẽ thử tiếp tục sau {{seconds}} giây (retry {{retry}}/{{max}}).",
+    "retrying": "Đang thử tiếp tục… (retry {{retry}}/{{max}})."
+  },
   "sideQuestion": {
     "title": "Câu hỏi phụ",
     "description": "Đặt câu hỏi nhanh về cuộc trò chuyện hiện tại",
@@ -191,8 +196,26 @@
     "saveEdit": "Lưu",
     "remove": "Gỡ bỏ"
   },
+  "agentError": {
+    "autoRetry": {
+      "countdown": "Nhà cung cấp mô hình đang giới hạn tạm thời. Sẽ tự động tiếp tục sau {{seconds}} giây.",
+      "stop": "Dừng",
+      "continue": "Tiếp tục",
+      "continuing": "Đang tiếp tục với nhà cung cấp mô hình...",
+      "stopped": "Đã dừng tự động thử lại. API key sẽ không được gọi lại trong lượt này.",
+      "failed": "Không thể tự động tiếp tục. Bạn có thể bấm Tiếp tục lần nữa.",
+      "continuePrompt": "tiếp tục"
+    }
+  },
   "contextUsage": {
     "contextUsed": "ngữ cảnh đã dùng"
+  },
+  "turnStats": {
+    "tokensExact": "Số token dùng cho câu trả lời này",
+    "tokensEstimated": "Token ước lượng cho câu trả lời này (theo thay đổi mức dùng ngữ cảnh)",
+    "duration": "Thời gian tạo câu trả lời này",
+    "input": "Token đầu vào (ngữ cảnh nạp cho mô hình)",
+    "output": "Token đầu ra (văn bản mô hình sinh ra)"
   },
   "thinking": {
     "complete": "Đã suy nghĩ xong",

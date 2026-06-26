@@ -8,7 +8,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createQuickTestNativeTracer, mapNativeLogLine, type NativeLogStream } from '@/process/ide/quickTestNativeTracer';
+import {
+  createQuickTestNativeTracer,
+  mapNativeLogLine,
+  type NativeLogStream,
+} from '@/process/ide/quickTestNativeTracer';
 
 /** Build a fake NativeLogStream the test can drive by emitting lines/close. */
 const makeFakeStream = () => {
@@ -133,7 +137,11 @@ describe('createQuickTestNativeTracer', () => {
   it('streams every recorded event through the onEvent sink', async () => {
     const fake = makeFakeStream();
     const seen: string[] = [];
-    const tracer = createQuickTestNativeTracer({ openStream: async () => fake.stream, now: () => 1000, onEvent: (e) => seen.push(e.kind) });
+    const tracer = createQuickTestNativeTracer({
+      openStream: async () => fake.stream,
+      now: () => 1000,
+      onEvent: (e) => seen.push(e.kind),
+    });
     await tracer.start('android', '/repo', 'emulator-5554');
     fake.emit('I/MyApp( 1): hi');
     fake.emit('E/MyApp( 1): boom');

@@ -32,6 +32,9 @@ describe('buildPlanningGuard', () => {
     mockedSpecTaskClaim.mockReset();
     mockedGitStatus.mockReset();
     mockedMtuiPolicyCheck.mockReset();
+    // Default: spec status resolves to a non-existent spec so the /execute
+    // lifecycle gate is a no-op unless a test overrides it.
+    mockedSpecStatus.mockResolvedValue({ ok: false, error: 'no spec' });
     mockedGitStatus.mockResolvedValue({ ok: true, data: [] });
     mockedMtuiPolicyCheck.mockResolvedValue({
       ok: true,
@@ -73,9 +76,12 @@ describe('buildPlanningGuard', () => {
     });
   });
 
-  it('bypasses planning and MTUI preflight for ordinary chat', async () => {
+  it('bypasses planning and MTUI preflight for ordinary chat and sends the message untouched', async () => {
     const message = await buildPlanningGuard('/repo', 'fix login');
     expect(message).toBe('fix login');
+    // The tool-preference rule is seeded into session memory once on tab open,
+    // NOT appended to every message anymore.
+    expect(message).not.toContain('prefer the provided mtui/IDE tools');
     expect(message).not.toContain('## Tool Guard');
     expect(message).not.toContain('## Plan Guard');
     expect(mockedSpecStatus).not.toHaveBeenCalled();
@@ -207,12 +213,33 @@ describe('buildPlanningGuard', () => {
 
     const message = await buildPlanningGuard('/repo', 'fix login');
     expect(message).toBe('fix login');
+    expect(message).not.toContain('prefer the provided mtui/IDE tools');
     expect(message).not.toContain('## Plan Guard');
     expect(mockedSpecStatus).not.toHaveBeenCalled();
     expect(mockedSpecTaskList).not.toHaveBeenCalled();
   });
 
   it('claims a backend task for /execute @<spec-folder> before sending to the agent', async () => {
+    mockedSpecStatus.mockResolvedValue({
+      ok: true,
+      data: {
+        rootPath: '/repo',
+        exists: true,
+        hasAnySpec: true,
+        slug: 'fix-login',
+        specDir: '/repo/.aionui/specs/fix-login',
+        phase: 'execution',
+        approvals: { requirements: true, design: true, tasks: true },
+        files: {
+          'requirements.md': true,
+          'design.md': true,
+          'tasks.md': true,
+          'verification.md': false,
+        },
+        taskCounts: { total: 1, done: 0, pending: 0, inProgress: 1, blocked: 0 },
+        updatedAt: 11,
+      },
+    });
     mockedSpecTaskClaim.mockResolvedValue({
       ok: true,
       data: {
@@ -247,5 +274,34 @@ describe('buildPlanningGuard', () => {
     const message = await buildPlanningGuard('/repo', '/execute @.aionui/specs/fix-login/ 1.1 focus UI');
     expect(mockedSpecTaskClaim).toHaveBeenCalledWith('/repo', 'fix-login', '1.1', 'chat-agent');
     expect(message).toBe('/execute @.aionui/specs/fix-login/ 1.1 focus UI');
+    expect(message).not.toContain('prefer the provided mtui/IDE tools');
+  });
+
+  it('blocks /execute until lifecycle approvals reach execution', async () => {
+    mockedSpecStatus.mockResolvedValue({
+      ok: true,
+      data: {
+        rootPath: '/repo',
+        exists: true,
+        hasAnySpec: true,
+        slug: 'fix-login',
+        specDir: '/repo/.aionui/specs/fix-login',
+        phase: 'tasks',
+        approvals: { requirements: true, design: true, tasks: false },
+        files: {
+          'requirements.md': true,
+          'design.md': true,
+          'tasks.md': true,
+          'verification.md': false,
+        },
+        taskCounts: { total: 1, done: 0, pending: 1, inProgress: 0, blocked: 0 },
+        updatedAt: 11,
+      },
+    });
+
+    await expect(buildPlanningGuard('/repo', '/execute @.aionui/specs/fix-login/')).rejects.toThrow(
+      'Approve the requirements, design, and tasks gates before running /execute.'
+    );
+    expect(mockedSpecTaskClaim).not.toHaveBeenCalled();
   });
 });

@@ -1,0 +1,154 @@
+{
+  "title": "外部 MCP 网关",
+  "description": "允许外部 AI 主机（Claude Desktop、Cursor、ChatGPT）通过受令牌保护的回环端点调用 AionUi 的 IDE 工具。默认关闭；仅本机（127.0.0.1）可访问。",
+  "internalHint": "AionUi 内置 AI 已直接使用 MTUI、终端和 IDE 工具。仅在其他本地应用或 Web AI 需要访问时启用此网关。",
+  "enable": "启用网关",
+  "enableHint": "启用后，回环 HTTP+SSE 服务器启动，外部主机可凭下方 Bearer Token 连接。",
+  "port": "回环端口",
+  "portHint": "在 1024 到 65535 之间选择空闲端口，默认 47821。",
+  "rootPath": {
+    "label": "工作区目录",
+    "pick": "选择目录",
+    "hint": "所有外部会话都绑定到该目录；引导响应会将其作为工作区根目录返回。",
+    "empty": "尚未选择目录 —— 启用网关前请先选择。"
+  },
+  "token": {
+    "label": "Bearer Token",
+    "reveal": "显示",
+    "hide": "隐藏",
+    "copy": "复制",
+    "regenerate": "重新生成",
+    "confirmRegenerate": "重新生成令牌？所有外部客户端将断开连接，并需粘贴新令牌。",
+    "copied": "令牌已复制到剪贴板。",
+    "missing": "尚无令牌 —— 启用网关以生成。"
+  },
+  "dangerous": {
+    "label": "允许危险工具",
+    "hint": "默认关闭。开启后外部主机可调用 ide_command（Shell）、team_write_file（整文件写入）、db_*（SQL）以及 ide_memory_set_secret。"
+  },
+  "status": {
+    "running": "运行中",
+    "stopped": "已停止",
+    "error": "错误"
+  },
+  "mcpJson": {
+    "title": "Claude Desktop / Cursor mcp.json 片段",
+    "hint": "将其粘贴到客户端的 MCP 配置后重启客户端。",
+    "copy": "复制片段"
+  },
+  "web": {
+    "title": "Web AI 访问",
+    "description": "为 ChatGPT、Claude、Grok 和其他 Web AI 连接器发布临时 HTTPS MCP 端点。",
+    "active": "公开会话运行中",
+    "inactive": "未公开",
+    "start": "启动 Web 会话",
+    "stop": "停止并撤销",
+    "rotate": "轮换会话",
+    "started": "Web AI 会话已启动。",
+    "stopped": "Web AI 会话已停止，所有公开令牌均已撤销。",
+    "startFailed": "无法启动 Web AI 访问。",
+    "timeout": "等待隧道启动超时。请检查网络，或重启应用后重试。",
+    "securityHint": "Web Access 通过 Cloudflare 快速隧道暴露与本地 Agent 相同的 IDE 工具（search、read、terminal、edit 等），会话保持开启直到你手动关闭。",
+    "mcpUrl": "Streamable HTTP MCP URL",
+    "sessionToken": "临时 Bearer Token",
+    "rotateToReveal": "轮换 Web 会话以显示新令牌",
+    "debugTitle": "浏览器链接备用方案",
+    "debugHint": "对于不支持 MCP 连接器的 Web AI，可创建短期只读引导 URL。",
+    "createDebug": "创建浏览器链接",
+    "revokeDebug": "撤销链接",
+    "debugCreated": "只读浏览器链接已创建。",
+    "debugRevoked": "所有浏览器链接均已撤销。",
+    "debugLimits": "适合浏览器的只读链接。在你撤销或关闭 Web Access 之前一直有效。",
+    "tokenLifetime": "在你关闭 Web Access 或轮换之前，令牌始终有效。",
+    "progress": {
+      "checkingCloudflared": "正在检测 cloudflared…",
+      "installingCloudflared": "正在安装 cloudflared（首次约 5 MB）…",
+      "mintingToken": "正在生成会话令牌…",
+      "spawningTunnel": "正在启动 Cloudflare 隧道…",
+      "waitingTunnelUrl": "正在等待 Cloudflare 分配公网 URL（约 10–20 秒）…",
+      "ready": "Web Access 已就绪。",
+      "failed": "Web Access 失败：{{error}}",
+      "stopping": "正在停止 Web Access…",
+      "stopped": "Web Access 已停止。"
+    }
+  },
+  "auth": {
+    "title": "认证模式",
+    "description": "选择 Web AI 客户端如何向公共隧道进行认证。本地 Bearer 令牌始终对 Claude Desktop / Cursor 有效。",
+    "modeLabel": "认证模式",
+    "mode": {
+      "bearer": "Bearer 令牌",
+      "oauth": "OAuth 2.1",
+      "mixed": "混合",
+      "none": "无认证"
+    },
+    "modeHint": {
+      "bearer": "经典的短期 Bearer 令牌。将其粘贴到客户端的 Authorization 头中。",
+      "oauth": "带 PKCE 的 OAuth 2.1。适用于 ChatGPT MCP 连接器——客户端自行注册并授权。",
+      "mixed": "同时接受有效的 OAuth 访问令牌或 Bearer 令牌。",
+      "none": "无认证——接受所有请求。仅用于隧道后的临时本地演示。"
+    },
+    "ttlLabel": "空闲会话有效期",
+    "ttlHint": "已引导的会话在无活动情况下保持有效的时长。适用于新会话。",
+    "ttlUnit": "小时",
+    "oauth": {
+      "title": "已注册的 OAuth 客户端",
+      "hint": "完成 OAuth 流程的客户端。吊销客户端会立即使其所有令牌失效。",
+      "empty": "尚无 OAuth 客户端注册。",
+      "copyMetadata": "复制发现 URL",
+      "tokenCount": "{{count}} 个活动令牌",
+      "revoke": "吊销",
+      "revokeTitle": "吊销 OAuth 客户端？",
+      "revokeConfirm": "该客户端及其所有令牌将立即被吊销。它必须重新注册并授权才能重新连接。",
+      "revoked": "已吊销 OAuth 客户端。"
+    },
+    "tools": {
+      "title": "按工具的权限",
+      "hint": "允许或拒绝单个工具。“默认”遵循危险工具设置（基础工具允许，危险工具受控）。",
+      "colTool": "工具",
+      "colPermission": "权限",
+      "dangerous": "危险",
+      "permDefault": "默认",
+      "permAllow": "允许",
+      "permDeny": "拒绝"
+    }
+  },
+  "errors": {
+    "portInUse": "端口已被占用，请选择其他端口。",
+    "noRootPath": "请先选择工作区目录。"
+  },
+  "remote": {
+    "mode": {
+      "label": "远程访问模式",
+      "quick": "快速",
+      "setup": "自定义",
+      "quickHint": "临时测试地址。应用会启动 Quick Tunnel 并显示一个临时 HTTPS 地址，适合快速测试，不适合长期连接器。",
+      "setupHint": "使用你自己的稳定公网地址。将 Cloudflare 命名隧道、VPS 反向代理、Tailscale Funnel 或 ngrok 自定义域名指向本机，并在此粘贴该地址。"
+    },
+    "quick": {
+      "warning": "此地址为临时地址，重启应用或隧道后可能改变。不建议用于长期的 ChatGPT/Grok MCP 连接器，请改用「自定义」模式填写你自己的稳定地址。"
+    },
+    "setup": {
+      "intro": "只要你的 DNS/隧道指向本机即可持续有效。此模式下应用不管理任何隧道，仅保存你的地址并生成可复制的端点。",
+      "mcpBaseUrl": "稳定 MCP 基础 URL",
+      "webuiBaseUrl": "稳定 WebUI 基础 URL",
+      "save": "保存",
+      "saved": "稳定地址已保存。",
+      "invalidUrl": "请输入有效的 URL。",
+      "missingProtocol": "请包含协议，例如 https://mcp.example.online",
+      "unsupportedProtocol": "仅支持 http:// 和 https://。",
+      "pathNotAllowed": "请仅填写源地址（不含路径），例如 https://mcp.example.online",
+      "insecureHttpWarning": "对公网主机使用 http:// 会以明文传输令牌，建议使用 https://。",
+      "trycloudflareWarning": "这看起来是临时 Quick Tunnel 地址，重启后可能改变。",
+      "connectorUpdateWarning": "MCP 客户端可能需要更新或重新创建连接器。",
+      "localTargetHint": "将公网隧道/反向代理指向本地 MCP 服务：{{target}}",
+      "localWebuiTargetHint": "将公网隧道/反向代理指向本地 WebUI 服务：{{target}}",
+      "generatedMcp": "生成的 MCP 端点",
+      "generatedWebui": "生成的 WebUI 地址",
+      "connectorConfig": "ChatGPT / Grok / Claude 连接器配置",
+      "configurationNeeded": "请输入并保存有效的稳定 MCP 基础地址以生成端点。",
+      "mcpBaseUrlPlaceholder": "https://mcp.example.online",
+      "webuiBaseUrlPlaceholder": "https://webui.example.online"
+    }
+  }
+}

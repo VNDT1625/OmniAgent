@@ -164,6 +164,46 @@ describe('collectRepoFiles', () => {
     expect(files.map((file) => file.relPath)).toEqual(['z.ts', 'src/a.ts', 'src/b.ts']);
   });
 
+  it('unwraps a duplicated single parent folder before collecting files', async () => {
+    const dirs = new Map<string, Array<{ name: string; fullPath: string; isDir: boolean }>>([
+      [
+        '/repo/AI_Education-main',
+        [{ name: 'AI_Education-main', fullPath: '/repo/AI_Education-main/AI_Education-main', isDir: true }],
+      ],
+      [
+        '/repo/AI_Education-main/AI_Education-main',
+        [{ name: 'frontend', fullPath: '/repo/AI_Education-main/AI_Education-main/frontend', isDir: true }],
+      ],
+      [
+        '/repo/AI_Education-main/AI_Education-main/frontend',
+        [{ name: 'lib', fullPath: '/repo/AI_Education-main/AI_Education-main/frontend/lib', isDir: true }],
+      ],
+      [
+        '/repo/AI_Education-main/AI_Education-main/frontend/lib',
+        [
+          {
+            name: 'client.ts',
+            fullPath: '/repo/AI_Education-main/AI_Education-main/frontend/lib/client.ts',
+            isDir: false,
+          },
+        ],
+      ],
+    ]);
+
+    const files = await collectRepoFiles('/repo/AI_Education-main', {
+      listDir: async (dir) => dirs.get(dir) ?? [],
+      readFile: async (filePath) => `// ${filePath}`,
+      toRel: (full) => full.replace('/repo/AI_Education-main/', ''),
+    });
+
+    expect(files).toEqual([
+      {
+        relPath: 'frontend/lib/client.ts',
+        content: '// /repo/AI_Education-main/AI_Education-main/frontend/lib/client.ts',
+      },
+    ]);
+  });
+
   it('reads selected non-code text files when collecting repository metadata', async () => {
     const files = await collectRepoFiles(
       '/repo',

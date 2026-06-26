@@ -66,7 +66,20 @@ import type {
   KnowledgeRefreshFileRequest,
 } from '@process/ide/knowledgeGraphBridge';
 import type { QtStartRequest, QtStopResponse, QtEventEnvelope } from '@process/ide/quickTestBridge';
+import type { InspectPickRequest, InspectScreenshotResult } from '@process/ide/elementInspectorBridge';
+import type { LocatedElement } from '@process/ide/elementInspectorLocator';
 import type { TracePlatform as QtTracePlatform } from '@process/ide/quickTestTracer';
+import type {
+  RunPlanRequest,
+  RunPlanResponse,
+  RunSaveRequest,
+  RunClearRequest,
+  RunProbeRequest,
+  RunProbeResponse,
+  RunTargetResult,
+} from '@process/ide/runTarget/runTargetBridge';
+import type { RepoRunConfigs, SavedRunConfig } from '@process/ide/runTarget/runConfigStore';
+import type { RunPlan, RunCandidate, RunPlatform, PlatformSupport } from '@process/ide/runTarget/runTargetPlanner';
 import type {
   SpecFileName,
   SpecInitRequest,
@@ -75,6 +88,9 @@ import type {
   SpecReadRequest,
   SpecResult,
   SpecStatusRequest,
+  SpecSetActiveRequest,
+  SpecAdvancePhaseRequest,
+  SpecApprovalGate,
   SpecTaskClaimRequest,
   SpecTaskListRequest,
   SpecTaskRunbook,
@@ -98,8 +114,15 @@ import type { IdeLintResult, LintFileRequest } from '@process/ide/lint/ideLintBr
 import type { IdeNavResult, NavRequest, NavHit } from '@process/ide/nav/ideNavBridge';
 import type { IdeLangResult, AnalyzeLanguagesRequest } from '@process/ide/lang/ideLangBridge';
 import type { IdeCompletionResult, InlineCompleteRequest } from '@process/ide/lang/ideCompletionBridge';
-import type { IdeMemoryResult, IdeMemoryRequest } from '@process/ide/memory/ideMemoryBridge';
-import type { SuperMemorySnapshot } from '@process/ide/memory/sessionMemoryStore';
+import type {
+  IdeMemoryResult,
+  IdeMemoryRequest,
+  IdeMemoryRememberRequest,
+  IdeMemoryRecordableKind,
+} from '@process/ide/memory/ideMemoryBridge';
+import type { SuperMemorySnapshot, RememberResult } from '@process/ide/memory/sessionMemoryStore';
+import type { IdeCommandResult, RunCommandRequest } from '@process/ide/command/commandBridge';
+import type { CommandResult } from '@process/ide/command/commandRunner';
 import type {
   KnowledgeBuildPhase,
   KnowledgeGraph,
@@ -143,11 +166,20 @@ const IDE_CHANNELS = {
   qtStart: 'ide.qt-start',
   qtStop: 'ide.qt-stop',
   qtEvent: 'ide.qt-event',
+  inspectPick: 'ide.inspect-pick',
+  inspectCancel: 'ide.inspect-cancel',
+  inspectScreenshot: 'ide.inspect-screenshot',
+  qrPlan: 'ide.qr-plan',
+  qrSave: 'ide.qr-save',
+  qrClear: 'ide.qr-clear',
+  qrProbe: 'ide.qr-probe',
   specStatus: 'ide.spec-status',
   specInit: 'ide.spec-init',
   specRead: 'ide.spec-read',
   specWrite: 'ide.spec-write',
   specList: 'ide.spec-list',
+  specSetActive: 'ide.spec-set-active',
+  specAdvancePhase: 'ide.spec-advance-phase',
   specTaskList: 'ide.spec-task-list',
   specTaskClaim: 'ide.spec-task-claim',
   specTaskUpdate: 'ide.spec-task-update',
@@ -164,6 +196,8 @@ const IDE_CHANNELS = {
   inlineComplete: 'ide.inline-complete',
   memorySnapshot: 'ide.memory-snapshot',
   memoryClear: 'ide.memory-clear',
+  memoryRemember: 'ide.memory-remember',
+  runCommand: 'ide.run-command',
   mtuiPolicyCheck: 'terminal.mtui-policy-check',
 } as const;
 
@@ -181,6 +215,11 @@ const FILE_OP_TIMEOUT_MS = 15000;
 const INLINE_COMPLETE_TIMEOUT_MS = 8000;
 /** Timeout (ms) for a full knowledge-graph build (scan + many sequential model calls). */
 const KG_BUILD_TIMEOUT_MS = 3600000;
+
+/** Timeout (ms) for a guarded shell command invoked through the IDE plane. */
+const COMMAND_TIMEOUT_MS = 60000;
+/** Timeout (ms) for an element pick — generous because it waits for a human click. */
+const INSPECT_TIMEOUT_MS = 300000;
 
 /** Raw typed invokers — each `.invoke(req)` round-trips to the Main process. */
 const channels = {
@@ -221,11 +260,28 @@ const channels = {
   qtStart: bridge.buildProvider<UnderstandResult<boolean>, QtStartRequest>(IDE_CHANNELS.qtStart),
   qtStop: bridge.buildProvider<UnderstandResult<QtStopResponse>, void>(IDE_CHANNELS.qtStop),
   qtEvent: bridge.buildEmitter<QtEventEnvelope>(IDE_CHANNELS.qtEvent),
+  inspectPick: bridge.buildProvider<UnderstandResult<LocatedElement | null>, InspectPickRequest>(
+    IDE_CHANNELS.inspectPick
+  ),
+  inspectCancel: bridge.buildProvider<UnderstandResult<boolean>, InspectPickRequest>(IDE_CHANNELS.inspectCancel),
+  inspectScreenshot: bridge.buildProvider<UnderstandResult<InspectScreenshotResult | null>, InspectPickRequest>(
+    IDE_CHANNELS.inspectScreenshot
+  ),
+  qrPlan: bridge.buildProvider<RunTargetResult<RunPlanResponse>, RunPlanRequest>(IDE_CHANNELS.qrPlan),
+  qrSave: bridge.buildProvider<RunTargetResult<RepoRunConfigs>, RunSaveRequest>(IDE_CHANNELS.qrSave),
+  qrClear: bridge.buildProvider<RunTargetResult<RepoRunConfigs>, RunClearRequest>(IDE_CHANNELS.qrClear),
+  qrProbe: bridge.buildProvider<RunTargetResult<RunProbeResponse>, RunProbeRequest>(IDE_CHANNELS.qrProbe),
   specStatus: bridge.buildProvider<SpecResult<SpecLifecycleStatus>, SpecStatusRequest>(IDE_CHANNELS.specStatus),
   specInit: bridge.buildProvider<SpecResult<SpecLifecycleStatus>, SpecInitRequest>(IDE_CHANNELS.specInit),
   specRead: bridge.buildProvider<SpecResult<string>, SpecReadRequest>(IDE_CHANNELS.specRead),
   specWrite: bridge.buildProvider<SpecResult<SpecLifecycleStatus>, SpecWriteRequest>(IDE_CHANNELS.specWrite),
   specList: bridge.buildProvider<SpecResult<SpecListEntry[]>, SpecStatusRequest>(IDE_CHANNELS.specList),
+  specSetActive: bridge.buildProvider<SpecResult<SpecLifecycleStatus>, SpecSetActiveRequest>(
+    IDE_CHANNELS.specSetActive
+  ),
+  specAdvancePhase: bridge.buildProvider<SpecResult<SpecLifecycleStatus>, SpecAdvancePhaseRequest>(
+    IDE_CHANNELS.specAdvancePhase
+  ),
   specTaskList: bridge.buildProvider<SpecResult<SpecTaskRunbook>, SpecTaskListRequest>(IDE_CHANNELS.specTaskList),
   specTaskClaim: bridge.buildProvider<SpecResult<SpecTaskRunbook>, SpecTaskClaimRequest>(IDE_CHANNELS.specTaskClaim),
   specTaskUpdate: bridge.buildProvider<SpecResult<SpecTaskRunbook>, SpecTaskUpdateRequest>(IDE_CHANNELS.specTaskUpdate),
@@ -247,6 +303,10 @@ const channels = {
     IDE_CHANNELS.memorySnapshot
   ),
   memoryClear: bridge.buildProvider<IdeMemoryResult<boolean>, IdeMemoryRequest>(IDE_CHANNELS.memoryClear),
+  memoryRemember: bridge.buildProvider<IdeMemoryResult<RememberResult>, IdeMemoryRememberRequest>(
+    IDE_CHANNELS.memoryRemember
+  ),
+  runCommand: bridge.buildProvider<IdeCommandResult<CommandResult>, RunCommandRequest>(IDE_CHANNELS.runCommand),
 };
 
 /** Error thrown when an IDE IPC call does not reply within its budget. */
@@ -303,8 +363,15 @@ export const ideClient = {
     invokeWithTimeout(IDE_CHANNELS.wikiLoad, () => channels.wikiLoad.invoke({ rootPath }), FILE_OP_TIMEOUT_MS),
   /** Subscribe to live wiki-build phase progress (Main → renderer). Returns an unsubscribe fn. */
   onWikiProgress: (listener: (progress: WikiBuildProgress) => void): (() => void) => channels.wikiProgress.on(listener),
-  listDir: (dir: string): Promise<IdeFileResult<IdeDirEntry[]>> =>
-    invokeWithTimeout(IDE_CHANNELS.listDir, () => channels.listDir.invoke({ dir }), FILE_OP_TIMEOUT_MS),
+  listDir: (
+    dir: string,
+    opts?: { glob?: string; recursive?: boolean; maxResults?: number }
+  ): Promise<IdeFileResult<IdeDirEntry[]>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.listDir,
+      () => channels.listDir.invoke({ dir, ...opts }),
+      FILE_OP_TIMEOUT_MS
+    ),
   readFile: (filePath: string): Promise<IdeFileResult<string>> =>
     invokeWithTimeout(IDE_CHANNELS.readFile, () => channels.readFile.invoke({ path: filePath }), FILE_OP_TIMEOUT_MS),
   readFileBase64: (filePath: string): Promise<IdeFileResult<string>> =>
@@ -432,11 +499,12 @@ export const ideClient = {
     rootPath: string,
     platform: QtTracePlatform = 'web',
     target?: string,
-    expectedText?: string
+    expectedText?: string,
+    tabId?: string
   ): Promise<UnderstandResult<boolean>> =>
     invokeWithTimeout(
       IDE_CHANNELS.qtStart,
-      () => channels.qtStart.invoke({ rootPath, platform, target, expectedText }),
+      () => channels.qtStart.invoke({ rootPath, platform, target, expectedText, tabId }),
       FILE_OP_TIMEOUT_MS
     ),
   /** Stop Quick Test recording and return the trace + context pack. */
@@ -449,6 +517,48 @@ export const ideClient = {
   /** Subscribe to live Quick Test trace events. Returns an unsubscribe fn. */
   onQtEvent: (listener: (event: QtEventEnvelope['event']) => void): (() => void) =>
     channels.qtEvent.on((envelope) => listener(envelope.event)),
+  /**
+   * Element inspector (additive, CDP-free visual picker): arm the page-side
+   * picker and resolve with the clicked element mapped to its component +
+   * file:line, or null when the user cancelled (Escape / toggled off). The long
+   * timeout reflects that this waits for a human click.
+   */
+  inspectPick: (rootPath: string, tabId?: string): Promise<UnderstandResult<LocatedElement | null>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.inspectPick,
+      () => channels.inspectPick.invoke({ rootPath, tabId }),
+      INSPECT_TIMEOUT_MS
+    ),
+  /** Cancel an in-flight element pick (resolves the awaiting pick to null). */
+  inspectCancel: (rootPath: string, tabId?: string): Promise<UnderstandResult<boolean>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.inspectCancel,
+      () => channels.inspectCancel.invoke({ rootPath, tabId }),
+      FILE_OP_TIMEOUT_MS
+    ),
+  /** Capture the inspected tab as a PNG saved into the repo (for a vision agent). */
+  inspectScreenshot: (rootPath: string, tabId?: string): Promise<UnderstandResult<InspectScreenshotResult | null>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.inspectScreenshot,
+      () => channels.inspectScreenshot.invoke({ rootPath, tabId }),
+      FILE_OP_TIMEOUT_MS
+    ),
+  /**
+   * Quick-Run: derive the mechanical run plan from the repo's persisted run data
+   * (wiki/Understand runbook) + every package.json, plus any saved recipes. No
+   * model call — the AI only built the wiki earlier.
+   */
+  qrPlan: (rootPath: string): Promise<RunTargetResult<RunPlanResponse>> =>
+    invokeWithTimeout(IDE_CHANNELS.qrPlan, () => channels.qrPlan.invoke({ rootPath }), FILE_OP_TIMEOUT_MS),
+  /** Quick-Run: persist a run recipe that succeeded (so later runs need no AI). */
+  qrSave: (rootPath: string, config: RunSaveRequest['config']): Promise<RunTargetResult<RepoRunConfigs>> =>
+    invokeWithTimeout(IDE_CHANNELS.qrSave, () => channels.qrSave.invoke({ rootPath, config }), FILE_OP_TIMEOUT_MS),
+  /** Quick-Run: forget the saved recipe for one platform. */
+  qrClear: (rootPath: string, platform: RunPlatform): Promise<RunTargetResult<RepoRunConfigs>> =>
+    invokeWithTimeout(IDE_CHANNELS.qrClear, () => channels.qrClear.invoke({ rootPath, platform }), FILE_OP_TIMEOUT_MS),
+  /** Quick-Run: poll a dev URL once (to know when the terminal-launched server is up). */
+  qrProbe: (url: string): Promise<RunTargetResult<RunProbeResponse>> =>
+    invokeWithTimeout(IDE_CHANNELS.qrProbe, () => channels.qrProbe.invoke({ url }), FILE_OP_TIMEOUT_MS),
   /** Get the latest Kiro-style spec directory status for this repo. */
   specStatus: (rootPath: string): Promise<SpecResult<SpecLifecycleStatus>> =>
     invokeWithTimeout(IDE_CHANNELS.specStatus, () => channels.specStatus.invoke({ rootPath }), FILE_OP_TIMEOUT_MS),
@@ -477,6 +587,24 @@ export const ideClient = {
   /** List all Kiro-style spec directories for execute-plan dropdowns. */
   specList: (rootPath: string): Promise<SpecResult<SpecListEntry[]>> =>
     invokeWithTimeout(IDE_CHANNELS.specList, () => channels.specList.invoke({ rootPath }), FILE_OP_TIMEOUT_MS),
+  /** Set (or clear, with slug=null) the workspace's active spec. */
+  specSetActive: (rootPath: string, slug: string | null): Promise<SpecResult<SpecLifecycleStatus>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.specSetActive,
+      () => channels.specSetActive.invoke({ rootPath, slug }),
+      FILE_OP_TIMEOUT_MS
+    ),
+  /** Approve the current phase gate of the active/named spec and advance it. */
+  specAdvancePhase: (
+    rootPath: string,
+    gate: SpecApprovalGate,
+    slug?: string
+  ): Promise<SpecResult<SpecLifecycleStatus>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.specAdvancePhase,
+      () => channels.specAdvancePhase.invoke({ rootPath, gate, slug }),
+      FILE_OP_TIMEOUT_MS
+    ),
   /** List the authoritative task backend for the latest or requested spec. */
   specTaskList: (rootPath: string, slug?: string): Promise<SpecResult<SpecTaskRunbook>> =>
     invokeWithTimeout(
@@ -587,6 +715,28 @@ export const ideClient = {
   /** Drop a whole session's super-memory — called when an IDE chat tab is closed. */
   memoryClear: (sessionId: string): Promise<IdeMemoryResult<boolean>> =>
     invokeWithTimeout(IDE_CHANNELS.memoryClear, () => channels.memoryClear.invoke({ sessionId }), FILE_OP_TIMEOUT_MS),
+  /** Manually jot a note into a session's super-memory from the memory drawer. */
+  memoryRemember: (
+    sessionId: string,
+    text: string,
+    opts?: { kind?: IdeMemoryRecordableKind; pinned?: boolean }
+  ): Promise<IdeMemoryResult<RememberResult>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.memoryRemember,
+      () => channels.memoryRemember.invoke({ sessionId, text, kind: opts?.kind, pinned: opts?.pinned }),
+      FILE_OP_TIMEOUT_MS
+    ),
+  /** Run a guarded shell command via the Main-process IDE command bridge. */
+  runCommand: (
+    rootPath: string,
+    command: string,
+    opts?: { cwd?: string; timeoutMs?: number }
+  ): Promise<IdeCommandResult<CommandResult>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.runCommand,
+      () => channels.runCommand.invoke({ rootPath, command, cwd: opts?.cwd, timeoutMs: opts?.timeoutMs }),
+      opts?.timeoutMs ?? COMMAND_TIMEOUT_MS
+    ),
 };
 
 export type { IdeScanResult, RepoGraph };
@@ -605,11 +755,24 @@ export type {
 export type { IdeDirEntry, IdeFileChangeEvent, IdeFileResult } from '@process/ide/ideFileBridge';
 export type { QtStopResponse, QtEventEnvelope } from '@process/ide/quickTestBridge';
 export type { RuntimeTrace, TraceEvent, TracePlatform } from '@process/ide/quickTestTracer';
+export type {
+  RunPlanResponse,
+  RunPlanSource,
+  RunSaveRequest,
+  RunClearRequest,
+  RunTargetResult,
+} from '@process/ide/runTarget/runTargetBridge';
+export type { RepoRunConfigs, SavedRunConfig } from '@process/ide/runTarget/runConfigStore';
+export type { RunPlan, RunCandidate, RunPlatform, PlatformSupport } from '@process/ide/runTarget/runTargetPlanner';
 export type { GitChange, IdeGitResult } from '@process/ide/ideGitBridge';
+export type { CommandResult, IdeCommandResult, RunCommandRequest };
 export type {
   SpecFileName,
   SpecListEntry,
   SpecLifecycleStatus,
+  SpecLifecyclePhase,
+  SpecApprovalGate,
+  SpecManifest,
   SpecResult,
   SpecTaskCounts,
   SpecTaskRecord,
@@ -656,5 +819,15 @@ export type {
   LanguageEngineEntry,
 } from '@process/ide/lang/ideLangBridge';
 export type { IdeCompletionResult, InlineCompleteRequest } from '@process/ide/lang/ideCompletionBridge';
-export type { IdeMemoryResult, IdeMemoryRequest } from '@process/ide/memory/ideMemoryBridge';
-export type { SuperMemorySnapshot, SuperMemoryItem, SuperMemoryKind } from '@process/ide/memory/sessionMemoryStore';
+export type {
+  IdeMemoryResult,
+  IdeMemoryRequest,
+  IdeMemoryRememberRequest,
+  IdeMemoryRecordableKind,
+} from '@process/ide/memory/ideMemoryBridge';
+export type {
+  SuperMemorySnapshot,
+  SuperMemoryItem,
+  SuperMemoryKind,
+  RememberResult,
+} from '@process/ide/memory/sessionMemoryStore';

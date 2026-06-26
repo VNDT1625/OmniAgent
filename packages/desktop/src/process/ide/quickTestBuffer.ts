@@ -44,7 +44,9 @@ export const MAX_TRACE_EVENTS = 150;
  * flag).
  */
 export const isErrorEvent = (e: TraceEvent): boolean =>
-  e.kind === 'exception' || (e.kind === 'console' && e.level === 'error') || (e.kind === 'network' && (e.status >= 400 || Boolean(e.error)));
+  e.kind === 'exception' ||
+  (e.kind === 'console' && e.level === 'error') ||
+  (e.kind === 'network' && (e.status >= 400 || Boolean(e.error)));
 
 /**
  * A "significant" event worth preserving under buffer pressure: any error, plus

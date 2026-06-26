@@ -31,9 +31,13 @@ vi.mock('react-i18next', () => ({
 }));
 
 const specAnalyze = vi.fn();
+const specStatus = vi.fn();
+const specAdvancePhase = vi.fn();
 vi.mock('@/renderer/pages/studio/ide/ideClient', () => ({
   ideClient: {
     specAnalyze: (...args: unknown[]) => specAnalyze(...args),
+    specStatus: (...args: unknown[]) => specStatus(...args),
+    specAdvancePhase: (...args: unknown[]) => specAdvancePhase(...args),
   },
 }));
 
@@ -90,6 +94,28 @@ const renderPanel = (rootPath: string | null = '/repo') =>
 
 beforeEach(() => {
   specAnalyze.mockReset();
+  specStatus.mockReset();
+  specAdvancePhase.mockReset();
+  specStatus.mockResolvedValue({
+    ok: true,
+    data: {
+      rootPath: '/repo',
+      exists: true,
+      hasAnySpec: true,
+      slug: 'demo',
+      specDir: '/repo/.aionui/specs/demo',
+      phase: 'tasks',
+      approvals: { requirements: true, design: true, tasks: false },
+      files: {
+        'requirements.md': true,
+        'design.md': true,
+        'tasks.md': true,
+        'verification.md': false,
+      },
+      taskCounts: { total: 1, done: 1, pending: 0, inProgress: 0, blocked: 0 },
+      updatedAt: 12,
+    },
+  });
 });
 
 afterEach(() => {
@@ -114,6 +140,7 @@ describe('SpecManagerPanel', () => {
     // The all-clear banner (no diagnostics).
     expect(screen.getByText('ide.spec.allClear')).toBeTruthy();
     expect(specAnalyze).toHaveBeenCalledWith('/repo');
+    expect(specStatus).toHaveBeenCalledWith('/repo');
   });
 
   it('shows an error state when analysis fails', async () => {

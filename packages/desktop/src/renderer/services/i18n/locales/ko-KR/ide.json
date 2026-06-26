@@ -39,7 +39,8 @@
     "hooks": "에이전트 훅",
     "spec": "사양",
     "lsp": "언어 서버",
-    "expbase": "경험 베이스"
+    "expbase": "경험 베이스",
+    "team": "팀"
   },
   "expbase": {
     "title": "경험 베이스",
@@ -102,7 +103,11 @@
     "noFolder": "사양을 분석하려면 폴더를 여세요.",
     "noSpec": "사양 디렉터리를 찾을 수 없습니다. 채팅의 Planning 막대에서 만드세요.",
     "error": "사양을 분석할 수 없습니다: {{error}}",
-    "health": { "success": "양호", "warning": "보완 필요", "error": "위험" },
+    "health": {
+      "success": "양호",
+      "warning": "보완 필요",
+      "error": "위험"
+    },
     "metric": {
       "requirements": "요구사항",
       "earsCompliant": "EARS 준수",
@@ -140,7 +145,23 @@
     "emptyRequirements": "파싱된 요구사항이 없습니다. 수락 기준이 있는 요구사항을 추가하세요.",
     "emptyPhases": "단계를 찾을 수 없습니다. '## Phase N — …' 제목 아래에 작업을 그룹화하세요.",
     "diagCount": "오류 {{errors}}개 · 경고 {{warnings}}개",
-    "allClear": "사양이 잘 정리되어 있습니다 — 발견된 문제가 없습니다."
+    "allClear": "사양이 잘 정리되어 있습니다 — 발견된 문제가 없습니다.",
+    "lifecycle": {
+      "title": "수명 주기",
+      "approved": "승인됨",
+      "phase": {
+        "requirements": "요구사항",
+        "design": "설계",
+        "tasks": "작업",
+        "execution": "실행",
+        "complete": "완료"
+      },
+      "approve": {
+        "requirements": "요구사항 승인",
+        "design": "설계 승인",
+        "tasks": "작업 승인"
+      }
+    }
   },
   "hooks": {
     "title": "에이전트 훅",
@@ -183,6 +204,33 @@
       "runCommand": "명령 실행"
     }
   },
+  "quickrun": {
+    "title": "실행",
+    "platformDesktop": "데스크톱",
+    "run": "실행",
+    "runSaved": "실행 (저장됨)",
+    "stop": "중지",
+    "cancel": "취소",
+    "launching": "터미널에서 시작 중…",
+    "waiting": "{{url}} 대기 중…",
+    "running": "앱이 실행 중",
+    "runningSaved": "앱이 실행 중 (저장된 설정)",
+    "manualToggle": "실행 명령 편집",
+    "manualHint": "위키에 아직 실행 데이터가 없습니다 — 앱을 시작하는 방법을 입력하세요. 다음에 사용할 수 있도록 저장됩니다.",
+    "commandPlaceholder": "시작 명령, 예: npm run dev",
+    "urlPlaceholder": "개발 URL, 예: http://localhost:5173",
+    "cwdPlaceholder": "하위 폴더 (선택)",
+    "editCommand": "명령 편집",
+    "failed": "실행 실패: {{detail}}",
+    "unsupportedWarn": "이 프로젝트는 {{picked}}(으)로 실행할 수 없습니다. {{fallback}}(으)로 전환했습니다.",
+    "unsupportedHint": "이 프로젝트는 이 플랫폼을 지원하지 않습니다.",
+    "setupWikiDone": "[wiki done]",
+    "setupSaved": "[saved]",
+    "setupPackage": "[package fallback]",
+    "setupLoading": "[checking wiki]",
+    "setupMissing": "[manual setup]",
+    "setupTooltip": "Quick Test ?? ??? wiki/runbook, ??? ??, package.json, ?? ?? ? ???? ??? ?????."
+  },
   "quicktest": {
     "title": "빠른 테스트",
     "start": "시작",
@@ -213,6 +261,7 @@
     "events": "이벤트",
     "errorDetail": "오류",
     "interactionPath": "상호작용 경로",
+    "executedCode": "실제 실행된 코드",
     "suspectedFiles": "의심 파일",
     "fixWithAgent": "에이전트로 수정",
     "restart": "새 테스트",
@@ -233,7 +282,22 @@
     "observationOnly": "Observation complete - no pass condition was set",
     "expectedTextFound": "Found expected text: {{text}}",
     "expectedTextMissing": "Expected text was not found: {{text}}",
-    "retry": "다시 시도"
+    "retry": "다시 시도",
+    "inspectTitle": "요소 검사",
+    "inspect": "검사",
+    "inspectHint": "앱에서 요소를 클릭하여 컴포넌트, file:줄, 박스, 스타일을 캡처합니다.",
+    "inspectNoTab": "먼저 브라우저에서 앱을 불러오세요.",
+    "inspectCancel": "취소",
+    "inspectActive": "왼쪽 앱에서 요소를 클릭하세요(Esc로 취소).",
+    "inspectUnresolved": "소스 파일에 연결되지 않음",
+    "inspectExact": "정확",
+    "inspectHeuristic": "추정",
+    "inspectNone": "미매핑",
+    "inspectClear": "선택 지우기",
+    "inspectRequestPlaceholder": "이 요소에 대한 변경을 설명하세요(예: 20px 위로, 강조색 사용)…",
+    "inspectAsk": "에이전트에게 질문",
+    "viewportResponsive": "반응형",
+    "viewportHint": "미리보기 너비: 페이지를 데스크톱 너비로 렌더링(축소하여 맞춤)하여 좁은 너비가 아닌 실제 와이드 브라우저와 동일한 레이아웃으로 표시합니다. 반응형 = 패널의 실제 너비로 레이아웃."
   },
   "db": {
     "connections": "연결",
@@ -283,7 +347,64 @@
     "urlInvalid": "해당 연결 URL을 분석할 수 없습니다.",
     "urlFilled": "연결 URL에서 양식을 채웠습니다.",
     "filterTables": "테이블 필터…",
-    "noMatch": "필터와 일치하는 테이블이 없습니다."
+    "noMatch": "필터와 일치하는 테이블이 없습니다.",
+    "provider": "제공자",
+    "providerCustom": "사용자 지정 / 자체 호스팅",
+    "accountId": "계정 ID",
+    "accountIdPlaceholder": "Cloudflare 계정 ID",
+    "databaseId": "데이터베이스 ID",
+    "databaseIdPlaceholder": "Cloudflare D1 데이터베이스 ID",
+    "apiToken": "API 토큰",
+    "apiTokenPlaceholder": "D1 액세스 권한이 있는 Cloudflare API 토큰",
+    "projectId": "프로젝트 ID",
+    "projectIdPlaceholder": "Firebase / GCP 프로젝트 ID",
+    "accessToken": "액세스 토큰",
+    "accessTokenPlaceholder": "Google OAuth 액세스 토큰",
+    "firestoreHint": "여기서 Firestore는 읽기 전용입니다. 컬렉션을 테이블로 봅니다. \"SELECT * FROM <collection> [LIMIT n]\"를 사용하세요.",
+    "diagramLoading": "스키마 다이어그램 생성 중…",
+    "diagramEmpty": "그릴 테이블이 없습니다.",
+    "diagramAria": "데이터베이스 스키마 다이어그램",
+    "moreColumns": "외 {{n}}개 열",
+    "viewQuery": "쿼리",
+    "viewDiagram": "다이어그램",
+    "viewGrid": "표",
+    "viewChart": "차트",
+    "analyze": "테이블 분석",
+    "analyzing": "테이블 분석 중…",
+    "analyzeEmpty": "아직 분석 결과가 없습니다.",
+    "profileRows": "{{n}} 행",
+    "sampled": "샘플링됨",
+    "fillRate": "채움 비율",
+    "distinctCount": "고유값 {{n}}개",
+    "nullCount": "null {{n}}개",
+    "topValues": "빈번한 값",
+    "retry": "다시 시도",
+    "chartNeedsNumeric": "이 결과에는 차트로 만들 숫자 열이 없습니다.",
+    "chartLabelColumn": "레이블",
+    "chartValueColumn": "값",
+    "chartRowNumber": "행 번호",
+    "chartAria": "쿼리 결과 막대 차트",
+    "help": {
+      "learnMore": "이 값이 있는 페이지 열기",
+      "pasteUrl": "공급자 대시보드의 전체 연결 문자열을 붙여넣으면 아래 모든 필드가 자동 입력됩니다.",
+      "provider": "관리형 호스트를 선택하면 엔진, 포트, SSL이 자동 설정됩니다. 자체 서버는 사용자 지정을 선택하세요.",
+      "file": "이 컴퓨터의 로컬 .sqlite / .db 파일 절대 경로.",
+      "host": "데이터베이스 공급자의 연결 설정에 있는 서버 주소.",
+      "port": "공급자의 연결 설정에 있는 포트(기본값 Postgres 5432, MySQL 3306).",
+      "database": "공급자의 연결 설정에 표시된 데이터베이스 이름.",
+      "user": "공급자의 연결 설정에 있는 데이터베이스 사용자 이름.",
+      "password": "데이터베이스 생성 시 설정한 비밀번호. 공급자는 다시 표시하지 않으니 분실 시 재설정하세요.",
+      "accountId": "Cloudflare 대시보드 사이드바에서 확인(Workers & Pages → 개요).",
+      "databaseId": "Cloudflare 대시보드에서 D1 데이터베이스를 열면 설정 페이지에 ID가 있습니다.",
+      "apiToken": "Cloudflare → 내 프로필 → API 토큰에서 D1 읽기 권한이 있는 토큰을 생성하세요.",
+      "projectId": "Firebase 콘솔 → 프로젝트 설정 → 일반에서 확인.",
+      "accessToken": "Firestore 액세스 권한이 있는 단기 Google OAuth 액세스 토큰."
+    },
+    "stat": {
+      "min": "최소",
+      "avg": "평균",
+      "max": "최대"
+    }
   },
   "terminal": {
     "title": "터미널",
@@ -391,24 +512,51 @@
     "mentionEmpty": "일치하는 파일이 없습니다.",
     "planning": "Planning",
     "planningHint": "When enabled, new IDE chats must clarify requirements and create a Kiro-style spec directory before implementation.",
+    "strictMode": "엄격",
+    "strictModeHint": "When enabled, the agent's own tools (Bash, Write, Edit, Read, …) are auto-denied and it must use the built-in ide_* / MTUI tools.",
     "planningStatus": {
       "title": "Spec",
-      "noSpec": "No spec directory yet",
-      "missing": "Spec required before implementation",
-      "incomplete": "Spec files incomplete",
-      "ready": "Spec active",
-      "done": "All tasks done",
-      "tasks": "{{done}}/{{total}} tasks done",
-      "create": "Create spec",
-      "missingFiles": "Missing {{files}}",
-      "execute": "Execute",
-      "executeManual": "Type plan path",
-      "mtuiOk": "MTUI OK",
-      "mtuiOkHint": "Strict MTUI Mode has no current violations.",
+      "noSpec": "아직 사양 디렉터리가 없습니다",
+      "noActiveSpec": "활성 사양이 없습니다",
+      "noActiveHint": "계획을 시작하려면 사양을 선택하거나 만드세요",
+      "noSpecsYet": "이 작업 공간에는 아직 사양이 없습니다",
+      "startPlanning": "계획 시작",
+      "clearActive": "활성 사양 해제",
+      "missing": "구현 전에 사양이 필요합니다",
+      "incomplete": "사양 파일이 완전하지 않습니다",
+      "ready": "사양 활성화됨",
+      "done": "모든 작업 완료",
+      "tasks": "{{done}}/{{total}} 작업 완료",
+      "create": "새 사양",
+      "missingFiles": "누락: {{files}}",
+      "execute": "실행",
+      "executeManual": "계획 경로 입력",
+      "executeLocked": "실행하기 전에 요구사항, 설계, 작업 게이트를 승인하세요.",
+      "phase": {
+        "requirements": "요구사항",
+        "design": "설계",
+        "tasks": "작업",
+        "execution": "실행",
+        "complete": "완료"
+      },
+      "phaseHint": {
+        "requirements": "요구사항을 정의한 뒤 승인하여 계속하세요",
+        "design": "설계를 작성한 뒤 승인하여 계속하세요",
+        "tasks": "작업을 나눈 뒤 승인하여 계속하세요",
+        "execution": "승인됨, 작업을 실행할 준비가 되었습니다",
+        "complete": "사양 완료"
+      },
+      "approve": {
+        "requirements": "요구사항 승인",
+        "design": "설계 승인",
+        "tasks": "작업 승인"
+      },
+      "mtuiOk": "MTUI 정상",
+      "mtuiOkHint": "Strict MTUI Mode에 현재 위반 사항이 없습니다.",
       "mtuiViolation": "MTUI {{count}}",
-      "mtuiViolationSummary": "{{count}} file(s) changed without matching MTUI history.",
-      "mtuiHistory": "Inspect MTUI history",
-      "mtuiResolvePrompt": "Resolve Strict MTUI Mode: run `mtui --json policy status`. If these are pre-existing user changes, ask before running `mtui --json policy baseline`; otherwise repair via MTUI and re-check. "
+      "mtuiViolationSummary": "{{count}}개 파일 변경에 대응하는 MTUI 기록이 없습니다.",
+      "mtuiHistory": "MTUI 기록 확인",
+      "mtuiResolvePrompt": "Strict MTUI Mode 해결: 'mtui --json policy status'를 실행하세요. 기존 사용자 변경이라면 'mtui --json policy baseline'을 실행하기 전에 확인하고, 그렇지 않으면 MTUI로 수정한 뒤 다시 확인하세요. "
     }
   },
   "memory": {
@@ -433,6 +581,11 @@
     "clear": "지우기",
     "clearConfirm": "이 채팅 탭의 모든 노트와 비밀키를 지우시겠습니까? 되돌릴 수 없습니다.",
     "refresh": "새로고침",
+    "add": "메모 추가",
+    "addPlaceholder": "에이전트를 위해 사실, 결정 또는 할 일을 메모하세요 (Enter로 저장, Shift+Enter로 줄바꿈)…",
+    "added": "메모가 세션 메모리에 저장되었습니다.",
+    "pinNew": "고정 (자동 요약 방지)",
+    "kindLabel": "분류",
     "kind": {
       "fact": "사실",
       "decision": "결정",
@@ -666,5 +819,64 @@
       "completed": "completed",
       "pending": "pending"
     }
+  },
+  "team": {
+    "title": "팀 편집",
+    "subtitle": "누가 무엇을 편집하는지 — 파일 단위로 작업 분담",
+    "noFolder": "팀 편집을 조율하려면 폴더를 여세요.",
+    "refresh": "새로 고침",
+    "you": "나",
+    "youTag": "나",
+    "userIntent": "수동 편집 중",
+    "participants": "작업 중",
+    "noParticipants": "아직 아무도 작업하지 않습니다.",
+    "heldFiles": "점유 중인 파일",
+    "noLeases": "현재 점유된 파일이 없습니다.",
+    "heldBy": "{{who}} 점유 중",
+    "claim": "점유",
+    "release": "해제",
+    "activityTitle": "활동",
+    "noActivity": "아직 활동이 없습니다.",
+    "time": {
+      "secondsAgo": "{{count}}초 전",
+      "minutesAgo": "{{count}}분 전"
+    },
+    "activity": {
+      "join": "{{who}} 참여함",
+      "claim": "{{who}}이(가) {{file}}을(를) 점유함",
+      "release": "{{who}}이(가) {{file}}을(를) 해제함",
+      "write": "{{who}}이(가) {{file}}에 씀",
+      "expire": "{{who}}의 {{file}} 점유가 만료됨",
+      "conflict": "{{who}}이(가) {{file}}에서 차단됨({{holder}} 점유)"
+    }
+  },
+  "teamCollab": {
+    "publish": "게시",
+    "join": "참여",
+    "stop": "중지",
+    "leave": "나가기",
+    "copy": "복사",
+    "copied": "클립보드에 복사됨",
+    "roleHost": "호스팅 중",
+    "rolePeer": "참여함",
+    "roleNone": "단독",
+    "idleHint": "이 저장소를 게시해 팀과 함께 편집하거나 호스트에 참여하세요.",
+    "needFolder": "게시하려면 먼저 폴더를 여세요.",
+    "joinedRepo": "{{repo}}에 참여함",
+    "readOnlyNote": "Wiki와 Understand는 읽기 전용입니다(호스트 소유)",
+    "lanCode": "LAN 코드",
+    "publicUrl": "공개 URL",
+    "weakPassword": "온라인으로 공유할 때는 기본값이 아닌 6자 이상의 비밀번호를 사용하세요.",
+    "publishTitle": "이 저장소를 팀에 게시",
+    "password": "비밀번호",
+    "onlineLabel": "인터넷으로 공유",
+    "onlineHint": "보안 터널을 열어 다른 네트워크의 동료도 참여할 수 있습니다.",
+    "joinTitle": "팀 저장소 참여",
+    "joinCodeLabel": "참여 코드 또는 URL",
+    "joinCodePlaceholder": "192.168.1.20:5066 또는 https://…",
+    "yourName": "이름",
+    "namePlaceholder": "팀원에게 표시되는 이름",
+    "peerPresence": "호스트에 연결됨",
+    "peerReadOnly": "호스트를 통해 편집 중입니다. 에이전트가 덮어쓰지 않도록 쓰기 전에 파일을 점유하세요."
   }
 }

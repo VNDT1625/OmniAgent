@@ -39,6 +39,7 @@ import music from './music.json';
 import realtimeKnowledge from './realtimeKnowledge.json';
 import system from './system.json';
 import smartTerminal from './smartTerminal.json';
+import externalMcp from './externalMcp.json';
 
 export default {
   common,
@@ -81,4 +82,5 @@ export default {
   realtimeKnowledge,
   system,
   smartTerminal,
+  externalMcp,
 };

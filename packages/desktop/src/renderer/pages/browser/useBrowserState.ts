@@ -38,6 +38,9 @@ export type UseBrowserState = {
   goBack: () => void;
   /** Go forward in the active tab's history. */
   goForward: () => void;
+
+  /** Reload the active tab without re-navigating the address. */
+  reload: () => void;
   setAgentModel: (model: string | null) => void;
   toggleAgentMode: (enabled: boolean) => Promise<void>;
   /** Push the viewport rectangle for the active tab to the Main process. */
@@ -246,6 +249,14 @@ export function useBrowserState(): UseBrowserState {
       .catch(() => {});
   }, [activeTabId, refreshTabs]);
 
+  const reload = useCallback(() => {
+    if (!activeTabId) return;
+    void browserClient
+      .reload({ id: activeTabId })
+      .then(() => refreshTabs())
+      .catch(() => {});
+  }, [activeTabId, refreshTabs]);
+
   const setAgentModel = useCallback((model: string | null) => {
     setAgentModelState(model);
     saveAgentModel(model);
@@ -332,6 +343,8 @@ export function useBrowserState(): UseBrowserState {
     navigate,
     goBack,
     goForward,
+
+    reload,
     setAgentModel,
     toggleAgentMode,
     reportBounds,

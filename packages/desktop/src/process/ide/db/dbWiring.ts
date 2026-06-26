@@ -26,6 +26,8 @@ import { createDbService, type DbService } from './dbService';
 import { createSqliteDriver } from './drivers/sqliteDriver';
 import { createPostgresDriver } from './drivers/postgresDriver';
 import { createMysqlDriver } from './drivers/mysqlDriver';
+import { createD1Driver } from './drivers/d1Driver';
+import { createFirestoreDriver } from './drivers/firestoreDriver';
 
 /** Resolve the directory that holds the connections JSON. */
 const resolveDbDir = (): string => path.join(app.getPath('userData'), 'ide-databases');
@@ -86,6 +88,8 @@ export const getDbService = (): DbService => {
       sqlite: createSqliteDriver,
       postgres: createPostgresDriver,
       mysql: createMysqlDriver,
+      d1: (config) => createD1Driver(config),
+      firestore: (config) => createFirestoreDriver(config),
     },
   });
   return service;

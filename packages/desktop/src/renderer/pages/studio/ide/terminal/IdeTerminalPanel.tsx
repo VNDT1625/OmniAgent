@@ -169,6 +169,19 @@ const IdeTerminalPanel: React.FC<IdeTerminalPanelProps> = ({ defaultCwd, onOpenP
     [term]
   );
 
+  // Quick Run spawns its own terminal session (so it can read the dev URL from
+  // the output); this event just brings that session into view in the dock so
+  // the user sees the live output without hunting for the tab.
+  useAddEventListener(
+    'ide.terminal.focus',
+    (payload) => {
+      setOpen(true);
+      setTab('terminal');
+      term.setActiveId(payload.id);
+    },
+    [term]
+  );
+
   const clearSession = useCallback(
     (id: string): void => {
       setClearOffsets((prev) => ({ ...prev, [id]: (term.buffers[id] ?? '').length }));

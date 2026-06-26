@@ -150,7 +150,6 @@ export function isBuiltinCronName(name?: string | null): boolean {
   );
 }
 
-
 // --- System Insight (Quan sát) — Agent-plane MCP server ---------------------
 // Mirrors the Resource / Manager standalone stdio servers: a separate `node`
 // process that reads the persisted `system-snapshot.json` (written by the live
@@ -187,7 +186,11 @@ export function isBuiltinSystemName(name?: string | null): boolean {
   );
 }
 
-export function isBuiltinSystemTransport(transport?: { type?: string; command?: string; args?: string[] | null }): boolean {
+export function isBuiltinSystemTransport(transport?: {
+  type?: string;
+  command?: string;
+  args?: string[] | null;
+}): boolean {
   if (!transport || transport.type !== 'stdio' || transport.command !== 'node') {
     return false;
   }

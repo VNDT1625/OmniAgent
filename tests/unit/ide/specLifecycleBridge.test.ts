@@ -16,6 +16,7 @@ import {
   initSpecDirectory,
   listSpecDirectories,
   updateSpecTask,
+  setActiveSpec,
 } from '@/process/ide/specLifecycleBridge';
 
 let rootPath = '';
@@ -182,5 +183,30 @@ describe('spec lifecycle bridge helpers', () => {
       taskId: activeId,
       changedPaths: ['src/a.ts', 'src/b.ts'],
     });
+  });
+
+  it('sets and clears the active spec', async () => {
+    const initial = await initSpecDirectory(rootPath, 'Active Lifecycle');
+    const slug = initial.slug as string;
+
+    // Initially active when created via initSpecDirectory
+    let status = await buildSpecStatus(rootPath);
+    expect(status.exists).toBe(true);
+    expect(status.slug).toBe(slug);
+
+    // Clear active spec
+    const cleared = await setActiveSpec(rootPath, null);
+    expect(cleared.exists).toBe(false);
+    expect(cleared.slug).toBeNull();
+
+    // Verify it persists via status reload
+    status = await buildSpecStatus(rootPath);
+    expect(status.exists).toBe(false);
+    expect(status.slug).toBeNull();
+
+    // Set active again
+    const reactivated = await setActiveSpec(rootPath, slug);
+    expect(reactivated.exists).toBe(true);
+    expect(reactivated.slug).toBe(slug);
   });
 });

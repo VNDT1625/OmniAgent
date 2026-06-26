@@ -135,7 +135,7 @@ export const computeSchemaLayout = (graph: DbSchemaGraph): DbSchemaLayout => {
   });
 
   const cols = columnCount(ordered.length);
-  const colHeights = new Array<number>(cols).fill(0);
+  const colHeights = Array.from({ length: cols }, () => 0);
   const nodes: DbFlowNode[] = ordered.map((t) => {
     const id = tableId(t.schema, t.name);
     const hidden = Math.max(0, t.columns.length - MAX_ROWS);
@@ -207,7 +207,10 @@ export const styleSchemaEdges = (edges: DbFlowEdge[], focusId: string | null): D
     if (!focusId) return baseEdge(edge.source, edge.target, label);
     const active = edge.source === focusId || edge.target === focusId;
     if (!active) {
-      return { ...baseEdge(edge.source, edge.target, label), style: { stroke: EDGE_STROKE, strokeWidth: 1, opacity: 0.08 } };
+      return {
+        ...baseEdge(edge.source, edge.target, label),
+        style: { stroke: EDGE_STROKE, strokeWidth: 1, opacity: 0.08 },
+      };
     }
     return {
       ...baseEdge(edge.source, edge.target, label),

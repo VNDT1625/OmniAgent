@@ -97,6 +97,15 @@
     "retryable": "再試行できます",
     "notRetryable": "設定の確認が必要です",
     "resolutionPrefix": "提案: ",
+    "autoRetry": {
+      "countdown": "??????????????????????????{{seconds}}????????????",
+      "stop": "??",
+      "continue": "??",
+      "continuing": "?????????????????...",
+      "stopped": "???????????????????? API ?????????????",
+      "failed": "??????????????????????????",
+      "continuePrompt": "???"
+    },
     "resolution": {
       "retry": "しばらく待ってから再試行するか、このメッセージをもう一度送信してください。",
       "wait_for_current_response": "現在の応答が完了してから、次のメッセージを送信してください。",
@@ -403,6 +412,11 @@
     "verifyRunning": "ゴールを独立して検証中…",
     "verifyFailed": "独立検証が失敗 — エージェントは修正して再試行する必要があります。"
   },
+  "interruptionRecovery": {
+    "interrupted": "会話が中断され、自動的に再開できませんでした。メッセージをもう一度送信してください。",
+    "retryScheduled": "接続が中断されました — {{seconds}} 秒後に再試行します（retry {{retry}}/{{max}}）。",
+    "retrying": "再試行しています…（retry {{retry}}/{{max}}）。"
+  },
   "sideQuestion": {
     "title": "ちょっと質問",
     "description": "現在の会話について短い補足質問をする",
@@ -440,6 +454,13 @@
   },
   "contextUsage": {
     "contextUsed": "コンテキスト使用量"
+  },
+  "turnStats": {
+    "tokensExact": "この応答で使用したトークン数",
+    "tokensEstimated": "この応答の推定トークン数（コンテキスト使用量の変化に基づく）",
+    "duration": "この応答の生成にかかった時間",
+    "input": "入力トークン（モデルに渡されたコンテキスト）",
+    "output": "出力トークン（モデルが生成したテキスト）"
   },
   "skill_generator": {
     "title": "Generate Skill/Rule",

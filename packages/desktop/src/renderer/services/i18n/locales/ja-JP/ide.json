@@ -39,7 +39,8 @@
     "hooks": "エージェントフック",
     "spec": "仕様",
     "lsp": "言語サーバー",
-    "expbase": "経験ベース"
+    "expbase": "経験ベース",
+    "team": "チーム"
   },
   "expbase": {
     "title": "経験ベース",
@@ -102,7 +103,11 @@
     "noFolder": "フォルダを開いて仕様を分析してください。",
     "noSpec": "仕様ディレクトリが見つかりません。チャットのプランニングバーから作成してください。",
     "error": "仕様を分析できませんでした：{{error}}",
-    "health": { "success": "良好", "warning": "要改善", "error": "リスクあり" },
+    "health": {
+      "success": "良好",
+      "warning": "要改善",
+      "error": "リスクあり"
+    },
     "metric": {
       "requirements": "要件",
       "earsCompliant": "EARS 準拠",
@@ -140,7 +145,23 @@
     "emptyRequirements": "要件が解析されませんでした。受け入れ基準付きの要件を追加してください。",
     "emptyPhases": "フェーズが見つかりません。タスクを '## Phase N — …' 見出しの下にまとめてください。",
     "diagCount": "{{errors}} 件のエラー · {{warnings}} 件の警告",
-    "allClear": "仕様は規律が保たれています — 問題は見つかりませんでした。"
+    "allClear": "仕様は規律が保たれています — 問題は見つかりませんでした。",
+    "lifecycle": {
+      "title": "ライフサイクル",
+      "approved": "承認済み",
+      "phase": {
+        "requirements": "要件",
+        "design": "設計",
+        "tasks": "タスク",
+        "execution": "実行",
+        "complete": "完了"
+      },
+      "approve": {
+        "requirements": "要件を承認",
+        "design": "設計を承認",
+        "tasks": "タスクを承認"
+      }
+    }
   },
   "hooks": {
     "title": "エージェントフック",
@@ -183,6 +204,33 @@
       "runCommand": "コマンドを実行"
     }
   },
+  "quickrun": {
+    "title": "実行",
+    "platformDesktop": "デスクトップ",
+    "run": "実行",
+    "runSaved": "実行（保存済み）",
+    "stop": "停止",
+    "cancel": "キャンセル",
+    "launching": "ターミナルで起動中…",
+    "waiting": "{{url}} を待機中…",
+    "running": "アプリが実行中",
+    "runningSaved": "アプリが実行中（保存済みの設定）",
+    "manualToggle": "実行コマンドを編集",
+    "manualHint": "Wiki にまだ実行データがありません——アプリの起動方法を入力してください。次回のために保存されます。",
+    "commandPlaceholder": "起動コマンド、例: npm run dev",
+    "urlPlaceholder": "開発 URL、例: http://localhost:5173",
+    "cwdPlaceholder": "サブフォルダ（任意）",
+    "editCommand": "コマンドを編集",
+    "failed": "実行に失敗しました: {{detail}}",
+    "unsupportedWarn": "このプロジェクトは {{picked}} として実行できません。{{fallback}} に切り替えました。",
+    "unsupportedHint": "このプロジェクトはこのプラットフォームをサポートしていません。",
+    "setupWikiDone": "[wiki done]",
+    "setupSaved": "[saved]",
+    "setupPackage": "[package fallback]",
+    "setupLoading": "[checking wiki]",
+    "setupMissing": "[manual setup]",
+    "setupTooltip": "Quick Test ?????? wiki/runbook????????package.json???????????????????"
+  },
   "quicktest": {
     "title": "クイックテスト",
     "start": "開始",
@@ -213,6 +261,7 @@
     "events": "イベント",
     "errorDetail": "エラー",
     "interactionPath": "操作パス",
+    "executedCode": "実際に実行されたコード",
     "suspectedFiles": "疑わしいファイル",
     "fixWithAgent": "エージェントで修正",
     "restart": "新しいテスト",
@@ -233,7 +282,22 @@
     "observationOnly": "Observation complete - no pass condition was set",
     "expectedTextFound": "Found expected text: {{text}}",
     "expectedTextMissing": "Expected text was not found: {{text}}",
-    "retry": "再試行"
+    "retry": "再試行",
+    "inspectTitle": "要素を検査",
+    "inspect": "検査",
+    "inspectHint": "アプリ内の要素をクリックして、コンポーネント・file:行・ボックス・スタイルを取得します。",
+    "inspectNoTab": "先にブラウザでアプリを読み込んでください。",
+    "inspectCancel": "キャンセル",
+    "inspectActive": "左側のアプリで要素をクリックしてください（Esc でキャンセル）。",
+    "inspectUnresolved": "ソースファイルに紐付けできません",
+    "inspectExact": "正確",
+    "inspectHeuristic": "推定",
+    "inspectNone": "未マッピング",
+    "inspectClear": "選択をクリア",
+    "inspectRequestPlaceholder": "この要素への変更を記述してください（例：20px 上へ、アクセントカラーを使用）…",
+    "inspectAsk": "エージェントに質問",
+    "viewportResponsive": "レスポンシブ",
+    "viewportHint": "プレビュー幅: ページをデスクトップ幅でレンダリング（縮小して収める）し、狭い幅ではなく実際のワイドブラウザと同じレイアウトにします。レスポンシブ = パネルの実際の幅でレイアウト。"
   },
   "db": {
     "connections": "接続",
@@ -283,7 +347,64 @@
     "urlInvalid": "その接続 URL を解析できませんでした。",
     "urlFilled": "接続 URL からフォームを入力しました。",
     "filterTables": "テーブルを絞り込み…",
-    "noMatch": "フィルターに一致するテーブルがありません。"
+    "noMatch": "フィルターに一致するテーブルがありません。",
+    "provider": "プロバイダー",
+    "providerCustom": "カスタム / セルフホスト",
+    "accountId": "アカウント ID",
+    "accountIdPlaceholder": "Cloudflare アカウント ID",
+    "databaseId": "データベース ID",
+    "databaseIdPlaceholder": "Cloudflare D1 データベース ID",
+    "apiToken": "API トークン",
+    "apiTokenPlaceholder": "D1 アクセス権を持つ Cloudflare API トークン",
+    "projectId": "プロジェクト ID",
+    "projectIdPlaceholder": "Firebase / GCP プロジェクト ID",
+    "accessToken": "アクセストークン",
+    "accessTokenPlaceholder": "Google OAuth アクセストークン",
+    "firestoreHint": "ここでは Firestore は読み取り専用です。コレクションをテーブルとして閲覧します。\"SELECT * FROM <collection> [LIMIT n]\" を使用してください。",
+    "diagramLoading": "スキーマ図を生成中…",
+    "diagramEmpty": "描画できるテーブルがありません。",
+    "diagramAria": "データベーススキーマ図",
+    "moreColumns": "他 {{n}} 列",
+    "viewQuery": "クエリ",
+    "viewDiagram": "図",
+    "viewGrid": "表",
+    "viewChart": "チャート",
+    "analyze": "テーブルを分析",
+    "analyzing": "テーブルを分析中…",
+    "analyzeEmpty": "まだ分析結果がありません。",
+    "profileRows": "{{n}} 行",
+    "sampled": "サンプリング",
+    "fillRate": "充填率",
+    "distinctCount": "{{n}} 個の一意値",
+    "nullCount": "{{n}} 個の null",
+    "topValues": "頻出値",
+    "retry": "再試行",
+    "chartNeedsNumeric": "この結果にはチャート化できる数値列がありません。",
+    "chartLabelColumn": "ラベル",
+    "chartValueColumn": "値",
+    "chartRowNumber": "行番号",
+    "chartAria": "クエリ結果の棒グラフ",
+    "help": {
+      "learnMore": "この値が記載されているページを開く",
+      "pasteUrl": "プロバイダーのダッシュボードから完全な接続文字列を貼り付けると、以下のすべての項目が自動入力されます。",
+      "provider": "マネージドホストを選ぶとエンジン・ポート・SSL が自動設定されます。自前のサーバーはカスタムを選択してください。",
+      "file": "このマシン上のローカル .sqlite / .db ファイルの絶対パス。",
+      "host": "データベースプロバイダーの接続設定にあるサーバーアドレス。",
+      "port": "プロバイダーの接続設定にあるポート（既定値 Postgres 5432、MySQL 3306）。",
+      "database": "プロバイダーの接続設定に表示されるデータベース名。",
+      "user": "プロバイダーの接続設定にあるデータベースのユーザー名。",
+      "password": "データベース作成時に設定したパスワード。プロバイダーは再表示しないため、紛失した場合は再設定してください。",
+      "accountId": "Cloudflare ダッシュボードのサイドバーで確認（Workers & Pages → 概要）。",
+      "databaseId": "Cloudflare ダッシュボードで D1 データベースを開くと、設定ページに ID があります。",
+      "apiToken": "Cloudflare → マイプロフィール → API トークンで D1 読み取り権限のトークンを作成してください。",
+      "projectId": "Firebase コンソール → プロジェクト設定 → 全般で確認。",
+      "accessToken": "Firestore アクセス権を持つ短期の Google OAuth アクセストークン。"
+    },
+    "stat": {
+      "min": "最小",
+      "avg": "平均",
+      "max": "最大"
+    }
   },
   "terminal": {
     "title": "ターミナル",
@@ -391,24 +512,51 @@
     "mentionEmpty": "一致するファイルがありません。",
     "planning": "Planning",
     "planningHint": "When enabled, new IDE chats must clarify requirements and create a Kiro-style spec directory before implementation.",
+    "strictMode": "厳格",
+    "strictModeHint": "When enabled, the agent's own tools (Bash, Write, Edit, Read, …) are auto-denied and it must use the built-in ide_* / MTUI tools.",
     "planningStatus": {
       "title": "Spec",
-      "noSpec": "No spec directory yet",
-      "missing": "Spec required before implementation",
-      "incomplete": "Spec files incomplete",
-      "ready": "Spec active",
-      "done": "All tasks done",
-      "tasks": "{{done}}/{{total}} tasks done",
-      "create": "Create spec",
-      "missingFiles": "Missing {{files}}",
-      "execute": "Execute",
-      "executeManual": "Type plan path",
+      "noSpec": "仕様ディレクトリはまだありません",
+      "noActiveSpec": "アクティブな仕様はありません",
+      "noActiveHint": "計画を開始するには仕様を選択または作成してください",
+      "noSpecsYet": "このワークスペースにはまだ仕様がありません",
+      "startPlanning": "計画を開始",
+      "clearActive": "アクティブな仕様を解除",
+      "missing": "実装前に仕様が必要です",
+      "incomplete": "仕様ファイルが未完了です",
+      "ready": "仕様がアクティブです",
+      "done": "すべてのタスクが完了しました",
+      "tasks": "{{done}}/{{total}} タスク完了",
+      "create": "新しい仕様",
+      "missingFiles": "不足: {{files}}",
+      "execute": "実行",
+      "executeManual": "計画パスを入力",
+      "executeLocked": "実行する前に、要件、設計、タスクのゲートを承認してください。",
+      "phase": {
+        "requirements": "要件",
+        "design": "設計",
+        "tasks": "タスク",
+        "execution": "実行",
+        "complete": "完了"
+      },
+      "phaseHint": {
+        "requirements": "要件を定義し、承認して続行します",
+        "design": "設計を作成し、承認して続行します",
+        "tasks": "タスクに分解し、承認して続行します",
+        "execution": "承認済み、タスクを実行できます",
+        "complete": "仕様は完了しています"
+      },
+      "approve": {
+        "requirements": "要件を承認",
+        "design": "設計を承認",
+        "tasks": "タスクを承認"
+      },
       "mtuiOk": "MTUI OK",
-      "mtuiOkHint": "Strict MTUI Mode has no current violations.",
+      "mtuiOkHint": "Strict MTUI Mode に現在の違反はありません。",
       "mtuiViolation": "MTUI {{count}}",
-      "mtuiViolationSummary": "{{count}} file(s) changed without matching MTUI history.",
-      "mtuiHistory": "Inspect MTUI history",
-      "mtuiResolvePrompt": "Resolve Strict MTUI Mode: run `mtui --json policy status`. If these are pre-existing user changes, ask before running `mtui --json policy baseline`; otherwise repair via MTUI and re-check. "
+      "mtuiViolationSummary": "{{count}} 件のファイル変更に対応する MTUI 履歴がありません。",
+      "mtuiHistory": "MTUI 履歴を確認",
+      "mtuiResolvePrompt": "Strict MTUI Mode を解決: 'mtui --json policy status' を実行します。既存のユーザー変更である場合は、'mtui --json policy baseline' を実行する前に確認してください。それ以外は MTUI 経由で修復し、再チェックしてください。 "
     }
   },
   "memory": {
@@ -433,6 +581,11 @@
     "clear": "クリア",
     "clearConfirm": "このチャットタブのすべてのノートとシークレットをクリアしますか？元に戻せません。",
     "refresh": "更新",
+    "add": "ノートを追加",
+    "addPlaceholder": "エージェント向けに事実・決定・TODOをメモ（Enterで保存、Shift+Enterで改行）…",
+    "added": "ノートをセッションメモリに保存しました。",
+    "pinNew": "ピン留め（自動要約から保護）",
+    "kindLabel": "カテゴリ",
     "kind": {
       "fact": "事実",
       "decision": "決定",
@@ -666,5 +819,64 @@
       "completed": "completed",
       "pending": "pending"
     }
+  },
+  "team": {
+    "title": "チーム編集",
+    "subtitle": "誰が何を編集中か — ファイル単位で分担",
+    "noFolder": "チーム編集を調整するにはフォルダを開いてください。",
+    "refresh": "更新",
+    "you": "あなた",
+    "youTag": "あなた",
+    "userIntent": "手動で編集中",
+    "participants": "作業中",
+    "noParticipants": "まだ誰も作業していません。",
+    "heldFiles": "占有中のファイル",
+    "noLeases": "現在占有されているファイルはありません。",
+    "heldBy": "{{who}} が占有",
+    "claim": "占有",
+    "release": "解放",
+    "activityTitle": "アクティビティ",
+    "noActivity": "アクティビティはまだありません。",
+    "time": {
+      "secondsAgo": "{{count}}秒前",
+      "minutesAgo": "{{count}}分前"
+    },
+    "activity": {
+      "join": "{{who}} が参加しました",
+      "claim": "{{who}} が {{file}} を占有しました",
+      "release": "{{who}} が {{file}} を解放しました",
+      "write": "{{who}} が {{file}} を書き込みました",
+      "expire": "{{who}} の {{file}} の占有が失効しました",
+      "conflict": "{{who}} は {{file}} でブロックされました（{{holder}} が占有）"
+    }
+  },
+  "teamCollab": {
+    "publish": "公開",
+    "join": "参加",
+    "stop": "停止",
+    "leave": "退出",
+    "copy": "コピー",
+    "copied": "クリップボードにコピーしました",
+    "roleHost": "ホスト中",
+    "rolePeer": "参加中",
+    "roleNone": "ソロ",
+    "idleHint": "このリポジトリを公開してチームで一緒に編集するか、ホストに参加します。",
+    "needFolder": "公開する前にフォルダーを開いてください。",
+    "joinedRepo": "{{repo}} に参加しました",
+    "readOnlyNote": "Wiki と Understand は読み取り専用です（ホスト所有）",
+    "lanCode": "LAN コード",
+    "publicUrl": "公開 URL",
+    "weakPassword": "オンライン共有時は 6 文字以上の（デフォルト以外の）パスワードを使用してください。",
+    "publishTitle": "このリポジトリをチームに公開",
+    "password": "パスワード",
+    "onlineLabel": "インターネット経由で共有",
+    "onlineHint": "安全なトンネルを開き、別ネットワークの仲間も参加できます。",
+    "joinTitle": "チームリポジトリに参加",
+    "joinCodeLabel": "参加コードまたは URL",
+    "joinCodePlaceholder": "192.168.1.20:5066 または https://…",
+    "yourName": "あなたの名前",
+    "namePlaceholder": "チームメイトに表示される名前",
+    "peerPresence": "ホストに接続中",
+    "peerReadOnly": "ホスト経由で編集しています。エージェントに上書きされないよう、書き込む前にファイルを占有してください。"
   }
 }

@@ -57,6 +57,12 @@ export type QtStartRequest = {
   target?: string;
   /** Optional web assertion evaluated against the rendered page text on stop. */
   expectedText?: string;
+  /**
+   * For the web platform: the embedded browser tab id whose WebContents the
+   * tracer attaches CDP to. When omitted the bridge falls back to the focused
+   * WebContents (legacy behaviour).
+   */
+  tabId?: string;
 };
 
 /** One explicit assertion evaluated by Quick Test. */
@@ -101,8 +107,14 @@ const verifyExpectedText = async (wc: CdpWebContents | null, expected: string): 
 
 /** Injected collaborators for {@link registerQuickTestBridge}. */
 export type QuickTestBridgeDeps = {
-  /** Resolve the active browser WebContents (null when no tab is open). */
-  getWebContents: () => CdpWebContents | null;
+  /**
+   * Resolve the browser WebContents to attach CDP to (null when none is open).
+   * When `tabId` is given, resolve THAT embedded tab's WebContents (the Quick
+   * Test panel hosts its own browser tab); when omitted, fall back to the
+   * focused WebContents so the legacy "open it in the Browser page" flow keeps
+   * working.
+   */
+  getWebContents: (tabId?: string) => CdpWebContents | null;
   /** Load the persisted KG for a repo root (for trace→context mapping). */
   loadGraph: typeof loadGraph;
   /** Open a native log stream (android logcat / windows stdio) for the tracer. */
@@ -126,8 +138,13 @@ export function registerQuickTestBridge(deps: QuickTestBridgeDeps): void {
     if (isSignificantEvent(event)) qtChannels.event.emit({ event });
   };
 
+  // The embedded tab the active web session attaches CDP to. Set on `start`
+  // and read by the tracer's `getWebContents` closure so CDP binds to the
+  // Quick Test panel's own browser tab instead of whatever is focused.
+  let activeTabId: string | undefined;
+
   const webTracer = createQuickTestTracer({
-    getWebContents: deps.getWebContents,
+    getWebContents: () => deps.getWebContents(activeTabId),
     onEvent: emitEvent,
   });
   const nativeTracer = createQuickTestNativeTracer({
@@ -138,22 +155,31 @@ export function registerQuickTestBridge(deps: QuickTestBridgeDeps): void {
   /** The tracer currently recording (so `stop` hits the right one). */
   let activeTracer: { stop: () => RuntimeTrace } | null = null;
   let activeExpectedText: string | null = null;
+  /** Whether the active session is the web tracer (the only one with coverage). */
+  let activeIsWeb = false;
 
   qtChannels.start.provider(async (req): Promise<UnderstandResult<boolean>> => {
     const rootPath = req.rootPath?.trim();
     if (!rootPath) return { ok: false, error: 'A folder path is required.', code: 'error' };
     const platform = req.platform ?? 'web';
     try {
+      // Bind the tab id BEFORE starting so the tracer's getWebContents closure
+      // resolves the right embedded tab (web only; native ignores it).
+      activeTabId = platform === 'web' ? req.tabId : undefined;
       const started =
         platform === 'web'
           ? await webTracer.start(rootPath)
           : await nativeTracer.start(platform, rootPath, req.target ?? '');
       if (started) {
         activeTracer = platform === 'web' ? webTracer : nativeTracer;
+        activeIsWeb = platform === 'web';
         activeExpectedText = platform === 'web' ? req.expectedText?.trim() || null : null;
+      } else {
+        activeTabId = undefined;
       }
       return { ok: true, data: started };
     } catch (error) {
+      activeTabId = undefined;
       const message = error instanceof Error ? error.message : String(error);
       return { ok: false, error: message, code: 'error' };
     }
@@ -163,13 +189,20 @@ export function registerQuickTestBridge(deps: QuickTestBridgeDeps): void {
     try {
       const expectedText = activeExpectedText;
       const verification = expectedText
-        ? await verifyExpectedText(deps.getWebContents(), expectedText).catch(
+        ? await verifyExpectedText(deps.getWebContents(activeTabId), expectedText).catch(
             (): QtVerification => ({ kind: 'text', expected: expectedText, passed: false })
           )
         : null;
+      // Drain V8 precise coverage (which of the user's functions ran) BEFORE
+      // stop detaches the debugger — web only (the native tracer has no CDP).
+      if (activeIsWeb) {
+        await webTracer.finalizeCoverage().catch((): void => undefined);
+      }
       const trace = activeTracer ? activeTracer.stop() : webTracer.stop();
       activeTracer = null;
       activeExpectedText = null;
+      activeIsWeb = false;
+      activeTabId = undefined;
       // Build a context pack from the trace + the repo's KG (best-effort).
       let contextPack: ContextPack | null = null;
       if (trace.rootPath) {

@@ -11,5 +11,10 @@
     "running": "Đang chạy `{{program}}`…"
   },
   "autoRerunLabel": "Gợi ý sửa khi lỗi",
-  "autoRerunHint": "Khi một lệnh lỗi và có lệnh thay thế đã biết, hỏi ngay trong terminal (y/N) để bạn — hoặc agent — gõ áp dụng."
+  "autoRerunHint": "Khi một lệnh lỗi và có lệnh thay thế đã biết, hỏi ngay trong terminal (y/N) để bạn — hoặc agent — gõ áp dụng.",
+  "suggest": {
+    "title": "Gợi ý",
+    "ariaLabel": "Gợi ý lệnh",
+    "runCount": "{{count}}×"
+  }
 }

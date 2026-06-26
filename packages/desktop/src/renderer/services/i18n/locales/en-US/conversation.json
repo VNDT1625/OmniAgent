@@ -97,6 +97,15 @@
     "retryable": "Retryable",
     "notRetryable": "Needs configuration",
     "resolutionPrefix": "Suggestion: ",
+    "autoRetry": {
+      "countdown": "Temporary provider rate limit reached. Continuing automatically in {{seconds}}s.",
+      "stop": "Stop",
+      "continue": "Continue",
+      "continuing": "Continuing with the provider...",
+      "stopped": "Auto-retry stopped. The API key will not be called again for this turn.",
+      "failed": "Could not continue automatically. You can try Continue again.",
+      "continuePrompt": "continue"
+    },
     "resolution": {
       "retry": "Retry later, or send this message again.",
       "wait_for_current_response": "Wait for the current response to finish before sending another message.",
@@ -403,6 +412,11 @@
     "verifyRunning": "Verifying the goal independently…",
     "verifyFailed": "Independent verification failed — the agent must fix and retry."
   },
+  "interruptionRecovery": {
+    "interrupted": "The conversation was interrupted and could not be resumed automatically. Please send your message again.",
+    "retryScheduled": "Connection interrupted — retrying in {{seconds}}s (retry {{retry}}/{{max}}).",
+    "retrying": "Retrying now… (retry {{retry}}/{{max}})."
+  },
   "sideQuestion": {
     "title": "Side Question",
     "description": "Ask a quick question about the current conversation",
@@ -440,6 +454,13 @@
   },
   "contextUsage": {
     "contextUsed": "context used"
+  },
+  "turnStats": {
+    "tokensExact": "Tokens used for this reply",
+    "tokensEstimated": "Estimated tokens for this reply (from context-usage change)",
+    "duration": "Time to generate this reply",
+    "input": "Input tokens (context fed to the model)",
+    "output": "Output tokens (text the model generated)"
   },
   "skill_generator": {
     "title": "Generate Skill/Rule",

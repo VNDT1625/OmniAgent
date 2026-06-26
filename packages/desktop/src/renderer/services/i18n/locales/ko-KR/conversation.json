@@ -97,6 +97,15 @@
     "retryable": "다시 시도 가능",
     "notRetryable": "설정 확인 필요",
     "resolutionPrefix": "제안: ",
+    "autoRetry": {
+      "countdown": "?? ???? ???? ?? ??? ??????. {{seconds}}? ? ???? ?????.",
+      "stop": "??",
+      "continue": "??",
+      "continuing": "?? ???? ?? ?? ?...",
+      "stopped": "?? ???? ???????. ? ???? API ?? ?? ???? ????.",
+      "failed": "?? ??? ??????. ??? ?? ??? ? ????.",
+      "continuePrompt": "??"
+    },
     "resolution": {
       "retry": "잠시 후 다시 시도하거나 이 메시지를 다시 보내세요.",
       "wait_for_current_response": "현재 응답이 끝난 뒤 다음 메시지를 보내세요.",
@@ -403,6 +412,11 @@
     "verifyRunning": "목표를 독립적으로 검증 중…",
     "verifyFailed": "독립 검증 실패 — 에이전트가 수정 후 다시 시도해야 합니다."
   },
+  "interruptionRecovery": {
+    "interrupted": "대화가 중단되어 자동으로 재개할 수 없습니다. 메시지를 다시 보내주세요.",
+    "retryScheduled": "연결이 끊겼습니다 — {{seconds}}초 후 다시 시도합니다(retry {{retry}}/{{max}}).",
+    "retrying": "다시 시도 중…(retry {{retry}}/{{max}})."
+  },
   "sideQuestion": {
     "title": "잠깐 질문",
     "description": "현재 대화에 대해 짧은 보조 질문을 합니다",
@@ -440,6 +454,13 @@
   },
   "contextUsage": {
     "contextUsed": "사용된 컨텍스트"
+  },
+  "turnStats": {
+    "tokensExact": "이 응답에 사용된 토큰 수",
+    "tokensEstimated": "이 응답의 예상 토큰 수 (컨텍스트 사용량 변화 기준)",
+    "duration": "이 응답 생성에 걸린 시간",
+    "input": "입력 토큰 (모델에 제공된 컨텍스트)",
+    "output": "출력 토큰 (모델이 생성한 텍스트)"
   },
   "skill_generator": {
     "title": "스킬/규칙 생성",

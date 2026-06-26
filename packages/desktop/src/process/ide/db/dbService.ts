@@ -24,8 +24,18 @@
 import type { DbDriver } from './dbDriver';
 import { splitStatements } from './dbDriver';
 import type { DbConnectionStore } from './dbConnectionStore';
+import {
+  buildProfileQuery,
+  buildTopValuesQuery,
+  columnsWorthTopValues,
+  DEFAULT_PROFILE_SAMPLE,
+  DEFAULT_TOP_VALUES,
+  parseProfileResult,
+  parseTopValues,
+} from './dbAnalyze';
 import type {
   DbColumn,
+  DbColumnProfile,
   DbConnectionConfig,
   DbConnectionState,
   DbForeignKey,
@@ -40,6 +50,7 @@ import type {
   DbScriptStatementResult,
   DbTable,
   DbTableDetail,
+  DbTableProfile,
 } from './dbTypes';
 
 /** Builds a driver for a resolved connection config (with password). */
@@ -80,6 +91,13 @@ export type DbService = {
   getTableDetail: (id: string, table: string, schema?: string) => Promise<DbTableDetail>;
   /** Build a whole-schema ER graph (tables + columns + FK edges) for visualization. */
   getSchemaGraph: (id: string, maxTables?: number) => Promise<DbSchemaGraph>;
+  /** Statistically profile one table (fill rate, cardinality, numeric spread, top values). */
+  profileTable: (
+    id: string,
+    table: string,
+    schema?: string,
+    options?: { sampleLimit?: number; topValues?: number }
+  ) => Promise<DbTableProfile>;
   /** Run a SQL statement against a connection. */
   query: (id: string, sql: string, options?: DbQueryOptions) => Promise<DbQueryResult>;
   /** Run a multi-statement SQL script (split on top-level `;`), stopping at the first error. */
@@ -205,6 +223,37 @@ export const createDbService = (deps: DbServiceDeps): DbService => {
     return { kind: schema.kind, tables, truncated };
   };
 
+  const profileTable: DbService['profileTable'] = async (id, table, schema, options) => {
+    const { driver, config } = await openDriver(id);
+    const kind = config.kind;
+    const columns = await driver.getColumns(table, schema);
+    const sampleLimit = options?.sampleLimit && options.sampleLimit > 0 ? options.sampleLimit : DEFAULT_PROFILE_SAMPLE;
+    const { sql, selectMeta } = buildProfileQuery(kind, table, schema, columns, sampleLimit);
+    const aggregate = await driver.query(sql, { maxRows: 1 });
+    // The inner query is LIMITed to `sampleLimit`, so a sample count that hits
+    // the cap means the table was larger than the sample (profile is partial).
+    const { total, profiles } = parseProfileResult(aggregate, selectMeta, false);
+    const sampled = total >= sampleLimit;
+    for (const p of profiles) p.sampled = sampled;
+    // Top values for low-cardinality columns only (one extra query each, capped).
+    const topN = options?.topValues && options.topValues > 0 ? options.topValues : DEFAULT_TOP_VALUES;
+    const worth = new Set(columnsWorthTopValues(profiles));
+    for (const profile of profiles) {
+      if (!worth.has(profile.column)) continue;
+      try {
+        // Sequential: each column needs its own GROUP BY; bounded by `worth`.
+        // eslint-disable-next-line no-await-in-loop
+        const res = await driver.query(buildTopValuesQuery(kind, table, schema, profile.column, topN), {
+          maxRows: topN,
+        });
+        profile.topValues = parseTopValues(res);
+      } catch {
+        /* a column that can't be grouped (e.g. blob) just gets no top values */
+      }
+    }
+    return { schema, table, rowCount: total, sampled: total >= sampleLimit, columns: profiles };
+  };
+
   const query: DbService['query'] = async (id, sql, options) => {
     const { driver } = await openDriver(id);
     return driver.query(sql, options);
@@ -264,6 +313,7 @@ export const createDbService = (deps: DbServiceDeps): DbService => {
     getForeignKeys,
     getTableDetail,
     getSchemaGraph,
+    profileTable,
     query,
     queryScript,
     close,

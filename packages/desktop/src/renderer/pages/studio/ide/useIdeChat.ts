@@ -27,7 +27,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ipcBridge } from '@/common';
+
+import { STRICT_IDE_CLAUDE_AGENT_NAME } from '@/common/chat/approval/ideToolGuard';
 import type { Assistant } from '@/common/types/agent/assistantTypes';
+import { getAskMode } from '@/common/types/agent/agentModes';
+import { resolveAgentBackendKey } from '@/common/utils/buildAgentConversationParams';
 import type { AgentMetadata } from '@/renderer/utils/model/agentTypes';
 import { emitter } from '@/renderer/utils/emitter';
 import {
@@ -35,8 +39,10 @@ import {
   buildPresetAssistantParams,
 } from '@/renderer/pages/conversation/utils/createConversationParams';
 import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
+import { isStrictIdeModeEnabled } from '@/renderer/pages/conversation/platforms/strictIdeModeGuard';
 import { ensureBackendMcpCatalog, toSessionMcpServer } from '@/renderer/hooks/mcp/catalog';
 import { IDE_MCP_NAME, withIdeMemoryRules, withIdeToolRules } from '@/renderer/pages/conversation/hooks/superGuidance';
+import { buildWorkspacePrimer as buildWorkspacePrimerShared } from '@process/ide/workspacePrimer';
 import type { ISessionMcpServer } from '@/common/config/storage';
 import { ideClient } from './ideClient';
 
@@ -46,6 +52,26 @@ const STORAGE_PREFIX = 'studio.ide.chatTabs.';
 const PLANNING_PREFIX = 'studio.ide.planning.';
 /** Max tabs kept per repo (defensive — UI is fine with many). */
 const MAX_TABS = 12;
+
+/**
+ * The tool-preference rule, seeded ONCE into a tab's session memory (a pinned
+ * note) when the tab opens — instead of appending a reminder to every message.
+ *
+ * In an IDE workspace every repo read / search / edit should flow through the
+ * `ide_*` / MTUI tools (visible, reviewable, undoable). Rather than nag on each
+ * turn, we record this rule in the agent's recall-on-demand memory; Strict IDE
+ * Mode still hard-enforces the remap (`ideToolGuard`) regardless.
+ */
+const IDE_TOOL_PREFERENCE_NOTE =
+  'Workspace tool rule (Strict IDE Mode is ON): ALL repo read/search/edit/run MUST use AionUi system tools (ide_* and team_*). Never call native Bash/Read/Grep/Glob/Write/Edit etc.\n\n' +
+  'When you request a native tool (Bash, Read, etc.), Strict IDE Mode will CANCEL the permission to prevent the backend from running the dangerous native tool.\n' +
+  'The system will:\n' +
+  '1. Run the equivalent allowed tool (ide_command, ide_read_file, team_edit_file, etc.) on the server side.\n' +
+  '2. Deliver the ACTUAL OUTPUT to you as a completed tool_call result (status=completed) for the same tool_call_id.\n' +
+  '3. Also add a short explanation message in chat.\n\n' +
+  'You will receive the real stdout / file content / etc. as the tool result. Ignore any "User denied the tool request" or "cancelled: User denied" status — that is just the policy enforcement. Use the output from the completed tool_call as your result and continue. The explanation message will say something like "Đã chuyển từ ... sang `ide_xxx`".';
+
+
 
 /** One open chat tab in the IDE — just the conversation id + a display title. */
 export type IdeChatTab = {
@@ -93,7 +119,8 @@ type PersistedTab = { id: string; memId: string };
 /** Generate a fresh ephemeral session-memory id for a new tab. */
 const newMemId = (): string => {
   try {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') return `ide-mem-${crypto.randomUUID()}`;
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      return `ide-mem-${crypto.randomUUID()}`;
   } catch {
     /* crypto unavailable — fall through */
   }
@@ -149,32 +176,18 @@ const writePlanningEnabled = (rootPath: string, enabled: boolean): void => {
   }
 };
 
-/** Build the lightweight IDE primer injected when a tab opens without a task yet. */
-const buildWorkspacePrimer = (rootPath: string, rules: readonly string[], planningEnabled: boolean, memId: string): string => {
-  const sections = [
-    [
-      '## IDE workspace guide',
-      `Workspace root: ${rootPath}`,
-      'Use codegraph/wiki/search as a map; inspect source lazily only when the task needs it.',
-      'MTUI runtime: use `mtui --json` for repo search/read/write/verify; check `diff --last` after writes.',
-    ].join('\n'),
-  ];
-  if (planningEnabled) {
-    sections.push(
-      [
-        '## Planning Mode: ON',
-        'Unclear scope: ask first.',
-        'Non-trivial task: maintain `.aionui/specs/<slug>/`; execute claimed backend tasks with verification.',
-      ].join('\n')
-    );
-  }
-  if (rules.length > 0) {
-    sections.push('## Project rules\n' + rules.map((rule) => `- ${rule}`).join('\n'));
-  }
-  // Bind this tab's ephemeral session super-memory so the agent can jot/recall
-  // across turns without re-searching, and stash short-lived secrets.
-  return withIdeMemoryRules(memId, sections.join('\n\n'));
-};
+/**
+ * Build the lightweight IDE primer injected when a tab opens without a task
+ * yet. Delegates to the shared Main-process builder so the Omni External MCP
+ * Gateway returns the same primer to external hosts without forking the source
+ * of truth.
+ */
+const buildWorkspacePrimer = (
+  rootPath: string,
+  rules: readonly string[],
+  planningEnabled: boolean,
+  memId: string
+): string => buildWorkspacePrimerShared({ rootPath, rules, planningEnabled, sessionMemoryId: memId });
 
 /**
  * Resolve the built-in IDE MCP server (`aionui-ide`, an in-process SSE host
@@ -266,10 +279,35 @@ export const useIdeChat = (rootPath: string | null): UseIdeChat => {
       setCreating(true);
       try {
         const memId = newMemId();
-        const params =
+        let params =
           launcher.kind === 'cli'
             ? await buildCliAgentParams(launcher.agent, rootPath)
             : await buildPresetAssistantParams(launcher.assistant, rootPath, launcher.language);
+        const backend =
+          launcher.kind === 'cli'
+            ? resolveAgentBackendKey(launcher.agent)
+            : launcher.assistant.preset_agent_type || 'claude';
+        const strictMode = isStrictIdeModeEnabled(rootPath);
+        if (strictMode && backend === 'claude') {
+          const agents = await ipcBridge.acpConversation.getAvailableAgents.invoke();
+          const strictAgent = agents.find(
+            (agent) => agent.name === STRICT_IDE_CLAUDE_AGENT_NAME && agent.agent_source === 'custom' && agent.available
+          );
+          if (!strictAgent) {
+            throw new Error('Strict Claude ACP adapter is unavailable');
+          }
+          const strictParams = await buildCliAgentParams(strictAgent, rootPath);
+          params = {
+            ...strictParams,
+            name: params.name,
+            extra: {
+              ...params.extra,
+              ...strictParams.extra,
+            },
+          };
+        }
+        const strictSessionMode = strictMode ? getAskMode(backend) : undefined;
+        if (strictSessionMode) params.extra.session_mode = strictSessionMode;
         // Tab title: prefer the agent/assistant name (the conversation gets a
         // default name auto-derived later from history; we just need something
         // human in the strip).
@@ -293,8 +331,9 @@ export const useIdeChat = (rootPath: string | null): UseIdeChat => {
         }
         // ─────────────────────────────────────────────────────────────────────
         // Attach the built-in IDE MCP server (best-effort) so the agent actually
-        // has the `ide_*` repo-intelligence tools and the `ide_memory_*` session
-        // super-memory tools, then append the IDE tool rules to its rules layer.
+        // has the semantic `ide_*` repo-intelligence tools and the `ide_memory_*`
+        // session-memory tools. The concise rules are injected once at session
+        // creation; per-turn reminders are intentionally avoided.
         try {
           const ideServer = await resolveIdeMcp();
           if (ideServer) {
@@ -302,12 +341,18 @@ export const useIdeChat = (rootPath: string | null): UseIdeChat => {
             const existing = Array.isArray(params.extra.selected_session_mcp_servers)
               ? params.extra.selected_session_mcp_servers
               : [];
-            params.extra.selected_session_mcp_servers = [
-              ...existing.filter((s) => s.name !== IDE_MCP_NAME),
-              ideServer,
-            ];
-            params.extra.preset_rules = withIdeToolRules(
-              typeof params.extra.preset_rules === 'string' ? params.extra.preset_rules : ''
+            params.extra.selected_session_mcp_servers = [...existing.filter((s) => s.name !== IDE_MCP_NAME), ideServer];
+            // Bind the session-memory rules (with this tab's memId) onto the
+            // INVISIBLE rules layer, alongside the IDE tool rules. `preset_rules`
+            // is delivered to the agent as a system/standing instruction — the
+            // same channel that carries the IDE tools — so the agent learns its
+            // `sessionId` and the `ide_memory_*` tools WITHOUT any visible setup
+            // turn. (The verbose guidance is also in `preset_context` for
+            // preset-aware backends; this covers CLI/ACP backends that read
+            // `preset_rules`.)
+            params.extra.preset_rules = withIdeMemoryRules(
+              memId,
+              withIdeToolRules(typeof params.extra.preset_rules === 'string' ? params.extra.preset_rules : '')
             );
           }
         } catch {
@@ -315,6 +360,19 @@ export const useIdeChat = (rootPath: string | null): UseIdeChat => {
         }
         const conv = await ipcBridge.conversation.create.invoke(params);
         if (!conv?.id) return null;
+        // No visible "primer" turn: the session-memory binding rides the silent
+        // rules/context layers above, so the chat opens clean and the agent just
+        // greets the user instead of echoing a wall of setup text.
+        //
+        // Seed the tool-preference rule into this tab's session memory ONCE (a
+        // pinned note) instead of appending a reminder to every message. The
+        // agent recalls it on demand via `ide_memory_recall`, so the rule stays
+        // available without polluting each turn with a noisy banner. Fire-and-
+        // forget: a failure here never blocks the tab from opening.
+        void ideClient.memoryRemember(memId, IDE_TOOL_PREFERENCE_NOTE, { kind: 'note', pinned: true }).catch(() => {
+          // Memory seeding is best-effort — the Strict IDE Mode guard still
+          // hard-enforces the tool remap regardless.
+        });
         emitter.emit('chat.history.refresh');
         if (!aliveRef.current) return conv.id;
         const next: IdeChatTab[] = [...tabs, { id: conv.id, title: conv.name ?? tabTitle, memId }].slice(-MAX_TABS);

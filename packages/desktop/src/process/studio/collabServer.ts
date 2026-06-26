@@ -246,3 +246,134 @@ export const unpublishSession = (shareId: string): void => {
 export const clearAllSessions = (): void => {
   sessions.clear();
 };
+
+// ---------------------------------------------------------------------------
+// Team session (whole-repo collaboration — distinct from a single-doc collab)
+// ---------------------------------------------------------------------------
+
+/**
+ * One published **team session**: a whole repository shared by its host so other
+ * people + their agents can browse, edit (file-leased through MTUI), and read
+ * the host's Understand graph / Wiki / Database — even across networks (the
+ * bridge pairs this with a Cloudflare tunnel). Unlike {@link CollabSession}
+ * (one ONLYOFFICE document), a team session is the host's IDE workspace.
+ *
+ * Ownership is one-directional: the host machine is the single source of truth
+ * (files, KG, Wiki, DB all live on its disk); peers act remotely over HTTP.
+ */
+export type TeamSession = {
+  /** Stable share id (also the peer-facing session token namespace). */
+  shareId: string;
+  /** Absolute repo root on the host disk. */
+  repoRoot: string;
+  /** Display name of the repo (folder basename). */
+  repoName: string;
+  /** SHA-256 hash of the join password. */
+  passwordHash: string;
+  /** Created-at (Unix ms). */
+  createdAt: number;
+  /** Admitted peers by their peer token (token == coordinator agentId). */
+  peers: Map<string, TeamPeer>;
+};
+
+/** A peer admitted to a team session. */
+export type TeamPeer = {
+  /** Opaque token the peer sends on every request; also its coordinator agentId. */
+  token: string;
+  /** Display name shown in presence. */
+  name: string;
+  /** Presence color (hex). */
+  color: string;
+  joinedAt: number;
+  /** Last request time (Unix ms) — for idle pruning. */
+  lastSeenAt: number;
+};
+
+/** Public info returned to the host renderer when a team session is published. */
+export type TeamPublishInfo = {
+  shareId: string;
+  /** LAN join code: `<ip>:<port>`. */
+  joinCode: string;
+  /** Integration-host base URL (host LAN). */
+  hostBaseUrl: string;
+  repoName: string;
+  lanIps: string[];
+};
+
+const teamSessions = new Map<string, TeamSession>();
+
+/** Publish a team session for a repo root. Replaces any prior session for it. */
+export const publishTeamSession = (params: { repoRoot: string; repoName: string; password: string }): TeamSession => {
+  // One active team session per repo root: drop a stale one first.
+  for (const [id, s] of teamSessions) {
+    if (s.repoRoot === params.repoRoot) teamSessions.delete(id);
+  }
+  const session: TeamSession = {
+    shareId: newId('team'),
+    repoRoot: params.repoRoot,
+    repoName: params.repoName,
+    passwordHash: hashPassword(params.password),
+    createdAt: Date.now(),
+    peers: new Map(),
+  };
+  teamSessions.set(session.shareId, session);
+  return session;
+};
+
+/** Look up a team session by share id. */
+export const getTeamSession = (shareId: string): TeamSession | undefined => teamSessions.get(shareId);
+
+/** The single most-recently-published team session, if any (peers join "the" repo). */
+export const getPrimaryTeamSession = (): TeamSession | undefined => {
+  let latest: TeamSession | undefined;
+  for (const s of teamSessions.values()) {
+    if (!latest || s.createdAt > latest.createdAt) latest = s;
+  }
+  return latest;
+};
+
+/** Whether any team session is published. */
+export const hasTeamSessions = (): boolean => teamSessions.size > 0;
+
+/** Admit a peer after the password has been verified; returns the new peer. */
+export const admitTeamPeer = (session: TeamSession, name: string): TeamPeer => {
+  const peer: TeamPeer = {
+    token: newId('peer'),
+    name: name.trim() || `Guest ${session.peers.size + 1}`,
+    color: colorForIndex(session.peers.size),
+    joinedAt: Date.now(),
+    lastSeenAt: Date.now(),
+  };
+  session.peers.set(peer.token, peer);
+  return peer;
+};
+
+/** Resolve an admitted peer by token (and refresh its last-seen). */
+export const touchTeamPeer = (session: TeamSession, token: string): TeamPeer | undefined => {
+  const peer = session.peers.get(token);
+  if (peer) peer.lastSeenAt = Date.now();
+  return peer;
+};
+
+/** Remove a peer (on leave). */
+export const removeTeamPeer = (shareId: string, token: string): void => {
+  teamSessions.get(shareId)?.peers.delete(token);
+};
+
+/** Stop sharing a team session (host unpublish). */
+export const unpublishTeamSession = (shareId: string): void => {
+  teamSessions.delete(shareId);
+};
+
+/** Build the host-facing publish info for a team session. */
+export const buildTeamPublishInfo = (session: TeamSession, hostPort: number): TeamPublishInfo => {
+  const lanIps = detectLanIps();
+  const ip = lanIps[0] ?? '127.0.0.1';
+  return {
+    shareId: session.shareId,
+    joinCode: `${ip}:${hostPort}`,
+    hostBaseUrl: `http://${ip}:${hostPort}`,
+    repoName: session.repoName,
+    lanIps,
+  };
+};

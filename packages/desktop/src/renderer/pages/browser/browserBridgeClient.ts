@@ -63,6 +63,8 @@ const BROWSER_CHANNELS = {
   navigate: 'browser.navigate',
   goBack: 'browser.go-back',
   goForward: 'browser.go-forward',
+
+  reload: 'browser.reload',
   setBounds: 'browser.set-bounds',
   setZoom: 'browser.set-zoom',
   show: 'browser.show',
@@ -87,6 +89,8 @@ const channels = {
   navigate: bridge.buildProvider<void, NavigateRequest>(BROWSER_CHANNELS.navigate),
   goBack: bridge.buildProvider<{ navigated: boolean }, BrowserTabIdRequest>(BROWSER_CHANNELS.goBack),
   goForward: bridge.buildProvider<{ navigated: boolean }, BrowserTabIdRequest>(BROWSER_CHANNELS.goForward),
+
+  reload: bridge.buildProvider<void, BrowserTabIdRequest>(BROWSER_CHANNELS.reload),
   setBounds: bridge.buildProvider<void, SetBoundsRequest>(BROWSER_CHANNELS.setBounds),
   setZoom: bridge.buildProvider<void, SetZoomRequest>(BROWSER_CHANNELS.setZoom),
   show: bridge.buildProvider<void, BrowserTabIdRequest>(BROWSER_CHANNELS.show),
@@ -157,6 +161,9 @@ export const browserClient = {
     invokeWithTimeout(BROWSER_CHANNELS.goBack, () => channels.goBack.invoke(request), BRIDGE_TIMEOUT_MS),
   goForward: (request: BrowserTabIdRequest): Promise<{ navigated: boolean }> =>
     invokeWithTimeout(BROWSER_CHANNELS.goForward, () => channels.goForward.invoke(request), BRIDGE_TIMEOUT_MS),
+
+  reload: (request: BrowserTabIdRequest): Promise<void> =>
+    invokeWithTimeout(BROWSER_CHANNELS.reload, () => channels.reload.invoke(request), BRIDGE_TIMEOUT_MS),
   setBounds: (request: SetBoundsRequest): Promise<void> =>
     invokeWithTimeout(BROWSER_CHANNELS.setBounds, () => channels.setBounds.invoke(request), BRIDGE_BOUNDS_TIMEOUT_MS),
   setZoom: (request: SetZoomRequest): Promise<void> =>

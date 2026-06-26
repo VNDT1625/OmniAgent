@@ -65,9 +65,10 @@ import { buildDisplayMessage, collectSelectedFiles } from '@/renderer/utils/file
 import { mergeWithCapabilities, type AgentModeOption } from '@/renderer/utils/model/agentModes';
 import { Message, Tag } from '@arco-design/web-react';
 import { Brain, MagicHat, Shield } from '@icon-park/react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useAionrsMessage } from './useAionrsMessage';
+import { useAionrsTurnRecovery } from './useAionrsTurnRecovery';
 import type { AionrsModelSelection } from './useAionrsModelSelection';
 
 const useAionrsSendBoxDraft = getSendBoxDraftHook('aionrs', {
@@ -620,7 +621,11 @@ const AionrsSendBox: React.FC<{
   });
 
   // Stop conversation handler
+  const notifyUserStopRef = useRef<(() => void) | null>(null);
   const handleStop = async (): Promise<void> => {
+    // Tell the recovery loop this is a deliberate user cancel so it never tries
+    // to silently resume the turn we are about to stop.
+    notifyUserStopRef.current?.();
     // Best-effort cancel: swallow rejections so they don't bubble up as
     // unhandled rejections. UI state is still reset via finally.
     try {
@@ -682,6 +687,61 @@ const AionrsSendBox: React.FC<{
     },
   });
 
+  // Silent resume after an unintentional interruption (network/API-key/backend
+  // crash): re-send a minimal "continue" turn on the same conversation WITHOUT
+  // rendering a user bubble, so the agent picks up where it left off. The
+  // backend retains the conversation context, so a short continue instruction is
+  // enough. Mirrors executeCommand's request flow but skips the optimistic
+  // right-side bubble (the user did not type anything).
+  const silentResume = useCallback(async (): Promise<void> => {
+    if (!current_model?.use_model) {
+      throw new Error('No model selected');
+    }
+    const continueInstruction =
+      'Hãy tiếp tục công việc đang dở từ chỗ bị gián đoạn. / Continue the unfinished work from where it was interrupted.';
+    const modelInput = withResponseLanguageDirective(continueInstruction, conversation_id);
+    setWaitingResponse(true);
+    try {
+      const res = await ipcBridge.conversation.sendMessage.invoke({
+        input: modelInput,
+        conversation_id,
+        files: [],
+      });
+      setActiveMsgId(res.msg_id);
+      emitter.emit('chat.history.refresh');
+    } catch (error) {
+      setWaitingResponse(false);
+      throw error;
+    }
+  }, [conversation_id, current_model?.use_model, setActiveMsgId, setWaitingResponse]);
+
+  // Silent interruption recovery for ordinary turns. Disabled while Goal Mode is
+  // active because useGoalRunner already drives its own stall watchdog and
+  // compliance loop — running both would double-resume.
+  const { notifyUserStop } = useAionrsTurnRecovery({
+    conversation_id,
+    running: isBusy,
+    isHydrated: hasHydratedRunningState,
+    resume: () => silentResume(),
+    getResumePayload: () => (goalModeActive ? null : { input: '', files: [] }),
+    onRetryScheduled: ({ retry, maxRetries, delayMs }) => {
+      Message.info(
+        t('conversation.interruptionRecovery.retryScheduled', {
+          seconds: Math.ceil(delayMs / 1000),
+          retry,
+          max: maxRetries,
+        })
+      );
+    },
+    onRetrying: ({ retry, maxRetries }) => {
+      Message.info(t('conversation.interruptionRecovery.retrying', { retry, max: maxRetries }));
+    },
+    onExhausted: () => {
+      Message.warning(t('conversation.interruptionRecovery.interrupted'));
+    },
+  });
+  notifyUserStopRef.current = notifyUserStop;
+
   return (
     <div className='max-w-800px w-full mx-auto flex flex-col mt-auto mb-16px'>
       <CommandQueuePanel
@@ -732,7 +792,7 @@ const AionrsSendBox: React.FC<{
         placeholder={
           current_model?.use_model
             ? t('acp.sendbox.placeholder', {
-                backend: (agent_name || 'AionCLI').replace(/AionCLI?/i, 'Omni CLI'),
+                backend: agent_name || 'AionCLI',
                 defaultValue: `Send message to {{backend}}...`,
               })
             : t('conversation.chat.noModelSelected')

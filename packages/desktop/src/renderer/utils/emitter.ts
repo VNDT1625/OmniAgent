@@ -83,6 +83,10 @@ interface EventTypes {
   // IDE run-in-terminal: the file tree asks the terminal dock to open + run a
   // quick command in a fresh session at a cwd (empty command = just open here).
   'ide.terminal.run': [{ command: string; cwd?: string }];
+  // IDE focus-terminal: Quick Run created a session itself (so it can read the
+  // dev-server URL from the output) and asks the dock to open + focus that
+  // existing session id, instead of spawning a second one.
+  'ide.terminal.focus': [{ id: string }];
   // IDE relations: the editor's impact CodeLens asks the workspace to reveal the
   // Related-code rail (so the user can see who depends on the file being edited).
   'ide.relations.reveal': [{ filePath: string }];

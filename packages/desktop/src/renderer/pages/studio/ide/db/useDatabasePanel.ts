@@ -20,6 +20,7 @@ import {
   type DbForeignKey,
   type DbIndex,
   type DbQueryResult,
+  type DbSchemaGraph,
   type DbTable,
 } from './dbClient';
 
@@ -46,12 +47,16 @@ export type UseDatabasePanel = {
   result: DbQueryResult | null;
   running: boolean;
   error: string | null;
+  /** The active connection's whole-schema ER graph (lazy, for the Diagram tab). */
+  schemaGraph: DbSchemaGraph | null;
+  loadingGraph: boolean;
   refreshConnections: () => Promise<void>;
   selectConnection: (id: string) => Promise<void>;
   saveConnection: (config: DbConnectionConfig) => Promise<boolean>;
   deleteConnection: (id: string) => Promise<void>;
   testConnection: (config: DbConnectionConfig) => Promise<{ ok: boolean; error?: string }>;
   loadColumns: (table: TableWithColumns) => Promise<void>;
+  loadSchemaGraph: () => Promise<void>;
   runQuery: (sql: string) => Promise<void>;
   clearError: () => void;
 };
@@ -65,6 +70,8 @@ export const useDatabasePanel = (rootPath: string | null): UseDatabasePanel => {
   const [result, setResult] = useState<DbQueryResult | null>(null);
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [schemaGraph, setSchemaGraph] = useState<DbSchemaGraph | null>(null);
+  const [loadingGraph, setLoadingGraph] = useState(false);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -91,6 +98,7 @@ export const useDatabasePanel = (rootPath: string | null): UseDatabasePanel => {
       setTables([]);
       setResult(null);
       setError(null);
+      setSchemaGraph(null);
       setLoadingTables(true);
       const connectRes = await dbClient.connect(id);
       if (!mountedRef.current) return;
@@ -136,6 +144,7 @@ export const useDatabasePanel = (rootPath: string | null): UseDatabasePanel => {
         setActiveId(null);
         setTables([]);
         setResult(null);
+        setSchemaGraph(null);
       }
       await refreshConnections();
     },
@@ -201,6 +210,16 @@ export const useDatabasePanel = (rootPath: string | null): UseDatabasePanel => {
     [activeId]
   );
 
+  const loadSchemaGraph = useCallback(async (): Promise<void> => {
+    if (!activeId) return;
+    setLoadingGraph(true);
+    const res = await dbClient.schemaGraph(activeId);
+    if (!mountedRef.current) return;
+    if (res.ok) setSchemaGraph(res.data);
+    else setError(resultError(res));
+    setLoadingGraph(false);
+  }, [activeId]);
+
   const clearError = useCallback(() => setError(null), []);
 
   return {
@@ -211,12 +230,15 @@ export const useDatabasePanel = (rootPath: string | null): UseDatabasePanel => {
     result,
     running,
     error,
+    schemaGraph,
+    loadingGraph,
     refreshConnections,
     selectConnection,
     saveConnection,
     deleteConnection,
     testConnection,
     loadColumns,
+    loadSchemaGraph,
     runQuery,
     clearError,
   };

@@ -1,0 +1,236 @@
+/**
+ * @license
+ * Copyright 2025 AionUi (aionui.com)
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Tests the no-AI Quick-Run orchestrator hook. `ideClient` (the plan/probe IPC),
+ * the renderer `emitter` (dock focus), and `terminalClient` (the session the hook
+ * spawns to read the real dev URL) are mocked so the flow runs deterministically
+ * without a real Main process or terminal. Timing is injected tiny so the probe
+ * loop runs fast under real timers (fake timers deadlock testing-library waitFor).
+ */
+
+import { renderHook, act, waitFor } from '@testing-library/react';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { ideClientMock, emitterMock, terminalMock } = vi.hoisted(() => ({
+  ideClientMock: {
+    qrPlan: vi.fn(),
+    qrSave: vi.fn(),
+    qrClear: vi.fn(),
+    qrProbe: vi.fn(),
+  },
+  emitterMock: { emit: vi.fn() },
+  terminalMock: {
+    create: vi.fn(),
+    write: vi.fn(),
+    onData: vi.fn(),
+    kill: vi.fn(),
+    remove: vi.fn(),
+  },
+}));
+
+vi.mock('@renderer/pages/studio/ide/ideClient', () => ({ ideClient: ideClientMock }));
+vi.mock('@renderer/utils/emitter', () => ({ emitter: emitterMock }));
+vi.mock('@renderer/pages/terminal/terminalBridgeClient', () => ({ terminalClient: terminalMock }));
+
+import { useQuickRun } from '@/renderer/pages/studio/ide/components/useQuickRun';
+import type { RunPlan } from '@/process/ide/runTarget/runTargetPlanner';
+import type { SavedRunConfig } from '@/process/ide/runTarget/runConfigStore';
+
+/**
+ * Tiny timing so the probe loop resolves quickly under real timers. The grace
+ * window (before the guessed fallback port is trusted) is kept small here too,
+ * so the fallback path is exercised well within `probeTimeoutMs`.
+ */
+const FAST = { probeTimeoutMs: 2000, probeIntervalMs: 10, fallbackGraceMs: 50 };
+
+const makePlan = (overrides: Partial<RunPlan> = {}): RunPlan => ({
+  support: { web: true, android: false, desktop: false },
+  candidates: [{ platform: 'web', command: 'npm run dev', cwd: '', url: 'http://localhost:5173', port: 5173 }],
+  packageManager: 'npm',
+  hasRunData: true,
+  ...overrides,
+});
+
+const planOk = (plan: RunPlan, saved: SavedRunConfig[] = []) =>
+  ideClientMock.qrPlan.mockResolvedValue({
+    ok: true,
+    data: {
+      plan,
+      saved,
+      source: {
+        graphLoaded: true,
+        graphHasRunbook: true,
+        runbookCommandCount: plan.candidates.filter((candidate) => Boolean(candidate.command)).length,
+        manifestFileCount: 1,
+      },
+    },
+  });
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  ideClientMock.qrProbe.mockResolvedValue({ ok: true, data: { reachable: true } });
+  ideClientMock.qrSave.mockResolvedValue({ ok: true, data: { version: 1, rootPath: '/repo', configs: [] } });
+  // The hook spawns a real terminal session; default it to succeed with no output.
+  terminalMock.create.mockResolvedValue({ ok: true, data: { id: 'sess-1' } });
+  terminalMock.write.mockResolvedValue({ ok: true, data: undefined });
+  terminalMock.onData.mockReturnValue(() => {});
+  terminalMock.kill.mockResolvedValue({ ok: true, data: undefined });
+  terminalMock.remove.mockResolvedValue({ ok: true, data: undefined });
+});
+
+describe('useQuickRun', () => {
+  it('loads the plan and resolves the web recipe from the wiki runbook', async () => {
+    planOk(makePlan());
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+
+    await waitFor(() => expect(result.current.phase).toBe('ready'));
+    expect(result.current.selected).toBe('web');
+    expect(result.current.recipe).toMatchObject({ command: 'npm run dev', url: 'http://localhost:5173' });
+    expect(result.current.setupSource).toBe('wiki');
+  });
+
+  it('falls back to needs-input when there is no run data and nothing saved', async () => {
+    planOk(makePlan({ support: { web: false, android: false, desktop: false }, candidates: [], hasRunData: false }));
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+
+    await waitFor(() => expect(result.current.phase).toBe('needs-input'));
+  });
+
+  it('flags platform options as supported/unsupported (independent booleans)', async () => {
+    planOk(
+      makePlan({
+        support: { web: true, android: true, desktop: false },
+        candidates: [
+          { platform: 'web', command: 'npm run dev', cwd: '', url: 'http://localhost:5173' },
+          { platform: 'android', command: 'npm run android', cwd: '' },
+        ],
+      })
+    );
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('ready'));
+
+    const byPlatform = Object.fromEntries(result.current.options.map((o) => [o.platform, o.supported]));
+    expect(byPlatform).toEqual({ web: true, android: true, desktop: false });
+  });
+
+  it('spawns a terminal session, focuses the dock, and goes running once reachable', async () => {
+    planOk(makePlan());
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('ready'));
+
+    await act(async () => {
+      await result.current.run();
+    });
+    // The hook spawned a real terminal session at the repo root and wrote the command.
+    expect(terminalMock.create).toHaveBeenCalledWith({ options: { cwd: '/repo' } });
+    expect(terminalMock.write).toHaveBeenCalledWith({ id: 'sess-1', data: 'npm run dev\r' });
+    // It surfaced that session in the IDE dock (focus), not a blind run emitter.
+    expect(emitterMock.emit).toHaveBeenCalledWith('ide.terminal.focus', { id: 'sess-1' });
+    expect(result.current.phase).toBe('running');
+    expect(result.current.readyUrl).toBe('http://localhost:5173');
+  });
+
+  it('prefers the real printed dev URL over the guessed port (avoids opening the wrong app)', async () => {
+    planOk(makePlan());
+    // The terminal prints a DIFFERENT port (the guessed 5173 was taken, server moved to 5174).
+    terminalMock.onData.mockImplementation((listener: (e: { id: string; data: string }) => void) => {
+      setTimeout(() => listener({ id: 'sess-1', data: '  ➜  Local:   http://localhost:5174/\r\n' }), 5);
+      return () => {};
+    });
+    // Only the real printed URL is reachable; the guessed one is not.
+    ideClientMock.qrProbe.mockImplementation((url: string) =>
+      Promise.resolve({ ok: true, data: { reachable: url === 'http://localhost:5174' } })
+    );
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('ready'));
+
+    await act(async () => {
+      await result.current.run();
+    });
+    expect(result.current.readyUrl).toBe('http://localhost:5174');
+    // The recipe saved for no-AI replay carries the URL that actually worked.
+    expect(ideClientMock.qrSave).toHaveBeenCalledWith(
+      '/repo',
+      expect.objectContaining({ url: 'http://localhost:5174' })
+    );
+  });
+
+  it('fails with a timeout when the dev server never answers', async () => {
+    planOk(makePlan());
+    ideClientMock.qrProbe.mockResolvedValue({ ok: true, data: { reachable: false } });
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('ready'));
+
+    await act(async () => {
+      await result.current.run();
+    });
+    expect(result.current.phase).toBe('error');
+    expect(result.current.error).toBe('timeout');
+  });
+
+  it('prefers a saved recipe over the plan candidate (no-AI replay)', async () => {
+    const saved: SavedRunConfig[] = [
+      { platform: 'web', command: 'pnpm dev', cwd: 'app', url: 'http://localhost:3000', manual: true, savedAt: 1 },
+    ];
+    planOk(makePlan(), saved);
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('ready'));
+
+    expect(result.current.recipe).toMatchObject({ command: 'pnpm dev', cwd: 'app' });
+    expect(result.current.fromSaved).toBe(true);
+  });
+
+  it('runs a manual recipe and joins the cwd against the repo root', async () => {
+    planOk(makePlan({ support: { web: false, android: false, desktop: false }, candidates: [], hasRunData: false }));
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('needs-input'));
+
+    await act(async () => {
+      await result.current.runManual({ command: 'vite', cwd: 'frontend', url: 'http://localhost:4321' });
+    });
+    expect(terminalMock.create).toHaveBeenCalledWith({ options: { cwd: '/repo/frontend' } });
+    expect(terminalMock.write).toHaveBeenCalledWith({ id: 'sess-1', data: 'vite\r' });
+    expect(result.current.phase).toBe('running');
+    expect(result.current.recipe).toMatchObject({ command: 'vite', manual: true });
+  });
+
+  it('accepts a manual web URL without requiring a command or port field', async () => {
+    planOk(makePlan({ support: { web: true, android: false, desktop: false }, candidates: [], hasRunData: false }));
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('needs-input'));
+
+    await act(async () => {
+      await result.current.runManual({ command: '', url: 'http://localhost:5174' });
+    });
+
+    expect(terminalMock.create).not.toHaveBeenCalled();
+    expect(ideClientMock.qrProbe).toHaveBeenCalledWith('http://localhost:5174');
+    expect(result.current.phase).toBe('running');
+    expect(result.current.readyUrl).toBe('http://localhost:5174');
+  });
+
+  it('stop() kills the spawned dev server, clears the URL, and returns to ready', async () => {
+    planOk(makePlan());
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('ready'));
+
+    await act(async () => {
+      await result.current.run();
+    });
+    expect(result.current.active).toBe(true);
+    expect(result.current.phase).toBe('running');
+
+    act(() => {
+      result.current.stop();
+    });
+    // The spawned session is killed + removed (no orphan dev server holding the port).
+    expect(terminalMock.kill).toHaveBeenCalledWith({ id: 'sess-1' });
+    expect(terminalMock.remove).toHaveBeenCalledWith({ id: 'sess-1' });
+    // Back to a clean ready state with the embedded browser URL cleared.
+    expect(result.current.phase).toBe('ready');
+    expect(result.current.active).toBe(false);
+    expect(result.current.readyUrl).toBeNull();
+  });
+});

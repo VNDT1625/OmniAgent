@@ -35,6 +35,7 @@ import type {
   DbScriptResult,
   DbTable,
   DbTableDetail,
+  DbTableProfile,
 } from './dbTypes';
 
 /** IPC channel names for the IDE Database surface. */
@@ -48,6 +49,7 @@ export const DB_CHANNELS = {
   columns: 'ide.db-columns',
   tableDetail: 'ide.db-table-detail',
   schemaGraph: 'ide.db-schema-graph',
+  profileTable: 'ide.db-profile-table',
   query: 'ide.db-query',
   queryScript: 'ide.db-query-script',
   close: 'ide.db-close',
@@ -62,6 +64,12 @@ export type DbTablesRequest = { id: string };
 export type DbColumnsRequest = { id: string; table: string; schema?: string };
 export type DbTableDetailRequest = { id: string; table: string; schema?: string };
 export type DbSchemaGraphRequest = { id: string; maxTables?: number };
+export type DbProfileTableRequest = {
+  id: string;
+  table: string;
+  schema?: string;
+  options?: { sampleLimit?: number; topValues?: number };
+};
 export type DbQueryRequest = { id: string; sql: string; options?: DbQueryOptions };
 export type DbQueryScriptRequest = { id: string; script: string; options?: DbQueryOptions };
 
@@ -76,6 +84,7 @@ export const dbChannels = {
   columns: bridge.buildProvider<DbResult<DbColumn[]>, DbColumnsRequest>(DB_CHANNELS.columns),
   tableDetail: bridge.buildProvider<DbResult<DbTableDetail>, DbTableDetailRequest>(DB_CHANNELS.tableDetail),
   schemaGraph: bridge.buildProvider<DbResult<DbSchemaGraph>, DbSchemaGraphRequest>(DB_CHANNELS.schemaGraph),
+  profileTable: bridge.buildProvider<DbResult<DbTableProfile>, DbProfileTableRequest>(DB_CHANNELS.profileTable),
   query: bridge.buildProvider<DbResult<DbQueryResult>, DbQueryRequest>(DB_CHANNELS.query),
   queryScript: bridge.buildProvider<DbResult<DbScriptResult>, DbQueryScriptRequest>(DB_CHANNELS.queryScript),
   close: bridge.buildProvider<DbResult<boolean>, DbIdRequest>(DB_CHANNELS.close),
@@ -112,6 +121,9 @@ export function registerDbBridge(deps: DbBridgeDeps): void {
   dbChannels.columns.provider((req) => guard(() => service.getColumns(req.id, req.table, req.schema)));
   dbChannels.tableDetail.provider((req) => guard(() => service.getTableDetail(req.id, req.table, req.schema)));
   dbChannels.schemaGraph.provider((req) => guard(() => service.getSchemaGraph(req.id, req.maxTables)));
+  dbChannels.profileTable.provider((req) =>
+    guard(() => service.profileTable(req.id, req.table, req.schema, req.options))
+  );
   dbChannels.query.provider((req) => guard(() => service.query(req.id, req.sql, req.options)));
   dbChannels.queryScript.provider((req) => guard(() => service.queryScript(req.id, req.script, req.options)));
   dbChannels.close.provider((req) => guard(async () => (await service.close(req.id), true)));

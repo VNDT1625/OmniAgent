@@ -107,7 +107,9 @@ describe('quickTestService', () => {
       openNativeStream: async () => null,
       loadGraph: async () => null,
     });
-    await expect(service.runSession({ platform: 'windows', rootPath: '/repo', target: 'C:/missing.exe' })).rejects.toThrow(/\.exe|launch/i);
+    await expect(
+      service.runSession({ platform: 'windows', rootPath: '/repo', target: 'C:/missing.exe' })
+    ).rejects.toThrow(/\.exe|launch/i);
   });
 
   it('builds a contextPack from the trace + graph when a graph is available', async () => {

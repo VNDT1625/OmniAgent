@@ -74,6 +74,38 @@ const sessions = new Map<string, EditSession>();
 /** Host the Document Server uses to reach us. Override if DS runs in Docker. */
 let advertisedHost = '127.0.0.1';
 
+/**
+ * Optional external route handler (the Team session HTTP surface, `/team/*`).
+ * Registered by the team-collab bridge so this Studio module need not import the
+ * IDE layer (avoids a studio→ide dependency cycle). Returns `true` when it
+ * handled the request. CORS is applied by {@link handleRequest} before calling.
+ */
+type ExtraRouteHandler = (req: IncomingMessage, res: ServerResponse, parts: string[]) => Promise<boolean>;
+const extraRoutes = new Map<string, ExtraRouteHandler>();
+
+/**
+ * When > 0, the integration host must NOT idle-shutdown even with no ONLYOFFICE
+ * edit sessions — a long-lived team collaboration session is keeping it up.
+ */
+let keepAliveCount = 0;
+
+/** Register a handler for a top-level path segment (e.g. `team`). Idempotent. */
+export const registerExtraRoute = (segment: string, handler: ExtraRouteHandler): void => {
+  extraRoutes.set(segment, handler);
+};
+
+/** Increment/decrement the keep-alive count (team session published/unpublished). */
+export const addServerKeepAlive = (): void => {
+  keepAliveCount += 1;
+};
+export const releaseServerKeepAlive = (): void => {
+  keepAliveCount = Math.max(0, keepAliveCount - 1);
+  if (keepAliveCount === 0 && sessions.size === 0) armIdleTimer();
+};
+
+/** Ensure the integration host is up and return its port (for the team bridge). */
+export const ensureTeamHostServer = (): Promise<number> => ensureServer();
+
 /** Set the host:port the Document Server should use to reach this integration
  * host. When DS runs in Docker, `127.0.0.1` points at the container, so callers
  * may need `host.docker.internal`. Defaults to localhost. */
@@ -99,7 +131,8 @@ const computeKey = async (filePath: string): Promise<string> => {
 const armIdleTimer = (): void => {
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = setTimeout(() => {
-    if (sessions.size === 0) void stopServer();
+    // A live team collaboration session keeps the host up even with no docs.
+    if (sessions.size === 0 && keepAliveCount === 0) void stopServer();
   }, IDLE_SHUTDOWN_MS);
 };
 
@@ -252,6 +285,22 @@ const handleRequest = async (req: IncomingMessage, res: ServerResponse): Promise
     }
     await handleCollab(req, res, parts);
     return;
+  }
+
+  // Externally-registered cross-origin surfaces (e.g. `/team/*` from the IDE
+  // team-collab bridge). Apply the same CORS preflight, then delegate; a
+  // handler returns `true` once it has written the response.
+  const extra = parts[0] ? extraRoutes.get(parts[0]) : undefined;
+  if (extra) {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    if (req.method === 'OPTIONS') {
+      res.writeHead(204).end();
+      return;
+    }
+    const handled = await extra(req, res, parts);
+    if (handled) return;
   }
 
   // GET /download/<token>

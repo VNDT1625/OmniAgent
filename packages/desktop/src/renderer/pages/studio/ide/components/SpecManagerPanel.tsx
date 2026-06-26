@@ -23,11 +23,18 @@ import { CheckOne, CloseOne, Info, Refresh, RightOne, Search } from '@icon-park/
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SpecAnalysis, SpecDiagnostic, SpecSeverity } from '@/common/spec';
-import { ideClient } from '../ideClient';
+import { ideClient, type SpecApprovalGate, type SpecLifecyclePhase, type SpecLifecycleStatus } from '../ideClient';
 
 type SpecManagerPanelProps = {
   rootPath: string | null;
 };
+
+/** Ordered lifecycle phases for the gated timeline. */
+const PHASE_ORDER: readonly SpecLifecyclePhase[] = ['requirements', 'design', 'tasks', 'execution', 'complete'];
+
+/** The approval gate that leaves a given phase (null for execution/complete). */
+const gateForPhase = (phase: SpecLifecyclePhase): SpecApprovalGate | null =>
+  phase === 'requirements' || phase === 'design' || phase === 'tasks' ? phase : null;
 
 /** Map a 0..100 score to a semantic status color used by the gauge + label. */
 const scoreStatus = (score: number): 'success' | 'warning' | 'error' => {
@@ -73,10 +80,86 @@ const SectionCard: React.FC<{ title: string; extra?: React.ReactNode; children: 
   </section>
 );
 
+/**
+ * `PhaseTimeline` — the Kiro-style gated lifecycle stepper. Renders the five
+ * phases (requirements → design → tasks → execution → complete), marks done /
+ * active / upcoming, and surfaces the single "Approve & continue" action for
+ * the current gate so progress is deliberate and observable.
+ */
+const PhaseTimeline: React.FC<{
+  t: (key: string, opts?: Record<string, unknown>) => string;
+  phase: SpecLifecyclePhase;
+  approvals: SpecLifecycleStatus['approvals'];
+  advancing: boolean;
+  onApprove: (gate: SpecApprovalGate) => void;
+}> = ({ t, phase, approvals, advancing, onApprove }) => {
+  const currentIndex = PHASE_ORDER.indexOf(phase);
+  const activeGate = gateForPhase(phase);
+  return (
+    <section className='rounded-12px border border-border-2 bg-bg-2 overflow-hidden'>
+      <header className='flex items-center justify-between px-14px py-10px border-b border-b-border-1 bg-fill-1'>
+        <h3 className='text-13px font-600 text-t-primary m-0'>{t('ide.spec.lifecycle.title')}</h3>
+        {activeGate ? (
+          <Button
+            type='primary'
+            size='small'
+            loading={advancing}
+            icon={<CheckOne theme='outline' size={14} />}
+            onClick={() => onApprove(activeGate)}
+          >
+            {t(`ide.spec.lifecycle.approve.${activeGate}`)}
+          </Button>
+        ) : (
+          <Tag color={phase === 'complete' ? 'green' : 'arcoblue'} size='small'>
+            {t(`ide.spec.lifecycle.phase.${phase}`)}
+          </Tag>
+        )}
+      </header>
+      <div className='p-14px flex items-stretch gap-4px'>
+        {PHASE_ORDER.map((p, index) => {
+          const done = index < currentIndex;
+          const active = index === currentIndex;
+          const tone = done
+            ? 'text-success-6 bg-success-light-1 border-success-3'
+            : active
+              ? 'text-primary bg-primary-light-1 border-primary-6'
+              : 'text-t-tertiary bg-fill-1 border-border-1';
+          return (
+            <React.Fragment key={p}>
+              <div className={`flex-1 flex flex-col items-center gap-4px px-6px py-8px rounded-8px border ${tone}`}>
+                {done ? (
+                  <CheckOne theme='filled' size={16} />
+                ) : active ? (
+                  <RightOne theme='filled' size={16} />
+                ) : (
+                  <Info theme='outline' size={16} />
+                )}
+                <span className='text-11px font-600 text-center leading-tight'>
+                  {t(`ide.spec.lifecycle.phase.${p}`)}
+                </span>
+                {approvals && (p === 'requirements' || p === 'design' || p === 'tasks') && approvals[p] ? (
+                  <span className='text-9px text-success-6 font-600 uppercase'>{t('ide.spec.lifecycle.approved')}</span>
+                ) : null}
+              </div>
+              {index < PHASE_ORDER.length - 1 ? (
+                <div className='flex items-center'>
+                  <RightOne theme='outline' size={12} className='text-t-tertiary' />
+                </div>
+              ) : null}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
+
 const SpecManagerPanel: React.FC<SpecManagerPanelProps> = ({ rootPath }) => {
   const { t } = useTranslation();
   const [analysis, setAnalysis] = useState<SpecAnalysis | null>(null);
+  const [lifecycle, setLifecycle] = useState<SpecLifecycleStatus | null>(null);
   const [loading, setLoading] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async (): Promise<void> => {
@@ -84,6 +167,8 @@ const SpecManagerPanel: React.FC<SpecManagerPanelProps> = ({ rootPath }) => {
     setLoading(true);
     setError(null);
     try {
+      const statusResult = await ideClient.specStatus(rootPath).catch((): null => null);
+      setLifecycle(statusResult?.ok ? statusResult.data : null);
       const result = await ideClient.specAnalyze(rootPath);
       if (result.ok) {
         setAnalysis(result.data);
@@ -98,6 +183,21 @@ const SpecManagerPanel: React.FC<SpecManagerPanelProps> = ({ rootPath }) => {
       setLoading(false);
     }
   }, [rootPath]);
+
+  const approveGate = useCallback(
+    async (gate: SpecApprovalGate): Promise<void> => {
+      if (!rootPath || advancing) return;
+      setAdvancing(true);
+      try {
+        const result = await ideClient.specAdvancePhase(rootPath, gate, lifecycle?.slug ?? undefined);
+        if (result.ok) setLifecycle(result.data);
+        await refresh();
+      } finally {
+        setAdvancing(false);
+      }
+    },
+    [rootPath, advancing, lifecycle?.slug, refresh]
+  );
 
   useEffect(() => {
     void refresh();
@@ -181,6 +281,17 @@ const SpecManagerPanel: React.FC<SpecManagerPanelProps> = ({ rootPath }) => {
             {t('ide.spec.refresh')}
           </Button>
         </header>
+
+        {/* Lifecycle phase timeline with approval gates (Kiro spec-driven). */}
+        {lifecycle?.exists && lifecycle.phase ? (
+          <PhaseTimeline
+            t={t}
+            phase={lifecycle.phase}
+            approvals={lifecycle.approvals}
+            advancing={advancing}
+            onApprove={approveGate}
+          />
+        ) : null}
 
         {/* Summary metrics. */}
         <div className='flex flex-wrap gap-10px'>

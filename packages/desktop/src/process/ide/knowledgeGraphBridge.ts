@@ -457,8 +457,7 @@ const persistGraph = async (graph: KnowledgeGraph): Promise<void> => {
 };
 
 const exportRepoSummary = async (graph: KnowledgeGraph): Promise<void> => {
-  // Write to .omni/understand (primary)
-  const dir = path.join(graph.rootPath, '.omni', 'understand');
+  const dir = path.join(graph.rootPath, '.aionui', 'understand');
   await fsp.mkdir(dir, { recursive: true });
   const target = path.join(dir, 'summary.json');
   const tmp = `${target}.${process.pid}.${Date.now()}.tmp`;
@@ -501,9 +500,7 @@ const exportRepoSummary = async (graph: KnowledgeGraph): Promise<void> => {
   };
   await fsp.writeFile(tmp, JSON.stringify(payload, null, 2), 'utf-8');
   await fsp.rename(tmp, target);
-  // Clean stale from both locations
   await fsp.rm(path.join(dir, 'stale.json'), { force: true }).catch((): undefined => undefined);
-  await fsp.rm(path.join(graph.rootPath, '.aionui', 'understand', 'stale.json'), { force: true }).catch((): undefined => undefined);
 };
 
 /** Load a previously-persisted graph for a repo root, or `null` when absent. */

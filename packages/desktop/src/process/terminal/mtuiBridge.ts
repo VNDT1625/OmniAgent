@@ -299,6 +299,45 @@ export async function writeTextFileWithMtui(filePath: string, data: string): Pro
   return JSON.parse(output) as MtuiResponse;
 }
 
+/**
+ * Read a file's full content through MTUI (`read --all`). Returns the parsed
+ * envelope which carries MTUI's own `content_hash` (used for optimistic
+ * concurrency by the team-edit flow) and the line-numbered `text`.
+ */
+export async function readTextFileWithMtui(filePath: string): Promise<MtuiResponse> {
+  const projectRoot = resolveProjectRootForPath(filePath);
+  const absolute = isAbsolute(filePath) ? filePath : resolvePath(projectRoot, filePath);
+  const relPath = relative(projectRoot, absolute) || absolute;
+  const output = await spawnMtui(['--json', 'read', relPath, '--all'], { cwd: projectRoot });
+  return JSON.parse(output) as MtuiResponse;
+}
+
+/**
+ * Edit a file by replacing an EXACT anchor text via MTUI (`edit <file> replace`).
+ *
+ * This is MTUI's collaborative-edit primitive: two agents editing DIFFERENT
+ * anchors of the SAME file both succeed, but a stale anchor (the text was
+ * changed/removed by someone else since the agent read it) fails with
+ * `error_type: 'NO_MATCH'` instead of clobbering, and an ambiguous anchor fails
+ * with `MULTIPLE_MATCHES`. The `--` separator is passed so an `oldText` /
+ * `newText` that starts with `-` is never parsed as a flag.
+ *
+ * @param filePath Absolute or project-relative path of the file to edit.
+ * @param oldText  The exact text to find (the anchor). Must match exactly once.
+ * @param newText  The replacement text.
+ * @returns The parsed MTUI envelope (`ok`, `error_type`, `matches`, …).
+ */
+export async function editReplaceWithMtui(filePath: string, oldText: string, newText: string): Promise<MtuiResponse> {
+  const projectRoot = resolveProjectRootForPath(filePath);
+  const absolute = isAbsolute(filePath) ? filePath : resolvePath(projectRoot, filePath);
+  const relPath = relative(projectRoot, absolute) || absolute;
+  // `--` ends option parsing so OLD/NEW beginning with '-' are treated as values.
+  const output = await spawnMtui(['--json', 'edit', relPath, 'replace', '--', oldText, newText], {
+    cwd: projectRoot,
+  });
+  return JSON.parse(output) as MtuiResponse;
+}
+
 // ---------------------------------------------------------------------------
 // IPC channel names
 // ---------------------------------------------------------------------------

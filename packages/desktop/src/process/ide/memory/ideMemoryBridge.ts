@@ -28,12 +28,18 @@
  */
 
 import { bridge } from '@office-ai/platform';
-import { getSessionMemoryStore, type SuperMemorySnapshot } from './sessionMemoryStore';
+import {
+  getSessionMemoryStore,
+  type RememberResult,
+  type SuperMemoryKind,
+  type SuperMemorySnapshot,
+} from './sessionMemoryStore';
 
 /** IPC channel names for the IDE session-memory surface. */
 export const IDE_MEMORY_CHANNELS = {
   snapshot: 'ide.memory-snapshot',
   clear: 'ide.memory-clear',
+  remember: 'ide.memory-remember',
 } as const;
 
 /** Always-resolving result envelope. */
@@ -42,10 +48,24 @@ export type IdeMemoryResult<T> = { ok: true; data: T } | { ok: false; error: str
 /** Request carrying the session id (the IDE chat conversation id). */
 export type IdeMemoryRequest = { sessionId: string };
 
+/** Kinds a user may record from the UI (the `summary` kind is reserved for compaction). */
+export type IdeMemoryRecordableKind = Exclude<SuperMemoryKind, 'summary'>;
+
+/** Request to manually jot a note into a session from the memory drawer. */
+export type IdeMemoryRememberRequest = {
+  sessionId: string;
+  text: string;
+  kind?: IdeMemoryRecordableKind;
+  pinned?: boolean;
+};
+
 /** Typed channels. Exported for bootstrap registration wiring. */
 export const ideMemoryChannels = {
   snapshot: bridge.buildProvider<IdeMemoryResult<SuperMemorySnapshot>, IdeMemoryRequest>(IDE_MEMORY_CHANNELS.snapshot),
   clear: bridge.buildProvider<IdeMemoryResult<boolean>, IdeMemoryRequest>(IDE_MEMORY_CHANNELS.clear),
+  remember: bridge.buildProvider<IdeMemoryResult<RememberResult>, IdeMemoryRememberRequest>(
+    IDE_MEMORY_CHANNELS.remember
+  ),
 };
 
 /**
@@ -56,6 +76,19 @@ export function registerIdeMemoryBridge(): void {
   ideMemoryChannels.snapshot.provider(async (req): Promise<IdeMemoryResult<SuperMemorySnapshot>> => {
     try {
       return { ok: true, data: getSessionMemoryStore().snapshot(req.sessionId) };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ideMemoryChannels.remember.provider(async (req): Promise<IdeMemoryResult<RememberResult>> => {
+    try {
+      const data = await getSessionMemoryStore().remember(req.sessionId, {
+        text: req.text,
+        kind: req.kind,
+        pinned: req.pinned,
+      });
+      return { ok: true, data };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }

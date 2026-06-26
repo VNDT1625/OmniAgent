@@ -81,6 +81,8 @@ export const BROWSER_CHANNELS = {
   navigate: 'browser.navigate',
   goBack: 'browser.go-back',
   goForward: 'browser.go-forward',
+
+  reload: 'browser.reload',
   setBounds: 'browser.set-bounds',
   setZoom: 'browser.set-zoom',
   show: 'browser.show',
@@ -221,6 +223,8 @@ export const browserChannels = {
   navigate: bridge.buildProvider<void, NavigateRequest>(BROWSER_CHANNELS.navigate),
   goBack: bridge.buildProvider<{ navigated: boolean }, BrowserTabIdRequest>(BROWSER_CHANNELS.goBack),
   goForward: bridge.buildProvider<{ navigated: boolean }, BrowserTabIdRequest>(BROWSER_CHANNELS.goForward),
+
+  reload: bridge.buildProvider<void, BrowserTabIdRequest>(BROWSER_CHANNELS.reload),
   setBounds: bridge.buildProvider<void, SetBoundsRequest>(BROWSER_CHANNELS.setBounds),
   setZoom: bridge.buildProvider<void, SetZoomRequest>(BROWSER_CHANNELS.setZoom),
   show: bridge.buildProvider<void, BrowserTabIdRequest>(BROWSER_CHANNELS.show),
@@ -560,6 +564,11 @@ export function registerBrowserBridge(options: RegisterBrowserBridgeOptions = {}
   // Browser-style back / forward in a tab's history.
   browserChannels.goBack.provider(({ id }) => Promise.resolve({ navigated: viewManager.goBack(id) }));
   browserChannels.goForward.provider(({ id }) => Promise.resolve({ navigated: viewManager.goForward(id) }));
+
+  browserChannels.reload.provider(({ id }) => {
+    viewManager.reload(id);
+    return Promise.resolve();
+  });
 
   // Reposition/resize a tab to the renderer's viewport rectangle.
   browserChannels.setBounds.provider(({ id, bounds }) => {

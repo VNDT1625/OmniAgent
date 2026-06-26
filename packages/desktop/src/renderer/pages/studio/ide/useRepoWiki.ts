@@ -82,14 +82,16 @@ export type UseRepoWiki = {
 
 /** Project a persisted wiki into the hook's section view-model. */
 const toSections = (wiki: PersistedWiki): WikiSectionState[] =>
-  wiki.sections.map((section): WikiSectionState => ({
-    plan: { id: section.id, titleKey: section.titleKey },
-    status: 'done',
-    content: section.content,
-    error: null,
-    quality: section.quality,
-    iterations: section.iterations,
-  }));
+  wiki.sections.map(
+    (section): WikiSectionState => ({
+      plan: { id: section.id, titleKey: section.titleKey },
+      status: 'done',
+      content: section.content,
+      error: null,
+      quality: section.quality,
+      iterations: section.iterations,
+    })
+  );
 
 export const useRepoWiki = (): UseRepoWiki => {
   const [status, setStatus] = useState<WikiStatus>('idle');
@@ -152,13 +154,11 @@ export const useRepoWiki = (): UseRepoWiki => {
         setPhaseDetail(p.detail ?? null);
       });
 
-      const result = await ideClient
-        .wikiBuild({ rootPath, model, language })
-        .catch((e: unknown) => ({
-          ok: false as const,
-          error: e instanceof Error ? e.message : String(e),
-          code: 'error' as const,
-        }));
+      const result = await ideClient.wikiBuild({ rootPath, model, language }).catch((e: unknown) => ({
+        ok: false as const,
+        error: e instanceof Error ? e.message : String(e),
+        code: 'error' as const,
+      }));
       off();
       if (runRef.current !== token) return;
       setPhase(null);

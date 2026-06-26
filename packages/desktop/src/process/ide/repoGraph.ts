@@ -81,6 +81,34 @@ const IGNORED_DIRS = new Set([
 /** Directories listed per walker turn; keeps IO parallel without flooding disks. */
 const WALK_DIR_BATCH_SIZE = 16;
 
+const fsPathBasename = (input: string): string => {
+  const normalized = input.replace(/\\/g, '/').replace(/\/+$/, '');
+  const slash = normalized.lastIndexOf('/');
+  return slash >= 0 ? normalized.slice(slash + 1) : normalized;
+};
+
+const stripRelPrefix = (relPath: string, prefix: string): string => {
+  const normalized = relPath.replace(/\\/g, '/').replace(/^\.\//, '');
+  const cleanPrefix = prefix.replace(/\\/g, '/').replace(/^\.\//, '').replace(/\/+$/, '');
+  if (cleanPrefix.length === 0 || normalized === cleanPrefix) {
+    return normalized;
+  }
+  return normalized.startsWith(`${cleanPrefix}/`) ? normalized.slice(cleanPrefix.length + 1) : normalized;
+};
+
+const resolveDuplicateNestedRoot = async (rootPath: string, deps: CollectRepoFilesDeps): Promise<string> => {
+  const entries = await deps
+    .listDir(rootPath)
+    .catch(() => [] as Array<{ name: string; fullPath: string; isDir: boolean }>);
+  const candidateDirs = entries.filter((entry) => entry.isDir && !IGNORED_DIRS.has(entry.name.toLowerCase()));
+  const hasFiles = entries.some((entry) => !entry.isDir);
+  const onlyDir = candidateDirs.length === 1 ? candidateDirs[0] : undefined;
+  if (!hasFiles && onlyDir && onlyDir.name.toLowerCase() === fsPathBasename(rootPath).toLowerCase()) {
+    return onlyDir.fullPath;
+  }
+  return rootPath;
+};
+
 // ---------------------------------------------------------------------------
 // String-based posix path helpers (no node:path — keeps the parser portable).
 // ---------------------------------------------------------------------------
@@ -397,9 +425,11 @@ export const collectRepoFiles = async (
 ): Promise<Array<{ relPath: string; content: string }>> => {
   const maxFiles = opts?.maxFiles ?? Number.POSITIVE_INFINITY;
   const codeOnly = opts?.codeOnly ?? true;
+  const effectiveRoot = await resolveDuplicateNestedRoot(rootPath, deps);
+  const relRootPrefix = effectiveRoot === rootPath ? '' : deps.toRel(effectiveRoot);
 
   const collected: Array<{ relPath: string; content: string }> = [];
-  const queue: string[] = [rootPath];
+  const queue: string[] = [effectiveRoot];
 
   while (queue.length > 0 && collected.length < maxFiles) {
     const dirs = queue.splice(0, WALK_DIR_BATCH_SIZE);
@@ -428,7 +458,7 @@ export const collectRepoFiles = async (
           continue;
         }
 
-        const relPath = deps.toRel(entry.fullPath).replace(/\\/g, '/').replace(/^\.\//, '');
+        const relPath = stripRelPrefix(deps.toRel(entry.fullPath), relRootPrefix);
         const code = isCodeFile(relPath);
         if (code || !codeOnly) {
           fileReads.push({ relPath, fullPath: entry.fullPath, read: code || Boolean(opts?.readContent?.(relPath)) });

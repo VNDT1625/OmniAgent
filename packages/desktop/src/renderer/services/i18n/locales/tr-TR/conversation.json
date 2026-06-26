@@ -90,6 +90,15 @@
     "retryable": "Yeniden denenebilir",
     "notRetryable": "Yapılandırma gerekiyor",
     "resolutionPrefix": "Öneri: ",
+    "autoRetry": {
+      "countdown": "Ge?ici model sa?lay?c? h?z s?n?r?na ula??ld?. {{seconds}} sn sonra otomatik devam edilecek.",
+      "stop": "Durdur",
+      "continue": "Devam et",
+      "continuing": "Model sa?lay?c?yla devam ediliyor...",
+      "stopped": "Otomatik yeniden deneme durduruldu. Bu turda API anahtar? tekrar ?a?r?lmayacak.",
+      "failed": "Otomatik devam edilemedi. Devam et d??mesini tekrar deneyebilirsiniz.",
+      "continuePrompt": "devam et"
+    },
     "resolution": {
       "retry": "Daha sonra yeniden deneyin veya bu mesajı tekrar gönderin.",
       "wait_for_current_response": "Yeni bir mesaj göndermeden önce mevcut yanıtın bitmesini bekleyin.",
@@ -398,6 +407,11 @@
     "verifyRunning": "Hedef bağımsız olarak doğrulanıyor…",
     "verifyFailed": "Bağımsız doğrulama başarısız — aracı düzeltip yeniden denemeli."
   },
+  "interruptionRecovery": {
+    "interrupted": "Konuşma kesintiye uğradı ve otomatik olarak devam ettirilemedi. Lütfen mesajınızı tekrar gönderin.",
+    "retryScheduled": "Bağlantı kesildi — {{seconds}} sn sonra tekrar denenecek (retry {{retry}}/{{max}}).",
+    "retrying": "Şimdi tekrar deneniyor… (retry {{retry}}/{{max}})."
+  },
   "sideQuestion": {
     "title": "Kısa Soru",
     "description": "Mevcut konuşma hakkında hızlı bir yan soru sor",
@@ -435,6 +449,13 @@
   },
   "contextUsage": {
     "contextUsed": "bağlam kullanıldı"
+  },
+  "turnStats": {
+    "tokensExact": "Bu yanıtta kullanılan token sayısı",
+    "tokensEstimated": "Bu yanıtın tahmini token sayısı (bağlam kullanımı değişimine göre)",
+    "duration": "Bu yanıtın oluşturulma süresi",
+    "input": "Girdi token'ları (modele verilen bağlam)",
+    "output": "Çıktı token'ları (modelin ürettiği metin)"
   },
   "skill_generator": {
     "title": "Yetenek/Kural Oluştur",

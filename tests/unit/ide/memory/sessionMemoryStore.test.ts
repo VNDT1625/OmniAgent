@@ -233,8 +233,12 @@ describe('createSessionMemoryStore — meta-summary keeps long sessions bounded'
 
 describe('createSessionMemoryStore — pinned cap (avoids budget lock)', () => {
   it('auto-unpins the oldest pinned notes beyond the cap', async () => {
-    const store = createSessionMemoryStore({ summarizer: async () => 'x', policy: { maxPinned: 3, tokenBudget: 100000 } });
-    for (let i = 0; i < 5; i++) await store.remember('s1', { text: `critical pinned fact number ${i} uniq${i}`, pinned: true });
+    const store = createSessionMemoryStore({
+      summarizer: async () => 'x',
+      policy: { maxPinned: 3, tokenBudget: 100000 },
+    });
+    for (let i = 0; i < 5; i++)
+      await store.remember('s1', { text: `critical pinned fact number ${i} uniq${i}`, pinned: true });
 
     const snap = store.snapshot('s1');
     expect(snap.items.filter((i) => i.pinned)).toHaveLength(3);
@@ -246,8 +250,26 @@ describe('heuristicSummarizer', () => {
   it('condenses notes into a labelled block without a model', async () => {
     const summarize = heuristicSummarizer();
     const text = await summarize([
-      { id: 'm1', text: 'First fact. Extra detail.', kind: 'fact', pinned: false, createdAt: 1, tokens: 5, accessCount: 0, lastAccessedAt: 1 },
-      { id: 'm2', text: 'Second note', kind: 'note', pinned: false, createdAt: 2, tokens: 3, accessCount: 0, lastAccessedAt: 2 },
+      {
+        id: 'm1',
+        text: 'First fact. Extra detail.',
+        kind: 'fact',
+        pinned: false,
+        createdAt: 1,
+        tokens: 5,
+        accessCount: 0,
+        lastAccessedAt: 1,
+      },
+      {
+        id: 'm2',
+        text: 'Second note',
+        kind: 'note',
+        pinned: false,
+        createdAt: 2,
+        tokens: 3,
+        accessCount: 0,
+        lastAccessedAt: 2,
+      },
     ]);
     expect(text).toContain('Summary of 2 earlier note(s):');
     expect(text).toContain('[fact] First fact.');
@@ -303,7 +325,10 @@ describe('createSessionMemoryStore — salience-based eviction', () => {
     await store.remember('s1', { text: 'delta note' }); // now 4 notes → over budget → fold
 
     // The frequently-recalled "alpha" must survive verbatim.
-    const surviving = store.snapshot('s1').items.filter((i) => i.kind !== 'summary').map((i) => i.text);
+    const surviving = store
+      .snapshot('s1')
+      .items.filter((i) => i.kind !== 'summary')
+      .map((i) => i.text);
     expect(surviving).toContain('alpha note');
     // The folded batch must NOT include alpha.
     const folded = calls.flat().map((i) => i.text);
@@ -382,7 +407,12 @@ describe('createSessionMemoryStore — concurrency safety (no lost writes)', () 
     expect(new Set(createdIds).size).toBe(25); // all distinct, none deduped
     expect(results.every((r) => r.deduped === false)).toBe(true);
 
-    const surviving = new Set(store.snapshot('s1').items.filter((i) => i.kind !== 'summary').map((i) => i.id));
+    const surviving = new Set(
+      store
+        .snapshot('s1')
+        .items.filter((i) => i.kind !== 'summary')
+        .map((i) => i.id)
+    );
     // Invariant: every created note is either still present OR was folded — never lost.
     for (const id of createdIds) {
       expect(surviving.has(id) || foldedIds.has(id)).toBe(true);

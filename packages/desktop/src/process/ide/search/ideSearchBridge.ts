@@ -23,7 +23,7 @@ import { bridge } from '@office-ai/platform';
 import { promises as fsp } from 'node:fs';
 import type { Dirent } from 'node:fs';
 import * as path from 'node:path';
-import { grepText, replaceInText, type GrepOptions } from './grepCore';
+import { grepText, replaceInText, buildSearchRegExp, type GrepOptions } from './grepCore';
 import { writeTextFileWithMtui } from '@process/terminal/mtuiBridge';
 
 /** IPC channel names for the IDE search surface (renderer-safe contract). */
@@ -38,6 +38,8 @@ export type IdeGrepMatch = {
   path: string;
   /** 1-based line number. */
   line: number;
+  /** 1-based column of the first match on the line. */
+  column: number;
   /** The matching line text (trimmed). */
   text: string;
 };
@@ -52,6 +54,13 @@ export type GrepRequest = {
   caseSensitive?: boolean;
   regex?: boolean;
   wholeWord?: boolean;
+  /**
+   * Optional glob pattern to restrict which files are searched.
+   * Examples: `*.ts`, `**\/*.test.ts`, `src\/**\/*.vue`
+   * Patterns without `/` are matched against the basename only.
+   * Mirrors the `glob` parameter of the built-in `Grep` tool.
+   */
+  glob?: string;
   /** Max matches to return (default 1000). */
   maxResults?: number;
 };
@@ -86,6 +95,66 @@ const IGNORED_DIRS = new Set([
   'target',
   '.mtui',
 ]);
+
+// ---------------------------------------------------------------------------
+// Glob pattern matching (shared with ideFileBridge logic, inlined here so this
+// module stays self-contained with no circular import).
+// ---------------------------------------------------------------------------
+const globToRegExp = (pattern: string): RegExp => {
+  const p = pattern.replace(/\\/g, '/');
+  let re = '';
+  let i = 0;
+  while (i < p.length) {
+    const ch = p[i];
+    if (ch === '*') {
+      if (p[i + 1] === '*') {
+        i += 2;
+        if (p[i] === '/') i++;
+        re += '(?:.+/)?';
+      } else {
+        re += '[^/]*';
+        i++;
+      }
+    } else if (ch === '?') {
+      re += '[^/]';
+      i++;
+    } else if (ch === '{') {
+      const end = p.indexOf('}', i);
+      if (end === -1) {
+        re += '\\{';
+        i++;
+      } else {
+        re += `(?:${p
+          .slice(i + 1, end)
+          .split(',')
+          .map((s) => globToRegExp(s).source.slice(1, -1))
+          .join('|')})`;
+        i = end + 1;
+      }
+    } else if (ch === '[') {
+      const end = p.indexOf(']', i);
+      if (end === -1) {
+        re += '\\[';
+        i++;
+      } else {
+        re += p.slice(i, end + 1);
+        i = end + 1;
+      }
+    } else {
+      re += ch.replace(/[.+^${}()|[\]\\]/g, '\\$&');
+      i++;
+    }
+  }
+  return new RegExp(`^${re}$`, 'i');
+};
+
+const matchGlob = (relPath: string, pattern: string): boolean => {
+  const norm = relPath.replace(/\\/g, '/');
+  const hasSlash = pattern.replace(/\\/g, '/').includes('/');
+  const re = globToRegExp(pattern);
+  if (hasSlash) return re.test(norm);
+  return re.test(norm.split('/').pop() ?? norm);
+};
 
 /** Extensions treated as searchable text. */
 const TEXT_EXTENSIONS = new Set([
@@ -198,12 +267,29 @@ export const collectFiles = async (root: string): Promise<string[]> => {
   return out.toSorted((a, b) => a.localeCompare(b));
 };
 
-const grepFile = async (file: string, query: string, opts: GrepOptions): Promise<IdeGrepMatch[]> => {
+const grepFile = async (
+  file: string,
+  root: string,
+  query: string,
+  opts: GrepOptions,
+  glob?: string
+): Promise<IdeGrepMatch[]> => {
   const stat = await fsp.stat(file).catch((_error): null => null);
   if (!stat || stat.size > MAX_FILE_BYTES) return [];
+  // Apply glob filter before reading file content (avoids disk I/O).
+  if (glob) {
+    const rel = path.relative(root, file).replace(/\\/g, '/');
+    if (!matchGlob(rel, glob)) return [];
+  }
   const content = await fsp.readFile(file, 'utf-8').catch((_error): null => null);
   if (content === null) return [];
-  return grepText(content, query, opts).map((m) => ({ path: file, line: m.line, text: m.text }));
+  const re = buildSearchRegExp(query, opts);
+  return grepText(content, query, opts).map((m) => {
+    const lineText = content.split('\n')[m.line - 1] ?? '';
+    re.lastIndex = 0;
+    const match = re.exec(lineText);
+    return { path: file, line: m.line, column: match ? match.index + 1 : 1, text: m.text };
+  });
 };
 
 /** Walk the repo and return all matching lines (bounded by `maxResults`). */
@@ -220,7 +306,7 @@ export const grepRepo = async (req: GrepRequest): Promise<IdeGrepMatch[]> => {
     if (out.length >= maxResults) return;
     const file = files[next++];
     if (!file) return;
-    const matches = await grepFile(file, req.query, opts);
+    const matches = await grepFile(file, root, req.query, opts, req.glob);
     if (matches.length > 0 && out.length < maxResults) {
       out.push(...matches.slice(0, maxResults - out.length));
     }

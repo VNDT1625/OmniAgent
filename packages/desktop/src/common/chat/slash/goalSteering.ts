@@ -33,6 +33,9 @@ export const GOAL_TURN_REMINDER = [
 
 /** Full Goal Mode steering block (pipeline + recovery/safety rules). */
 export const buildGoalSteering = (variant: GoalCommandVariant): string => {
-  const header = variant === 'goal-all' ? '[GOAL-ALL MODE — STEERING BẮT BUỘC] Toàn quyền tự quyết, nhắm 101% (tối thiểu ngang mục tiêu, ưu tiên vượt). MỌI turn phải theo:' : '[GOAL MODE — STEERING BẮT BUỘC] MỌI turn phải theo:';
+  const header =
+    variant === 'goal-all'
+      ? '[GOAL-ALL MODE — STEERING BẮT BUỘC] Toàn quyền tự quyết, nhắm 101% (tối thiểu ngang mục tiêu, ưu tiên vượt). MỌI turn phải theo:'
+      : '[GOAL MODE — STEERING BẮT BUỘC] MỌI turn phải theo:';
   return [header, '', MANDATORY_PIPELINE, '', RECOVERY_AND_RULES].join('\n');
 };

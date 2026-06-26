@@ -69,10 +69,12 @@ export type DbConnectionStore = {
   resolve: (id: string) => Promise<DbConnectionConfig | null>;
 };
 
-/** On-disk shape: the public config (no plaintext password) + encrypted blob. */
-type StoredConnection = Omit<DbConnectionConfig, 'password'> & {
+/** On-disk shape: the public config (no plaintext secrets) + encrypted blobs. */
+type StoredConnection = Omit<DbConnectionConfig, 'password' | 'apiToken'> & {
   /** Encrypted password (base64). Decrypted only in Main; never sent to renderer. */
   encryptedPassword?: string;
+  /** Encrypted cloud API token (base64). Decrypted only in Main; never sent to renderer. */
+  encryptedApiToken?: string;
   /** Whether `encryptedPassword` was produced by OS encryption (vs base64 fallback). */
   osEncrypted?: boolean;
 };
@@ -81,11 +83,14 @@ type StoredConnection = Omit<DbConnectionConfig, 'password'> & {
 const toPublic = (stored: StoredConnection): DbConnectionConfig => {
   const {
     encryptedPassword: _enc,
+    encryptedApiToken: _encTok,
     osEncrypted: _os,
     password: _pw,
+    apiToken: _tok,
     ...rest
   } = stored as StoredConnection & {
     password?: string;
+    apiToken?: string;
   };
   return rest;
 };
@@ -129,6 +134,14 @@ export const createDbConnectionStore = (deps: DbConnectionStoreDeps): DbConnecti
       stored.encryptedPassword = prior.encryptedPassword;
       stored.osEncrypted = prior.osEncrypted;
     }
+    // Cloud API token (D1 / Firestore) is a secret too: encrypt at rest, and
+    // preserve the prior blob when the edit form leaves the field blank.
+    if (config.apiToken && deps.crypto) {
+      stored.encryptedApiToken = deps.crypto.encrypt(config.apiToken);
+      stored.osEncrypted = deps.crypto.isAvailable();
+    } else if (prior?.encryptedApiToken) {
+      stored.encryptedApiToken = prior.encryptedApiToken;
+    }
     if (idx >= 0) all[idx] = stored;
     else all.push(stored);
     await writeAll(all);
@@ -149,6 +162,13 @@ export const createDbConnectionStore = (deps: DbConnectionStoreDeps): DbConnecti
         config.password = deps.crypto.decrypt(found.encryptedPassword);
       } catch {
         /* leave password unset — user re-enters */
+      }
+    }
+    if (found.encryptedApiToken && deps.crypto) {
+      try {
+        config.apiToken = deps.crypto.decrypt(found.encryptedApiToken);
+      } catch {
+        /* leave token unset — user re-enters */
       }
     }
     return config;

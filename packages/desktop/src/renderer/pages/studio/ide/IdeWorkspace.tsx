@@ -66,6 +66,7 @@ import {
   Left,
   Lightning,
   MessageOne,
+  People,
   Puzzle,
   Refresh,
   Search,
@@ -101,6 +102,10 @@ import DatabasePanel from './db/DatabasePanel';
 import SpecManagerPanel from './components/SpecManagerPanel';
 import LspServersPanel from './components/LspServersPanel';
 import ExpBasePanel from './expbase/ExpBasePanel';
+import TeamEditPanel from './teamEdit/TeamEditPanel';
+import TeamCollabBar from './teamEdit/TeamCollabBar';
+import { useTeamCollab } from './teamEdit/useTeamCollab';
+import PeerWorkspace from './teamEdit/PeerWorkspace';
 import IdeTerminalPanel from './terminal/IdeTerminalPanel';
 import { ideClient } from './ideClient';
 import { lspClient } from './lspClient';
@@ -128,14 +133,17 @@ type IdeMode =
   | 'hooks'
   | 'spec'
   | 'lsp'
-  | 'expbase';
+  | 'expbase'
+  | 'team';
 
 const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
   const { t } = useTranslation();
   const ide = useIdeWorkspace();
   const wiki = useRepoWiki();
   const changes = useRepoChanges(ide.rootPath);
+  const collab = useTeamCollab(ide.rootPath);
   const [mode, setMode] = useState<IdeMode>('files');
+  const [joinCollabOpen, setJoinCollabOpen] = useState(false);
 
   const [specMounted, setSpecMounted] = useState(false);
   const [diffOpen, setDiffOpen] = useState(false);
@@ -292,6 +300,7 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
         run: goto('understand'),
       },
       { id: 'chat', label: t('ide.mode.chat'), hint: t('ide.palette.category.go'), run: goto('chat') },
+      { id: 'team', label: t('ide.mode.team'), hint: t('ide.palette.category.go'), run: goto('team') },
       { id: 'wiki', label: t('ide.mode.wiki'), hint: t('ide.palette.category.go'), run: goto('wiki') },
       { id: 'search', label: t('ide.mode.search'), hint: t('ide.palette.category.go'), run: goto('search') },
       { id: 'git', label: t('ide.mode.git'), hint: t('ide.palette.category.go'), run: goto('git') },
@@ -370,7 +379,14 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
     );
   }
 
-  // No folder yet: a single, focused open-folder call to action.
+  // Peer mode: we joined a host's repo without opening a local folder. Render
+  // the remote workspace (tree + viewer/editor over `/team/*`).
+  if (!ide.rootPath && collab.role === 'peer' && collab.peer) {
+    return <PeerWorkspace collab={collab} onBack={onBack} />;
+  }
+
+  // No folder yet: an open-folder CTA plus a Join-collab fallback for peers
+  // arriving without their own repo (they live entirely off the host's disk).
   if (!ide.rootPath) {
     return (
       <div className='size-full flex flex-col min-h-0 bg-1'>
@@ -386,7 +402,21 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
           <Button type='primary' icon={<FolderOpen theme='outline' size={15} />} onClick={requestPickFolder}>
             {t('ide.intel.openFolder')}
           </Button>
+          <Button
+            icon={<People theme='outline' size={15} />}
+            loading={collab.busy}
+            onClick={() => setJoinCollabOpen(true)}
+          >
+            {t('ide.teamCollab.join')}
+          </Button>
+          <span className='text-11px text-t-tertiary max-w-440px text-center'>
+            {t(
+              'ide.teamCollab.joinHint',
+              'Tham gia phiên collab của người khác — bạn sẽ làm việc trực tiếp trên repo của họ qua mạng, không cần tải về.'
+            )}
+          </span>
         </div>
+        <JoinCollabModal visible={joinCollabOpen} onClose={() => setJoinCollabOpen(false)} collab={collab} />
       </div>
     );
   }
@@ -434,6 +464,12 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
             label={t('ide.mode.chat')}
             active={mode === 'chat'}
             onClick={() => setMode('chat')}
+          />
+          <ActivityItem
+            icon={<People theme='outline' size={20} />}
+            label={t('ide.mode.team')}
+            active={mode === 'team'}
+            onClick={() => setMode('team')}
           />
           <ActivityItem
             icon={<Book theme='outline' size={20} />}
@@ -512,6 +548,15 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
             </div>
           ) : null}
 
+          {mode === 'team' ? (
+            <div className='absolute inset-0 flex flex-col min-h-0'>
+              <TeamCollabBar hasFolder={!!ide.rootPath} collab={collab} />
+              <div className='flex-1 min-h-0'>
+                <TeamEditPanel rootPath={ide.rootPath} activeFile={ide.activeFile} collab={collab} />
+              </div>
+            </div>
+          ) : null}
+
           {mode === 'wiki' ? (
             <div className='absolute inset-0'>
               <WikiPanel rootPath={ide.rootPath} wiki={wiki} />
@@ -534,14 +579,49 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
             <div className='absolute inset-0'>
               <QuickTestPanel
                 rootPath={ide.rootPath}
-                onFixWithAgent={(pack, errorSummary) => {
-                  // Warm the task-specific context builder, then switch to Chat.
-                  // The resulting guide is lazy-retrieval metadata, not source
-                  // content that should be preloaded into a fresh tab.
-                  void ideClient.kgContext(ide.rootPath ?? '', errorSummary, pack.rules, false).then(() => {
-                    // Switch to Chat mode so the user can interact with the agent.
-                    setMode('chat');
-                  });
+                onFixWithAgent={(pack, errorSummary, hasError) => {
+                  const root = ide.rootPath;
+                  if (!root) return;
+                  // Switch to Chat FIRST so IdeChatPanel is mounted and listening
+                  // for `ide.hook.askAgent` (it opens a tab + fills the composer).
+                  setMode('chat');
+                  // Build the agent prompt from the trace context pack: the
+                  // rendered brief already lists the interaction path, any error,
+                  // the code that actually ran (V8 coverage), and the suspected
+                  // files. The framing adapts to whether a runtime error was
+                  // actually captured — we must NOT tell the agent to "fix a
+                  // problem" when the trace is clean (that contradicts the trace
+                  // and sends the agent chasing a non-existent bug).
+                  const intro = hasError
+                    ? [
+                        `Quick Test caught a problem while I was testing the app: ${errorSummary}`,
+                        '',
+                        'Here is the runtime trace captured from the live app. Use it to find and fix the root cause, then explain the fix.',
+                      ]
+                    : [
+                        'I recorded a Quick Test session of the live app. No runtime error was captured — the trace below shows the interaction path I took.',
+                        '',
+                        'Review the trace and the relevant code: confirm the flows I exercised behave correctly, and flag any latent issues (missing handlers, dead ends, accessibility or state bugs). Do not invent an error that is not there.',
+                      ];
+                  const prompt = [...intro, '', pack.renderedContext].join('\n');
+                  // Defer so the Chat panel has mounted and registered its
+                  // `ide.hook.askAgent` listener before the event fires (the
+                  // mode switch triggers an async re-render + effect setup).
+                  setTimeout(() => {
+                    emitter.emit('ide.hook.askAgent', { rootPath: root, prompt, hookName: 'Quick Test' });
+                  }, 250);
+                }}
+                onAskAboutElement={(prompt) => {
+                  const root = ide.rootPath;
+                  if (!root) return;
+                  // Inspect → design/change request. The brief (renderElementBrief)
+                  // already carries the picked element's component, file:line, box
+                  // and styles + the user's request, so it is sent verbatim to a
+                  // new Chat tab via the same askAgent event the trace flow uses.
+                  setMode('chat');
+                  setTimeout(() => {
+                    emitter.emit('ide.hook.askAgent', { rootPath: root, prompt, hookName: 'Inspect Element' });
+                  }, 250);
                 }}
               />
             </div>
@@ -1486,6 +1566,67 @@ const EditorTabs: React.FC<{
         );
       })}
     </div>
+  );
+};
+
+/**
+ * Compact Join-collab modal shown on the empty IDE state. Lets a peer join a
+ * host's repo by `ip:port` or tunnel URL — no local folder required. Mirrors
+ * the join form inside {@link TeamCollabBar} but lives standalone here so the
+ * pre-folder UI never has to mount the full collab bar.
+ */
+const JoinCollabModal: React.FC<{
+  visible: boolean;
+  collab: ReturnType<typeof useTeamCollab>;
+  onClose: () => void;
+}> = ({ visible, collab, onClose }) => {
+  const { t } = useTranslation();
+  const [joinUrl, setJoinUrl] = useState('');
+  const [password, setPassword] = useState('123456');
+  const [name, setName] = useState('');
+
+  useEffect(() => {
+    if (visible) {
+      setJoinUrl('');
+      setPassword('123456');
+      setName('');
+    }
+  }, [visible]);
+
+  const doJoin = async (): Promise<void> => {
+    const raw = joinUrl.trim();
+    if (!raw) return;
+    const baseUrl = /^https?:\/\//.test(raw) ? raw : `http://${raw}`;
+    const ok = await collab.join(baseUrl, password, name || t('ide.team.you'));
+    if (ok) onClose();
+  };
+
+  return (
+    <Modal
+      title={t('ide.teamCollab.joinTitle')}
+      visible={visible}
+      onCancel={onClose}
+      onOk={() => void doJoin()}
+      confirmLoading={collab.busy}
+      okText={t('ide.teamCollab.join')}
+      autoFocus={false}
+    >
+      <div className='flex flex-col gap-12px'>
+        <label className='flex flex-col gap-4px'>
+          <span className='text-12px text-t-secondary'>{t('ide.teamCollab.joinCodeLabel')}</span>
+          <Input value={joinUrl} onChange={setJoinUrl} placeholder={t('ide.teamCollab.joinCodePlaceholder')} />
+        </label>
+        <label className='flex flex-col gap-4px'>
+          <span className='text-12px text-t-secondary'>{t('ide.teamCollab.password')}</span>
+          <Input.Password value={password} onChange={setPassword} placeholder='123456' />
+        </label>
+        <label className='flex flex-col gap-4px'>
+          <span className='text-12px text-t-secondary'>{t('ide.teamCollab.yourName')}</span>
+          <Input value={name} onChange={setName} placeholder={t('ide.teamCollab.namePlaceholder')} />
+        </label>
+        {collab.error ? <span className='text-12px text-danger'>{collab.error}</span> : null}
+      </div>
+    </Modal>
   );
 };
 

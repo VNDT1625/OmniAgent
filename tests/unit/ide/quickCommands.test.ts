@@ -5,13 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  buildQuickCommands,
-  cwdForNode,
-  dirOf,
-  parseScripts,
-  sepOf,
-} from '@/renderer/pages/studio/ide/quickCommands';
+import { buildQuickCommands, cwdForNode, dirOf, parseScripts, sepOf } from '@/renderer/pages/studio/ide/quickCommands';
 
 describe('sepOf', () => {
   it('detects windows backslash vs posix slash', () => {
@@ -40,7 +34,7 @@ describe('cwdForNode', () => {
 describe('parseScripts', () => {
   it('returns string-valued script names', () => {
     const json = JSON.stringify({ scripts: { build: 'tsc', test: 'vitest', bad: 123 } });
-    expect(parseScripts(json).sort()).toEqual(['build', 'test']);
+    expect(parseScripts(json).toSorted()).toEqual(['build', 'test']);
   });
 
   it('returns [] for missing scripts or invalid JSON', () => {

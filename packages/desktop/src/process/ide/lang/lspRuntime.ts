@@ -36,11 +36,7 @@ import {
   type JsonRpcResponse,
 } from './lspProtocol';
 import { ensureServerInstalled, type InstalledServer } from './lspInstallManager';
-import {
-  parseDocumentSymbols,
-  parseTextEditArray,
-  parseWorkspaceEdit,
-} from './lspConvert';
+import { parseDocumentSymbols, parseTextEditArray, parseWorkspaceEdit } from './lspConvert';
 
 /** A diagnostic as published by a server (subset of the LSP shape). */
 export type LspDiagnostic = {
@@ -139,7 +135,10 @@ export class LspSession {
   private child: ChildProcessWithoutNullStreams | null = null;
   private readonly decoder = new LspMessageBuffer();
   private nextId = 1;
-  private readonly pending = new Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }>();
+  private readonly pending = new Map<
+    number,
+    { resolve: (value: unknown) => void; reject: (error: Error) => void; timer: NodeJS.Timeout }
+  >();
   private readonly openDocs = new Map<string, number>();
   private initialized = false;
   private initPromise: Promise<void> | null = null;
@@ -226,7 +225,12 @@ export class LspSession {
     if (!payload?.uri) return;
     const raw = Array.isArray(payload.diagnostics) ? payload.diagnostics : [];
     const diagnostics: LspDiagnostic[] = raw.map((item) => {
-      const d = item as { range?: { start?: unknown; end?: unknown }; message?: unknown; severity?: unknown; source?: unknown };
+      const d = item as {
+        range?: { start?: unknown; end?: unknown };
+        message?: unknown;
+        severity?: unknown;
+        source?: unknown;
+      };
       const start = toOneBased(d.range?.start as { line?: number; character?: number });
       const end = toOneBased(d.range?.end as { line?: number; character?: number });
       return {
@@ -342,7 +346,11 @@ export class LspSession {
     if (contents == null) return null;
     if (typeof contents === 'string') return { contents };
     if (Array.isArray(contents)) {
-      return { contents: contents.map((c) => (typeof c === 'string' ? c : ((c as { value?: string })?.value ?? ''))).join('\n') };
+      return {
+        contents: contents
+          .map((c) => (typeof c === 'string' ? c : ((c as { value?: string })?.value ?? '')))
+          .join('\n'),
+      };
     }
     const value = (contents as { value?: unknown }).value;
     return { contents: typeof value === 'string' ? value : '' };
@@ -356,7 +364,12 @@ export class LspSession {
     });
     const list = Array.isArray(result) ? result : result ? [result] : [];
     return list.map((item) => {
-      const loc = item as { uri?: string; targetUri?: string; range?: { start?: unknown }; targetRange?: { start?: unknown } };
+      const loc = item as {
+        uri?: string;
+        targetUri?: string;
+        range?: { start?: unknown };
+        targetRange?: { start?: unknown };
+      };
       const uri = loc.uri ?? loc.targetUri ?? '';
       const start = toOneBased((loc.range?.start ?? loc.targetRange?.start) as { line?: number; character?: number });
       return { path: fromUri(uri), line: start.line, column: start.column };

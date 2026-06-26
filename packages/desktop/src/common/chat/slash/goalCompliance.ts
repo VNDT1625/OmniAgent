@@ -107,7 +107,8 @@ export const createInitialComplianceState = (): GoalComplianceState => ({ autoTu
  * backed by observed verification activity (closes most of the "faked marker"
  * gap without trusting the agent's self-report).
  */
-const VERIFICATION_EVIDENCE_RE = /\b(?:bun\s+run\s+test|npm\s+(?:run\s+)?test|yarn\s+test|pnpm\s+test|vitest|jest|pytest|go\s+test|cargo\s+test|tsc\b|typecheck|type-check|oxlint|eslint|lint:fix|check-i18n|i18n:types|coverage|playwright|getdiagnostics|quick\s*test|p* run lint|bun run lint)\b/i;
+const VERIFICATION_EVIDENCE_RE =
+  /\b(?:bun\s+run\s+test|npm\s+(?:run\s+)?test|yarn\s+test|pnpm\s+test|vitest|jest|pytest|go\s+test|cargo\s+test|tsc\b|typecheck|type-check|oxlint|eslint|lint:fix|check-i18n|i18n:types|coverage|playwright|getdiagnostics|quick\s*test|p* run lint|bun run lint)\b/i;
 
 export const hasVerificationEvidence = (text: string): boolean => {
   if (!text) return false;
@@ -130,13 +131,28 @@ export type GoalComplianceDecision =
 
 // Agent-facing enforcement prompts (Vietnamese, like the pipeline text). These
 // are sent as the auto-driven turns; Goal Mode steering is also prepended.
-const PROMPT_CORRECT = ['Bạn CHƯA xuất dòng trạng thái bắt buộc ở cuối lượt.', 'MỖI lượt PHẢI kết thúc bằng đúng MỘT dòng máy đọc được: [[GOAL next=continue|done|blocked tests=pass|fail|none phase=<số pha>]].', 'Tiếp tục đúng QUY TRÌNH BẮT BUỘC và lần này PHẢI kết thúc bằng dòng trạng thái đó.'].join('\n');
+const PROMPT_CORRECT = [
+  'Bạn CHƯA xuất dòng trạng thái bắt buộc ở cuối lượt.',
+  'MỖI lượt PHẢI kết thúc bằng đúng MỘT dòng máy đọc được: [[GOAL next=continue|done|blocked tests=pass|fail|none phase=<số pha>]].',
+  'Tiếp tục đúng QUY TRÌNH BẮT BUỘC và lần này PHẢI kết thúc bằng dòng trạng thái đó.',
+].join('\n');
 
-const PROMPT_CONTINUE = ['Tiếp tục pha kế tiếp theo QUY TRÌNH BẮT BUỘC. KHÔNG dừng, KHÔNG hỏi lại — tự quyết hợp lý.', 'Kết thúc lượt bằng đúng MỘT dòng: [[GOAL next=continue|done|blocked tests=pass|fail|none phase=<số pha>]].'].join('\n');
+const PROMPT_CONTINUE = [
+  'Tiếp tục pha kế tiếp theo QUY TRÌNH BẮT BUỘC. KHÔNG dừng, KHÔNG hỏi lại — tự quyết hợp lý.',
+  'Kết thúc lượt bằng đúng MỘT dòng: [[GOAL next=continue|done|blocked tests=pass|fail|none phase=<số pha>]].',
+].join('\n');
 
-const PROMPT_REJECT = ['CHƯA được coi là HOÀN THÀNH: bạn báo next=done nhưng tests chưa pass.', 'Quay lại pha 8/9: chạy lại quick test tracker + sửa lỗi (root-cause) tới khi tests=pass.', 'Chỉ được next=done khi mọi Definition of Done đạt VÀ tests=pass. Kết thúc lượt bằng dòng [[GOAL ...]].'].join('\n');
+const PROMPT_REJECT = [
+  'CHƯA được coi là HOÀN THÀNH: bạn báo next=done nhưng tests chưa pass.',
+  'Quay lại pha 8/9: chạy lại quick test tracker + sửa lỗi (root-cause) tới khi tests=pass.',
+  'Chỉ được next=done khi mọi Definition of Done đạt VÀ tests=pass. Kết thúc lượt bằng dòng [[GOAL ...]].',
+].join('\n');
 
-const PROMPT_NEED_VERIFICATION = ['CHƯA chấp nhận HOÀN THÀNH: bạn báo next=done tests=pass nhưng phiên này KHÔNG thấy bằng chứng đã chạy test/verify thật (không có lệnh chạy test/tsc/lint/build...).', 'PHẢI chạy thật cổng test (vd `bun run test`, `bunx tsc --noEmit`, lint) và/hoặc quick test, để lại log trong phiên, RỒI mới báo next=done tests=pass.', 'Kết thúc lượt bằng dòng [[GOAL ...]].'].join('\n');
+const PROMPT_NEED_VERIFICATION = [
+  'CHƯA chấp nhận HOÀN THÀNH: bạn báo next=done tests=pass nhưng phiên này KHÔNG thấy bằng chứng đã chạy test/verify thật (không có lệnh chạy test/tsc/lint/build...).',
+  'PHẢI chạy thật cổng test (vd `bun run test`, `bunx tsc --noEmit`, lint) và/hoặc quick test, để lại log trong phiên, RỒI mới báo next=done tests=pass.',
+  'Kết thúc lượt bằng dòng [[GOAL ...]].',
+].join('\n');
 
 /**
  * Decide the next enforcement action after a finished turn. Pure.
@@ -145,7 +161,12 @@ const PROMPT_NEED_VERIFICATION = ['CHƯA chấp nhận HOÀN THÀNH: bạn báo 
  * @param state  running compliance counters
  * @param config caps
  */
-export const decideCompliance = (status: GoalStatus | null, state: GoalComplianceState, config: GoalComplianceConfig, context: GoalComplianceContext = DEFAULT_CONTEXT): GoalComplianceDecision => {
+export const decideCompliance = (
+  status: GoalStatus | null,
+  state: GoalComplianceState,
+  config: GoalComplianceConfig,
+  context: GoalComplianceContext = DEFAULT_CONTEXT
+): GoalComplianceDecision => {
   if (state.autoTurns >= config.maxAutoTurns) {
     return { type: 'halt', reason: 'max-turns' };
   }
@@ -178,7 +199,10 @@ export const decideCompliance = (status: GoalStatus | null, state: GoalComplianc
 };
 
 /** Advance counters after issuing an auto-driven turn for the given decision. */
-export const advanceComplianceState = (state: GoalComplianceState, decision: GoalComplianceDecision): GoalComplianceState => {
+export const advanceComplianceState = (
+  state: GoalComplianceState,
+  decision: GoalComplianceDecision
+): GoalComplianceState => {
   switch (decision.type) {
     case 'correct':
       return { autoTurns: state.autoTurns + 1, corrections: state.corrections + 1 };

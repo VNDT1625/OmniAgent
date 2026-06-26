@@ -51,9 +51,9 @@ export const computeHookFirings = (hooks: readonly IdeHook[], event: RepoChangeE
   };
 
   // `changed` covers both saves and creations from the watcher's perspective.
-  const changedEvents: IdeHookEvent[] = ['fileSaved', 'fileCreated'];
+  const changedEvents = new Set<IdeHookEvent>(['fileSaved', 'fileCreated']);
   for (const hook of hooks) {
-    if (changedEvents.includes(hook.event)) {
+    if (changedEvents.has(hook.event)) {
       for (const relPath of event.changed) tryFire(hook, relPath);
     } else if (hook.event === 'fileDeleted') {
       for (const relPath of event.removed) tryFire(hook, relPath);

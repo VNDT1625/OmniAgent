@@ -105,10 +105,15 @@ const writeState = async (state: InstallState): Promise<void> => {
 /** Promisified `execFile` returning stdout, rejecting on non-zero exit. */
 const run = (command: string, args: string[], cwd: string): Promise<string> =>
   new Promise((resolve, reject) => {
-    execFile(command, args, { cwd, windowsHide: true, shell: process.platform === 'win32' }, (error, stdout, stderr) => {
-      if (error) reject(new Error(stderr || error.message));
-      else resolve(stdout);
-    });
+    execFile(
+      command,
+      args,
+      { cwd, windowsHide: true, shell: process.platform === 'win32' },
+      (error, stdout, stderr) => {
+        if (error) reject(new Error(stderr || error.message));
+        else resolve(stdout);
+      }
+    );
   });
 
 /** Resolve an executable on PATH (cross-platform `which`/`where`). */

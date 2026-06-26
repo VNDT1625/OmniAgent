@@ -31,13 +31,29 @@ import {
 const TIMEOUT_MS = 30_000;
 
 const channels = {
-  record: bridge.buildProvider<ExperienceResult<CaptureResult>, { projectRoot: string; draft: ExperienceEntryDraft }>(EXPERIENCE_CHANNELS.record),
-  search: bridge.buildProvider<ExperienceResult<ExperienceSuggestion[]>, { projectRoot: string; query: ExperienceQuery; topK?: number; minScore?: number }>(EXPERIENCE_CHANNELS.search),
-  drain: bridge.buildProvider<ExperienceResult<{ processed: number }>, { projectRoot: string }>(EXPERIENCE_CHANNELS.drain),
-  forget: bridge.buildProvider<ExperienceResult<{ archived: boolean }>, { projectRoot: string; entryId: string }>(EXPERIENCE_CHANNELS.forget),
-  feedback: bridge.buildProvider<ExperienceResult<{ updated: boolean }>, { projectRoot: string; entryId: string; helped: boolean }>(EXPERIENCE_CHANNELS.feedback),
-  metrics: bridge.buildProvider<ExperienceResult<ExperienceMetrics>, { projectRoot: string }>(EXPERIENCE_CHANNELS.metrics),
-  list: bridge.buildProvider<ExperienceResult<ExperienceEntry[]>, { projectRoot: string; filter?: ExperienceFilter }>(EXPERIENCE_CHANNELS.list),
+  record: bridge.buildProvider<ExperienceResult<CaptureResult>, { projectRoot: string; draft: ExperienceEntryDraft }>(
+    EXPERIENCE_CHANNELS.record
+  ),
+  search: bridge.buildProvider<
+    ExperienceResult<ExperienceSuggestion[]>,
+    { projectRoot: string; query: ExperienceQuery; topK?: number; minScore?: number }
+  >(EXPERIENCE_CHANNELS.search),
+  drain: bridge.buildProvider<ExperienceResult<{ processed: number }>, { projectRoot: string }>(
+    EXPERIENCE_CHANNELS.drain
+  ),
+  forget: bridge.buildProvider<ExperienceResult<{ archived: boolean }>, { projectRoot: string; entryId: string }>(
+    EXPERIENCE_CHANNELS.forget
+  ),
+  feedback: bridge.buildProvider<
+    ExperienceResult<{ updated: boolean }>,
+    { projectRoot: string; entryId: string; helped: boolean }
+  >(EXPERIENCE_CHANNELS.feedback),
+  metrics: bridge.buildProvider<ExperienceResult<ExperienceMetrics>, { projectRoot: string }>(
+    EXPERIENCE_CHANNELS.metrics
+  ),
+  list: bridge.buildProvider<ExperienceResult<ExperienceEntry[]>, { projectRoot: string; filter?: ExperienceFilter }>(
+    EXPERIENCE_CHANNELS.list
+  ),
 };
 
 const withTimeout = async <T>(label: string, run: () => Promise<ExperienceResult<T>>): Promise<ExperienceResult<T>> => {
@@ -58,7 +74,11 @@ const withTimeout = async <T>(label: string, run: () => Promise<ExperienceResult
 export const experienceClient = {
   list: (projectRoot: string, filter?: ExperienceFilter): Promise<ExperienceResult<ExperienceEntry[]>> =>
     withTimeout('List experiences', () => channels.list.invoke({ projectRoot, filter })),
-  search: (projectRoot: string, query: ExperienceQuery, topK?: number): Promise<ExperienceResult<ExperienceSuggestion[]>> =>
+  search: (
+    projectRoot: string,
+    query: ExperienceQuery,
+    topK?: number
+  ): Promise<ExperienceResult<ExperienceSuggestion[]>> =>
     withTimeout('Search experiences', () => channels.search.invoke({ projectRoot, query, topK })),
   record: (projectRoot: string, draft: ExperienceEntryDraft): Promise<ExperienceResult<CaptureResult>> =>
     withTimeout('Record experience', () => channels.record.invoke({ projectRoot, draft })),

@@ -10,6 +10,7 @@ import { initUpdateBridge } from './updateBridge';
 import { initSystemSettingsBridge } from './systemSettingsBridge';
 import { initWindowControlsBridge } from './windowControlsBridge';
 import { initNotificationBridge } from './notificationBridge';
+import { initOmniGatewayBridge } from '@process/omni-gateway/omniGatewayIpc';
 import { initWebuiBridge } from './webuiBridge';
 import { registerResourceBridge } from '@process/resource/resourceBridge';
 import { getResourceCoordinator } from '@process/resource/resourceCoordinator';
@@ -18,8 +19,10 @@ import { getSystemInfoService } from '@process/system/systemInfoService';
 import { registerCompanyBridge } from '@process/company/companyBridge';
 import { registerRealtimeKnowledgeBridge } from '@process/knowledge/realtimeKnowledgeBridge';
 import { registerCommandDocBridge } from '@process/terminal/commandDoc/commandDocBridge';
-import { registerSmartFixBridge } from '@process/terminal/smartFix/smartFixBridge';import { createCompanyGenerator } from '@process/company/companyGenerator';
-import { registerBrowserBridge } from '@process/browser/browserBridge';
+import { registerSmartFixBridge } from '@process/terminal/smartFix/smartFixBridge';
+import { createCompanyGenerator } from '@process/company/companyGenerator';
+import { registerBrowserBridge, getBrowserServices } from '@process/browser/browserBridge';
+import type { CdpWebContents } from '@process/ide/quickTestTracer';
 import { registerEditorControlBridge } from '@process/editor/editorControlBridge';
 import { registerTestingBridge } from '@process/testing/testingBridge';
 import { getTestingServices } from '@process/testing/testingWiring';
@@ -56,10 +59,15 @@ import { registerIdeCompletionBridge } from '@process/ide/lang/ideCompletionBrid
 import { registerIdeMemoryBridge } from '@process/ide/memory/ideMemoryBridge';
 import { registerKnowledgeGraphBridge } from '@process/ide/knowledgeGraphBridge';
 import { registerQuickTestBridge } from '@process/ide/quickTestBridge';
+import { registerElementInspectorBridge } from '@process/ide/elementInspectorBridge';
+import { registerRunTargetBridge } from '@process/ide/runTarget/runTargetBridge';
+import { registerIdeCommandBridge } from '@process/ide/command/commandBridge';
 import { openNativeLogStream as openNativeStream } from '@process/ide/quickTestNativeStream';
 import { registerSpecLifecycleBridge } from '@process/ide/specLifecycleBridge';
 import { registerDbBridge } from '@process/ide/db/dbBridge';
 import { getDbService } from '@process/ide/db/dbWiring';
+import { registerTeamEditBridge } from '@process/ide/teamEdit/teamEditBridge';
+import { registerTeamCollabBridge } from '@process/ide/teamEdit/teamCollabBridge';
 import { loadGraph } from '@process/ide/quickTestBridgeHelpers';
 import { registerMakeVideoBridge } from '@process/makevideo/makeVideoBridge';
 import { registerMusicBridge } from '@process/music/musicBridge';
@@ -83,6 +91,7 @@ export function initAllBridges(_deps: BridgeDependencies = {}): void {
   initUpdateBridge();
   initSystemSettingsBridge();
   initNotificationBridge();
+  initOmniGatewayBridge();
   initWebuiBridge();
 
   // OmniAgent native bridges (Task 15.1 wiring). Each registration is isolated
@@ -370,25 +379,50 @@ export function initAllBridges(_deps: BridgeDependencies = {}): void {
     register('IDE inline-completion bridge', registerIdeCompletionBridge);
     register('IDE session-memory bridge', registerIdeMemoryBridge);
     register('IDE knowledge-graph bridge', registerKnowledgeGraphBridge);
+    register('IDE command bridge', registerIdeCommandBridge);
     register('IDE spec-lifecycle bridge', registerSpecLifecycleBridge);
     // Quick Test tracer — attaches CDP to the active browser tab so the user
     // can test their app and Omni records the runtime trace for the agent.
     // getWebContents returns null when no browser tab is open (native target).
+    // Resolve the embedded tab's WebContents the Quick Test panel hosts (by tab
+    // id), falling back to the focused WebContents (legacy "open in Browser
+    // page" flow). Shared by the Quick Test tracer AND the element inspector so
+    // both target exactly the tab the user is testing.
+    const resolveQuickTestWebContents = (tabId?: string): CdpWebContents | null => {
+      if (tabId) {
+        const { viewManager } = getBrowserServices(getApplicationMainWindow);
+        const contents = viewManager.getWebContents(tabId);
+        return (contents as unknown as CdpWebContents | null) ?? null;
+      }
+      const win = getApplicationMainWindow();
+      if (!win) return null;
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { webContents } = require('electron') as typeof import('electron');
+      const focused = webContents.getFocusedWebContents();
+      return (focused as unknown as CdpWebContents | null) ?? null;
+    };
     register('IDE quick-test bridge', () =>
       registerQuickTestBridge({
-        getWebContents: () => {
-          const win = getApplicationMainWindow();
-          if (!win) return null;
-          // Use the static getFocusedWebContents to get the active tab.
-          const { webContents } = require('electron') as typeof import('electron');
-          const focused = webContents.getFocusedWebContents();
-          return focused ?? null;
-        },
+        getWebContents: resolveQuickTestWebContents,
         loadGraph,
         openNativeStream,
       })
     );
+    // Element inspector — an additive, CDP-free visual picker ("Inspect", like
+    // F12) that maps a clicked element to its component + file:line for precise
+    // design/change requests. Independent of the trace flow above.
+    register('IDE element-inspector bridge', () =>
+      registerElementInspectorBridge({
+        getWebContents: resolveQuickTestWebContents,
+        loadGraph,
+      })
+    );
     register('IDE database bridge', () => registerDbBridge({ service: getDbService() }));
+    register('IDE team-edit bridge', registerTeamEditBridge);
+    register('IDE team-collab bridge', registerTeamCollabBridge);
+    // Quick-Run: mechanically derive how to run the repo (from the wiki/KG
+    // runbook) + remember a recipe that succeeded, so later runs need no AI.
+    register('IDE quick-run bridge', () => registerRunTargetBridge());
     console.log('[Bridge] IDE bridges registered.');
   } catch (error) {
     console.error('[Bridge] Failed to register IDE bridges:', error);
@@ -482,6 +516,7 @@ export {
   initApplicationBridge,
   initDialogBridge,
   initNotificationBridge,
+  initOmniGatewayBridge,
   initSystemSettingsBridge,
   initUpdateBridge,
   initWindowControlsBridge,

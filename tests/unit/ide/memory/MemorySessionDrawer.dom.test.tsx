@@ -22,7 +22,12 @@ vi.mock('react-i18next', () => ({
 
 const clearSpy = vi.fn(async () => undefined);
 const refreshSpy = vi.fn(async () => undefined);
-let hookValue: { snapshot: SuperMemorySnapshot | null; loading: boolean; refresh: typeof refreshSpy; clear: typeof clearSpy };
+let hookValue: {
+  snapshot: SuperMemorySnapshot | null;
+  loading: boolean;
+  refresh: typeof refreshSpy;
+  clear: typeof clearSpy;
+};
 
 vi.mock('@/renderer/pages/studio/ide/memory/useIdeMemory', () => ({
   useIdeMemory: () => hookValue,
@@ -33,9 +38,36 @@ import MemorySessionDrawer from '@/renderer/pages/studio/ide/memory/MemorySessio
 const snapshot = (overrides: Partial<SuperMemorySnapshot> = {}): SuperMemorySnapshot => ({
   sessionId: 's1',
   items: [
-    { id: 'm1', text: 'Auth lives in src/auth.ts', kind: 'fact', pinned: true, createdAt: 1, tokens: 8, accessCount: 2, lastAccessedAt: 1 },
-    { id: 'm2', text: 'Use stripe for payments', kind: 'decision', pinned: false, createdAt: 2, tokens: 6, accessCount: 0, lastAccessedAt: 2 },
-    { id: 's2', text: 'Summary of older notes', kind: 'summary', pinned: false, createdAt: 0, tokens: 5, accessCount: 0, lastAccessedAt: 0 },
+    {
+      id: 'm1',
+      text: 'Auth lives in src/auth.ts',
+      kind: 'fact',
+      pinned: true,
+      createdAt: 1,
+      tokens: 8,
+      accessCount: 2,
+      lastAccessedAt: 1,
+    },
+    {
+      id: 'm2',
+      text: 'Use stripe for payments',
+      kind: 'decision',
+      pinned: false,
+      createdAt: 2,
+      tokens: 6,
+      accessCount: 0,
+      lastAccessedAt: 2,
+    },
+    {
+      id: 's2',
+      text: 'Summary of older notes',
+      kind: 'summary',
+      pinned: false,
+      createdAt: 0,
+      tokens: 5,
+      accessCount: 0,
+      lastAccessedAt: 0,
+    },
   ],
   secretKeys: ['OPENAI_API_KEY'],
   tokensUsed: 19,
@@ -69,7 +101,12 @@ describe('MemorySessionDrawer', () => {
   });
 
   it('shows the empty state when the session has no notes', () => {
-    hookValue = { snapshot: snapshot({ items: [], secretKeys: [], tokensUsed: 0 }), loading: false, refresh: refreshSpy, clear: clearSpy };
+    hookValue = {
+      snapshot: snapshot({ items: [], secretKeys: [], tokensUsed: 0 }),
+      loading: false,
+      refresh: refreshSpy,
+      clear: clearSpy,
+    };
     render(<MemorySessionDrawer memId='ide-mem-1' visible onClose={vi.fn()} />);
     expect(screen.getByText('ide.memory.empty')).toBeInTheDocument();
   });

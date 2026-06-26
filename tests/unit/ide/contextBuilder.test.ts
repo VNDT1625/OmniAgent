@@ -265,8 +265,8 @@ describe('createContextBuilder.build', () => {
     const pack = await builder.build({ request: 'fix login button', graph });
     expect(pack.renderedContext).toContain('IDE Repo Guide (lazy retrieval)');
     expect(pack.renderedContext).toContain('source is not preloaded');
-    expect(pack.renderedContext).toContain('MTUI runtime: use `mtui --json`');
-    expect(pack.renderedContext).toContain('after writes check `diff --last`');
+    expect(pack.renderedContext).toContain('MTUI runtime (MANDATORY): use `mtui --json`');
+    expect(pack.renderedContext).toContain('After writes check `diff --last`');
     expect(pack.renderedContext).toContain('accept stale confirmations after reviewing the diff excerpt');
     expect(pack.renderedContext).toContain('Planning runtime');
     expect(pack.renderedContext).toContain('.aionui/specs/<slug>/');
