@@ -5,8 +5,25 @@
  */
 
 /**
- * AionUI应用程序共用常量
+ * Omni / AionUI common constants (rebranded)
  */
+
+// ===== Product identity =====
+export const PRODUCT_ID = 'omni';
+export const PRODUCT_NAME = 'Omni';
+export const PRODUCT_FULL_NAME = 'Omni Agent';
+export const LEGACY_PRODUCT_ID = 'aionui';
+export const LEGACY_PRODUCT_NAME = 'AionUi';
+
+// ===== Workspace metadata =====
+export const OMNI_WORKSPACE_META_DIR = '.omni';
+export const LEGACY_WORKSPACE_META_DIR = '.aionui';
+export const WORKSPACE_SPECS_DIR = 'specs';
+export const WORKSPACE_UNDERSTAND_DIR = 'understand';
+export const WORKSPACE_SPECS_REL_PATH = '.omni/specs';
+export const LEGACY_WORKSPACE_SPECS_REL_PATH = '.aionui/specs';
+export const WORKSPACE_UNDERSTAND_REL_PATH = '.omni/understand';
+export const LEGACY_WORKSPACE_UNDERSTAND_REL_PATH = '.aionui/understand';
 
 // ===== 文件处理相关常量 =====
 

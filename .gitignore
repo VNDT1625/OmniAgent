@@ -222,6 +222,10 @@ packages/mtui/target/
 # MTUI local state directory (runtime-generated)
 .mtui/
 
+# Omni workspace metadata (local specs, understand, wiki for the project)
+.omni/
+.aionui/
+
 # Files containing local dev-router API key (do not commit secrets)
 .kiro/steering/claude-ui-testing.md
 .claude/skills/test-with-computer/SKILL.md

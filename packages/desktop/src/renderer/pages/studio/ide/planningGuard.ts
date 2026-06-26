@@ -26,12 +26,12 @@ const isPlanningEnabled = (rootPath: string): boolean => {
 const slugFromExecuteTarget = (target: string): string | undefined => {
   if (target.toLowerCase() === 'plan') return undefined;
   const normalized = target.replace(/\\/g, '/').replace(/\/+$/g, '');
-  const marker = '/.aionui/specs/';
+  const marker = '/.omni/specs/';
   const markerIndex = normalized.toLowerCase().lastIndexOf(marker);
   if (markerIndex >= 0) {
     return normalized.slice(markerIndex + marker.length).split('/')[0] || undefined;
   }
-  const relativePrefix = '.aionui/specs/';
+  const relativePrefix = '.omni/specs/';
   if (normalized.toLowerCase().startsWith(relativePrefix)) {
     return normalized.slice(relativePrefix.length).split('/')[0] || undefined;
   }

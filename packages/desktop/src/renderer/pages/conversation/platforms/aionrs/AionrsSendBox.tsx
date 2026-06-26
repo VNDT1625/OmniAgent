@@ -732,7 +732,7 @@ const AionrsSendBox: React.FC<{
         placeholder={
           current_model?.use_model
             ? t('acp.sendbox.placeholder', {
-                backend: agent_name || 'AionCLI',
+                backend: (agent_name || 'AionCLI').replace(/AionCLI?/i, 'Omni CLI'),
                 defaultValue: `Send message to {{backend}}...`,
               })
             : t('conversation.chat.noModelSelected')

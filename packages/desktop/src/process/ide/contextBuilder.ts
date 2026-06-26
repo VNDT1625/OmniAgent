@@ -356,7 +356,7 @@ const renderBrief = (
       `User request: ${request}`,
       'Map only; source is not preloaded. Inspect listed paths lazily, then widen by search only when evidence points elsewhere.',
       'MTUI runtime: use `mtui --json` for repo search/read/write/verify; after writes check `diff --last`, and only accept stale confirmations after reviewing the diff excerpt.',
-      'Planning runtime: non-trivial work lives in `.aionui/specs/<slug>/`; execute claimed backend tasks; put temporary scripts under `plan/temporary/`.',
+      'Planning runtime: non-trivial work lives in `.omni/specs/<slug>/`; execute claimed backend tasks; put temporary scripts under `plan/temporary/`.',
     ].join('\n')
   );
   sections.push(slices.map((s) => renderSlice(s, maxSymbols)).join('\n\n'));

@@ -10,7 +10,9 @@ import { viteStaticCopy } from 'vite-plugin-static-copy';
 // Read the real AionUi version from the repo-root package.json.
 // `packages/desktop/package.json` is a workspace-internal placeholder pinned
 // at "0.0.0" — never use it for user-visible version strings.
-const rootPackageJson = JSON.parse(readFileSync(resolve(__dirname, '../../package.json'), 'utf-8')) as {
+const rootPackageJson = JSON.parse(
+  readFileSync(resolve(__dirname, '../../package.json'), 'utf-8').replace(/^\uFEFF/, '')
+) as {
   version: string;
 };
 

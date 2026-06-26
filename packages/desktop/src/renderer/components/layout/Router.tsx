@@ -70,6 +70,15 @@ const PanelRoute: React.FC<{ layout: React.ReactElement }> = ({ layout }) => {
           <Route path='/studio' element={withRouteFallback(Studio)} />
           <Route path='/manager' element={withRouteFallback(Manager)} />
           <Route path='/conversation/:id' element={withRouteFallback(Conversation)} />
+          {/* New top-level aliases for recent features (company, browser tools, testing, monitor, terminal, knowledge, realtime, git) */}
+          <Route path='/company' element={withRouteFallback(CompanySettings)} />
+          <Route path='/browser' element={withRouteFallback(BrowserSettings)} />
+          <Route path='/testing' element={withRouteFallback(TestingSettings)} />
+          <Route path='/monitor' element={withRouteFallback(MonitorSettings)} />
+          <Route path='/terminal' element={withRouteFallback(TerminalSettings)} />
+          <Route path='/knowledge' element={withRouteFallback(RealtimeKnowledgeSettings)} />
+          <Route path='/realtime' element={withRouteFallback(NewsSettings)} />
+          <Route path='/git' element={withRouteFallback(GitSettings)} />
           <Route
             path='/team/:id'
             element={TEAM_MODE_ENABLED ? withRouteFallback(TeamIndex) : <Navigate to='/guid' replace />}

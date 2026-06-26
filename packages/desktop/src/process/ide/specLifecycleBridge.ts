@@ -6,7 +6,7 @@
 
 /**
  * IDE spec-lifecycle bridge — manages Kiro-style planning directories under
- * `.aionui/specs/<slug>/` so Planning Mode has observable state instead of
+ * `.omni/specs/<slug>/` (with .aionui legacy fallback) so Planning Mode has observable state instead of
  * being only prompt text.
  *
  * Process boundary: Main-process (Node.js) module. No DOM APIs.
@@ -148,7 +148,16 @@ const emptyTaskCounts = (): SpecTaskCounts => ({
   blocked: 0,
 });
 
-const specsRoot = (rootPath: string): string => path.join(rootPath, '.aionui', 'specs');
+const specsRoot = (rootPath: string): string => {
+  // Prefer new .omni/specs, fallback to legacy .aionui/specs
+  const omni = path.join(rootPath, '.omni', 'specs');
+  const legacy = path.join(rootPath, '.aionui', 'specs');
+  try {
+    if (existsSync(omni)) return omni;
+  } catch {}
+  if (existsSync(legacy)) return legacy;
+  return omni;
+};
 
 const slugify = (title: string): string => {
   const slug = title
@@ -193,23 +202,29 @@ const readTextIfExists = async (filePath: string): Promise<string | null> => {
 const normalizeRepoPath = (value: string): string => value.replace(/\\/g, '/').replace(/^\/+/, '').trim();
 
 const readUnderstandStalePaths = async (rootPath: string): Promise<string[]> => {
-  const markerPath = path.join(rootPath, '.aionui', 'understand', 'stale.json');
-  const text = await readTextIfExists(markerPath);
-  if (!text) return [];
-  try {
-    const parsed = JSON.parse(text) as { paths?: unknown };
-    if (!Array.isArray(parsed.paths)) return [];
-    return Array.from(
-      new Set(
-        parsed.paths
-          .filter((item): item is string => typeof item === 'string')
-          .map(normalizeRepoPath)
-          .filter((item) => item.length > 0)
-      )
-    ).toSorted();
-  } catch {
-    return [];
+  const candidates = [
+    path.join(rootPath, '.omni', 'understand', 'stale.json'),
+    path.join(rootPath, '.aionui', 'understand', 'stale.json'),
+  ];
+  for (const markerPath of candidates) {
+    const text = await readTextIfExists(markerPath);
+    if (!text) continue;
+    try {
+      const parsed = JSON.parse(text) as { paths?: unknown };
+      if (!Array.isArray(parsed.paths)) return [];
+      return Array.from(
+        new Set(
+          parsed.paths
+            .filter((item): item is string => typeof item === 'string')
+            .map(normalizeRepoPath)
+            .filter((item) => item.length > 0)
+        )
+      ).toSorted();
+    } catch {
+      continue;
+    }
   }
+  return [];
 };
 
 const parseSemanticRefreshEntries = (text: string | null): unknown[] => {
