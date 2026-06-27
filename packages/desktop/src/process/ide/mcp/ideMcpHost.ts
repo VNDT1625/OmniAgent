@@ -27,7 +27,7 @@
 import * as http from 'node:http';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { buildIdeServer } from './ideMcpWiring';
+
 import { BUILTIN_IDE_NAME } from './ideServer';
 
 /** Path the SSE stream is established on (GET). */
@@ -40,10 +40,25 @@ const MESSAGE_PATH = '/message';
 export type IdeMcpHost = {
   /** The loopback base URL of the SSE endpoint. */
   url: string;
+  /** The loopback base URL of the health endpoint. */
+  healthUrl: string;
   /** The port the loopback server listens on. */
   port: number;
   /** Stop the host and close all connections. */
   close: () => Promise<void>;
+};
+
+export type IdeMcpHostOptions = {
+  /** Optional fixed port. Defaults to 0 (ephemeral). */
+  port?: number;
+  /** Optional server factory. Defaults to the Electron main-process wiring. */
+  buildServer?: () => McpServer;
+  /** Label included in logs and health output. */
+  serverName?: string;
+  /** Extra health metadata for standalone sidecars. */
+  health?: Record<string, string | number | boolean | null>;
+  /** Allow POST /shutdown for standalone sidecar stop commands. */
+  allowShutdown?: boolean;
 };
 
 /** Module-level singleton so repeated bootstraps reuse one host. */
@@ -54,8 +69,19 @@ let host: IdeMcpHost | undefined;
  *
  * @returns The running host (url + port + close), reused on subsequent calls.
  */
-export const startIdeMcpHost = async (): Promise<IdeMcpHost> => {
+export const startIdeMcpHost = async (options: IdeMcpHostOptions = {}): Promise<IdeMcpHost> => {
   if (host) return host;
+
+  const buildServer =
+    options.buildServer ??
+    ((): McpServer => {
+      // Keep Electron-tied wiring out of standalone sidecar module loading.
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { buildIdeServer } = require('./ideMcpWiring') as typeof import('./ideMcpWiring');
+      return buildIdeServer();
+    });
+  const serverName = options.serverName ?? BUILTIN_IDE_NAME;
+  const startedAt = new Date().toISOString();
 
   /** Active transports keyed by their session id, for routing POSTed messages. */
   const transports = new Map<string, SSEServerTransport>();
@@ -67,6 +93,33 @@ export const startIdeMcpHost = async (): Promise<IdeMcpHost> => {
   const handle = async (req: http.IncomingMessage, res: http.ServerResponse): Promise<void> => {
     const url = new URL(req.url ?? '/', 'http://127.0.0.1');
 
+    if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
+      const body = JSON.stringify(
+        {
+          ok: true,
+          server: serverName,
+          url: host?.url,
+          healthUrl: host?.healthUrl,
+          port: host?.port,
+          activeSessions: transports.size,
+          startedAt,
+          ...options.health,
+        },
+        null,
+        2
+      );
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' }).end(body);
+      return;
+    }
+
+    if (options.allowShutdown && req.method === 'POST' && url.pathname === '/shutdown') {
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' }).end('{"ok":true}');
+      setTimeout(() => {
+        void stopIdeMcpHost().then(() => process.exit(0));
+      }, 20);
+      return;
+    }
+
     // GET /sse → open a new SSE stream + MCP server for this client.
     if (req.method === 'GET' && url.pathname === SSE_PATH) {
       const transport = new SSEServerTransport(MESSAGE_PATH, res);
@@ -74,7 +127,7 @@ export const startIdeMcpHost = async (): Promise<IdeMcpHost> => {
       transport.onclose = () => {
         transports.delete(transport.sessionId);
       };
-      const mcp: McpServer = buildIdeServer();
+      const mcp: McpServer = buildServer();
       try {
         await mcp.connect(transport);
       } catch (error) {
@@ -102,7 +155,7 @@ export const startIdeMcpHost = async (): Promise<IdeMcpHost> => {
 
   const port = await new Promise<number>((resolve, reject) => {
     server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
+    server.listen(options.port ?? 0, '127.0.0.1', () => {
       const address = server.address();
       if (address && typeof address === 'object') resolve(address.port);
       else reject(new Error('[IdeMCP] Could not resolve the loopback port.'));
@@ -111,6 +164,7 @@ export const startIdeMcpHost = async (): Promise<IdeMcpHost> => {
 
   host = {
     url: `http://127.0.0.1:${port}${SSE_PATH}`,
+    healthUrl: `http://127.0.0.1:${port}/health`,
     port,
     close: () =>
       new Promise<void>((resolve) => {
@@ -119,7 +173,7 @@ export const startIdeMcpHost = async (): Promise<IdeMcpHost> => {
         server.close(() => resolve());
       }),
   };
-  console.log(`[IdeMCP] In-process MCP host listening on ${host.url} (server: ${BUILTIN_IDE_NAME}).`);
+  console.log(`[IdeMCP] MCP host listening on ${host.url} (server: ${serverName}, health: ${host.healthUrl}).`);
   return host;
 };
 

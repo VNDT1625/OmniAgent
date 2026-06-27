@@ -24,6 +24,7 @@
  * Process boundary: Main-process (Node.js) module — no DOM APIs.
  */
 
+import * as http from 'node:http';
 import { mcpService } from '@/common/adapter/ipcBridge';
 import { startIdeMcpHost } from './ideMcpHost';
 import { BUILTIN_IDE_NAME } from './ideServer';
@@ -34,6 +35,49 @@ const IDE_MCP_DESCRIPTION =
   'read files anywhere on disk, grep across the repo, jump to a symbol definition / references, and ' +
   'scan a repo into an import-graph summary. Shares behaviour with the IDE workspace.';
 
+const DEFAULT_OMNI_SIDECAR_PORT = 17890;
+
+type IdeMcpEndpoint = { url: string; source: 'sidecar' | 'in-process' };
+
+type SidecarHealth = { ok?: boolean; url?: string; server?: string; source?: string };
+
+const resolveIdeMcpEndpoint = async (): Promise<IdeMcpEndpoint> => {
+  const sidecar = await detectStandaloneSidecar();
+  if (sidecar) return sidecar;
+  const host = await startIdeMcpHost();
+  return { url: host.url, source: 'in-process' };
+};
+
+const detectStandaloneSidecar = async (): Promise<IdeMcpEndpoint | null> => {
+  const port = Number(process.env.OMNI_MCP_PORT || DEFAULT_OMNI_SIDECAR_PORT);
+  return new Promise((resolve) => {
+    const req = http.get({ host: '127.0.0.1', port, path: '/health', timeout: 1000 }, (res) => {
+      let body = '';
+      res.setEncoding('utf-8');
+      res.on('data', (chunk: string) => {
+        body += chunk;
+      });
+      res.on('end', () => {
+        try {
+          const health = JSON.parse(body) as SidecarHealth;
+          if (res.statusCode === 200 && health.ok && health.url && health.source === 'standalone') {
+            resolve({ url: health.url, source: 'sidecar' });
+            return;
+          }
+        } catch {
+          // Ignore malformed health responses and fall back to the in-process host.
+        }
+        resolve(null);
+      });
+    });
+    req.on('error', () => resolve(null));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(null);
+    });
+  });
+};
+
 /**
  * Start the in-process IDE MCP host and ensure the MCP catalog has an `sse`
  * server entry pointing at its loopback URL.
@@ -43,10 +87,10 @@ const IDE_MCP_DESCRIPTION =
  */
 export const ensureIdeMcpRegistered = async (): Promise<boolean> => {
   try {
-    const host = await startIdeMcpHost();
+    const endpoint = await resolveIdeMcpEndpoint();
 
-    const transport = { type: 'sse' as const, url: host.url };
-    const original_json = JSON.stringify({ mcpServers: { [BUILTIN_IDE_NAME]: { url: host.url } } }, null, 2);
+    const transport = { type: 'sse' as const, url: endpoint.url };
+    const original_json = JSON.stringify({ mcpServers: { [BUILTIN_IDE_NAME]: { url: endpoint.url } } }, null, 2);
 
     const existing = (await mcpService.listServers.invoke()) ?? [];
     const current = existing.find((server) => server.name === BUILTIN_IDE_NAME);
@@ -64,18 +108,18 @@ export const ensureIdeMcpRegistered = async (): Promise<boolean> => {
           },
         ],
       });
-      console.log(`[IdeMCP] Registered "${BUILTIN_IDE_NAME}" at ${host.url}.`);
+      console.log(`[IdeMCP] Registered ${BUILTIN_IDE_NAME} at ${endpoint.url} (${endpoint.source}).`);
       return true;
     }
 
     // Refresh the URL if the ephemeral port changed since the last boot.
-    const sameUrl = current.transport.type === 'sse' && current.transport.url === host.url;
+    const sameUrl = current.transport.type === 'sse' && current.transport.url === endpoint.url;
     if (!sameUrl) {
       await mcpService.updateServer.invoke({
         id: current.id,
         data: { transport, original_json, builtin: true },
       });
-      console.log(`[IdeMCP] Updated "${BUILTIN_IDE_NAME}" URL → ${host.url}.`);
+      console.log(`[IdeMCP] Updated ${BUILTIN_IDE_NAME} URL -> ${endpoint.url} (${endpoint.source}).`);
     }
     return true;
   } catch (error) {

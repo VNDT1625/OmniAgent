@@ -168,6 +168,32 @@ export type IdeMcpService = {
   ) => Promise<{ code: number; stdout: string; stderr: string; timedOut: boolean; durationMs: number }>;
 };
 
+export type TerminalRunResult = {
+  command: string;
+  args: string[];
+  cwd: string;
+  exitCode: number | null;
+  timedOut: boolean;
+  durationMs: number;
+  stdout: string;
+  stderr: string;
+};
+
+export type TerminalRunOptions = {
+  cwd?: string;
+  timeoutMs?: number;
+};
+
+export type TerminalAgentService = {
+  run: (command: string, args?: string[], options?: TerminalRunOptions) => Promise<TerminalRunResult>;
+};
+
+export type GitAgentService = {
+  status: (rootPath: string) => Promise<TerminalRunResult>;
+  diff: (rootPath: string, opts?: { staged?: boolean; path?: string; maxBytes?: number }) => Promise<TerminalRunResult>;
+  log: (rootPath: string, maxCount?: number) => Promise<TerminalRunResult>;
+};
+
 /** Injected collaborators for {@link createIdeServer}. */
 export type IdeServerDeps = {
   /** The fs-backed IDE service (real in production, faked in tests). */
@@ -214,6 +240,10 @@ export type IdeServerDeps = {
    * external host can echo back the session id issued by `omni_bootstrap_session`.
    */
   toolGuard?: ToolGuard;
+  /** Optional process runner for standalone rescue commands. */
+  terminal?: TerminalAgentService;
+  /** Optional Git helper for standalone rescue commands. */
+  git?: GitAgentService;
 };
 
 /** The subset of the Team Edit service the agent tools need. */
@@ -424,6 +454,20 @@ const renderSymbolHits = (hits: IdeSymbolHit[], label: string): string => {
 const renderRecallSection = (label: string, items: Array<{ kind: string; id: string; text: string }>): string => {
   if (items.length === 0) return '';
   return [`## ${label}`, ...items.map((it) => `- [${it.kind}] (${it.id}) ${it.text}`)].join('\n');
+};
+
+const renderTerminalResult = (result: TerminalRunResult, maxBytes?: number): string => {
+  const cap = maxBytes && maxBytes > 0 ? maxBytes : 20_000;
+  const clip = (value: string): string => (value.length > cap ? `${value.slice(0, cap)}\n...[truncated]` : value);
+  return JSON.stringify(
+    {
+      ...result,
+      stdout: clip(result.stdout),
+      stderr: clip(result.stderr),
+    },
+    null,
+    2
+  );
 };
 
 /**
@@ -900,6 +944,79 @@ Input:
         return parts.join('\n');
       })
   );
+  // --- terminal_run --------------------------------------------------------
+  if (deps.terminal) {
+    const terminal = deps.terminal;
+    server.tool(
+      'terminal_run',
+      `Run one local command for rescue/debugging. Commands are executed without a shell by default; pass
+PowerShell, cmd, bash, or another shell explicitly when shell behavior is required.
+
+Input:
+- command: executable to run (required)
+- args: optional argument array
+- cwd: optional working directory; defaults to sidecar working directory
+- timeoutMs: optional timeout, capped by the sidecar implementation.`,
+      {
+        command: z.string().describe('Executable to run.'),
+        args: z.array(z.string()).optional().describe('Arguments passed to the executable.'),
+        cwd: z.string().optional().describe('Working directory.'),
+        timeoutMs: z.number().optional().describe('Timeout in milliseconds.'),
+        maxBytes: z.number().optional().describe('Maximum stdout/stderr bytes returned per stream.'),
+      },
+      ({ command, args, cwd, timeoutMs, maxBytes }) =>
+        guard(async () => renderTerminalResult(await terminal.run(command, args, { cwd, timeoutMs }), maxBytes))
+    );
+  }
+
+  // --- git_* ---------------------------------------------------------------
+  if (deps.git) {
+    const git = deps.git;
+    server.tool(
+      'git_status',
+      `Show the repository status using git status --short --branch.
+
+Input:
+- rootPath: absolute path of the Git repository (required).`,
+      { rootPath: z.string().describe('Absolute path of the Git repository.') },
+      ({ rootPath }) => guard(async () => renderTerminalResult(await git.status(rootPath)))
+    );
+
+    server.tool(
+      'git_diff',
+      `Show a Git diff for rescue inspection.
+
+Input:
+- rootPath: absolute path of the Git repository (required)
+- staged: when true, show staged diff
+- path: optional pathspec
+- maxBytes: optional output cap per stream.`,
+      {
+        rootPath: z.string().describe('Absolute path of the Git repository.'),
+        staged: z.boolean().optional().describe('Show staged diff.'),
+        path: z.string().optional().describe('Optional pathspec.'),
+        maxBytes: z.number().optional().describe('Maximum stdout/stderr bytes returned per stream.'),
+      },
+      ({ rootPath, staged, path, maxBytes }) =>
+        guard(async () => renderTerminalResult(await git.diff(rootPath, { staged, path, maxBytes }), maxBytes))
+    );
+
+    server.tool(
+      'git_log',
+      `Show recent Git commits for orientation.
+
+Input:
+- rootPath: absolute path of the Git repository (required)
+- maxCount: optional number of commits, default 10.`,
+      {
+        rootPath: z.string().describe('Absolute path of the Git repository.'),
+        maxCount: z.number().optional().describe('Number of commits to show.'),
+      },
+      ({ rootPath, maxCount }) => guard(async () => renderTerminalResult(await git.log(rootPath, maxCount)))
+    );
+  }
+
+  // --- ide_quick_test ------------------------------------------------------
   // Only exposed when a Quick Test runner is injected (production wiring).
   if (deps.quickTest) {
     const quickTest = deps.quickTest;
