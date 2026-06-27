@@ -1,7 +1,7 @@
 {
   "title": "外部 MCP 网关",
-  "description": "允许外部 AI 主机（Claude Desktop、Cursor、ChatGPT）通过受令牌保护的回环端点调用 AionUi 的 IDE 工具。默认关闭；仅本机（127.0.0.1）可访问。",
-  "internalHint": "AionUi 内置 AI 已直接使用 MTUI、终端和 IDE 工具。仅在其他本地应用或 Web AI 需要访问时启用此网关。",
+  "description": "允许外部 AI 主机（Claude Desktop、Cursor、ChatGPT）通过受令牌保护的回环端点调用 Omni 的 IDE 工具。默认关闭；仅本机（127.0.0.1）可访问。",
+  "internalHint": "Omni 内置 AI 已直接使用 MTUI、终端和 IDE 工具。仅在其他本地应用或 Web AI 需要访问时启用此网关。",
   "enable": "启用网关",
   "enableHint": "启用后，回环 HTTP+SSE 服务器启动，外部主机可凭下方 Bearer Token 连接。",
   "port": "回环端口",

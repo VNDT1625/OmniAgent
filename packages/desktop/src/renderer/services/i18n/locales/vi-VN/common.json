@@ -59,10 +59,10 @@
   "historyBack": "Quay lại",
   "more": "Thêm",
   "refresh": "Làm mới",
-  "tray.showWindow": "Hiện AionUi",
+  "tray.showWindow": "Hiện Omni",
   "tray.newChat": "Trò chuyện mới",
   "tray.closeToTray": "Thu vào khay hệ thống",
-  "tray.about": "Giới thiệu AionUi",
+  "tray.about": "Giới thiệu Omni",
   "tray.restart": "Khởi động lại",
   "tray.quit": "Thoát",
   "tray.runningTasks": "Tác vụ đang chạy",
@@ -73,12 +73,12 @@
   "backendStartup": {
     "incompatibleRuntime": {
       "title": "Hệ thống này không được hỗ trợ bởi backend đi kèm",
-      "description": "AionUi đã mở, nhưng backend AionCore cục bộ không thể chạy trên phiên bản Linux này. Vui lòng nâng cấp lên bản phân phối Linux được hỗ trợ và khởi động lại AionUi.",
+      "description": "Omni đã mở, nhưng backend Omni Core cục bộ không thể chạy trên phiên bản Linux này. Vui lòng nâng cấp lên bản phân phối Linux được hỗ trợ và khởi động lại Omni.",
       "requiredVersions": "Các ký hiệu runtime cần thiết: {{versions}}"
     },
     "incompleteInstallation": {
-      "title": "Cài đặt AionUi chưa hoàn chỉnh",
-      "description": "Bản cài đặt này thiếu tài nguyên cục bộ cần thiết, AionCore không thể khởi động. Vui lòng tải và cài đặt lại AionUi phiên bản mới nhất.",
+      "title": "Cài đặt Omni chưa hoàn chỉnh",
+      "description": "Bản cài đặt này thiếu tài nguyên cục bộ cần thiết, Omni Core không thể khởi động. Vui lòng tải và cài đặt lại Omni phiên bản mới nhất.",
       "downloadLatest": "Tải phiên bản mới nhất",
       "sendDiagnostics": "Gửi thông tin chẩn đoán"
     }

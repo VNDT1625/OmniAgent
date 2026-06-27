@@ -10,7 +10,7 @@ import MonitorPage from './MonitorPage';
 
 /**
  * Bug Monitor settings page (Yêu cầu 6). Registered at `/settings/monitor`;
- * renders inside the shared settings chrome (mirrors the other OmniAgent pages).
+ * renders inside the shared settings chrome (mirrors the other Tomni Agentic pages).
  */
 const MonitorSettings: React.FC = () => {
   return (

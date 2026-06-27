@@ -1,7 +1,7 @@
 {
   "navTitle": "资源",
   "title": "资源面板",
-  "subtitle": "查看 AionUi 如何在你的机器上平衡繁重任务，并调整限制。",
+  "subtitle": "查看 Omni 如何在你的机器上平衡繁重任务，并调整限制。",
   "loadError": "无法加载资源状态，资源协调器可能尚未启动。",
   "coordinatorTitle": "资源协调器",
   "coordinatorSubtitle": "重任务的租约预算与自动平衡。",
@@ -10,7 +10,7 @@
     "detailed": "详细",
     "detailedDesc": "由你手动设置每一项限制。",
     "suggest": "建议",
-    "suggestDesc": "AionUi 读取机器配置并自动平衡。",
+    "suggestDesc": "Omni 读取机器配置并自动平衡。",
     "changeError": "无法切换模式。"
   },
   "preset": {

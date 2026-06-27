@@ -31,7 +31,7 @@
   },
   "describe": {
     "title": "설명으로 생성",
-    "subtitle": "프로젝트나 목표를 설명하면 AionUi가 적합한 역할 구성을 설계합니다.",
+    "subtitle": "프로젝트나 목표를 설명하면 Omni가 적합한 역할 구성을 설계합니다.",
     "idLabel": "회사 ID",
     "idPlaceholder": "예: acme",
     "placeholder": "프로젝트나 목표를 설명하세요. 예: 세련된 UI, 동기화 백엔드, 자동화 테스트를 갖춘 크로스 플랫폼 메모 앱을 만들기.",

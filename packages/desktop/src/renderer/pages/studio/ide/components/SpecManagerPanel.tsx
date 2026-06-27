@@ -268,7 +268,7 @@ const SpecManagerPanel: React.FC<SpecManagerPanelProps> = ({ rootPath }) => {
                 {t(`ide.spec.health.${status}`)}
               </Tag>
             </div>
-            <span className='text-12px text-t-secondary truncate'>{`.aionui/specs/${analysis.slug}/`}</span>
+            <span className='text-12px text-t-secondary truncate'>{`.omni/specs/${analysis.slug}/`}</span>
             <p className='text-12px text-t-tertiary m-0 mt-2px leading-snug'>{t('ide.spec.scoreHint')}</p>
           </div>
           <Button

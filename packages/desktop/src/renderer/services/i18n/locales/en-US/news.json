@@ -21,7 +21,7 @@
     "feelsLike": "H:{{max}}° L:{{min}}°",
     "useAuto": "Auto"
   },
-  "desktopOnly": "The News reader is only available in the AionUi desktop app.",
+  "desktopOnly": "The News reader is only available in the Omni desktop app.",
   "bridgeUnavailable": "News service is not running yet. The feature will be ready once the desktop bridge is connected.",
   "retry": "Retry",
   "refresh": "Refresh all",

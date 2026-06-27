@@ -1,11 +1,11 @@
 {
   "name": "omni-agentic",
   "version": "2.1.8",
-  "description": "Omni Agentic desktop AI agent interface.",
+  "description": "Tomni Agentic desktop AI agent interface.",
   "keywords": [],
   "license": "Apache-2.0",
   "author": {
-    "name": "Omni Agentic",
+    "name": "Tomni Agentic",
     "email": "service@aionui.com"
   },
   "workspaces": [
@@ -279,5 +279,5 @@
   "patchedDependencies": {
     "7zip-bin@5.2.0": "patches/7zip-bin@5.2.0.patch"
   },
-  "productName": "Omni Agentic"
+  "productName": "Tomni Agentic"
 }

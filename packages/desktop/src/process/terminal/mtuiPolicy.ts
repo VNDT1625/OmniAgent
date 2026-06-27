@@ -69,6 +69,7 @@ const DIRECT_WRITE_PATTERNS: RegExp[] = [
 const IGNORED_POLICY_PATHS = [
   '.git/',
   '.mtui/',
+  '.omni/understand/',
   '.aionui/understand/',
   'node_modules/',
   'dist/',

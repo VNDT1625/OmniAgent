@@ -3,7 +3,7 @@
   "title": "Terminal yöneticisi",
   "subtitle": "Etkileşimli kabuklar çalıştırın, makinedeki terminalleri sayın ve betikleri zamanlayın.",
   "runningCount": "{{count}} çalışıyor",
-  "desktopOnly": "Terminal yöneticisi yalnızca AionUi masaüstü uygulamasında kullanılabilir.",
+  "desktopOnly": "Terminal yöneticisi yalnızca Omni masaüstü uygulamasında kullanılabilir.",
   "bridgeUnavailable": "Terminal hizmeti henüz çalışmıyor. Masaüstü köprüsü bağlandığında özellik hazır olacak.",
   "retry": "Yeniden dene",
   "tabs": {
@@ -47,7 +47,7 @@
     "title": "Sistem terminalleri",
     "count": "{{count}} bulundu",
     "refresh": "Yenile",
-    "hint": "İşletim sisteminin bildirdiği kabuk süreçlerinin salt okunur görünümü. AionUi bunlarla etkileşime giremez, yalnızca sayar ve listeler.",
+    "hint": "İşletim sisteminin bildirdiği kabuk süreçlerinin salt okunur görünümü. Omni bunlarla etkileşime giremez, yalnızca sayar ve listeler.",
     "empty": "Makinede kabuk süreci tespit edilmedi."
   },
   "schedule": {
@@ -82,7 +82,7 @@
     "statusOk": "Son çalışma başarılı",
     "statusError": "Son çalışma başarısız",
     "defaultShell": "Varsayılan kabuk",
-    "hint": "Yalnızca AionUi çalışırken tetiklenir. Yalnızca bu makinede yereldir ve uzak kanallara açılmaz.",
+    "hint": "Yalnızca Omni çalışırken tetiklenir. Yalnızca bu makinede yereldir ve uzak kanallara açılmaz.",
     "empty": "Henüz zamanlama yok. Bir cron ifadesiyle araç başlatmak için bir tane ekleyin."
   }
 }

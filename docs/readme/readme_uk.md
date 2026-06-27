@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="../../resources/aionui-banner-1.png" alt="AionUi - Спільна робота з AI-агентами" width="100%">
+  <img src="../../resources/omni-banner-1.png" alt="Omni - Спільна робота з AI-агентами" width="100%">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/iOfficeAI/AionUi?style=flat-square&color=32CD32" alt="Версія">
+  <img src="https://img.shields.io/github/v/release/iOfficeAI/Omni?style=flat-square&color=32CD32" alt="Версія">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-32CD32?style=flat-square&logo=apache&logoColor=white" alt="Ліцензія">
   &nbsp;
@@ -24,17 +24,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/AionUi/releases">
+  <a href="https://github.com/iOfficeAI/Omni/releases">
     <img src="https://img.shields.io/badge/⬇️%20Завантажити-Останній%20реліз-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="Завантажити останній реліз" height="50">
   </a>
 </p>
 
 <p align="center">
-  <a href="../../readme.md">English</a> | <a href="./readme_ch.md">简体中文</a> | <a href="./readme_tw.md">繁體中文</a> | <a href="./readme_jp.md">日本語</a> | <a href="./readme_ko.md">한국어</a> | <a href="./readme_es.md">Español</a> | <a href="./readme_pt.md">Português</a> | <a href="./readme_tr.md">Türkçe</a> | <a href="./readme_ru.md">Русский</a> | <strong>Українська</strong> | <a href="https://www.aionui.com" target="_blank">Офіційний сайт</a>
+  <a href="../../readme.md">English</a> | <a href="./readme_ch.md">简体中文</a> | <a href="./readme_tw.md">繁體中文</a> | <a href="./readme_jp.md">日本語</a> | <a href="./readme_ko.md">한국어</a> | <a href="./readme_es.md">Español</a> | <a href="./readme_pt.md">Português</a> | <a href="./readme_tr.md">Türkçe</a> | <a href="./readme_ru.md">Русский</a> | <strong>Українська</strong> | <a href="https://www.omni.com" target="_blank">Офіційний сайт</a>
 </p>
 
 <p align="center">
-  <strong>💬 Спільнота:</strong> <a href="https://discord.gg/2QAwJn7Egx" target="_blank">Discord (English)</a> | <a href="../../resources/wx-9.png" target="_blank">微信 (中文群)</a> | <a href="https://twitter.com/AionUI" target="_blank">Twitter</a>
+  <strong>💬 Спільнота:</strong> <a href="https://discord.gg/2QAwJn7Egx" target="_blank">Discord (English)</a> | <a href="../../resources/wx-9.png" target="_blank">微信 (中文群)</a> | <a href="https://twitter.com/Omni" target="_blank">Twitter</a>
 </p>
 
 ---
@@ -44,7 +44,7 @@
 <p align="center">
 
 [✨ Cowork у дії](#-cowork-у-дії) ·
-[🤔 Чому варто обрати AionUi?](#-чому-варто-обрати-aionui-замість-claude-cowork) ·
+[🤔 Чому варто обрати Omni?](#-чому-варто-обрати-omni-замість-claude-cowork) ·
 [🚀 Швидкий старт](#-швидкий-старт) ·
 [💬 Спільнота](#-спільнота--підтримка)
 
@@ -54,9 +54,9 @@
 
 ## Cowork — AI-агенти, що працюють разом із вами
 
-**AionUi — це більше, ніж просто чат-клієнт.** Це платформа для спільної роботи (Cowork), де AI-агенти працюють пліч-о-пліч із вами на вашому комп'ютері: читають файли, пишуть код, шукають в інтернеті та автоматизують завдання. Ви бачите все, що робить агент, і завжди зберігаєте контроль.
+**Omni — це більше, ніж просто чат-клієнт.** Це платформа для спільної роботи (Cowork), де AI-агенти працюють пліч-о-пліч із вами на вашому комп'ютері: читають файли, пишуть код, шукають в інтернеті та автоматизують завдання. Ви бачите все, що робить агент, і завжди зберігаєте контроль.
 
-|                                    | Традиційні AI чат-клієнти | **AionUi (Cowork)**                                                                                                  |
+|                                    | Традиційні AI чат-клієнти | **Omni (Cowork)**                                                                                                  |
 | :--------------------------------- | :------------------------ | :------------------------------------------------------------------------------------------------------------------- |
 | AI може працювати з вашими файлами | Обмежено або ні           | **Так — вбудований агент із повним доступом до файлів**                                                              |
 | AI може виконувати багато кроків   | Обмежено                  | **Так — автономно за вашим підтвердженням**                                                                          |
@@ -66,14 +66,14 @@
 | Ціна                               | Безкоштовно / Платно      | **Безкоштовно та з відкритим кодом**                                                                                 |
 
 <p align="center">
-  <img src="../../resources/offica-ai BANNER-function.png" alt="AionUi Cowork Platform" width="800">
+  <img src="../../resources/offica-ai BANNER-function.png" alt="Omni Cowork Platform" width="800">
 </p>
 
 ---
 
 ## Вбудований агент — Встанови та працюй, Нуль налаштувань
 
-AionUi постачається з повноцінним рушієм AI-агентів. На відміну від інструментів, що вимагають окремого встановлення CLI-агентів, **AionUi працює одразу після встановлення**.
+Omni постачається з повноцінним рушієм AI-агентів. На відміну від інструментів, що вимагають окремого встановлення CLI-агентів, **Omni працює одразу після встановлення**.
 
 - **Не потрібно встановлювати CLI-інструменти** — рушій агента вже вбудований
 - **Жодних складних налаштувань** — увійдіть через Google або додайте будь-який API ключ
@@ -140,9 +140,9 @@ AionUi постачається з повноцінним рушієм AI-аге
 
 ## Мульти-агентний режим — Вже маєте CLI-агентів? Додайте їх
 
-Якщо ви вже використовуєте Claude Code, Codex, Hermes Agent або OpenClaw, AionUi автоматично виявить їх і дозволить працювати з усіма ними разом із вбудованим агентом.
+Якщо ви вже використовуєте Claude Code, Codex, Hermes Agent або OpenClaw, Omni автоматично виявить їх і дозволить працювати з усіма ними разом із вбудованим агентом.
 
-**Підтримувані агенти:** Вбудований агент • Claude Code • Codex • Qwen Code • Goose AI • OpenClaw • Augment Code • CodeBuddy • Kimi CLI • OpenCode • Factory Droid • GitHub Copilot • Qoder CLI • Mistral Vibe • Nanobot • Aion CLI (aionrs, Rust-бекенд-сервіс, що постачається з AionUi) • Snow CLI • Hermes Agent • Cursor Agent та інші
+**Підтримувані агенти:** Вбудований агент • Claude Code • Codex • Qwen Code • Goose AI • OpenClaw • Augment Code • CodeBuddy • Kimi CLI • OpenCode • Factory Droid • GitHub Copilot • Qoder CLI • Mistral Vibe • Nanobot • Tomni Agentic (aionrs, Rust-бекенд-сервіс, що постачається з Omni) • Snow CLI • Hermes Agent • Cursor Agent та інші
 
 <p align="center">
   <img src="../../resources/multi-agent支持openclaw.gif" alt="Мульти-агентний режим" width="800">
@@ -159,11 +159,11 @@ AionUi постачається з повноцінним рушієм AI-аге
 Запускайте кілька AI-агентів як організовану команду: агент **Leader** отримує ваші інструкції, ділить їх на підзадачі і делегує агентам **Teammate** через вбудований Team MCP Server. Teammate-агенти виконують завдання паралельно, обмінюються результатами через асинхронну поштову скриньку та записують у спільну дошку завдань.
 
 <p align="center">
-  <img src="../../resources/AionUi_team.gif" alt="Team Mode overview" width="800">
+  <img src="../../resources/Omni_team.gif" alt="Team Mode overview" width="800">
 </p>
 
-- **Паралельне виконання кількох агентів** — Leader ділить завдання на підзадачі і делегує паралельно працюючим Teammate-агентам; кожен Teammate використовує свою модель через ACP (Agent Communication Protocol, шар координації мульти-агентності AionUi), Gemini або Aionrs
-- **Оркестрація Leader** — Leader призначає, відстежує та агрегує результати; підтримувані бекенди: Claude Code, Codex, Hermes Agent, Gemini, Snow CLI, Aion CLI
+- **Паралельне виконання кількох агентів** — Leader ділить завдання на підзадачі і делегує паралельно працюючим Teammate-агентам; кожен Teammate використовує свою модель через ACP (Agent Communication Protocol, шар координації мульти-агентності Omni), Gemini або Aionrs
+- **Оркестрація Leader** — Leader призначає, відстежує та агрегує результати; підтримувані бекенди: Claude Code, Codex, Hermes Agent, Gemini, Snow CLI, Tomni Agentic
 - **Ізольований робочий простір команди** — всі агенти спільно використовують одну папку; кожен має свій діалог підтвердження дозволів із значком на бічній панелі для очікуваних підтверджень
 
 <details>
@@ -172,7 +172,7 @@ AionUi постачається з повноцінним рушієм AI-аге
 <br>
 
 - **Спільний робочий простір** — всі агенти читають/записують одну папку; файлова панель залишається видимою протягом усього процесу
-- **Підтримувані бекенди** — Claude Code, Codex, Gemini, Snow CLI, Aion CLI (aionrs); інші ACP-бекенди з `mcpCapabilities.stdio` підтримуються автоматично
+- **Підтримувані бекенди** — Claude Code, Codex, Gemini, Snow CLI, Tomni Agentic (aionrs); інші ACP-бекенди з `mcpCapabilities.stdio` підтримуються автоматично
 - **Динамічне масштабування** — додавайте або видаляйте Teammate-агентів під час роботи команди; мовчазні агенти автоматично переходять у статус failed із можливістю видалення в один клік
 - **Детальні дозволи** — кожен агент має свій діалог підтвердження дозволів; значок на бічній панелі показує очікувані підтвердження
 - **Обмін файлами** — Leader може передавати вкладення файлів Teammate-агентам
@@ -183,7 +183,7 @@ AionUi постачається з повноцінним рушієм AI-аге
 
 ## Будь-який API ключ, Повна потужність Cowork
 
-Інші додатки дають лише вікно чату. **AionUi дає повноцінного агента для спільної роботи.**
+Інші додатки дають лише вікно чату. **Omni дає повноцінного агента для спільної роботи.**
 
 | Ваш API ключ                                | Що ви отримуєте             |
 | :------------------------------------------ | :-------------------------- |
@@ -193,7 +193,7 @@ AionUi постачається з повноцінним рушієм AI-аге
 | Ollama / LM Studio (локально)               | Локальний Cowork агент      |
 | Шлюз NewAPI                                 | Доступ до 20+ моделей       |
 
-Ті ж самі можливості — читання/запис файлів, веб-пошук, генерація зображень — незалежно від того, яка модель використовується. AionUi підтримує **30+ AI-платформ**.
+Ті ж самі можливості — читання/запис файлів, веб-пошук, генерація зображень — незалежно від того, яка модель використовується. Omni підтримує **30+ AI-платформ**.
 
 <p align="center">
   <img src="../../resources/llm_newapi.png" alt="Підтримка багатьох моделей" width="800">
@@ -221,7 +221,7 @@ AionUi постачається з повноцінним рушієм AI-аге
 _Система асистентів із 21 вбудованим професіоналом та трирівневою системою навичок. Створюйте та керуйте власними асистентами та навичками._
 
 - **Створюйте власних асистентів** — визначте правила та можливості
-- **Трирівневі навички** — вбудовані навички (поставляються з AionUi), власні навички (ваші особисті) та Extension-навички (від сторонніх розширень); вмикайте/вимикайте для кожної розмови з індикатором навичок
+- **Трирівневі навички** — вбудовані навички (поставляються з Omni), власні навички (ваші особисті) та Extension-навички (від сторонніх розширень); вмикайте/вимикайте для кожної розмови з індикатором навичок
 - **Контроль для кожної розмови** — індикатор навичок у заголовку чату показує активні навички поточної розмови
 
 <p align="center">
@@ -255,7 +255,7 @@ _Система асистентів із 21 вбудованим професі
 - **🔧 OpenClaw Setup** — Налаштування інтеграції з OpenClaw
 - **📖 Story Roleplay** — Рольові ігри (сумісно з SillyTavern)
 
-**Навички**: навички з трьох джерел — вбудовані (поставляються з AionUi), власні (ваші особисті) та Extension (через Extension SDK). Вбудовані: `pptx`, `docx`, `pdf`, `xlsx`, `mermaid` та інші.
+**Навички**: навички з трьох джерел — вбудовані (поставляються з Omni), власні (ваші особисті) та Extension (через Extension SDK). Вбудовані: `pptx`, `docx`, `pdf`, `xlsx`, `mermaid` та інші.
 
 </details>
 
@@ -315,7 +315,7 @@ _Налаштуйте один раз, і AI-агент працюватиме �
 - **Прив'язка до розмови** — кожне завдання прив'язане до розмови, зберігаючи контекст та історію
 - **Автоматичне виконання** — завдання виконуються автоматично у запланований час, надсилаючи повідомлення до розмови
 - **Просте керування** — створюйте, змінюйте, вмикайте/вимикайте, видаляйте та переглядайте заплановані завдання у будь-який час
-- **Режим без сну** — AionUi автоматично запобігає переходу системи у сплячий режим, поки активні завдання, та визначає пропущені тригери після пробудження
+- **Режим без сну** — Omni автоматично запобігає переходу системи у сплячий режим, поки активні завдання, та визначає пропущені тригери після пробудження
 - **Розширена конфігурація** — кожне завдання може мати власні налаштування моделі, робочого каталогу та інтенсивності міркувань
 
 </details>
@@ -337,16 +337,16 @@ _10+ форматів: PDF, Word, Excel, PPT, код, Markdown, зображен
 _Пакетне перейменування, автоматичне впорядкування, розумна класифікація та злиття файлів._
 
 <p align="center">
-  <img src="../../resources/aionui sort file 2.gif" alt="Керування файлами" width="800">
+  <img src="../../resources/omni sort file 2.gif" alt="Керування файлами" width="800">
 </p>
 
 ---
 
-## 🤔 Чому варто обрати AionUi замість Claude Cowork?
+## 🤔 Чому варто обрати Omni замість Claude Cowork?
 
-AionUi — це **безкоштовний Multi-AI Agent десктоп**. На відміну від Claude Cowork, який працює лише на macOS і обмежений лише Claude, AionUi — це версія з підтримкою всіх моделей та платформ.
+Omni — це **безкоштовний Multi-AI Agent десктоп**. На відміну від Claude Cowork, який працює лише на macOS і обмежений лише Claude, Omni — це версія з підтримкою всіх моделей та платформ.
 
-| Параметр      | Claude Cowork | AionUi                                                |
+| Параметр      | Claude Cowork | Omni                                                |
 | :------------ | :------------ | :---------------------------------------------------- |
 | ОС            | Тільки macOS  | macOS / Windows / Linux                               |
 | Моделі        | Тільки Claude | Gemini, Claude, DeepSeek, OpenAI, Ollama, ...         |
@@ -361,7 +361,7 @@ AionUi — це **безкоштовний Multi-AI Agent десктоп**. На
 ### Встановлення
 
 <p>
-  <a href="https://github.com/iOfficeAI/AionUi/releases">
+  <a href="https://github.com/iOfficeAI/Omni/releases">
     <img src="https://img.shields.io/badge/Завантажити-Останній%20реліз-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="Завантажити останній реліз" height="50">
   </a>
 </p>
@@ -370,12 +370,12 @@ AionUi — це **безкоштовний Multi-AI Agent десктоп**. На
 
 ```bash
 # Або macOS через Homebrew
-brew install aionui
+brew install omni
 ```
 
 ### Початок роботи за 3 кроки
 
-1. **Встановіть** AionUi
+1. **Встановіть** Omni
 2. **Увійдіть** через Google або додайте API ключ
 3. **Почніть працювати** — вбудований агент уже готовий до дії
 
@@ -386,13 +386,13 @@ brew install aionui
 **Ваші ідеї важливі!** Ми цінуємо кожен відгук.
 
 <p align="center">
-  <a href="https://x.com/AionUi" target="_blank">
+  <a href="https://x.com/Omni" target="_blank">
     <img src="../../resources/contactus-x.png" alt="Зв'яжіться з нами в X" width="600">
   </a>
 </p>
 
-- [GitHub Discussions](https://github.com/iOfficeAI/AionUi/discussions) — діліться ідеями
-- [Повідомити про проблему](https://github.com/iOfficeAI/AionUi/issues) — баги та запити функцій
+- [GitHub Discussions](https://github.com/iOfficeAI/Omni/discussions) — діліться ідеями
+- [Повідомити про проблему](https://github.com/iOfficeAI/Omni/issues) — баги та запити функцій
 - [Discord](https://discord.gg/2QAwJn7Egx) — англомовна спільнота
 
 ### Внесок у проект
@@ -420,8 +420,8 @@ bun run test       # запустити юніт-тести
 ## Contributors
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/AionUi/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=iOfficeAI/AionUi&max=100" alt="Contributors" />
+  <a href="https://github.com/iOfficeAI/Omni/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=iOfficeAI/Omni&max=100" alt="Contributors" />
   </a>
 </p>
 

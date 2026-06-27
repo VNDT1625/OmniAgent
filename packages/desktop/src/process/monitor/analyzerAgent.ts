@@ -69,7 +69,7 @@ const firstApiKey = (apiKeys: string): string =>
 
 /** The system instruction defining the analyzer's job + strict output shape. */
 const SYSTEM_PROMPT = [
-  'You are a senior software engineer analysing a bug report from an Electron + TypeScript desktop app (OmniAgent, a fork of AionUi).',
+  'You are a senior software engineer analysing a bug report from an Electron + TypeScript desktop app (Tomni Agentic, a fork of AionUi).',
   'Given the error and the relevant source snippets, identify the ROOT CAUSE and propose a MINIMAL, safe fix.',
   'Respond with exactly ONE JSON object (optionally inside a ```json fenced block) and nothing else, with this shape:',
   '{',

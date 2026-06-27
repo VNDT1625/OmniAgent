@@ -218,7 +218,7 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginStatus, model
 
           // Legacy migration: derive agent_type from backend
           if (!agentType && backend) {
-            agentType = ['aionrs', 'aion-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(backend)
+            agentType = ['aionrs', 'tomni-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(backend)
               ? backend
               : 'acp';
           }
@@ -335,7 +335,7 @@ const WeixinConfigForm: React.FC<WeixinConfigFormProps> = ({ pluginStatus, model
     backend?: string;
     name: string;
     id?: string;
-  }> = availableAgents.length > 0 ? availableAgents : [{ agent_type: 'aionrs', name: 'Aion CLI' }];
+  }> = availableAgents.length > 0 ? availableAgents : [{ agent_type: 'aionrs', name: 'Tomni Agentic' }];
 
   const handleDisconnect = async () => {
     try {

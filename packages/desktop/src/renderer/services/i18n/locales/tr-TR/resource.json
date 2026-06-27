@@ -1,7 +1,7 @@
 {
   "navTitle": "Kaynaklar",
   "title": "Kaynak Panosu",
-  "subtitle": "AionUi'nin ağır görevleri makinenizde nasıl dengelediğini görün ve sınırları ayarlayın.",
+  "subtitle": "Omni'nin ağır görevleri makinenizde nasıl dengelediğini görün ve sınırları ayarlayın.",
   "loadError": "Kaynak durumu yüklenemedi. Kaynak koordinatörü henüz çalışmıyor olabilir.",
   "coordinatorTitle": "Kaynak koordinatörü",
   "coordinatorSubtitle": "Ağır görevler için kiralama bütçesi ve otomatik dengeleme.",
@@ -10,7 +10,7 @@
     "detailed": "Ayrıntılı",
     "detailedDesc": "Her sınırı kendiniz belirlersiniz.",
     "suggest": "Önerilen",
-    "suggestDesc": "AionUi makinenizi okur ve otomatik olarak dengeler.",
+    "suggestDesc": "Omni makinenizi okur ve otomatik olarak dengeler.",
     "changeError": "Mod değiştirilemedi."
   },
   "preset": {

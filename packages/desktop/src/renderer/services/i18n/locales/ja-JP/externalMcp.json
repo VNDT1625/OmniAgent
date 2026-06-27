@@ -1,7 +1,7 @@
 {
   "title": "External MCP Gateway",
-  "description": "Lets external AI hosts (Claude Desktop, Cursor, ChatGPT) call AionUi's IDE tools through a token-protected loopback endpoint. Disabled by default; only reachable from this machine (127.0.0.1).",
-  "internalHint": "AionUi's built-in AI already uses MTUI, Terminal and IDE tools directly. Enable this gateway only for other local apps or Web AI.",
+  "description": "Lets external AI hosts (Claude Desktop, Cursor, ChatGPT) call Omni's IDE tools through a token-protected loopback endpoint. Disabled by default; only reachable from this machine (127.0.0.1).",
+  "internalHint": "Omni's built-in AI already uses MTUI, Terminal and IDE tools directly. Enable this gateway only for other local apps or Web AI.",
   "enable": "Enable gateway",
   "enableHint": "When on, the loopback HTTP+SSE server starts and external hosts can connect with the bearer token below.",
   "port": "Loopback port",

@@ -1,7 +1,7 @@
 # Design Document
 
 > **Tính năng:** **Manager** — Personal Manager (Tasks + Note + Schedule, có AI hỗ trợ).
-> **Dự án:** OmniAgent (fork của [AionUi](https://github.com/iOfficeAI/AionUi), iOfficeAI, Apache-2.0).
+> **Dự án:** Tomni Agentic (fork của [AionUi](https://github.com/iOfficeAI/AionUi), iOfficeAI, Apache-2.0).
 > **Spec liên quan:** [`requirements.md`](./requirements.md)
 > **Cập nhật:** 2026-05-31
 

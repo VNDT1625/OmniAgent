@@ -1,13 +1,13 @@
 # Requirements Document
 
 > **Tính năng:** **Manager** — Personal Manager (Tasks + Note + Schedule, có AI hỗ trợ).
-> **Dự án:** OmniAgent (fork của [AionUi](https://github.com/iOfficeAI/AionUi), iOfficeAI, Apache-2.0).
+> **Dự án:** Tomni Agentic (fork của [AionUi](https://github.com/iOfficeAI/AionUi), iOfficeAI, Apache-2.0).
 > **Tính năng:** **Manager** — một "ứng dụng trong ứng dụng" gồm ba phần: Nhiệm vụ (Tasks), Ghi chú (Note),
 > và Lịch trình cá nhân (Schedule), có AI hỗ trợ tạo/quản lý/tối ưu.
 
 ## Introduction
 
-Tài liệu này mô tả yêu cầu cho **Manager**, một module mới trong OmniAgent giúp một người dùng cá nhân
+Tài liệu này mô tả yêu cầu cho **Manager**, một module mới trong Tomni Agentic giúp một người dùng cá nhân
 tổ chức công việc hằng ngày trên một màn hình duy nhất. Manager gồm ba phần chính:
 
 1. **Tasks** — danh sách nhiệm vụ kiểu todo. Người dùng mô tả việc cần làm để AI tự bóc tách thành nhiệm vụ,
@@ -18,7 +18,7 @@ tổ chức công việc hằng ngày trên một màn hình duy nhất. Manager
    lời nhắc/prompt), được AI tối ưu dựa trên khoa học làm việc + thời gian + địa điểm + thời tiết + mức độ
    cần thiết.
 
-Manager là một tính năng **độc lập** với tám nhóm yêu cầu OmniAgent đang phát triển (xem
+Manager là một tính năng **độc lập** với tám nhóm yêu cầu Tomni Agentic đang phát triển (xem
 `.kiro/specs/aionui-enhancements/`). Nó bám đúng ranh giới kiến trúc của codebase và **không yêu cầu sửa
 aioncore** (xem mục Ràng buộc kiến trúc).
 
@@ -38,9 +38,9 @@ aioncore** (xem mục Ràng buộc kiến trúc).
 - **Model người dùng:** AI provider/model mà người dùng đã cấu hình trong Settings → Model; mọi lời gọi
   AI của Manager dùng đúng model này (không cứng nhà cung cấp).
 
-## Ràng buộc kiến trúc (kế thừa từ OmniAgent — BẮT BUỘC)
+## Ràng buộc kiến trúc (kế thừa từ Tomni Agentic — BẮT BUỘC)
 
-Các yêu cầu dưới đây PHẢI thoả các ràng buộc sau, giống mọi tính năng OmniAgent khác (xem
+Các yêu cầu dưới đây PHẢI thoả các ràng buộc sau, giống mọi tính năng Tomni Agentic khác (xem
 `docs/CODEBASE_GUIDE.md` và `.kiro/specs/aionui-enhancements/design.md`):
 
 1. **Không sửa aioncore (Rust binary).** Toàn bộ logic Manager nằm ở `packages/desktop/src/process/**`
@@ -63,7 +63,7 @@ Các yêu cầu dưới đây PHẢI thoả các ràng buộc sau, giống mọi
 ## Requirements
 
 > **Quy ước:** Mỗi yêu cầu gồm một _User Story_ và các _tiêu chí chấp nhận_ viết dạng điều kiện
-> (KHI… THÌ hệ thống PHẢI…). "Hệ thống" = module Manager của OmniAgent.
+> (KHI… THÌ hệ thống PHẢI…). "Hệ thống" = module Manager của Tomni Agentic.
 
 ---
 

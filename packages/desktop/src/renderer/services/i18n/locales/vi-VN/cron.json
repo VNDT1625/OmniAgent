@@ -52,10 +52,10 @@
   },
   "page": {
     "newTask": "Tác vụ mới",
-    "description": "Chạy tác vụ theo lịch. Bạn cũng có thể yêu cầu AionUi trong bất kỳ cuộc trò chuyện nào để tạo tác vụ.",
+    "description": "Chạy tác vụ theo lịch. Bạn cũng có thể yêu cầu Omni trong bất kỳ cuộc trò chuyện nào để tạo tác vụ.",
     "awakeBanner": "Tác vụ theo lịch chỉ chạy khi máy tính đang hoạt động.",
     "keepAwake": "Giữ hoạt động",
-    "keepAwakeTooltip": "Khi bật, AionUi sẽ ngăn máy tính vào chế độ ngủ",
+    "keepAwakeTooltip": "Khi bật, Omni sẽ ngăn máy tính vào chế độ ngủ",
     "createTask": "Tạo tác vụ theo lịch",
     "editTask": "Chỉnh sửa tác vụ theo lịch",
     "createSuccess": "Tạo tác vụ thành công",
@@ -105,7 +105,7 @@
       "selectFolder": "Chọn thư mục",
       "clearFolder": "Xóa",
       "model": "Mô hình",
-      "aionrsModelRequired": "Vui lòng chọn mô hình cho Aion CLI",
+      "aionrsModelRequired": "Vui lòng chọn mô hình cho Tomni Agentic",
       "aionrsNoProvider": "Không có mô hình nào khả dụng"
     },
     "freq": {

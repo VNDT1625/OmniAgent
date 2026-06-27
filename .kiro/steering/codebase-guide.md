@@ -10,7 +10,7 @@ Trước khi bắt đầu bất kỳ task nào trên codebase này, **PHẢI đ�
 
 File này chứa tài liệu toàn diện về kiến trúc, cấu trúc thư mục, luồng dữ liệu,
 API surface (HTTP/WS đến aioncore), database schema, quy ước code, i18n, và spec
-OmniAgent đang phát triển. Đọc nó để nắm codebase nhanh trước khi sửa code.
+Tomni Agentic đang phát triển. Đọc nó để nắm codebase nhanh trước khi sửa code.
 
 ## Tóm tắt kiến trúc cốt lõi (để khỏi nhầm)
 
@@ -41,7 +41,7 @@ guide cho khớp với code thực tế. Các thay đổi cần cập nhật gui
 - Thêm/sửa/xóa API endpoint (HTTP/WS) hoặc database schema (table/column/version).
 - Thêm/đổi route, page, component dùng chung, hoặc context provider.
 - Thay đổi quy ước code, build/test workflow, hoặc danh sách ngôn ngữ i18n.
-- Tiến độ hoặc phạm vi của spec OmniAgent (mục 29) thay đổi.
+- Tiến độ hoặc phạm vi của spec Tomni Agentic (mục 29) thay đổi.
 
 Khi cập nhật, cũng cập nhật dòng "Cập nhật" ở đầu guide. Nếu phiên không tạo thay đổi
 nào ảnh hưởng guide thì không cần sửa. Mục tiêu: guide luôn phản ánh đúng code hiện tại.

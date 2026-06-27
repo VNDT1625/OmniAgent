@@ -94,7 +94,7 @@ export function initAllBridges(_deps: BridgeDependencies = {}): void {
   initOmniGatewayBridge();
   initWebuiBridge();
 
-  // OmniAgent native bridges (Task 15.1 wiring). Each registration is isolated
+  // Tomni Agentic native bridges (Task 15.1 wiring). Each registration is isolated
   // so a failure in one cannot silently prevent the others from registering
   // (which would leave a renderer page hanging on an unanswered invoke).
   try {
@@ -441,7 +441,7 @@ export function initAllBridges(_deps: BridgeDependencies = {}): void {
   }
 
   try {
-    // Music Studio (OmniAgent music). Persistence + offline render/export for
+    // Music Studio (Tomni Agentic music). Persistence + offline render/export for
     // the music-core engine. Safe to register unconditionally: it only exposes
     // music.* channels the gated /music page calls. Without this the Music
     // Studio page's save/render would have no provider.

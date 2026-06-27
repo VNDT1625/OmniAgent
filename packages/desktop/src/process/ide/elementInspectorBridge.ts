@@ -264,10 +264,10 @@ export function registerElementInspectorBridge(deps: ElementInspectorBridgeDeps)
     try {
       const image = await capturable.capturePage();
       if (image.isEmpty()) return { ok: true, data: null };
-      // Save the PNG into the repo's `.aionui/inspect/` folder so the agent (and
+      // Save the PNG into the repo's `.omni/inspect/` folder so the agent (and
       // its file tools) can open it by path; also return a data URL for an inline
       // preview in the panel.
-      const dir = path.join(rootPath, '.aionui', 'inspect');
+      const dir = path.join(rootPath, '.omni', 'inspect');
       await fsp.mkdir(dir, { recursive: true });
       const filePath = path.join(dir, `shot-${Date.now()}.png`);
       await fsp.writeFile(filePath, image.toPNG());

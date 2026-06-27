@@ -5,13 +5,13 @@
  */
 
 /**
- * Omni / AionUI common constants (rebranded)
+ * Tomni / Omni / AionUI common constants (rebranded)
  */
 
 // ===== Product identity =====
-export const PRODUCT_ID = 'omni';
-export const PRODUCT_NAME = 'Omni';
-export const PRODUCT_FULL_NAME = 'Omni Agent';
+export const PRODUCT_ID = 'tomni';
+export const PRODUCT_NAME = 'Tomni';
+export const PRODUCT_FULL_NAME = 'Tomni Agentic';
 export const LEGACY_PRODUCT_ID = 'aionui';
 export const LEGACY_PRODUCT_NAME = 'AionUi';
 
@@ -78,7 +78,7 @@ export const WEBUI_DEFAULT_PORT = (() => {
 export const TEAM_MODE_ENABLED = true;
 
 /**
- * Music Studio (OmniAgent music) feature flag.
+ * Music Studio (Tomni Agentic music) feature flag.
  *
  * Gates the in-app music-making capability (page route + agent MCP tools).
  * Default OFF: the app behaves exactly as before until this is turned on, so

@@ -1,13 +1,13 @@
-# PRD — Feature Packs (Modular AionUi)
+# PRD — Feature Packs (Modular Omni)
 
 > **Trạng thái:** ĐÃ CHỐT NGUYÊN TẮC, **HOÃN TRIỂN KHAI** đến khi các tính năng
 > chính của app ổn định (gần ra mắt v3). Tài liệu này lưu lại quyết định và kế
 > hoạch để khi quay lại không phải nghĩ từ đầu.
-> **Tác giả:** AionUi team. **Ngày tạo:** 2026-06-01.
+> **Tác giả:** Omni team. **Ngày tạo:** 2026-06-01.
 
 ## 1. Bối cảnh & vấn đề
 
-AionUi đang gộp nhiều "ứng dụng con" trong một app Electron: Chat (lõi),
+Omni đang gộp nhiều "ứng dụng con" trong một app Electron: Chat (lõi),
 Browser nhúng + web-agent, Studio (Universal Editor + Make Video + Automation +
 IDE Repo Intelligence + IDE Understand), Manager (Tasks/Notes/Schedule),
 Testing đa nền tảng, Bug Monitor, Agent Company, Pet, v.v.
@@ -28,7 +28,7 @@ một installer làm app **rất nặng** dù phần lớn user chỉ dùng vài
 ## 3. Phi mục tiêu (giai đoạn này)
 
 - KHÔNG xây dựng "marketplace" cho pack do bên thứ ba publish (chỉ pack chính
-  chủ AionUi, ký số). Mở cho cộng đồng là việc rất khác và cho sau.
+  chủ Omni, ký số). Mở cho cộng đồng là việc rất khác và cho sau.
 - KHÔNG hỗ trợ tải pack từ network nội bộ doanh nghiệp (offline mirror) ở
   giai đoạn đầu — sẽ thêm khi có nhu cầu thật.
 - KHÔNG đụng aioncore (Rust backend): aioncore vẫn bundle như hiện tại.
@@ -47,7 +47,7 @@ một installer làm app **rất nặng** dù phần lớn user chỉ dùng vài
   "Tính năng đã sẵn sàng", không gián đoạn.
 - **U5** — Mất mạng → tính năng đã cài vẫn dùng được; tính năng chưa cài hiện
   thông báo "Cần kết nối để tải".
-- **U6** — Pack có lỗ hổng/lỗi → AionUi đẩy pack mới, app phát hiện auto-update
+- **U6** — Pack có lỗ hổng/lỗi → Omni đẩy pack mới, app phát hiện auto-update
   trong nền (theo channel `stable`/`beta` user chọn).
 
 ## 5. Yêu cầu chức năng
@@ -57,7 +57,7 @@ một installer làm app **rất nặng** dù phần lớn user chỉ dùng vài
 - Mỗi pack có manifest JSON ký số, gồm: `id`, `version`, `appCompat` (semver
   range của app), `os/arch`, `sizeBytes`, `sha256`, `urls[]` (HTTPS), `dependsOn[]`,
   `includes[]` (binary, code bundle, asset, locale), `signature`.
-- Manifest registry tổng đặt ở GitHub Releases của AionUi (URL bất biến qua
+- Manifest registry tổng đặt ở GitHub Releases của Omni (URL bất biến qua
   config app), tải về cache trong `userData/packs/registry.json`.
 
 ### 5.2 Cài / cập nhật / gỡ
@@ -90,7 +90,7 @@ một installer làm app **rất nặng** dù phần lớn user chỉ dùng vài
 
 ### 5.5 Bảo mật
 
-- Mọi pack ký Ed25519 bằng key của AionUi (private key trong CI secrets).
+- Mọi pack ký Ed25519 bằng key của Omni (private key trong CI secrets).
 - Public key embed cứng vào app — không tải từ mạng.
 - App từ chối pack signature sai / không có signature.
 - HTTPS bắt buộc; reject HTTP/file://.

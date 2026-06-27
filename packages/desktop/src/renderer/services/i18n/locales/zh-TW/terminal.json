@@ -3,7 +3,7 @@
   "title": "終端機管理",
   "subtitle": "執行互動式 shell、統計機器上的終端機數量，並安排腳本排程。",
   "runningCount": "執行中 {{count}}",
-  "desktopOnly": "終端機管理僅在 AionUi 桌面端可用。",
+  "desktopOnly": "終端機管理僅在 Omni 桌面端可用。",
   "bridgeUnavailable": "終端機服務尚未啟動。桌面橋接連線後將可使用。",
   "retry": "重試",
   "tabs": {
@@ -47,7 +47,7 @@
     "title": "系統終端機",
     "count": "找到 {{count}} 個",
     "refresh": "重新整理",
-    "hint": "唯讀列出作業系統回報的 shell 程序。AionUi 不與之互動,僅統計與列出。",
+    "hint": "唯讀列出作業系統回報的 shell 程序。Omni 不與之互動,僅統計與列出。",
     "empty": "未在機器上偵測到 shell 程序。"
   },
   "schedule": {
@@ -82,7 +82,7 @@
     "statusOk": "上次執行成功",
     "statusError": "上次執行失敗",
     "defaultShell": "預設 shell",
-    "hint": "僅在 AionUi 執行時觸發。僅本機執行,不透過遠端通道暴露。",
+    "hint": "僅在 Omni 執行時觸發。僅本機執行,不透過遠端通道暴露。",
     "empty": "尚無排程。新增一個以依 cron 表達式啟動工具。"
   }
 }

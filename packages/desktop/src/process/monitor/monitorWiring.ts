@@ -69,7 +69,7 @@ const resolveForkUrl = (): string | undefined => {
 };
 
 /** Named git remote the publisher pushes fix branches to (added if missing). */
-const FORK_REMOTE_NAME = 'omniagent-fork';
+const FORK_REMOTE_NAME = 'tomni-agentic-fork';
 
 /** The lazily-built monitor singletons + the full internal pipeline. */
 type FullServices = MonitorServices & {

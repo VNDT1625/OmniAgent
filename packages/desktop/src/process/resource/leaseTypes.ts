@@ -18,7 +18,7 @@
 /**
  * Category of heavy task that must be throttled by the ResourceCoordinator.
  *
- * Every expensive capability across the OmniAgent spec maps onto exactly one of
+ * Every expensive capability across the Tomni Agentic spec maps onto exactly one of
  * these kinds so that concurrency can be budgeted per category:
  * - `agent`         — spawning an AI agent / CLI session
  * - `browser`       — an embedded browser (WebContentsView) tab

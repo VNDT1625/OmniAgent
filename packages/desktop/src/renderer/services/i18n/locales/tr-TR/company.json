@@ -31,7 +31,7 @@
   },
   "describe": {
     "title": "Açıklamadan oluştur",
-    "subtitle": "Projenizi veya hedefinizi açıklayın, AionUi uygun bir rol şeması tasarlasın.",
+    "subtitle": "Projenizi veya hedefinizi açıklayın, Omni uygun bir rol şeması tasarlasın.",
     "idLabel": "Şirket Kimliği",
     "idPlaceholder": "örn. acme",
     "placeholder": "Projeyi veya hedefi açıklayın. Örnek: gösterişli bir arayüz, senkronizasyon arka ucu ve otomatik testleri olan çapraz platform bir not uygulaması oluştur.",

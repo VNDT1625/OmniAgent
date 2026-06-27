@@ -1,4 +1,4 @@
-# AionUi Docs
+# Omni Docs
 
 Documentation is organized by reader intent, not by document type.
 

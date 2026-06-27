@@ -1,4 +1,4 @@
-# Omni Agentic
+# Tomni Agentic
 
 <p align="center">
   <strong>Local-first agentic workspace for coding, automation, research, documents, browser control, databases, terminals, and multi-agent work.</strong>
@@ -16,9 +16,9 @@
 
 ---
 
-## What is Omni Agentic?
+## What is Tomni Agentic?
 
-**Omni Agentic** is a personal agentic desktop system: a local app where AI can read, understand, edit, test, automate, and operate tools on your machine with guard rails you control.
+**Tomni Agentic** is a personal agentic desktop system: a local app where AI can read, understand, edit, test, automate, and operate tools on your machine with guard rails you control.
 
 It is not only a chat UI. It is an **agentic operating layer** around your workspace:
 
@@ -44,7 +44,7 @@ Most AI products are either:
 2. a cloud service that owns the workflow, or
 3. a coding agent that only works inside one narrow IDE.
 
-Omni Agentic is different. It is built as a **local agentic workspace** where the app carries part of the intelligence: repo maps, memory, file tools, terminal tools, browser tools, database tools, document tools, quick tests, and automation tools. The model does not need to hold everything in its context. It can ask Omni for the right slice of reality, act through guarded tools, and verify the result.
+Tomni Agentic is different. It is built as a **local agentic workspace** where the app carries part of the intelligence: repo maps, memory, file tools, terminal tools, browser tools, database tools, document tools, quick tests, and automation tools. The model does not need to hold everything in its context. It can ask Omni for the right slice of reality, act through guarded tools, and verify the result.
 
 ```text
 User goal
@@ -368,4 +368,4 @@ Apache-2.0.
 
 ## Status
 
-Omni Agentic is under active rebuild and rebranding. Some internal paths, package names, assets, and translated documents may still reflect the original upstream base while the product direction is being separated into Omni.
+Tomni Agentic is under active rebuild and rebranding. Some internal paths, package names, assets, and translated documents may still reflect the original upstream base while the product direction is being separated into Omni.

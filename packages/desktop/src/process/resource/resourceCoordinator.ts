@@ -7,7 +7,7 @@
 /**
  * Core of the ResourceCoordinator (Requirement 5 — anti-lag resource
  * management). This service is the **mandatory gate** for every heavy task in
- * the OmniAgent spec: no service may spawn a worker / BrowserView / emulator /
+ * the Tomni Agentic spec: no service may spawn a worker / BrowserView / emulator /
  * patch-build without first obtaining a {@link Lease} here (criterion 5.9).
  *
  * Responsibilities (see `design.md`, Yêu cầu 5):

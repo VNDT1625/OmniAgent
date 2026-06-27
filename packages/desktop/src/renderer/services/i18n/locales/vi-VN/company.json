@@ -31,7 +31,7 @@
   },
   "describe": {
     "title": "Tạo bằng mô tả",
-    "subtitle": "Mô tả dự án hoặc mục tiêu của bạn để AionUi tự dựng sơ đồ vai phù hợp.",
+    "subtitle": "Mô tả dự án hoặc mục tiêu của bạn để Omni tự dựng sơ đồ vai phù hợp.",
     "idLabel": "Mã công ty",
     "idPlaceholder": "ví dụ acme",
     "placeholder": "Mô tả dự án hoặc mục tiêu. Ví dụ: xây ứng dụng ghi chú đa nền tảng với giao diện đẹp, máy chủ đồng bộ và kiểm thử tự động.",

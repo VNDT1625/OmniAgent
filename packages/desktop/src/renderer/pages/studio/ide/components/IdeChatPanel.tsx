@@ -290,7 +290,7 @@ const IdeChatPanel: React.FC<IdeChatPanelProps> = ({ rootPath, activeFile, repoF
   );
 };
 
-const executeCommandFor = (slug?: string): string => (slug ? `/execute @.aionui/specs/${slug}/ ` : '/execute @');
+const executeCommandFor = (slug?: string): string => (slug ? `/execute @.omni/specs/${slug}/ ` : '/execute @');
 
 /** The approval gate the user can act on while in a given phase (null = none). */
 const gateForPhase = (phase: SpecLifecyclePhase | null): SpecApprovalGate | null =>
@@ -411,7 +411,7 @@ const PlanningStatusBar: React.FC<{ rootPath: string }> = ({ rootPath }) => {
               <div className='flex flex-col flex-1 min-w-0'>
                 <span className='text-12px font-600 truncate'>{spec.title}</span>
                 <span className='text-11px text-t-tertiary truncate'>
-                  {`.aionui/specs/${spec.slug}/`}
+                  {`.omni/specs/${spec.slug}/`}
                   {` · ${t(`ide.chat.planningStatus.phase.${spec.phase}`)}`}
                 </span>
               </div>
@@ -550,7 +550,7 @@ const PlanningStatusBarView: React.FC<PlanningStatusBarViewProps> = ({
               className='inline-flex items-center gap-4px min-w-0 text-12px text-t-secondary cursor-pointer hover:text-primary transition-colors'
             >
               <span className='truncate'>
-                {status?.slug ? `.aionui/specs/${status.slug}/` : t('ide.chat.planningStatus.noActiveSpec')}
+                {status?.slug ? `.omni/specs/${status.slug}/` : t('ide.chat.planningStatus.noActiveSpec')}
               </span>
               <Down theme='outline' size={11} className='shrink-0' />
             </span>

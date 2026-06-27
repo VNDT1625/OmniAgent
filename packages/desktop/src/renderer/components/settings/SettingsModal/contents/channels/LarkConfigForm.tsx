@@ -148,7 +148,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginStatus, modelSele
             typeof s.agent_type === 'string'
               ? s.agent_type
               : typeof s.backend === 'string' &&
-                  ['aionrs', 'aion-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(s.backend)
+                  ['aionrs', 'tomni-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(s.backend)
                 ? s.backend
                 : 'acp';
           setSelectedAgent({
@@ -159,7 +159,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginStatus, modelSele
             name: s.name as string | undefined,
           });
         } else if (typeof saved === 'string') {
-          const agentType = ['aionrs', 'aion-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(saved)
+          const agentType = ['aionrs', 'tomni-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(saved)
             ? saved
             : 'acp';
           setSelectedAgent({ agent_type: agentType, backend: saved });
@@ -356,7 +356,7 @@ const LarkConfigForm: React.FC<LarkConfigFormProps> = ({ pluginStatus, modelSele
     backend?: string;
     name: string;
     id?: string;
-  }> = availableAgents.length > 0 ? availableAgents : [{ agent_type: 'aionrs', name: 'Aion CLI' }];
+  }> = availableAgents.length > 0 ? availableAgents : [{ agent_type: 'aionrs', name: 'Tomni Agentic' }];
 
   return (
     <div className='flex flex-col gap-24px'>

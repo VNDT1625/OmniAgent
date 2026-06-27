@@ -1,9 +1,9 @@
 <p align="center">
-  <img src="../../resources/aionui-banner-1.png" alt="AionUi - Cowork with AI Agents" width="100%">
+  <img src="../../resources/omni-banner-1.png" alt="Omni - Cowork with AI Agents" width="100%">
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/iOfficeAI/AionUi?style=flat-square&color=32CD32" alt="Version">
+  <img src="https://img.shields.io/github/v/release/iOfficeAI/Omni?style=flat-square&color=32CD32" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-32CD32?style=flat-square&logo=apache&logoColor=white" alt="License">
   &nbsp;
@@ -24,17 +24,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/AionUi/releases">
+  <a href="https://github.com/iOfficeAI/Omni/releases">
     <img src="https://img.shields.io/badge/⬇️%20今すぐダウンロード-最新版-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="最新版をダウンロード" height="50">
   </a>
 </p>
 
 <p align="center">
-  <a href="../../readme.md">English</a> | <a href="./readme_ch.md">简体中文</a> | <a href="./readme_tw.md">繁體中文</a> | <strong>日本語</strong> | <a href="./readme_ko.md">한국어</a> | <a href="./readme_es.md">Español</a> | <a href="./readme_pt.md">Português</a> | <a href="./readme_tr.md">Türkçe</a> | <a href="./readme_ru.md">Русский</a> | <a href="./readme_uk.md">Українська</a> | <a href="https://www.aionui.com" target="_blank">公式サイト</a>
+  <a href="../../readme.md">English</a> | <a href="./readme_ch.md">简体中文</a> | <a href="./readme_tw.md">繁體中文</a> | <strong>日本語</strong> | <a href="./readme_ko.md">한국어</a> | <a href="./readme_es.md">Español</a> | <a href="./readme_pt.md">Português</a> | <a href="./readme_tr.md">Türkçe</a> | <a href="./readme_ru.md">Русский</a> | <a href="./readme_uk.md">Українська</a> | <a href="https://www.omni.com" target="_blank">公式サイト</a>
 </p>
 
 <p align="center">
-  <strong>💬 コミュニティ：</strong> <a href="https://discord.gg/2QAwJn7Egx" target="_blank">Discord (English)</a> | <a href="../../resources/wx-9.png" target="_blank">微信 (中文群)</a> | <a href="https://twitter.com/AionUI" target="_blank">Twitter</a>
+  <strong>💬 コミュニティ：</strong> <a href="https://discord.gg/2QAwJn7Egx" target="_blank">Discord (English)</a> | <a href="../../resources/wx-9.png" target="_blank">微信 (中文群)</a> | <a href="https://twitter.com/Omni" target="_blank">Twitter</a>
 </p>
 
 ---
@@ -44,7 +44,7 @@
 <p align="center">
 
 [✨ Cowork の実演](#-cowork-の実演) ·
-[🤔 なぜ AionUi を選ぶのか？](#-なぜ-aionui-を-claude-cowork-より選ぶのか) ·
+[🤔 なぜ Omni を選ぶのか？](#-なぜ-omni-を-claude-cowork-より選ぶのか) ·
 [🚀 クイックスタート](#-クイックスタート) ·
 [💬 コミュニティ](#-コミュニティとサポート)
 
@@ -54,9 +54,9 @@
 
 ## Cowork — AI Agents があなたと共に働く
 
-**AionUi は単なるチャットクライアントではありません。** これは Cowork プラットフォームであり、AI Agent があなたのコンピューター上であなたと共に働きます——ファイルを読み、コードを書き、ウェブを閲覧し、タスクを自動化します。Agent のすべての動作を見ることができ、常にあなたがコントロールしています。
+**Omni は単なるチャットクライアントではありません。** これは Cowork プラットフォームであり、AI Agent があなたのコンピューター上であなたと共に働きます——ファイルを読み、コードを書き、ウェブを閲覧し、タスクを自動化します。Agent のすべての動作を見ることができ、常にあなたがコントロールしています。
 
-|                                       | 従来の AI チャットクライアント | **AionUi (Cowork)**                                                                                                  |
+|                                       | 従来の AI チャットクライアント | **Omni (Cowork)**                                                                                                  |
 | :------------------------------------ | :----------------------------- | :------------------------------------------------------------------------------------------------------------------- |
 | AI がファイルを操作できる             | 限定的または不可               | **はい — 内蔵 Agent、完全なファイルアクセス**                                                                        |
 | AI がマルチステップタスクを実行できる | 限定的                         | **はい — 自律実行、あなたの承認が必要**                                                                              |
@@ -66,14 +66,14 @@
 | 価格                                  | 無料 / 有料                    | **無料かつオープンソース**                                                                                           |
 
 <p align="center">
-  <img src="../../resources/offica-ai BANNER-function.png" alt="AionUi Cowork Platform" width="800">
+  <img src="../../resources/offica-ai BANNER-function.png" alt="Omni Cowork Platform" width="800">
 </p>
 
 ---
 
 ## 内蔵 Agent — インストールしてすぐ使える、ゼロ設定
 
-AionUi には完全な AI Agent エンジンが内蔵されています。CLI Agent を個別にインストールする必要があるツールとは異なり、**AionUi はインストールした瞬間から動作します**。
+Omni には完全な AI Agent エンジンが内蔵されています。CLI Agent を個別にインストールする必要があるツールとは異なり、**Omni はインストールした瞬間から動作します**。
 
 - **CLI ツールのインストール不要** — Agent エンジンが内蔵されています
 - **複雑な設定不要** — Google でサインインするか、任意の API キーを貼り付けるだけ
@@ -86,12 +86,12 @@ AionUi には完全な AI Agent エンジンが内蔵されています。CLI Ag
 
 ### **Morph PPT アニメーションデモ — 一言で滑らかな遷移**
 
-_AionUi には専用の Morph PPT アシスタントが内蔵されています。静的なスライドを作るだけでなく、内容を“語れる”動的プレゼンに変えます。テーマ/アウトライン（または参考スタイル）を入力するだけで、連続感のある Morph プレゼンを生成できます。基盤は [OfficeCLI](https://github.com/iOfficeAI/OfficeCli#) で動作します。_
+_Omni には専用の Morph PPT アシスタントが内蔵されています。静的なスライドを作るだけでなく、内容を“語れる”動的プレゼンに変えます。テーマ/アウトライン（または参考スタイル）を入力するだけで、連続感のある Morph プレゼンを生成できます。基盤は [OfficeCLI](https://github.com/iOfficeAI/OfficeCli#) で動作します。_
 
 - **普通の PPT 生成とは違う** — Morph によるストーリー表現とスライド間の連続的な動きに特化
 - **ワークフローを内蔵** — 企画、生成、品質チェック、反復を一体化
 - **スタイル合わせに対応** — 参考画像/参考スタイルで見た目を素早く調整
-- **生成してすぐ確認** — `.ppt` / `.pptx` を AionUi 上でそのままプレビュー
+- **生成してすぐ確認** — `.ppt` / `.pptx` を Omni 上でそのままプレビュー
 
 <p align="center">
   <img src="../../resources/morph-ppt-balanced.gif" alt="Morph PPT Demo" width="800">
@@ -101,9 +101,9 @@ _AionUi には専用の Morph PPT アシスタントが内蔵されています�
 
 ## マルチ Agent モード — すでに CLI Agent をお持ちですか？一緒に使えます
 
-すでに Claude Code、Codex、Hermes Agent、または OpenClaw を使用している場合、AionUi は自動的に検出し、それらすべてと Cowork できます——内蔵 Agent と一緒に。
+すでに Claude Code、Codex、Hermes Agent、または OpenClaw を使用している場合、Omni は自動的に検出し、それらすべてと Cowork できます——内蔵 Agent と一緒に。
 
-**サポートされている Agent：** 内蔵 Agent（ゼロ設定） • Claude Code • Codex • Qwen Code • Goose AI • OpenClaw • Augment Code • CodeBuddy • Kimi CLI • OpenCode • Factory Droid • GitHub Copilot • Qoder CLI • Mistral Vibe • Nanobot • Aion CLI（aionrs、AionUi に同梱される Rust バックエンドサービス） • Snow CLI • Hermes Agent • Cursor Agent など
+**サポートされている Agent：** 内蔵 Agent（ゼロ設定） • Claude Code • Codex • Qwen Code • Goose AI • OpenClaw • Augment Code • CodeBuddy • Kimi CLI • OpenCode • Factory Droid • GitHub Copilot • Qoder CLI • Mistral Vibe • Nanobot • Tomni Agentic（aionrs、Omni に同梱される Rust バックエンドサービス） • Snow CLI • Hermes Agent • Cursor Agent など
 
 <p align="center">
   <img src="../../resources/multi-agent支持openclaw.gif" alt="Multi-Agent Cowork" width="800">
@@ -120,11 +120,11 @@ _AionUi には専用の Morph PPT アシスタントが内蔵されています�
 複数の AI Agent をチームとして実行：**Leader** Agent がユーザーの指示を受け取り、サブタスクに分解し、内蔵の Team MCP Server を通じて **Teammate** Agent に委任。Teammate は並行して実行し、非同期メールボックスで結果を共有し、共有タスクボードに書き込みます。
 
 <p align="center">
-  <img src="../../resources/AionUi_team.gif" alt="Team Mode overview" width="800">
+  <img src="../../resources/Omni_team.gif" alt="Team Mode overview" width="800">
 </p>
 
-- **並列マルチエージェント実行** — Leader がタスクをサブタスクに分解して並行実行する Teammate Agent に委任；各 Teammate は ACP（Agent Communication Protocol、AionUi のマルチエージェント調整層）、Gemini、または Aionrs を通じて独自のモデルを使用
-- **Leader によるオーケストレーション** — Leader が割り当て、追跡、集約；対応バックエンドは Claude Code、Codex、Hermes Agent、Gemini、Snow CLI、Aion CLI
+- **並列マルチエージェント実行** — Leader がタスクをサブタスクに分解して並行実行する Teammate Agent に委任；各 Teammate は ACP（Agent Communication Protocol、Omni のマルチエージェント調整層）、Gemini、または Aionrs を通じて独自のモデルを使用
+- **Leader によるオーケストレーション** — Leader が割り当て、追跡、集約；対応バックエンドは Claude Code、Codex、Hermes Agent、Gemini、Snow CLI、Tomni Agentic
 - **チーム隔離ワークスペース** — すべての Agent が同じフォルダを共有；各エージェントに独自の権限確認ダイアログがあり、サイドバーバッジで承認待ちを表示
 
 <details>
@@ -133,7 +133,7 @@ _AionUi には専用の Morph PPT アシスタントが内蔵されています�
 <br>
 
 - **共有ワークスペース** — すべての Agent が同じフォルダを読み書き；ファイルパネルは常に表示
-- **対応バックエンド** — Claude Code、Codex、Gemini、Snow CLI、Aion CLI（aionrs）；`mcpCapabilities.stdio` を持つ他の ACP バックエンドも自動対応
+- **対応バックエンド** — Claude Code、Codex、Gemini、Snow CLI、Tomni Agentic（aionrs）；`mcpCapabilities.stdio` を持つ他の ACP バックエンドも自動対応
 - **動的スケーリング** — チーム実行中に Teammate の追加・削除が可能；応答しない Agent は自動的に失敗状態に昇格しワンクリックで削除
 - **細粒度の権限** — 各 Agent に独自の権限確認ダイアログ；サイドバーバッジで承認待ちを表示
 - **ファイル共有** — Leader が Teammate にファイル添付を渡せる
@@ -144,7 +144,7 @@ _AionUi には専用の Morph PPT アシスタントが内蔵されています�
 
 ## 任意の API キーで、完全な Cowork Agent パワー
 
-他の AI アプリは API キー付きのチャットボックスを提供します。**AionUi は完全な Cowork Agent を提供します。**
+他の AI アプリは API キー付きのチャットボックスを提供します。**Omni は完全な Cowork Agent を提供します。**
 
 | あなたの API キー                                | 得られる機能                |
 | :----------------------------------------------- | :-------------------------- |
@@ -154,7 +154,7 @@ _AionUi には専用の Morph PPT アシスタントが内蔵されています�
 | Ollama / LM Studio（ローカル）                   | ローカルモデル Cowork Agent |
 | NewAPI ゲートウェイ                              | 20+ モデルへの統一アクセス  |
 
-どのモデルで動かしても、Agent の機能は同じ——ファイル読み書き、ウェブ検索、画像生成、ツール使用。AionUi はクラウドサービスとローカルデプロイメントを含む **30+ の AI プラットフォーム**をサポートしています。
+どのモデルで動かしても、Agent の機能は同じ——ファイル読み書き、ウェブ検索、画像生成、ツール使用。Omni はクラウドサービスとローカルデプロイメントを含む **30+ の AI プラットフォーム**をサポートしています。
 
 <p align="center">
   <img src="../../resources/llm_newapi.png" alt="Multi-Model Support" width="800">
@@ -173,7 +173,7 @@ _AionUi には専用の Morph PPT アシスタントが内蔵されています�
 - **国際プラットフォーム** — DeepSeek、MiniMax、Novita、OpenRouter、SiliconFlow、xAI、Ark (Volcengine)、Poe
 - **ローカルモデル** — Ollama、LM Studio（ローカル API エンドポイントを使用したカスタムプラットフォーム経由）
 
-AionUi は [NewAPI](https://github.com/QuantumNous/new-api) ゲートウェイサービスもサポートしています——様々な LLM を集約・配布する統一 AI モデルハブです。同じインターフェースで異なるモデルを柔軟に切り替えて、様々なタスク要件に対応できます。
+Omni は [NewAPI](https://github.com/QuantumNous/new-api) ゲートウェイサービスもサポートしています——様々な LLM を集約・配布する統一 AI モデルハブです。同じインターフェースで異なるモデルを柔軟に切り替えて、様々なタスク要件に対応できます。
 
 </details>
 
@@ -184,7 +184,7 @@ AionUi は [NewAPI](https://github.com/QuantumNous/new-api) ゲートウェイ�
 _21 個の内蔵プロフェッショナルアシスタントと三層スキルシステムを備えた拡張可能なアシスタントシステム。独自のアシスタントとスキルを作成・管理できます。_
 
 - **カスタムアシスタントの作成** — カスタムルールと機能を持つ独自のアシスタントを定義
-- **三層スキル** — 内蔵スキル（AionUi に同梱）、カスタムスキル（ユーザー定義）、Extension スキル（サードパーティ Extension から提供）；スキルインジケーターで会話ごとに有効化/無効化
+- **三層スキル** — 内蔵スキル（Omni に同梱）、カスタムスキル（ユーザー定義）、Extension スキル（サードパーティ Extension から提供）；スキルインジケーターで会話ごとに有効化/無効化
 - **会話レベルの制御** — チャットヘッダーのスキルインジケーターが現在の会話のアクティブスキルを表示；スキルの検索と除外が可能
 
 <p align="center">
@@ -196,7 +196,7 @@ _21 個の内蔵プロフェッショナルアシスタントと三層スキル�
 
 <br>
 
-AionUi には、事前定義された機能を持つ **21 個のプロフェッショナルアシスタント**が含まれており、カスタムスキルで拡張可能です：
+Omni には、事前定義された機能を持つ **21 個のプロフェッショナルアシスタント**が含まれており、カスタムスキルで拡張可能です：
 
 - **🤝 Cowork** — 自律タスク実行（ファイル操作、ドキュメント処理、ワークフロー計画）
 - **📊 PPT Creator / Morph PPT / Morph PPT 3D** — Morph トランジションで PPTX プレゼンテーションを生成・アニメーション
@@ -218,7 +218,7 @@ AionUi には、事前定義された機能を持つ **21 個のプロフェッ�
 - **🔧 OpenClaw セットアップ** — OpenClaw 統合のセットアップと設定アシスタント
 - **📖 ストーリーロールプレイ** — キャラクターカードと世界情報を備えた没入型ストーリーロールプレイ（SillyTavern 互換）
 
-**カスタムスキル**：`skills/` ディレクトリにスキルを作成し、アシスタントのスキルを有効化/無効化して AI 機能を拡張します。スキルは三つのソースから提供されます：内蔵（AionUi に同梱）、カスタム（ユーザー定義）、Extension（Extension SDK 経由で提供）。内蔵スキルには `pptx`、`docx`、`pdf`、`xlsx`、`mermaid` などが含まれます。
+**カスタムスキル**：`skills/` ディレクトリにスキルを作成し、アシスタントのスキルを有効化/無効化して AI 機能を拡張します。スキルは三つのソースから提供されます：内蔵（Omni に同梱）、カスタム（ユーザー定義）、Extension（Extension SDK 経由で提供）。内蔵スキルには `pptx`、`docx`、`pdf`、`xlsx`、`mermaid` などが含まれます。
 
 > 💡 各アシスタントは markdown ファイルで定義されます。`assistant/` ディレクトリで例を確認してください。
 
@@ -228,7 +228,7 @@ AionUi には、事前定義された機能を持つ **21 個のプロフェッ�
 
 ## どこからでも Cowork
 
-_あなたの 24/7 AI アシスタント — あらゆるデバイス、どこからでも AionUi にアクセス。_
+_あなたの 24/7 AI アシスタント — あらゆるデバイス、どこからでも Omni にアクセス。_
 
 - **WebUI モード** — スマホ、タブレット、または任意のコンピューターからブラウザ経由でアクセス。LAN、クロスネットワーク、サーバーデプロイメントをサポート。QR コードまたはパスワードログイン。
 
@@ -239,7 +239,7 @@ _あなたの 24/7 AI アシスタント — あらゆるデバイス、どこ�
   - **WeChat** — WeChat 個人アカウント連携
   - **WeCom（企業微信）**、**Slack**、**Discord** など、さらに多くのプラットフォームが近日公開
 
-> **設定：** AionUi 設定 → WebUI 設定 → Channel、Bot Token を設定します。
+> **設定：** Omni 設定 → WebUI 設定 → Channel、Bot Token を設定します。
 
 <p align="center">
   <img src="../../resources/webui-remote.gif" alt="WebUI remote access demo" width="800">
@@ -247,7 +247,7 @@ _あなたの 24/7 AI アシスタント — あらゆるデバイス、どこ�
 
 <p align="center"><em>リモートでエージェントを監視・操作 — Claude、Gemini、Codex。ブラウザやスマホから、Claude Code remote のように使えます。</em></p>
 
-> [リモートインターネットアクセスのチュートリアル](https://github.com/iOfficeAI/AionUi/wiki/Remote-Internet-Access-Guide-Chinese)
+> [リモートインターネットアクセスのチュートリアル](https://github.com/iOfficeAI/Omni/wiki/Remote-Internet-Access-Guide-Chinese)
 
 ## ✨ Cowork の実演
 
@@ -285,7 +285,7 @@ _一度設定すれば、AI Agent がスケジュールに従って自動実行�
 - **会話にバインド** — 各スケジュールタスクは会話にバインドされ、コンテキストと履歴を維持
 - **自動実行** — タスクはスケジュールされた時刻に自動実行され、会話にメッセージを送信
 - **簡単な管理** — いつでもスケジュールタスクを作成、変更、有効化/無効化、削除、表示
-- **スリープ防止** — タスク実行中に AionUi がシステムのスリープを自動防止し、復帰後のトリガー漏れを検出
+- **スリープ防止** — タスク実行中に Omni がシステムのスリープを自動防止し、復帰後のトリガー漏れを検出
 - **高度な設定** — 各タスクに独自のモデル、ワークスペースディレクトリ、推論努力設定が可能
 
 **実世界の例：**
@@ -334,7 +334,7 @@ _10+ フォーマット：PDF、Word、Excel、PPT、コード、Markdown、画�
 _バッチリネーム、自動整理、スマート分類、ファイルマージ——Cowork Agent があなたのために処理します。_
 
 <p align="center">
-  <img src="../../resources/aionui sort file 2.gif" alt="Smart File Management" width="800">
+  <img src="../../resources/omni sort file 2.gif" alt="Smart File Management" width="800">
 </p>
 
 <details>
@@ -406,7 +406,7 @@ _Gemini 駆動のインテリジェントな画像生成、編集、認識_
 
 </details>
 
-> [画像生成モデル設定ガイド](https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide)
+> [画像生成モデル設定ガイド](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide)
 
 ---
 
@@ -463,16 +463,16 @@ _複数の会話を開き、タスクが混ざらない、独立したメモリ�
 
 ---
 
-## 🤔 なぜ AionUi を Claude Cowork より選ぶのか？
+## 🤔 なぜ Omni を Claude Cowork より選ぶのか？
 
 <details>
 <summary><strong>詳細な比較を見るにはクリック</strong></summary>
 
 <br>
 
-AionUi は**無料でオープンソースの Multi-AI Agent デスクトップ**です。macOS でのみ動作し Claude にロックされている Claude Cowork と比較して、AionUi は全モデル、クロスプラットフォームの強化版です。
+Omni は**無料でオープンソースの Multi-AI Agent デスクトップ**です。macOS でのみ動作し Claude にロックされている Claude Cowork と比較して、Omni は全モデル、クロスプラットフォームの強化版です。
 
-| 次元             | Claude Cowork    | AionUi                                                |
+| 次元             | Claude Cowork    | Omni                                                |
 | :--------------- | :--------------- | :---------------------------------------------------- |
 | OS               | macOS のみ       | macOS / Windows / Linux                               |
 | モデルサポート   | Claude のみ      | Gemini、Claude、DeepSeek、OpenAI、Ollama、...         |
@@ -495,17 +495,17 @@ AionUi は**無料でオープンソースの Multi-AI Agent デスクトップ*
 
 <details>
 <summary><strong>Q: 最初に Gemini CLI や Claude Code をインストールする必要がありますか？</strong></summary>
-A: <strong>いいえ。</strong> AionUi にはインストール後すぐに動作する内蔵 AI Agent があります。Google でサインインするか、任意の API キーを入力するだけです。Claude Code や Gemini CLI などの CLI ツールもインストールしている場合、AionUi は自動的に検出して統合し、さらに多くの機能を提供します。
+A: <strong>いいえ。</strong> Omni にはインストール後すぐに動作する内蔵 AI Agent があります。Google でサインインするか、任意の API キーを入力するだけです。Claude Code や Gemini CLI などの CLI ツールもインストールしている場合、Omni は自動的に検出して統合し、さらに多くの機能を提供します。
 </details>
 
 <details>
-<summary><strong>Q: AionUi で何ができますか？</strong></summary>
-A: AionUi はあなたの<strong>プライベート Cowork ワークスペース</strong>です。内蔵 Agent はフォルダをバッチ整理し、Excel データを処理し、ドキュメントを生成し、ウェブを検索し、画像を生成できます。マルチ Agent モードでは、同じインターフェースを通じて Claude Code、Codex、その他の強力な CLI Agent も活用できます。
+<summary><strong>Q: Omni で何ができますか？</strong></summary>
+A: Omni はあなたの<strong>プライベート Cowork ワークスペース</strong>です。内蔵 Agent はフォルダをバッチ整理し、Excel データを処理し、ドキュメントを生成し、ウェブを検索し、画像を生成できます。マルチ Agent モードでは、同じインターフェースを通じて Claude Code、Codex、その他の強力な CLI Agent も活用できます。
 </details>
 
 <details>
 <summary><strong>Q: 無料ですか？</strong></summary>
-A: AionUi は完全に無料でオープンソースです。Google でサインインして Gemini を無料で使用するか、お好みのプロバイダーの API キーを使用できます。
+A: Omni は完全に無料でオープンソースです。Google でサインインして Gemini を無料で使用するか、お好みのプロバイダーの API キーを使用できます。
 </details>
 
 <details>
@@ -515,19 +515,19 @@ A: すべてのデータはローカルの SQLite データベースに保存さ
 
 ---
 
-## AionUi の使用例を見る
+## Omni の使用例を見る
 
 <p align="center">
   <a href="https://www.youtube.com/watch?v=vWxE6VO9TKo" target="_blank">
-    <img src="https://img.youtube.com/vi/vWxE6VO9TKo/maxresdefault.jpg" alt="Hermes + Aion UI is Insane (FREE)!" width="400">
+    <img src="https://img.youtube.com/vi/vWxE6VO9TKo/maxresdefault.jpg" alt="Hermes + Omni is Insane (FREE)!" width="400">
   </a>
   &nbsp;&nbsp;
   <a href="https://www.youtube.com/watch?v=RgSLdOhICZw" target="_blank">
-    <img src="https://img.youtube.com/vi/RgSLdOhICZw/maxresdefault.jpg" alt="OpenClaw + Aion UI is Insane (FREE!)" width="400">
+    <img src="https://img.youtube.com/vi/RgSLdOhICZw/maxresdefault.jpg" alt="OpenClaw + Omni is Insane (FREE!)" width="400">
   </a>
 </p>
 <p align="center">
-  <em>Julian Goldie SEO — Hermes + Aion UI is Insane (FREE!) · 27K views</em> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <em>Julian Goldie SEO — OpenClaw + Aion UI is Insane (FREE!) · 11K views</em>
+  <em>Julian Goldie SEO — Hermes + Omni is Insane (FREE!) · 27K views</em> &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <em>Julian Goldie SEO — OpenClaw + Omni is Insane (FREE!) · 11K views</em>
 </p>
 
 <p align="center">
@@ -549,7 +549,7 @@ A: すべてのデータはローカルの SQLite データベースに保存さ
 - [普通の人々が APP のように Claude Code を使用できるようにする](https://mp.weixin.qq.com/s/TsMojSbkUUFvsd-HQCazZg) — 怠惰な猫は魚を愛する
 - [5500 Stars：オープンソースが Anthropic の AI ツールの堀をどのように破るか](https://mp.weixin.qq.com/s/saEk49cYV6MqBgw19Lw6Gw) — AI シリコンモーメント
 
-> **AionUi について動画を作成しましたか？** [X でお知らせください](https://x.com/AionUi)、ここで紹介します！
+> **Omni について動画を作成しましたか？** [X でお知らせください](https://x.com/Omni)、ここで紹介します！
 
 ---
 
@@ -566,7 +566,7 @@ A: すべてのデータはローカルの SQLite データベースに保存さ
 ### インストール
 
 <p>
-  <a href="https://github.com/iOfficeAI/AionUi/releases">
+  <a href="https://github.com/iOfficeAI/Omni/releases">
     <img src="https://img.shields.io/badge/ダウンロード-最新版-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="最新版をダウンロード" height="50">
   </a>
 </p>
@@ -575,12 +575,12 @@ A: すべてのデータはローカルの SQLite データベースに保存さ
 
 ```bash
 # Alternatively, macOS via Homebrew
-brew install aionui
+brew install omni
 ```
 
 ### 3 ステップで始める
 
-1. **インストール** AionUi
+1. **インストール** Omni
 2. **サインイン** Google アカウントで、または任意の API キーを入力
 3. **Cowork を開始** — 内蔵 AI Agent が準備完了
 
@@ -593,23 +593,23 @@ brew install aionui
 
 **🚀 クイックスタート**
 
-- [📖 完全インストールガイド](https://github.com/iOfficeAI/AionUi/wiki/Getting-Started) — ダウンロードから設定までの詳細な手順
-- [⚙️ LLM 設定ガイド](https://github.com/iOfficeAI/AionUi/wiki/LLM-Configuration) — マルチプラットフォーム AI モデル設定
-- [🤖 マルチ Agent モード設定](https://github.com/iOfficeAI/AionUi/wiki/ACP-Setup) — ターミナル AI Agent を統合
-- [🔌 MCP ツール設定](https://github.com/iOfficeAI/AionUi/wiki/MCP-Configuration-Guide) — Model Context Protocol サーバー設定
-- [🌐 WebUI 設定ガイド](https://github.com/iOfficeAI/AionUi/wiki/WebUI-Configuration-Guide) — 完全な WebUI セットアップと設定チュートリアル
+- [📖 完全インストールガイド](https://github.com/iOfficeAI/Omni/wiki/Getting-Started) — ダウンロードから設定までの詳細な手順
+- [⚙️ LLM 設定ガイド](https://github.com/iOfficeAI/Omni/wiki/LLM-Configuration) — マルチプラットフォーム AI モデル設定
+- [🤖 マルチ Agent モード設定](https://github.com/iOfficeAI/Omni/wiki/ACP-Setup) — ターミナル AI Agent を統合
+- [🔌 MCP ツール設定](https://github.com/iOfficeAI/Omni/wiki/MCP-Configuration-Guide) — Model Context Protocol サーバー設定
+- [🌐 WebUI 設定ガイド](https://github.com/iOfficeAI/Omni/wiki/WebUI-Configuration-Guide) — 完全な WebUI セットアップと設定チュートリアル
 
 **🎯 使用例**
 
-- [📁 ファイル管理](https://github.com/iOfficeAI/AionUi/wiki/file-management) — スマートファイル整理
-- [📊 Excel 処理](https://github.com/iOfficeAI/AionUi/wiki/excel-processing) — AI 駆動のデータ処理
-- [🎨 画像生成](https://github.com/iOfficeAI/AionUi/wiki/AionUi-Image-Generation-Tool-Model-Configuration-Guide) — AI 画像作成
-- [📚 その他の使用例](https://github.com/iOfficeAI/AionUi/wiki/Use-Cases-Overview)
+- [📁 ファイル管理](https://github.com/iOfficeAI/Omni/wiki/file-management) — スマートファイル整理
+- [📊 Excel 処理](https://github.com/iOfficeAI/Omni/wiki/excel-processing) — AI 駆動のデータ処理
+- [🎨 画像生成](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide) — AI 画像作成
+- [📚 その他の使用例](https://github.com/iOfficeAI/Omni/wiki/Use-Cases-Overview)
 
 **❓ サポートとヘルプ**
 
-- [❓ FAQ](https://github.com/iOfficeAI/AionUi/wiki/FAQ) — 質問とトラブルシューティング
-- [🔧 設定と使用チュートリアル](https://github.com/iOfficeAI/AionUi/wiki/Configuration-Guides) — 完全な設定ドキュメント
+- [❓ FAQ](https://github.com/iOfficeAI/Omni/wiki/FAQ) — 質問とトラブルシューティング
+- [🔧 設定と使用チュートリアル](https://github.com/iOfficeAI/Omni/wiki/Configuration-Guides) — 完全な設定ドキュメント
 
 </details>
 
@@ -620,14 +620,14 @@ brew install aionui
 **あなたのアイデアが重要です！** すべての提案とフィードバックを大切にしています。
 
 <p align="center">
-  <a href="https://x.com/AionUi" target="_blank">
+  <a href="https://x.com/Omni" target="_blank">
     <img src="../../resources/contactus-x.png" alt="Contact Us on X" width="600">
   </a>
 </p>
 
-- [GitHub Discussions](https://github.com/iOfficeAI/AionUi/discussions) — アイデアを共有し、ヒントを交換
-- [問題を報告](https://github.com/iOfficeAI/AionUi/issues) — バグと機能リクエスト
-- [リリース更新](https://github.com/iOfficeAI/AionUi/releases) — 最新版を取得
+- [GitHub Discussions](https://github.com/iOfficeAI/Omni/discussions) — アイデアを共有し、ヒントを交換
+- [問題を報告](https://github.com/iOfficeAI/Omni/issues) — バグと機能リクエスト
+- [リリース更新](https://github.com/iOfficeAI/Omni/releases) — 最新版を取得
 - [Discord コミュニティ](https://discord.gg/2QAwJn7Egx) — 英語コミュニティ
 - [WeChat グループ](../../resources/wx-9.png) — 中国語コミュニティ
 
@@ -662,16 +662,16 @@ bun run test       # ユニットテストを実行
 ## 貢献者
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/AionUi/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=iOfficeAI/AionUi&max=100" alt="Contributors" />
+  <a href="https://github.com/iOfficeAI/Omni/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=iOfficeAI/Omni&max=100" alt="Contributors" />
   </a>
 </p>
 
 ## Star 履歴
 
 <p align="center">
-  <a href="https://www.star-history.com/#iOfficeAI/aionui&Date" target="_blank">
-    <img src="https://api.star-history.com/svg?repos=iOfficeAI/aionui&type=Date" alt="Star History" width="600">
+  <a href="https://www.star-history.com/#iOfficeAI/omni&Date" target="_blank">
+    <img src="https://api.star-history.com/svg?repos=iOfficeAI/omni&type=Date" alt="Star History" width="600">
   </a>
 </p>
 
@@ -679,6 +679,6 @@ bun run test       # ユニットテストを実行
 
 **気に入ったら、スターをお願いします**
 
-[バグを報告](https://github.com/iOfficeAI/AionUi/issues) · [機能をリクエスト](https://github.com/iOfficeAI/AionUi/issues)
+[バグを報告](https://github.com/iOfficeAI/Omni/issues) · [機能をリクエスト](https://github.com/iOfficeAI/Omni/issues)
 
 </div>

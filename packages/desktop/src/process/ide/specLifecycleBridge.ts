@@ -13,7 +13,7 @@
  */
 
 import { bridge } from '@office-ai/platform';
-import { promises as fsp } from 'node:fs';
+import { existsSync, promises as fsp } from 'node:fs';
 import type { Dirent } from 'node:fs';
 import * as path from 'node:path';
 import { analyzeSpec } from '@/common/spec';
@@ -222,7 +222,15 @@ const emptyTaskCounts = (): SpecTaskCounts => ({
   blocked: 0,
 });
 
-const specsRoot = (rootPath: string): string => path.join(rootPath, '.aionui', 'specs');
+const workspaceMetaChildRoot = (rootPath: string, childDir: 'specs' | 'understand'): string => {
+  const next = path.join(rootPath, '.omni', childDir);
+  if (existsSync(next)) return next;
+  const legacy = path.join(rootPath, '.aionui', childDir);
+  return existsSync(legacy) ? legacy : next;
+};
+
+const specsRoot = (rootPath: string): string => workspaceMetaChildRoot(rootPath, 'specs');
+const understandRoot = (rootPath: string): string => workspaceMetaChildRoot(rootPath, 'understand');
 
 const slugify = (title: string): string => {
   const slug = title
@@ -408,7 +416,7 @@ const resolveActiveSlug = async (rootPath: string, requestedSlug?: string): Prom
 const normalizeRepoPath = (value: string): string => value.replace(/\\/g, '/').replace(/^\/+/, '').trim();
 
 const readUnderstandStalePaths = async (rootPath: string): Promise<string[]> => {
-  const markerPath = path.join(rootPath, '.aionui', 'understand', 'stale.json');
+  const markerPath = path.join(understandRoot(rootPath), 'stale.json');
   const text = await readTextIfExists(markerPath);
   if (!text) return [];
   try {

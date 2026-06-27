@@ -466,12 +466,12 @@ describe('releasePublisher (branch + commit + guarded push)', () => {
     const publisher = createReleasePublisher({
       git: git.runner,
       prOpener: { open: async ({ branch }) => ({ prUrl: `https://github.com/me/fork/pull/1#${branch}` }) },
-      config: { push: true, targetRemote: 'omniagent-fork' },
+      config: { push: true, targetRemote: 'tomni-agentic-fork' },
     });
 
     const result = await publisher.publish(proposalWithDiff());
     expect(result.pushed).toBe(true);
     expect(result.prUrl).toContain('/pull/1');
-    expect(git.calls.some((c) => c[0] === 'push' && c.includes('omniagent-fork'))).toBe(true);
+    expect(git.calls.some((c) => c[0] === 'push' && c.includes('tomni-agentic-fork'))).toBe(true);
   });
 });

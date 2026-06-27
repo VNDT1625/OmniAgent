@@ -42,7 +42,7 @@ export const OMNI_IDE_SERVER_NAME = 'aionui-omni-ide';
 
 /** Cross-tool guidance returned in the MCP server's `instructions` field. */
 export const OMNI_IDE_SERVER_INSTRUCTIONS =
-  'This server exposes Omni Agentic IDE tools. Before calling any ide_/team_/db_ tool, ' +
+  'This server exposes Tomni Agentic IDE tools. Before calling any ide_/team_/db_ tool, ' +
   'call omni_bootstrap_session (with an EMPTY {} arguments object) to receive the active ' +
   'workspace guide, project rules, session id, and allowed-tool list. Pass the returned ' +
   'sessionId as the `sessionId` argument on every subsequent tool call. Do not send optional ' +

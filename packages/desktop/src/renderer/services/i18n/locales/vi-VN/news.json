@@ -20,7 +20,7 @@
     "feelsLike": "C:{{max}}° T:{{min}}°",
     "useAuto": "Tự động"
   },
-  "desktopOnly": "Trình đọc tin chỉ khả dụng trong ứng dụng AionUi trên máy tính.",
+  "desktopOnly": "Trình đọc tin chỉ khả dụng trong ứng dụng Omni trên máy tính.",
   "bridgeUnavailable": "Dịch vụ tin tức chưa chạy. Tính năng sẽ sẵn sàng khi cầu nối desktop được kết nối.",
   "retry": "Thử lại",
   "refresh": "Làm mới tất cả",

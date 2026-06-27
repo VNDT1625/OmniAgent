@@ -84,7 +84,7 @@ const LocalAgents: React.FC = () => {
     [mutateAgents]
   );
 
-  // Aion CLI first among detected agents
+  // Tomni Agentic first among detected agents
   const aionrsAgent = detectedAgents?.find((a) => a.agent_type === 'aionrs' || a.backend === 'aionrs');
   const otherDetected = detectedAgents?.filter((a) => a.agent_type !== 'aionrs' && a.backend !== 'aionrs') ?? [];
 

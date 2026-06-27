@@ -31,7 +31,16 @@ type StaleMarker = {
 
 const readStaleMarker = async (rootPath: string): Promise<StaleMarker | null> => {
   try {
-    const text = await fs.readFile(path.join(rootPath, '.aionui', 'understand', 'stale.json'), 'utf-8');
+    let text: string | null = null;
+    for (const metaDir of ['.omni', '.aionui']) {
+      try {
+        text = await fs.readFile(path.join(rootPath, metaDir, 'understand', 'stale.json'), 'utf-8');
+        break;
+      } catch {
+        // Try the next metadata directory for migration compatibility.
+      }
+    }
+    if (!text) return null;
     const parsed = JSON.parse(text) as Partial<StaleMarker>;
     return {
       updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : undefined,

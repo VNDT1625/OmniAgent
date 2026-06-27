@@ -59,10 +59,10 @@
   "historyBack": "Назад",
   "more": "Більше",
   "refresh": "Оновити",
-  "tray.showWindow": "Показати AionUi",
+  "tray.showWindow": "Показати Omni",
   "tray.newChat": "Новий чат",
   "tray.closeToTray": "Згорнути в трей",
-  "tray.about": "Про AionUi",
+  "tray.about": "Про Omni",
   "tray.restart": "Перезапустити програму",
   "tray.quit": "Вийти",
   "tray.runningTasks": "Запущені завдання",
@@ -73,12 +73,12 @@
   "backendStartup": {
     "incompatibleRuntime": {
       "title": "Ця система не підтримується вбудованим backend",
-      "description": "AionUi відкрився, але локальний backend AionCore не може працювати в цій версії Linux. Оновіться до підтримуваного дистрибутива Linux і перезапустіть AionUi.",
+      "description": "Omni відкрився, але локальний backend Omni Core не може працювати в цій версії Linux. Оновіться до підтримуваного дистрибутива Linux і перезапустіть Omni.",
       "requiredVersions": "Потрібні символи середовища виконання: {{versions}}"
     },
     "incompleteInstallation": {
-      "title": "Встановлення AionUi неповне",
-      "description": "У цьому встановленні бракує потрібних локальних ресурсів, тому AionCore не може запуститися. Завантажте та перевстановіть останню версію AionUi.",
+      "title": "Встановлення Omni неповне",
+      "description": "У цьому встановленні бракує потрібних локальних ресурсів, тому Omni Core не може запуститися. Завантажте та перевстановіть останню версію Omni.",
       "downloadLatest": "Завантажити останню версію",
       "sendDiagnostics": "Надіслати діагностику"
     }

@@ -31,7 +31,7 @@
   },
   "describe": {
     "title": "依描述建立",
-    "subtitle": "描述你的專案或目標，讓 AionUi 設計合適的角色架構。",
+    "subtitle": "描述你的專案或目標，讓 Omni 設計合適的角色架構。",
     "idLabel": "公司 ID",
     "idPlaceholder": "例如 acme",
     "placeholder": "描述專案或目標。例如：建立一個跨平台筆記應用，介面精緻、附同步後端與自動化測試。",

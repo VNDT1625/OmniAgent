@@ -1,6 +1,6 @@
 # Skills Guide — đọc đầu mỗi session
 
-Hướng dẫn dùng skill cho dự án AionUi/OmniAgent. **Đầu mỗi session, đọc file này** để biết
+Hướng dẫn dùng skill cho dự án AionUi/Tomni Agentic. **Đầu mỗi session, đọc file này** để biết
 có skill nào, khi nào dùng, path ở đâu, và cách tránh xung đột.
 
 - **Path skill (workspace):** `.claude/skills/<tên-skill>/SKILL.md`

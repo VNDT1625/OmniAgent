@@ -139,7 +139,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
           const backend = typeof s.backend === 'string' ? s.backend : undefined;
 
           if (!agentType && backend) {
-            agentType = ['aionrs', 'aion-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(backend)
+            agentType = ['aionrs', 'tomni-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(backend)
               ? backend
               : 'acp';
           }
@@ -159,7 +159,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
           // Very old legacy rows store just the backend/agent-type
           // string. Top-level AgentTypes pass through verbatim; any
           // other value is an ACP vendor label.
-          const agentType = ['aionrs', 'aion-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(saved)
+          const agentType = ['aionrs', 'tomni-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(saved)
             ? saved
             : 'acp';
           setSelectedAgent({ agent_type: agentType, backend: saved });
@@ -347,7 +347,7 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
     backend?: string;
     name: string;
     id?: string;
-  }> = availableAgents.length > 0 ? availableAgents : [{ agent_type: 'aionrs', name: 'Aion CLI' }];
+  }> = availableAgents.length > 0 ? availableAgents : [{ agent_type: 'aionrs', name: 'Tomni Agentic' }];
 
   return (
     <div className='flex flex-col gap-24px'>

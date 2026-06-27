@@ -14,7 +14,7 @@
  *    counts and known-fix markers (criteria 6.1 / 6.2 / 6.9).
  *
  * Desktop-only (the monitor is a Main-process service), degrading to a notice in
- * WebUI mode — mirrors the other OmniAgent pages.
+ * WebUI mode — mirrors the other Tomni Agentic pages.
  */
 
 import { isElectronDesktop } from '@/renderer/utils/platform';

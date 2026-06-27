@@ -1,7 +1,7 @@
 {
   "navTitle": "資源",
   "title": "資源面板",
-  "subtitle": "查看 AionUi 如何在你的機器上平衡繁重任務，並調整限制。",
+  "subtitle": "查看 Omni 如何在你的機器上平衡繁重任務，並調整限制。",
   "loadError": "無法載入資源狀態，資源協調器可能尚未啟動。",
   "coordinatorTitle": "資源協調器",
   "coordinatorSubtitle": "重任務的租約預算與自動平衡。",
@@ -10,7 +10,7 @@
     "detailed": "詳細",
     "detailedDesc": "由你手動設定每一項限制。",
     "suggest": "建議",
-    "suggestDesc": "AionUi 讀取機器設定並自動平衡。",
+    "suggestDesc": "Omni 讀取機器設定並自動平衡。",
     "changeError": "無法切換模式。"
   },
   "preset": {

@@ -49,7 +49,7 @@ mtui delete old-file.txt --json
 mtui delete old-file.txt --dry-run --json
 
 # Apply a unified diff through MTUI backup/history/policy
-mtui --json apply-patch --file .aionui/specs/my-plan/plan/temporary/change.diff
+mtui --json apply-patch --file .omni/specs/my-plan/plan/temporary/change.diff
 git diff -- src/app.ts | mtui --json apply-patch --stdin --dry-run
 
 # Read a bounded file slice with line numbers
@@ -66,7 +66,7 @@ mtui search src "keyword" --max-count 20 --json
 
 `read` validates paths, rejects ignored/binary/non-UTF-8 files, and caps output by default to protect agent context. Use `--from/--to` for targeted source reads, `--max-lines` or `--max-chars` for larger bounded reads, and `--all` only when full content is necessary.
 
-`search` skips build/cache folders such as `.git`, `.mtui`, `.aionui`, `node_modules`, `target`, `dist`, and `build`. `--max-count` is an alias for `--limit` for agents coming from ripgrep-style commands.
+`search` skips build/cache folders such as `.git`, `.mtui`, `.omni`, `node_modules`, `target`, `dist`, and `build`. `--max-count` is an alias for `--limit` for agents coming from ripgrep-style commands.
 
 `context` and `map intent` return ranked candidates with score, stale flag, role, layer, language, module, summaries, and next read commands. They also include compact freshness counts (`changed`, `missing`, `unknown fingerprint`) with sample paths, so agents can decide whether to rebuild Understand/codegraph or continue with bounded source reads.
 
@@ -151,7 +151,7 @@ mtui tasks current --json
 mtui tasks done --spec exp-graph --json
 
 # Show all tasks from a spec folder path
-mtui tasks list --spec .aionui/specs/exp-graph/ --json
+mtui tasks list --spec .omni/specs/exp-graph/ --json
 ```
 
 `tasks` is read-only. It helps agents check plan state quickly without loading a full `tasks.md`; execution still belongs to the app chat command `/execute @...`.
@@ -163,10 +163,10 @@ mtui tasks list --spec .aionui/specs/exp-graph/ --json
 bun run test 2>&1 | mtui compact --profile auto --save --json
 
 # Compact a saved stderr/stdout file
-mtui compact --profile vitest --file .aionui/specs/my-plan/plan/temporary/test.log --json
+mtui compact --profile vitest --file .omni/specs/my-plan/plan/temporary/test.log --json
 
 # Return everything when the compact view is not enough
-mtui compact --file .aionui/specs/my-plan/plan/temporary/test.log --all --json
+mtui compact --file .omni/specs/my-plan/plan/temporary/test.log --all --json
 
 # Retrieve full piped output saved by --save
 mtui compact --retrieve cmp_20260604_110000_ab12cd34 --json
@@ -180,19 +180,19 @@ Profiles can be `auto`, `generic`, `python`, `vitest`, `tsc`, `cargo`, or `pytes
 
 ```bash
 # Run a Python verification script and save the full log in the spec temporary folder
-mtui --json verify python --spec my-plan .aionui/specs/my-plan/plan/temporary/test.py
+mtui --json verify python --spec my-plan .omni/specs/my-plan/plan/temporary/test.py
 
 # Pass arguments to the Python script
-mtui --json verify python --spec my-plan .aionui/specs/my-plan/plan/temporary/test.py -- --case login --verbose
+mtui --json verify python --spec my-plan .omni/specs/my-plan/plan/temporary/test.py -- --case login --verbose
 
 # Run a generic verification command without shell expansion
 mtui --json verify run bun test tests/unit/example.test.ts
 
 # Return full output instead of the compact focused view
-mtui --json verify python --all .aionui/specs/my-plan/plan/temporary/test.py
+mtui --json verify python --all .omni/specs/my-plan/plan/temporary/test.py
 ```
 
-`verify` captures stdout/stderr, stores the full log, and returns structured JSON with `passed`, `exit_code`, `duration_ms`, `summary`, `output`, and `full_log_path`. Successful runs stay short. Failed runs focus on traceback, assertion, warning, error, and file-line signals. When `--spec` is provided, logs are written to `.aionui/specs/<slug>/plan/temporary/`; otherwise they go to `.mtui/verify/`.
+`verify` captures stdout/stderr, stores the full log, and returns structured JSON with `passed`, `exit_code`, `duration_ms`, `summary`, `output`, and `full_log_path`. Successful runs stay short. Failed runs focus on traceback, assertion, warning, error, and file-line signals. When `--spec` is provided, logs are written to `.omni/specs/<slug>/plan/temporary/`; otherwise they go to `.mtui/verify/`.
 
 ### Strict MTUI Policy
 
@@ -253,7 +253,7 @@ mtui summary folder . --json
 mtui information folder . --json
 ```
 
-`summary` and `info` read `.aionui/understand/summary.json`, exported by the IDE Understand/codegraph build. Treat results with `"stale": true` as hints only and rebuild Understand before relying on them.
+`summary` and `info` read `.omni/understand/summary.json`, exported by the IDE Understand/codegraph build. Treat results with `"stale": true` as hints only and rebuild Understand before relying on them.
 
 If the Understand cache is missing a file or folder, `summary`, `info`, and `map folder` fall back to a safe filesystem scan instead of returning an empty result. Fallback output is marked with `summarySource: "filesystem-fallback"`, `stale: true`, and low map confidence; use it to pick candidate files, then run `compass read` or rebuild Understand for semantic relationships.
 
@@ -404,7 +404,7 @@ mtui --json exp feedback exp_abc123 --helpful
 mtui --json exp feedback exp_abc123 --unhelpful
 ```
 
-`exp` reads the projection file `.mtui/exp/index.json` written by the AionUi ExpBase engine
+`exp` reads the projection file `.mtui/exp/index.json` written by the Omni ExpBase engine
 (`packages/desktop/src/process/experience/`). MTUI stays AI-free: it ranks with deterministic lexical
 + metadata scoring and never computes embeddings. `add` and `forget` only queue intent
 (`.mtui/exp/inbox.jsonl`, `.mtui/exp/forget.jsonl`); the engine embeds, de-dupes, archives, and

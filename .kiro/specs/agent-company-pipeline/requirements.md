@@ -2,7 +2,7 @@
 
 ## Giới thiệu
 
-Tính năng này nâng **Mô hình công ty tác nhân** (Yêu cầu 3 của OmniAgent) từ mức "các tác nhân nói
+Tính năng này nâng **Mô hình công ty tác nhân** (Yêu cầu 3 của Tomni Agentic) từ mức "các tác nhân nói
 chuyện 1 cấp + sếp duyệt" lên **một công ty làm việc thật, đệ quy nhiều cấp, điều khiển bởi rule/soul**.
 
 Bản chất (theo người dùng): **cấp trên chỉ nói chuyện với cấp dưới trực tiếp của mình (dưới 1 cấp)** —

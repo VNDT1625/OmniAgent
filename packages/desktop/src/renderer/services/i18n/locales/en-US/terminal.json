@@ -3,7 +3,7 @@
   "title": "Terminal manager",
   "subtitle": "Run interactive shells, count terminals across the machine, and schedule scripts.",
   "runningCount": "{{count}} running",
-  "desktopOnly": "The Terminal manager is only available in the AionUi desktop app.",
+  "desktopOnly": "The Terminal manager is only available in the Omni desktop app.",
   "bridgeUnavailable": "Terminal service is not running yet. The feature will be ready once the desktop bridge is connected.",
   "retry": "Retry",
   "tabs": {
@@ -47,7 +47,7 @@
     "title": "System terminals",
     "count": "{{count}} found",
     "refresh": "Refresh",
-    "hint": "Read-only view of shell processes the OS reports. AionUi cannot interact with these — only count and list them.",
+    "hint": "Read-only view of shell processes the OS reports. Omni cannot interact with these — only count and list them.",
     "empty": "No shell processes detected on the machine."
   },
   "schedule": {
@@ -82,7 +82,7 @@
     "statusOk": "Last run OK",
     "statusError": "Last run failed",
     "defaultShell": "Default shell",
-    "hint": "Schedules only fire while AionUi is running. They are local to this machine and never exposed over remote channels.",
+    "hint": "Schedules only fire while Omni is running. They are local to this machine and never exposed over remote channels.",
     "empty": "No schedules yet. Add one to launch a tool on a cron expression."
   }
 }

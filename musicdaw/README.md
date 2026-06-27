@@ -48,7 +48,7 @@ sidecar-rs/  # crate Rust: export.rs, tune.rs, analyze.rs
 
 ## Verify
 
-Dự án này hiện đang nằm **lồng trong monorepo AionUi** (cũng dùng Vitest 4 với `projects:`),
+Dự án này hiện đang nằm **lồng trong monorepo Omni** (cũng dùng Vitest 4 với `projects:`),
 nên chạy `vitest` trực tiếp bị xung đột instance/config của parent. Vì vậy có thêm
 một smoke verifier độc lập (chỉ dùng `node:assert`, chạy bằng bun):
 
@@ -57,7 +57,7 @@ bun run src/verify.ts      # 15 checks: schema/factory/validate/migrate/repo
 bunx tsc --noEmit -p tsconfig.json
 ```
 
-Khi tách `musicdaw` thành repo độc lập (`git init` riêng, ra ngoài AionUi), các file
+Khi tách `musicdaw` thành repo độc lập (`git init` riêng, ra ngoài Omni), các file
 `*.test.ts` (Vitest) sẽ chạy bình thường bằng `npm test` / `bun run test`.
 
 ## Roadmap theo phase (mỗi phase có "cổng usable")

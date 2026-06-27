@@ -55,6 +55,7 @@ const AgentCard: React.FC<AgentCardProps> = (props) => {
 
   if (props.type === 'detected') {
     const { agent, onGoToChat } = props;
+    const displayName = agent.agent_type === 'aionrs' || agent.backend === 'aionrs' ? 'Tomni Agentic' : agent.name;
     const extensionAvatar = resolveExtensionAssetUrl(agent.isExtension ? agent.avatar : undefined);
     const logo =
       extensionAvatar ||
@@ -69,13 +70,13 @@ const AgentCard: React.FC<AgentCardProps> = (props) => {
       <div className='flex min-h-[154px] flex-col rounded-12px border border-solid border-[var(--color-border-2)] bg-[var(--color-bg-2)] p-12px transition-colors hover:border-[var(--color-border-3)]'>
         <div className='mb-10px flex justify-center'>
           <Avatar size={40} shape='square' style={{ flexShrink: 0, backgroundColor: 'transparent' }}>
-            {logo ? <img src={logo} alt={agent.name} className='h-full w-full object-contain' /> : '🤖'}
+            {logo ? <img src={logo} alt={displayName} className='h-full w-full object-contain' /> : '🤖'}
           </Avatar>
         </div>
 
         <div className='mb-10px flex-1 text-center'>
           <Typography.Text className='block text-13px font-medium leading-18px line-clamp-2'>
-            {agent.name}
+            {displayName}
           </Typography.Text>
           <Typography.Text className='mt-4px block text-11px text-t-secondary'>
             {t('settings.agentManagement.detected')}

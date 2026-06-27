@@ -1,7 +1,7 @@
 {
   "navTitle": "Resources",
   "title": "Resource Dashboard",
-  "subtitle": "See how AionUi balances heavy tasks across your machine, and tune the limits.",
+  "subtitle": "See how Omni balances heavy tasks across your machine, and tune the limits.",
   "loadError": "Could not load the resource state. The resource coordinator may not be running yet.",
   "coordinatorTitle": "Resource coordinator",
   "coordinatorSubtitle": "Lease budget and automatic balancing for heavy tasks.",
@@ -10,7 +10,7 @@
     "detailed": "Detailed",
     "detailedDesc": "You set every limit manually.",
     "suggest": "Suggested",
-    "suggestDesc": "AionUi reads your machine and balances automatically.",
+    "suggestDesc": "Omni reads your machine and balances automatically.",
     "changeError": "Could not switch mode."
   },
   "preset": {

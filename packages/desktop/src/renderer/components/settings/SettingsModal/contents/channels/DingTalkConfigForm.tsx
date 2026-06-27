@@ -143,7 +143,7 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, m
           const agentType =
             typeof s.agent_type === 'string'
               ? s.agent_type
-              : backend && ['aionrs', 'aion-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(backend)
+              : backend && ['aionrs', 'tomni-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(backend)
                 ? backend
                 : 'acp';
           setSelectedAgent({
@@ -155,7 +155,7 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, m
           });
         } else if (typeof saved === 'string') {
           const backend = saved as string;
-          const agentType = ['aionrs', 'aion-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(backend)
+          const agentType = ['aionrs', 'tomni-cli', 'openclaw-gateway', 'nanobot', 'remote'].includes(backend)
             ? backend
             : 'acp';
           setSelectedAgent({ agent_type: agentType, backend });
@@ -346,7 +346,7 @@ const DingTalkConfigForm: React.FC<DingTalkConfigFormProps> = ({ pluginStatus, m
     backend?: string;
     name: string;
     id?: string;
-  }> = availableAgents.length > 0 ? availableAgents : [{ agent_type: 'aionrs', name: 'Aion CLI' }];
+  }> = availableAgents.length > 0 ? availableAgents : [{ agent_type: 'aionrs', name: 'Tomni Agentic' }];
 
   return (
     <div className='flex flex-col gap-24px'>

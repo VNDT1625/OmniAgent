@@ -149,6 +149,17 @@ function hasBootstrapCliAgent(agents: AgentMetadata[], entry: BootstrapCliAgent)
   );
 }
 
+function normalizeAgentDisplayName(agent: AgentMetadata): AgentMetadata {
+  if (agent.agent_type === 'aionrs' || agent.backend === 'aionrs') {
+    return { ...agent, name: 'Tomni Agentic' };
+  }
+  return agent;
+}
+
+function normalizeAgentDisplayNames(agents: AgentMetadata[]): AgentMetadata[] {
+  return agents.map(normalizeAgentDisplayName);
+}
+
 async function ensureBootstrapCliAgents(agents: AgentMetadata[]): Promise<boolean> {
   const missing = BOOTSTRAP_CLI_AGENTS.filter((entry) => !hasBootstrapCliAgent(agents, entry));
   if (missing.length === 0) {
@@ -191,9 +202,11 @@ export async function fetchDetectedAgents(): Promise<AgentMetadata[]> {
       const detectedAgents = agents as AgentMetadata[];
       if (await ensureBootstrapCliAgents(detectedAgents)) {
         const refreshedAgents = await ipcBridge.acpConversation.getAvailableAgents.invoke();
-        return Array.isArray(refreshedAgents) ? (refreshedAgents as AgentMetadata[]) : detectedAgents;
+        return Array.isArray(refreshedAgents)
+          ? normalizeAgentDisplayNames(refreshedAgents as AgentMetadata[])
+          : normalizeAgentDisplayNames(detectedAgents);
       }
-      return detectedAgents;
+      return normalizeAgentDisplayNames(detectedAgents);
     }
   } catch {
     // fallback to empty

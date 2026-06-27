@@ -31,7 +31,7 @@
   },
   "describe": {
     "title": "Create from a description",
-    "subtitle": "Describe your project or goal and let AionUi design a fitting role chart.",
+    "subtitle": "Describe your project or goal and let Omni design a fitting role chart.",
     "idLabel": "Company ID",
     "idPlaceholder": "e.g. acme",
     "placeholder": "Describe the project or goal. For example: build a cross-platform note app with a polished UI, a sync backend, and automated tests.",

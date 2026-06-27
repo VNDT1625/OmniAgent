@@ -1,4 +1,4 @@
-# Aion CLI (aionrs) E2E 测试 - 讨论记录
+# Tomni Agentic (aionrs) E2E 测试 - 讨论记录
 
 **项目**: AionUi E2E Coverage
 **子组**: chat-aionrs

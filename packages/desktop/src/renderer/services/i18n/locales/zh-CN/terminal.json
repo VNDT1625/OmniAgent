@@ -3,7 +3,7 @@
   "title": "终端管理",
   "subtitle": "运行交互式 shell，统计机器上的终端数量，并安排脚本计划任务。",
   "runningCount": "运行中 {{count}}",
-  "desktopOnly": "终端管理仅在 AionUi 桌面端可用。",
+  "desktopOnly": "终端管理仅在 Omni 桌面端可用。",
   "bridgeUnavailable": "终端服务尚未启动。桌面桥接连接后该功能将就绪。",
   "retry": "重试",
   "tabs": {
@@ -47,7 +47,7 @@
     "title": "系统终端",
     "count": "发现 {{count}} 个",
     "refresh": "刷新",
-    "hint": "只读列出操作系统报告的 shell 进程。AionUi 不与之交互，仅统计和列出。",
+    "hint": "只读列出操作系统报告的 shell 进程。Omni 不与之交互，仅统计和列出。",
     "empty": "未在机器上检测到 shell 进程。"
   },
   "schedule": {
@@ -82,7 +82,7 @@
     "statusOk": "上次运行成功",
     "statusError": "上次运行失败",
     "defaultShell": "默认 shell",
-    "hint": "仅在 AionUi 运行时触发。仅本地运行，不通过远程通道暴露。",
+    "hint": "仅在 Omni 运行时触发。仅本地运行，不通过远程通道暴露。",
     "empty": "尚无计划。添加一个以按 cron 表达式启动工具。"
   }
 }

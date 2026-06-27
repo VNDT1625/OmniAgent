@@ -1,7 +1,7 @@
 {
   "title": "External MCP Gateway",
-  "description": "Cho phép host AI bên ngoài (Claude Desktop, Cursor, ChatGPT) gọi vào tool IDE của AionUi qua một endpoint loopback có token bảo vệ. Mặc định tắt; chỉ máy này (127.0.0.1) gọi được.",
-  "internalHint": "AI tích hợp trong AionUi đã dùng trực tiếp MTUI, Terminal và tool IDE. Chỉ bật gateway này cho ứng dụng local khác hoặc AI Web.",
+  "description": "Cho phép host AI bên ngoài (Claude Desktop, Cursor, ChatGPT) gọi vào tool IDE của Omni qua một endpoint loopback có token bảo vệ. Mặc định tắt; chỉ máy này (127.0.0.1) gọi được.",
+  "internalHint": "AI tích hợp trong Omni đã dùng trực tiếp MTUI, Terminal và tool IDE. Chỉ bật gateway này cho ứng dụng local khác hoặc AI Web.",
   "enable": "Bật gateway",
   "enableHint": "Khi bật, server loopback HTTP+SSE khởi động và host bên ngoài có thể kết nối bằng bearer token bên dưới.",
   "port": "Cổng loopback",

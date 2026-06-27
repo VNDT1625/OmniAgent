@@ -2,7 +2,7 @@
   "name": "@aionui/desktop",
   "version": "0.0.0",
   "private": true,
-  "description": "Omni Agentic desktop Electron application",
+  "description": "Tomni Agentic desktop Electron application",
   "main": "../../out/main/index.js",
   "dependencies": {
     "@aionui/web-host": "workspace:*",

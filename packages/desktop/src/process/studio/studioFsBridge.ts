@@ -15,7 +15,7 @@
  *
  * This Main-process bridge fills that gap: it accepts a path + base64 payload
  * and writes the **decoded bytes** straight to disk with Node `fs`. It is the
- * same pattern the other OmniAgent native bridges use (Electron `bridge`
+ * same pattern the other Tomni Agentic native bridges use (Electron `bridge`
  * helper, not an HTTP route). Desktop-only — in WebUI mode the renderer is
  * remote, so binary editing is a desktop feature.
  *

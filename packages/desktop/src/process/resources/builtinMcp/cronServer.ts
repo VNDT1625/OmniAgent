@@ -8,7 +8,7 @@
  * Built-in Cron (Scheduled Tasks) MCP server — the **Agent plane** for the
  * scheduled-tasks feature.
  *
- * Every other OmniAgent capability (resource, company, browser-control, testing,
+ * Every other Tomni Agentic capability (resource, company, browser-control, testing,
  * manager, tool-selector) exposes a built-in MCP server so an agent can use it,
  * while the matching UI plane (`renderer/pages/cron/`) drives the *same* state.
  * Scheduling was the one capability with **no** agent-facing tools — this server

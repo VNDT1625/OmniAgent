@@ -87,7 +87,7 @@ export const buildWorkspacePrimer = ({
       [
         '## Planning Mode: ON',
         'Unclear scope: ask first.',
-        'Non-trivial task: maintain `.aionui/specs/<slug>/`; execute claimed backend tasks with verification.',
+        'Non-trivial task: maintain `.omni/specs/<slug>/`; execute claimed backend tasks with verification.',
       ].join('\n')
     );
   }

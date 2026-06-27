@@ -1,7 +1,7 @@
 {
   "navTitle": "Tài nguyên",
   "title": "Bảng tài nguyên",
-  "subtitle": "Xem cách AionUi cân bằng các tác vụ nặng trên máy của bạn và tinh chỉnh giới hạn.",
+  "subtitle": "Xem cách Omni cân bằng các tác vụ nặng trên máy của bạn và tinh chỉnh giới hạn.",
   "loadError": "Không tải được trạng thái tài nguyên. Bộ điều phối tài nguyên có thể chưa khởi động.",
   "coordinatorTitle": "Điều phối tài nguyên",
   "coordinatorSubtitle": "Ngân sách lease và tự cân bằng cho các tác vụ nặng.",
@@ -10,7 +10,7 @@
     "detailed": "Chi tiết",
     "detailedDesc": "Bạn tự đặt từng giới hạn.",
     "suggest": "Gợi ý",
-    "suggestDesc": "AionUi đọc cấu hình máy và tự cân bằng.",
+    "suggestDesc": "Omni đọc cấu hình máy và tự cân bằng.",
     "changeError": "Không đổi được chế độ."
   },
   "preset": {

@@ -457,7 +457,7 @@ const persistGraph = async (graph: KnowledgeGraph): Promise<void> => {
 };
 
 const exportRepoSummary = async (graph: KnowledgeGraph): Promise<void> => {
-  const dir = path.join(graph.rootPath, '.aionui', 'understand');
+  const dir = path.join(graph.rootPath, '.omni', 'understand');
   await fsp.mkdir(dir, { recursive: true });
   const target = path.join(dir, 'summary.json');
   const tmp = `${target}.${process.pid}.${Date.now()}.tmp`;

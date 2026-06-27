@@ -1,7 +1,7 @@
 {
   "navTitle": "리소스",
   "title": "리소스 대시보드",
-  "subtitle": "AionUi가 머신에서 무거운 작업을 어떻게 분산하는지 확인하고 제한을 조정합니다.",
+  "subtitle": "Omni가 머신에서 무거운 작업을 어떻게 분산하는지 확인하고 제한을 조정합니다.",
   "loadError": "리소스 상태를 불러올 수 없습니다. 리소스 코디네이터가 아직 실행되지 않았을 수 있습니다.",
   "coordinatorTitle": "리소스 코디네이터",
   "coordinatorSubtitle": "무거운 작업의 리스 예산과 자동 균형 조정.",
@@ -10,7 +10,7 @@
     "detailed": "상세",
     "detailedDesc": "모든 제한을 직접 설정합니다.",
     "suggest": "추천",
-    "suggestDesc": "AionUi가 머신을 분석해 자동으로 분산합니다.",
+    "suggestDesc": "Omni가 머신을 분석해 자동으로 분산합니다.",
     "changeError": "모드를 전환할 수 없습니다."
   },
   "preset": {

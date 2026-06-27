@@ -131,7 +131,7 @@ const MANIFEST_FILES = [
 const WORKSPACE_DIRS = ['apps', 'packages', 'services', 'frontend', 'backend', 'web', 'client', 'server'] as const;
 
 /** Directories that are never a source repo when detecting a duplicate parent shell. */
-const DUPLICATE_PARENT_IGNORED_DIRS = new Set(['.aionui', '.cache', '.git', '.mtui', 'node_modules', 'out']);
+const DUPLICATE_PARENT_IGNORED_DIRS = new Set(['.omni', '.aionui', '.cache', '.git', '.mtui', 'node_modules', 'out']);
 
 /** Marker dirs/files the planner checks for native shells (Tauri/Android). */
 const MARKER_PATHS = ['src-tauri', 'android', 'ios', 'src-tauri/tauri.conf.json'] as const;
