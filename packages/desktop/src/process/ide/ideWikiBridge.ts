@@ -100,15 +100,34 @@ export const ideWikiChannels = {
 const DIGEST_BUDGET = 22000;
 /** Number of key files to ground the wiki on. */
 const KEY_FILE_LIMIT = 18;
+/** Hard cap on files walked when the caller does not specify one. */
+const DEFAULT_MAX_FILES = 1200;
+/** Hard cap on readable text retained per source/doc file during wiki planning. */
+const MAX_READABLE_TEXT_FILE_BYTES = 128_000;
+
+const isWikiTextFile = (relPath: string): boolean =>
+  /\.(?:md|mdx|txt|rst|adoc|json|ya?ml|toml|xml|gradle|properties)$/i.test(relPath) ||
+  /(?:^|\/)(?:gemfile|dockerfile|makefile)$/i.test(relPath);
+
+const readTextFileCapped = async (filePath: string, maxBytes = MAX_READABLE_TEXT_FILE_BYTES): Promise<string> => {
+  const handle = await fsp.open(filePath, 'r');
+  try {
+    const buffer = Buffer.alloc(maxBytes + 1);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    return buffer.subarray(0, Math.min(bytesRead, maxBytes)).toString('utf-8');
+  } finally {
+    await handle.close();
+  }
+};
 
 /** Whether a relative path names a code file (matches repoGraph's parser set). */
 const isCodeFile = (relPath: string): boolean => /\.(ts|tsx|js|jsx|mjs|cjs)$/i.test(relPath);
 
-/** Walk the repo and build {@link RepoGraph} + a map of every walked file's rel path. */
+/** Walk the repo and build {@link RepoGraph} + the bounded file list. */
 const scan = async (
   rootPath: string,
   maxFiles?: number
-): Promise<{ graph: RepoGraph; codeContent: Map<string, string>; metaPaths: string[] }> => {
+): Promise<{ graph: RepoGraph; files: Array<{ relPath: string; content: string }>; metaPaths: string[] }> => {
   const files = await collectRepoFiles(
     rootPath,
     {
@@ -120,38 +139,46 @@ const scan = async (
           isDir: entry.isDirectory(),
         }));
       },
-      readFile: (filePath) => fsp.readFile(filePath, 'utf-8'),
+      readFile: (filePath) => readTextFileCapped(filePath),
       toRel: (full) => path.relative(rootPath, full).replace(/\\/g, '/'),
     },
-    { maxFiles, codeOnly: false }
+    {
+      maxFiles: maxFiles ?? DEFAULT_MAX_FILES,
+      codeOnly: false,
+      readContent: isWikiTextFile,
+      maxReadBytes: MAX_READABLE_TEXT_FILE_BYTES,
+    }
   );
 
   const codeFiles = files.filter((f) => isCodeFile(f.relPath));
   const graph = buildGraphFromFiles(rootPath, codeFiles);
-  const codeContent = new Map(codeFiles.map((f) => [f.relPath, f.content]));
   const metaPaths = files.filter((f) => !isCodeFile(f.relPath)).map((f) => f.relPath);
-  return { graph, codeContent, metaPaths };
+  return { graph, files, metaPaths };
 };
 
-/** Read a key file's content from the walked map or, for meta files, from disk. */
-const readKeyFile = async (rootPath: string, key: KeyFile, codeContent: Map<string, string>): Promise<string> => {
-  const cached = codeContent.get(key.path);
-  if (typeof cached === 'string') return cached;
-  return fsp.readFile(path.join(rootPath, key.path), 'utf-8').catch(() => '');
+/** Read a key file's content from the bounded scan result or from disk with a cap. */
+const readKeyFile = async (
+  rootPath: string,
+  key: KeyFile,
+  files: Array<{ relPath: string; content: string }>
+): Promise<string> => {
+  const cached = files.find((file) => file.relPath.replace(/\\/g, '/') === key.path)?.content;
+  if (typeof cached === 'string' && cached.length > 0) return cached;
+  return readTextFileCapped(path.join(rootPath, key.path)).catch(() => '');
 };
 
 /** Build the shared grounding digest from the selected key files (budget-clipped). */
 const buildDigest = async (
   rootPath: string,
   keyFiles: KeyFile[],
-  codeContent: Map<string, string>
+  files: Array<{ relPath: string; content: string }>
 ): Promise<string> => {
   const perFile = keyFiles.length > 0 ? Math.max(400, Math.floor(DIGEST_BUDGET / keyFiles.length)) : DIGEST_BUDGET;
   let remaining = DIGEST_BUDGET;
   const sections: string[] = [];
   for (const key of keyFiles) {
     if (remaining <= 0) break;
-    const content = await readKeyFile(rootPath, key, codeContent);
+    const content = await readKeyFile(rootPath, key, files);
     if (content.length === 0) continue;
     const allowance = Math.min(perFile, remaining);
     const clipped = content.length > allowance ? `${content.slice(0, allowance)}\n[truncated]` : content;
@@ -166,9 +193,9 @@ const runPlan = async (req: WikiPlanRequest): Promise<WikiPlan> => {
   const rootPath = req.rootPath?.trim();
   if (!rootPath || rootPath.length === 0) throw new Error('A folder path is required.');
 
-  const { graph, codeContent, metaPaths } = await scan(rootPath, req.maxFiles);
+  const { graph, files, metaPaths } = await scan(rootPath, req.maxFiles);
   const keyFiles = selectKeyFiles(graph, metaPaths, KEY_FILE_LIMIT);
-  const digest = await buildDigest(rootPath, keyFiles, codeContent);
+  const digest = await buildDigest(rootPath, keyFiles, files);
   const sections = planWikiSections(graph, metaPaths);
   const groupCount = new Set(graph.nodes.map((n) => n.group)).size;
 

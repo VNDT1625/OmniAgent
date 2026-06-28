@@ -136,6 +136,7 @@ describe('collectRepoFiles', () => {
         [
           { name: 'z.ts', fullPath: '/repo/z.ts', isDir: false },
           { name: '.aionui', fullPath: '/repo/.aionui', isDir: true },
+          { name: '.omni', fullPath: '/repo/.omni', isDir: true },
           { name: 'src', fullPath: '/repo/src', isDir: true },
           { name: 'target', fullPath: '/repo/target', isDir: true },
           { name: '.mtui', fullPath: '/repo/.mtui', isDir: true },
@@ -150,6 +151,14 @@ describe('collectRepoFiles', () => {
         ],
       ],
       ['/repo/.aionui', [{ name: 'ignored.ts', fullPath: '/repo/.aionui/ignored.ts', isDir: false }]],
+      ['/repo/.omni', [{ name: 'wiki', fullPath: '/repo/.omni/wiki', isDir: true }]],
+      [
+        '/repo/.omni/wiki',
+        [
+          { name: 'wiki.json', fullPath: '/repo/.omni/wiki/wiki.json', isDir: false },
+          { name: 'overview.md', fullPath: '/repo/.omni/wiki/overview.md', isDir: false },
+        ],
+      ],
       ['/repo/.mtui', [{ name: 'ignored.ts', fullPath: '/repo/.mtui/ignored.ts', isDir: false }]],
       ['/repo/target', [{ name: 'ignored.ts', fullPath: '/repo/target/ignored.ts', isDir: false }]],
       ['/repo/src/.turbo', [{ name: 'ignored.ts', fullPath: '/repo/src/.turbo/ignored.ts', isDir: false }]],
@@ -202,6 +211,51 @@ describe('collectRepoFiles', () => {
         content: '// /repo/AI_Education-main/AI_Education-main/frontend/lib/client.ts',
       },
     ]);
+  });
+
+  it('does not walk generated .omni/wiki exports', async () => {
+    const visited: string[] = [];
+    const files = await collectRepoFiles('/repo', {
+      listDir: async (dir) => {
+        visited.push(dir);
+        if (dir === '/repo') {
+          return [
+            { name: '.omni', fullPath: '/repo/.omni', isDir: true },
+            { name: 'src', fullPath: '/repo/src', isDir: true },
+          ];
+        }
+        if (dir === '/repo/.omni') {
+          return [{ name: 'wiki', fullPath: '/repo/.omni/wiki', isDir: true }];
+        }
+        if (dir === '/repo/.omni/wiki') {
+          return [{ name: 'wiki.json', fullPath: '/repo/.omni/wiki/wiki.json', isDir: false }];
+        }
+        if (dir === '/repo/src') {
+          return [{ name: 'index.ts', fullPath: '/repo/src/index.ts', isDir: false }];
+        }
+        return [];
+      },
+      readFile: async (filePath) => `content:${filePath}`,
+      toRel: (full) => full.replace('/repo/', ''),
+    });
+
+    expect(visited).not.toContain('/repo/.omni');
+    expect(visited).not.toContain('/repo/.omni/wiki');
+    expect(files.map((file) => file.relPath)).toEqual(['src/index.ts']);
+  });
+
+  it('caps retained readable content per file', async () => {
+    const files = await collectRepoFiles(
+      '/repo',
+      {
+        listDir: async () => [{ name: 'index.ts', fullPath: '/repo/index.ts', isDir: false }],
+        readFile: async () => '0123456789',
+        toRel: (full) => full.replace('/repo/', ''),
+      },
+      { maxReadBytes: 4 }
+    );
+
+    expect(files).toEqual([{ relPath: 'index.ts', content: '0123' }]);
   });
 
   it('reads selected non-code text files when collecting repository metadata', async () => {

@@ -27,6 +27,7 @@ import type { RepoChangeEvent } from './understandTypes';
 
 /** Directory names whose changes never trigger a rebuild. */
 const IGNORED_DIRS = new Set([
+  '\x2eomni',
   'node_modules',
   '.git',
   'dist',

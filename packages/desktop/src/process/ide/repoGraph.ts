@@ -63,6 +63,7 @@ const RESOLVE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'] as con
 
 /** Directory names skipped while walking a repository. */
 const IGNORED_DIRS = new Set([
+  '\x2eomni',
   '.aionui',
   '.cache',
   '.git',
@@ -408,6 +409,20 @@ export type CollectRepoFilesOptions = {
   codeOnly?: boolean;
   /** Read content for selected non-code files when `codeOnly` is false. */
   readContent?: (relPath: string) => boolean;
+  /** Optional cap on retained text per file. Undefined keeps existing behavior. */
+  maxReadBytes?: number;
+};
+
+const clipReadContent = (content: string, maxReadBytes?: number): string => {
+  if (maxReadBytes === undefined || maxReadBytes <= 0 || !Number.isFinite(maxReadBytes)) {
+    return content;
+  }
+  return content.length > maxReadBytes ? content.slice(0, maxReadBytes) : content;
+};
+
+const isGeneratedWikiExport = (relPath: string): boolean => {
+  const normalized = relPath.replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+  return normalized.startsWith('.omni/wiki/') || normalized.startsWith('.aionui/wiki/');
 };
 
 /**
@@ -459,17 +474,22 @@ export const collectRepoFiles = async (
         }
 
         const relPath = stripRelPrefix(deps.toRel(entry.fullPath), relRootPrefix);
+        if (isGeneratedWikiExport(relPath)) {
+          continue;
+        }
         const code = isCodeFile(relPath);
         if (code || !codeOnly) {
           fileReads.push({ relPath, fullPath: entry.fullPath, read: code || Boolean(opts?.readContent?.(relPath)) });
         }
       }
     }
+    const readFile = async (file: { fullPath: string; read: boolean }): Promise<string> =>
+      file.read ? clipReadContent(await deps.readFile(file.fullPath).catch(() => ''), opts?.maxReadBytes) : '';
     // eslint-disable-next-line no-await-in-loop -- file reads within the current BFS batch run in parallel.
     const files = await Promise.all(
       fileReads.map(async (file) => ({
         relPath: file.relPath,
-        content: file.read ? await deps.readFile(file.fullPath).catch(() => '') : '',
+        content: await readFile(file),
       }))
     );
     collected.push(...files);

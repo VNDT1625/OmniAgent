@@ -22,6 +22,7 @@ describe('isIgnoredPath / isWatchedFile', () => {
   it('ignores vendor/build dirs', () => {
     expect(isIgnoredPath('node_modules/react/index.js')).toBe(true);
     expect(isIgnoredPath('.git/HEAD')).toBe(true);
+    expect(isIgnoredPath('\x2eomni/wiki/wiki.json')).toBe(true);
     expect(isIgnoredPath('.aionui/understand/stale.json')).toBe(true);
     expect(isIgnoredPath('.mtui/history.sqlite')).toBe(true);
     expect(isIgnoredPath('src/app.ts')).toBe(false);

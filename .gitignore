@@ -225,6 +225,7 @@ packages/mtui/target/
 # Omni workspace metadata (local specs, understand, wiki for the project)
 .omni/
 .aionui/
+.omni-sidecar/
 
 # Files containing local dev-router API key (do not commit secrets)
 .kiro/steering/claude-ui-testing.md

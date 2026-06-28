@@ -26,20 +26,11 @@ import { getSessionMemoryStore } from '@process/ide/memory/sessionMemoryStore';
 import { getTeamEditService } from '@process/ide/teamEdit/teamEditService';
 import { getIdeMcpService, getQuickTestRunner } from '@process/ide/mcp/ideMcpWiring';
 import type { DbAgentService } from '@process/ide/mcp/ideServer';
-import { buildOmniIdeServer } from './omniGatewayProfile';
-import { createOmniGatewayState, type OmniGatewayState } from './omniGatewayState';
-import { startOmniGatewayHost, OmniGatewayAddressInUseError, type OmniGatewayHost } from './omniGatewayHost';
-import {
-  createOmniGatewayTokenStore,
-  OMNI_EXTERNAL_TOKEN_DEFAULT_TTL_MS,
-  type OmniGatewayTokenStore,
-  type ExternalToken,
-} from './omniGatewayExternalToken';
-import { startOmniTunnel, stopOmniTunnel, type StartOmniTunnelResult } from './omniGatewayTunnel';
-import { createOmniDebugBridge, type OmniDebugBridge } from './omniGatewayDebugBridge';
+import { OmniGatewayAddressInUseError } from './omniGatewayHost';
+import { createOmniGatewayRuntime } from './omniGatewayRuntime';
+import { stopOmniTunnel } from './omniGatewayTunnel';
 import { createOmniSecurityStore, type IOmniSecurityStore } from './auth/omniGatewaySecurityStore';
 import { createOmniOAuthStore, type OmniOAuthStore } from './auth/omniGatewayOAuthStore';
-import { createOmniOAuthHandler, type OmniOAuthHandler } from './auth/omniGatewayOAuth';
 import {
   OMNI_DEFAULT_AUTH_MODE,
   isOmniAuthMode,
@@ -51,7 +42,6 @@ import { ipcBridge } from '@/common';
 import {
   makeProgressEmitter,
   type OmniGatewayProgressEvent,
-  type OmniGatewayProgressPhase,
 } from './omniGatewayProgress';
 import {
   normalizePublicBaseUrl,
@@ -157,26 +147,10 @@ export type OmniGatewayStatus = {
   lastError?: string;
 };
 
-/** Module-level singleton (gateway host + state + external mode). */
-type LiveGateway = {
-  host: OmniGatewayHost;
-  state: OmniGatewayState;
-  tokenStore: OmniGatewayTokenStore;
-};
-
-/** Snapshot of the public-tunnel layer (off by default). */
-type LiveExternal = {
-  tunnelUrl: string;
-  bearerToken: ExternalToken;
-};
-
-let live: LiveGateway | undefined;
-let liveExternal: LiveExternal | undefined;
 let lastError: string | undefined;
 let credentialStore: ICredentialStore | undefined;
 let securityStore: IOmniSecurityStore | undefined;
 let oauthStore: OmniOAuthStore | undefined;
-let oauthHandler: OmniOAuthHandler | undefined;
 
 /**
  * Live caches of the two auth fields the host reads on EVERY request. They are
@@ -235,6 +209,26 @@ const emitProgress = makeProgressEmitter(broadcastProgress, () => Date.now());
 
 /** Renderer-facing read of the latest progress event, for late-mount UIs. */
 export const getOmniGatewayLatestProgress = (): OmniGatewayProgressEvent | undefined => lastProgress;
+
+const gatewayRuntime = createOmniGatewayRuntime({
+  loadSecurityState: () => security().load(),
+  oauth,
+  buildIdeDeps: () => ({
+    ide: getIdeMcpService(),
+    quickTest: getQuickTestRunner(),
+    db: getDbService() as DbAgentService,
+    memory: getSessionMemoryStore(),
+    teamEdit: getTeamEditService(),
+  }),
+  emitProgress: (phase, detail) =>
+    emitProgress(
+      phase,
+      detail?.message ? { message: detail.message } : detail?.tunnelUrl ? { tunnelUrl: detail.tunnelUrl } : detail
+    ),
+  now: () => Date.now(),
+  newToken: () => randomBytes(OMNI_GATEWAY_TOKEN_BYTES).toString('hex'),
+  newId: () => `omni-${randomBytes(12).toString('hex')}`,
+});
 
 // ---------------------------------------------------------------------------
 // Credential helpers
@@ -313,148 +307,18 @@ const writeConfig = async (cfg: OmniGatewayConfig): Promise<void> => {
 // ---------------------------------------------------------------------------
 
 const stopHost = async (): Promise<void> => {
-  // Always tear down the tunnel first so the public URL stops responding even
-  // if host close errors.
-  if (liveExternal) {
-    try {
-      stopOmniTunnel();
-    } catch (error) {
-      console.warn('[OmniGateway] Error stopping tunnel:', error);
-    }
-    liveExternal = undefined;
-  }
-  if (!live) return;
-  try {
-    await live.host.close();
-  } catch (error) {
-    console.warn('[OmniGateway] Error while closing host:', error);
-  }
-  live = undefined;
+  await gatewayRuntime.stop();
 };
 
 const disableExternalAccessRuntime = (): void => {
-  stopOmniTunnel();
-  live?.tokenStore.revokeExternalToken();
-  live?.tokenStore.revokeAllDebugTokens();
-  liveExternal = undefined;
+  gatewayRuntime.disableExternalAccess();
 };
 
-const startExternalAccessRuntime = async (): Promise<LiveExternal> => {
-  if (!live) throw new Error('The local MCP gateway is not running.');
-
-  disableExternalAccessRuntime();
-  emitProgress('minting-token');
-  const bearerToken = live.tokenStore.mintExternalToken(OMNI_EXTERNAL_TOKEN_DEFAULT_TTL_MS);
-  const tunnel: StartOmniTunnelResult = await startOmniTunnel(live.host.port, {
-    onProgress: (phase: OmniGatewayProgressPhase, message?: string) =>
-      emitProgress(phase, message ? { message } : undefined),
-  });
-  if (!tunnel.ok) {
-    live.tokenStore.revokeExternalToken();
-    const reason = 'reason' in tunnel ? tunnel.reason : 'start-failed';
-    const rawDetail = 'detail' in tunnel ? tunnel.detail : undefined;
-    const detail = rawDetail ? ` ${rawDetail}` : '';
-    throw new Error(`Could not start secure Web access (${reason}).${detail}`);
-  }
-
-  liveExternal = { tunnelUrl: tunnel.url, bearerToken };
-  emitProgress('ready', { tunnelUrl: tunnel.url });
-  return liveExternal;
-};
+const startExternalAccessRuntime = async () => gatewayRuntime.startExternalAccess();
 
 const startHost = async (cfg: OmniGatewayConfig, token: string): Promise<void> => {
-  if (!cfg.rootPath) {
-    throw new Error('No workspace folder configured. Pick one in External MCP Gateway settings.');
-  }
-
-  // Load the encrypted auth state once at start. The host reads the auth mode /
-  // tool permissions live via the closures below, so a settings change that
-  // mutates the security store takes effect WITHOUT a host restart.
-  const securityState = await security().load();
-  const sessionTtlMs = securityState.sessionTtlMs;
-  currentAuthMode = securityState.authMode;
-  currentToolPermissions = securityState.toolPermissions;
-
-  const state = createOmniGatewayState({
-    now: () => Date.now(),
-    newId: () => `omni-${randomBytes(12).toString('hex')}`,
-    sessionTtlMs,
-  });
-
-  const tokenStore = createOmniGatewayTokenStore({
-    now: () => Date.now(),
-    newToken: () => randomBytes(OMNI_GATEWAY_TOKEN_BYTES).toString('hex'),
-  });
-
-  const ideDeps = {
-    ide: getIdeMcpService(),
-    quickTest: getQuickTestRunner(),
-    db: getDbService() as DbAgentService,
-    memory: getSessionMemoryStore(),
-    teamEdit: getTeamEditService(),
-  };
-
-  // The debug bridge handler is only built when External Test Mode is on. Its
-  // closure captures the live tokenStore so revocation in Settings takes
-  // effect immediately for every in-flight URL.
-  const debugBridge = cfg.externalMode?.enabled
-    ? createOmniDebugBridge({
-        tokenStore,
-        state,
-        ide: ideDeps.ide,
-        rootPath: cfg.rootPath,
-        sessionTtlMs,
-        getMcpEndpoint: () => (liveExternal ? `${liveExternal.tunnelUrl}/ide/mcp` : undefined),
-      })
-    : undefined;
-
-  // The OAuth handler is mounted whenever Web Access is on so a client can run
-  // the authorization-code dance over the tunnel. Its issuer/endpoints are
-  // derived from the live tunnel URL.
-  oauthHandler = cfg.externalMode?.enabled
-    ? createOmniOAuthHandler({
-        store: oauth(),
-        getPublicOrigin: () => liveExternal?.tunnelUrl,
-      })
-    : undefined;
-
-  const host = await startOmniGatewayHost({
-    port: cfg.port,
-    localBearerToken: token,
-    // Bearer compared dynamically so the host doesn't need restarting when the
-    // external token rotates — we look it up via tokenStore at request time.
-    isExternalBearerValid: (presented) => tokenStore.isExternalTokenValid(presented),
-    // Auth mode + OAuth validity are read live from the encrypted store so a
-    // Settings change applies without restarting the host.
-    getAuthMode: () => currentAuthMode,
-    isOAuthTokenValid: async (presented) => (await oauth().validateAccessToken(presented)) !== undefined,
-    oauthHandler: oauthHandler ? (req, res) => (oauthHandler as OmniOAuthHandler).tryHandle(req, res) : undefined,
-    buildIdeServer: (mode) =>
-      buildOmniIdeServer({
-        state,
-        rootPath: cfg.rootPath as string,
-        allowDangerous: cfg.allowDangerous,
-        sessionTtlMs,
-        ideDeps,
-        mode,
-        toolPermissions: currentToolPermissions,
-      }),
-    debugBridge: debugBridge?.handle,
-  });
-  live = { host, state, tokenStore };
-  lastError = undefined;
-
-  // Web access is isolated from the local gateway. A tunnel failure is
-  // surfaced in status but never takes the local MCP endpoint down.
-  if (cfg.externalMode?.enabled) {
-    try {
-      await startExternalAccessRuntime();
-    } catch (error) {
-      lastError = error instanceof Error ? error.message : String(error);
-      console.warn('[OmniGateway] Web access start failed:', error);
-      emitProgress('failed', { error: lastError });
-    }
-  }
+  await gatewayRuntime.start(cfg, token);
+  lastError = gatewayRuntime.snapshot().lastError;
 };
 
 /**
@@ -500,6 +364,9 @@ export const getOmniGatewayStatus = async (): Promise<OmniGatewayStatus> => {
   const token = await readToken();
   const securityState = await security().load();
   const oauthClients = await oauth().listClients();
+  const runtime = gatewayRuntime.snapshot();
+  const live = runtime.live;
+  const liveExternal = runtime.liveExternal;
   return {
     enabled: cfg.enabled,
     running: live !== undefined,
@@ -580,7 +447,7 @@ export const enableOmniGatewayWebAccess = async (): Promise<{
   const started = await ensureOmniGatewayStarted();
   const status = await getOmniGatewayStatus();
   return {
-    token: started ? liveExternal?.bearerToken.token : undefined,
+    token: started ? gatewayRuntime.snapshot().liveExternal?.bearerToken.token : undefined,
     status,
   };
 };
@@ -605,6 +472,9 @@ export const createOmniGatewayDebugAccess = async (): Promise<{
   bootstrapUrl: string;
   status: OmniGatewayStatus;
 }> => {
+  const runtime = gatewayRuntime.snapshot();
+  const live = runtime.live;
+  const liveExternal = runtime.liveExternal;
   if (!live || !liveExternal) {
     throw new Error('Enable Web access before creating a read-only browser link.');
   }
@@ -622,7 +492,7 @@ export const createOmniGatewayDebugAccess = async (): Promise<{
 
 /** Revoke all read-only browser links without interrupting MCP connectors. */
 export const revokeOmniGatewayDebugAccess = async (): Promise<OmniGatewayStatus> => {
-  live?.tokenStore.revokeAllDebugTokens();
+  gatewayRuntime.snapshot().live?.tokenStore.revokeAllDebugTokens();
   return getOmniGatewayStatus();
 };
 
@@ -683,6 +553,7 @@ export const setOmniGatewayAuthMode = async (mode: OmniAuthMode): Promise<OmniGa
   const safeMode = isOmniAuthMode(mode) ? mode : OMNI_DEFAULT_AUTH_MODE;
   await security().patch({ authMode: safeMode });
   currentAuthMode = safeMode;
+  gatewayRuntime.setAuthMode(safeMode);
   return getOmniGatewayStatus();
 };
 
@@ -696,7 +567,7 @@ export const setOmniGatewaySessionTtl = async (ttlMs: number): Promise<OmniGatew
   const MAX_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
   const clamped = Math.min(Math.max(Math.floor(ttlMs), MIN_TTL), MAX_TTL);
   await security().patch({ sessionTtlMs: clamped });
-  if (live) await ensureOmniGatewayStarted();
+  if (gatewayRuntime.snapshot().live) await ensureOmniGatewayStarted();
   return getOmniGatewayStatus();
 };
 
@@ -714,6 +585,7 @@ export const setOmniGatewayToolPermission = async (
   else next[toolName] = allowed;
   await security().patch({ toolPermissions: next });
   currentToolPermissions = next;
+  gatewayRuntime.setToolPermissions(next);
   return getOmniGatewayStatus();
 };
 

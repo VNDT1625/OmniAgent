@@ -4,17 +4,37 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { createHash, randomBytes } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import * as http from 'node:http';
 import * as path from 'node:path';
+import { createCredentialStore, type Credential, type ICredentialStore } from '../../automation/credentialStore';
+import { createOmniGatewayRuntime, type OmniGatewayRuntime } from '../../omni-gateway/omniGatewayRuntime';
+import { stopOmniTunnel } from '../../omni-gateway/omniGatewayTunnel';
+import { createOmniSecurityStore } from '../../omni-gateway/auth/omniGatewaySecurityStore';
+import { createOmniOAuthStore } from '../../omni-gateway/auth/omniGatewayOAuthStore';
 import { startIdeMcpHost, stopIdeMcpHost } from './ideMcpHost';
-import { buildOmniNodeIdeServer, createTerminalAgentService } from './omniNodeWiring';
+import {
+  buildOmniNodeIdeServer,
+  createGitAgentService,
+  createNodeIdeMcpService,
+  createNodeTeamEditService,
+  createTerminalAgentService,
+} from './omniNodeWiring';
 
 const DEFAULT_PORT = 17890;
+const DEFAULT_EXTERNAL_PORT = 47821;
 const SIDECAR_NAME = 'omni-mcp-sidecar';
+const OMNI_GATEWAY_CREDENTIAL_ID = 'omni-gateway-token';
+const OMNI_GATEWAY_TOKEN_BYTES = 32;
 
-type Mode = 'start' | 'rescue' | 'doctor' | 'health' | 'stop';
+type Mode = 'start' | 'rescue' | 'rescue-external' | 'doctor' | 'health' | 'stop';
+
+type ParsedMode = {
+  mode: Mode;
+  tunnel: boolean;
+};
 
 type SidecarPaths = {
   repoRoot: string;
@@ -33,13 +53,23 @@ type SidecarState = {
   logPath: string;
   startedAt: string;
   mode: string;
+  ideMcpUrl?: string;
+  ideSseUrl?: string;
+  publicMcpUrl?: string;
+  tunnelUrl?: string;
 };
 
+let externalRuntime: OmniGatewayRuntime | undefined;
+
 const main = async (): Promise<void> => {
-  const mode = parseMode(process.argv[2]);
+  const parsed = parseMode(process.argv.slice(2));
+  const { mode } = parsed;
   const repoRoot = path.resolve(process.env.OMNI_REPO_PATH || process.cwd());
   const paths = resolvePaths(repoRoot);
   const port = Number(process.env.OMNI_MCP_PORT || DEFAULT_PORT);
+  const externalPort = Number(
+    process.env.OMNI_GATEWAY_PORT || process.env.OMNI_MCP_EXTERNAL_PORT || DEFAULT_EXTERNAL_PORT
+  );
 
   if (mode === 'doctor') {
     await runDoctor(paths, port);
@@ -54,12 +84,21 @@ const main = async (): Promise<void> => {
     return;
   }
 
-  await startSidecar(paths, port, mode);
+  if (mode === 'rescue-external') {
+    await startExternalRescue(paths, port, externalPort, { tunnel: parsed.tunnel });
+    return;
+  }
+
+  await startSidecar(paths, port, mode, { setupLog: true });
 };
 
-const parseMode = (raw?: string): Mode => {
-  if (raw === 'rescue' || raw === 'doctor' || raw === 'health' || raw === 'stop') return raw;
-  return 'start';
+const parseMode = (args: string[]): ParsedMode => {
+  const raw = args[0];
+  const tunnel = args.includes('--tunnel') || process.env.OMNI_RESCUE_TUNNEL === '1';
+  if (raw === 'rescue' && args.includes('--local')) return { mode: 'rescue', tunnel: false };
+  if (raw === 'rescue' && args.includes('--external')) return { mode: 'rescue-external', tunnel };
+  if (raw === 'rescue' || raw === 'doctor' || raw === 'health' || raw === 'stop') return { mode: raw, tunnel: false };
+  return { mode: 'start', tunnel: false };
 };
 
 const resolvePaths = (repoRoot: string): SidecarPaths => {
@@ -78,10 +117,99 @@ const resolvePaths = (repoRoot: string): SidecarPaths => {
   };
 };
 
-const startSidecar = async (paths: SidecarPaths, port: number, mode: 'start' | 'rescue'): Promise<void> => {
+const resolveGatewayDataDir = (): string => {
+  const override = process.env.OMNI_GATEWAY_USER_DATA_DIR || process.env.OMNI_APP_USER_DATA_DIR;
+  if (override?.trim()) return path.resolve(override.trim());
+
+  const candidates = process.platform === 'win32'
+    ? [
+        path.join(process.env.APPDATA || path.join(process.env.USERPROFILE || process.cwd(), 'AppData', 'Roaming'), 'AionUi-Dev'),
+        path.join(process.env.APPDATA || path.join(process.env.USERPROFILE || process.cwd(), 'AppData', 'Roaming'), 'AionUi'),
+      ]
+    : [
+        path.join(process.env.HOME || process.cwd(), '.config', 'AionUi-Dev'),
+        path.join(process.env.HOME || process.cwd(), '.config', 'AionUi'),
+      ];
+
+  return (
+    candidates.find(
+      (dir) =>
+        existsSync(path.join(dir, 'automation-credentials.json')) ||
+        existsSync(path.join(dir, 'omni-gateway-security.json')) ||
+        existsSync(path.join(dir, 'config', 'aionui-config.txt'))
+    ) ?? candidates[0]
+  );
+};
+
+const gatewayCredentialStore = (dataDir: string): ICredentialStore =>
+  createCredentialStore({ dir: dataDir, encryptionKey: createHash('sha256').update(dataDir).digest() });
+
+const findGatewayCredential = async (store: ICredentialStore): Promise<Credential | undefined> =>
+  store.list().then((list) => list.find((c) => c.id === OMNI_GATEWAY_CREDENTIAL_ID));
+
+const readOrCreateBearerToken = async (dataDir: string): Promise<{ token: string; source: string }> => {
+  const store = gatewayCredentialStore(dataDir);
+  const envToken = process.env.OMNI_GATEWAY_TOKEN?.trim();
+  if (envToken) {
+    await store.save({
+      id: OMNI_GATEWAY_CREDENTIAL_ID,
+      name: 'AionUi External MCP Gateway',
+      kind: 'token',
+      fields: { bearer: envToken },
+    });
+    return { token: envToken, source: 'env' };
+  }
+
+  const cred = await findGatewayCredential(store);
+  if (cred) {
+    const decrypted = await store.getDecrypted(cred.id);
+    const token = decrypted?.bearer;
+    if (typeof token === 'string' && token.length > 0) return { token, source: 'app-credential' };
+  }
+
+  const token = randomBytes(OMNI_GATEWAY_TOKEN_BYTES).toString('hex');
+  await store.save({
+    id: OMNI_GATEWAY_CREDENTIAL_ID,
+    name: 'AionUi External MCP Gateway',
+    kind: 'token',
+    fields: { bearer: token },
+  });
+  return { token, source: 'app-credential-created' };
+};
+
+const decodeConfigFile = (raw: string): Record<string, unknown> => {
+  try {
+    return JSON.parse(decodeURIComponent(Buffer.from(raw.trim(), 'base64').toString('utf-8'))) as Record<string, unknown>;
+  } catch {
+    return {};
+  }
+};
+
+const readSavedGatewayConfig = async (dataDir: string): Promise<Record<string, unknown>> => {
+  const configPath = path.join(dataDir, 'config', 'aionui-config.txt');
+  try {
+    const allConfig = decodeConfigFile(await readFile(configPath, 'utf-8'));
+    const cfg = allConfig['externalMcp.config'];
+    return cfg && typeof cfg === 'object' ? (cfg as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+};
+
+const bool = (value: unknown, fallback: boolean): boolean => (typeof value === 'boolean' ? value : fallback);
+const str = (value: unknown): string | undefined => (typeof value === 'string' && value.length > 0 ? value : undefined);
+const num = (value: unknown, fallback: number): number =>
+  typeof value === 'number' && value >= 1024 && value <= 65535 ? value : fallback;
+
+const startSidecar = async (
+  paths: SidecarPaths,
+  port: number,
+  mode: 'start' | 'rescue',
+  options: { setupLog: boolean }
+): Promise<void> => {
   await mkdir(paths.stateDir, { recursive: true });
   await mkdir(paths.logDir, { recursive: true });
-  setupLogging(paths.logPath, mode === 'rescue');
+  if (options.setupLog) setupLogging(paths.logPath, mode === 'rescue');
 
   const existing = await fetchHealth(`http://127.0.0.1:${port}/health`);
   if (existing.ok) {
@@ -128,8 +256,108 @@ const startSidecar = async (paths: SidecarPaths, port: number, mode: 'start' | '
   process.on('SIGTERM', () => void shutdown(paths));
 };
 
+const startExternalRescue = async (
+  paths: SidecarPaths,
+  port: number,
+  externalPort: number,
+  options: { tunnel: boolean }
+): Promise<void> => {
+  await mkdir(paths.stateDir, { recursive: true });
+  await mkdir(paths.logDir, { recursive: true });
+  setupLogging(paths.logPath, true);
+
+  await startSidecar(paths, port, 'rescue', { setupLog: false });
+
+  const gatewayDataDir = resolveGatewayDataDir();
+  const savedConfig = await readSavedGatewayConfig(gatewayDataDir);
+  const bearer = await readOrCreateBearerToken(gatewayDataDir);
+  const security = createOmniSecurityStore({
+    dir: gatewayDataDir,
+    encryptionKey: createHash('sha256').update(gatewayDataDir).digest(),
+  });
+  const oauth = createOmniOAuthStore({
+    security,
+    now: () => Date.now(),
+    newToken: () => randomBytes(OMNI_GATEWAY_TOKEN_BYTES).toString('hex'),
+    newId: () => `oc-${randomBytes(12).toString('hex')}`,
+  });
+  const terminal = createTerminalAgentService();
+  const allowDangerous = bool(savedConfig.allowDangerous, process.env.OMNI_GATEWAY_ALLOW_DANGEROUS !== '0');
+  const runtime = createOmniGatewayRuntime({
+    loadSecurityState: () => security.load(),
+    oauth: () => oauth,
+    buildIdeDeps: () => ({
+      ide: createNodeIdeMcpService(),
+      terminal,
+      git: createGitAgentService(terminal),
+      teamEdit: createNodeTeamEditService(),
+    }),
+    emitProgress: (phase, detail) => {
+      const suffix = detail?.message ? ': ' + detail.message : detail?.error ? ': ' + detail.error : '';
+      console.log('[omni-rescue-gateway] ' + phase + suffix);
+    },
+    now: () => Date.now(),
+    newToken: () => randomBytes(OMNI_GATEWAY_TOKEN_BYTES).toString('hex'),
+    newId: () => 'omni-rescue-' + randomBytes(16).toString('hex'),
+  });
+
+  await runtime.start(
+    {
+      port: num(savedConfig.port, externalPort),
+      rootPath: str(savedConfig.rootPath) ?? paths.repoRoot,
+      allowDangerous,
+      externalMode: { enabled: options.tunnel || bool((savedConfig.externalMode as { enabled?: unknown } | undefined)?.enabled, false) },
+    },
+    bearer.token
+  );
+  externalRuntime = runtime;
+
+  const snapshot = runtime.snapshot();
+  const gateway = snapshot.live?.host;
+  const publicMcpUrl = snapshot.liveExternal ? snapshot.liveExternal.tunnelUrl + '/ide/mcp' : undefined;
+  const saved = await readState(paths.statePath);
+  if (saved && gateway) {
+    await writeFile(
+      paths.statePath,
+      JSON.stringify(
+        {
+          ...saved,
+          mode: 'rescue-external',
+          ideMcpUrl: gateway.ideMcpUrl,
+          ideSseUrl: gateway.ideSseUrl,
+          publicMcpUrl,
+          tunnelUrl: snapshot.liveExternal?.tunnelUrl,
+        },
+        null,
+        2
+      ) + '\n',
+      'utf-8'
+    );
+  }
+
+  console.log('[' + SIDECAR_NAME + '] app-compatible external gateway ready');
+  console.log('Gateway config dir:  ' + gatewayDataDir);
+  console.log('Gateway token:       ' + bearer.source);
+  console.log('MCP Streamable HTTP: ' + (gateway?.ideMcpUrl ?? 'not running'));
+  console.log('MCP local SSE:       ' + (gateway?.ideSseUrl ?? 'not running'));
+  if (publicMcpUrl) console.log('MCP public URL:      ' + publicMcpUrl);
+  console.log('Authorization:       Bearer ' + bearer.token);
+  console.log('Required path:       /ide/mcp');
+  console.log('Bootstrap tool:      omni_bootstrap_session');
+  console.log('Auth mode:           ' + snapshot.authMode);
+  console.log('Dangerous tools:     ' + (allowDangerous ? 'enabled' : 'disabled'));
+  if (!publicMcpUrl) {
+    console.log(
+      'ChatGPT connector:   tunnel is not running; forward https://mcp.omni-mcp.xyz/ide/mcp to ' +
+        (gateway?.ideMcpUrl ?? '127.0.0.1:47821/ide/mcp')
+    );
+  }
+};
+
 const shutdown = async (paths: SidecarPaths): Promise<void> => {
   console.log(`[${SIDECAR_NAME}] stopping`);
+  stopOmniTunnel();
+  await externalRuntime?.stop();
   await stopIdeMcpHost();
   await rm(paths.statePath, { force: true });
   process.exit(0);

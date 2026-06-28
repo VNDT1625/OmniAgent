@@ -29,9 +29,8 @@ import { loadProjectRules } from '@process/ide/rulesLoader';
 import { buildOmniBootstrapResult } from './omniBootstrap';
 import {
   OMNI_IDE_BASE_ALLOWLIST,
-  OMNI_IDE_BASE_ALLOWLIST_NAMES,
-  OMNI_IDE_DANGEROUS_NAMES,
   OMNI_IDE_DANGEROUS_TOOLS,
+  type OmniIdeAllowlistEntry,
 } from './omniIdeAllowlist';
 import type { OmniGatewayState } from './omniGatewayState';
 import type { OmniRequestMode } from './omniGatewayHost';
@@ -75,6 +74,32 @@ export type OmniIdeProfileDeps = {
   toolPermissions?: OmniToolPermissions;
 };
 
+export type OmniIdeResolvedAllowlist = {
+  baseAllowlist: readonly OmniIdeAllowlistEntry[];
+  dangerousTools: readonly OmniIdeAllowlistEntry[];
+  baseNames: ReadonlySet<string>;
+  dangerousNames: ReadonlySet<string>;
+};
+
+const hasOptionalToolDeps = (toolName: string, ideDeps: Omit<IdeServerDeps, 'toolGuard'>): boolean => {
+  if (toolName.startsWith('team_')) return ideDeps.teamEdit !== undefined;
+  if (toolName.startsWith('db_')) return ideDeps.db !== undefined;
+  if (toolName.startsWith('ide_memory_')) return ideDeps.memory !== undefined;
+  if (toolName === 'ide_quick_test') return ideDeps.quickTest !== undefined;
+  return true;
+};
+
+export const resolveOmniIdeAllowlist = (ideDeps: Omit<IdeServerDeps, 'toolGuard'>): OmniIdeResolvedAllowlist => {
+  const baseAllowlist = OMNI_IDE_BASE_ALLOWLIST.filter((tool) => hasOptionalToolDeps(tool.name, ideDeps));
+  const dangerousTools = OMNI_IDE_DANGEROUS_TOOLS.filter((tool) => hasOptionalToolDeps(tool.name, ideDeps));
+  return {
+    baseAllowlist,
+    dangerousTools,
+    baseNames: new Set(baseAllowlist.map((tool) => tool.name)),
+    dangerousNames: new Set(dangerousTools.map((tool) => tool.name)),
+  };
+};
+
 /** Build the IDE-profile {@link McpServer} bound to the supplied deps. */
 export const buildOmniIdeServer = (deps: OmniIdeProfileDeps): McpServer => {
   // The tool-guard is the only thing that makes the underlying ideServer
@@ -94,6 +119,8 @@ export const buildOmniIdeServer = (deps: OmniIdeProfileDeps): McpServer => {
 
 /** Register the four `omni_*` housekeeping tools onto an existing server. */
 const registerOmniTools = (server: McpServer, deps: OmniIdeProfileDeps): void => {
+  const allowlist = resolveOmniIdeAllowlist(deps.ideDeps);
+
   server.tool(
     'omni_bootstrap_session',
     `Bind this MCP session to the AionUi workspace and receive the active guide, project rules,
@@ -123,8 +150,8 @@ semantic ide_* tools, team_* writes). Read it before acting.`,
         rules,
         planningEnabled: planningEnabled === true,
         allowDangerous: deps.allowDangerous,
-        baseAllowlist: OMNI_IDE_BASE_ALLOWLIST,
-        dangerousTools: OMNI_IDE_DANGEROUS_TOOLS,
+        baseAllowlist: allowlist.baseAllowlist,
+        dangerousTools: allowlist.dangerousTools,
         serverInstructions: OMNI_IDE_SERVER_INSTRUCTIONS,
         sessionTtlMs: deps.sessionTtlMs,
         state: deps.state,
@@ -148,8 +175,8 @@ unchanged).`,
         rules,
         planningEnabled: false,
         allowDangerous: session.allowDangerous,
-        baseAllowlist: OMNI_IDE_BASE_ALLOWLIST,
-        dangerousTools: OMNI_IDE_DANGEROUS_TOOLS,
+        baseAllowlist: allowlist.baseAllowlist,
+        dangerousTools: allowlist.dangerousTools,
         serverInstructions: OMNI_IDE_SERVER_INSTRUCTIONS,
         sessionTtlMs: deps.sessionTtlMs,
         state: deps.state,
@@ -185,8 +212,8 @@ after a settings flip.`,
     {},
     async () => {
       return jsonResult({
-        baseAllowlist: OMNI_IDE_BASE_ALLOWLIST,
-        dangerousTools: OMNI_IDE_DANGEROUS_TOOLS.map((t) => ({ ...t, allowed: deps.allowDangerous })),
+        baseAllowlist: allowlist.baseAllowlist,
+        dangerousTools: allowlist.dangerousTools.map((t) => ({ ...t, allowed: deps.allowDangerous })),
         allowDangerous: deps.allowDangerous,
       });
     }
@@ -206,8 +233,9 @@ const evaluateExternalTool = (toolName: string, args: unknown, deps: OmniIdeProf
   }
 
   // 1) Tool must be in either the base or dangerous list — everything else is denied.
-  const isBase = OMNI_IDE_BASE_ALLOWLIST_NAMES.has(toolName);
-  const isDangerous = OMNI_IDE_DANGEROUS_NAMES.has(toolName);
+  const allowlist = resolveOmniIdeAllowlist(deps.ideDeps);
+  const isBase = allowlist.baseNames.has(toolName);
+  const isDangerous = allowlist.dangerousNames.has(toolName);
   if (!isBase && !isDangerous) {
     return { allow: false, reason: `Tool "${toolName}" is not exposed by the External MCP Gateway.` };
   }
