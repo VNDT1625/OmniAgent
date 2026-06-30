@@ -113,17 +113,31 @@ describeGit('gitRunner — real git end-to-end (local bare remote)', () => {
   });
 
   it('PULL (the "back" direction) updates a clone after the other clone pushes', async () => {
-    // workB commits a new file and pushes it up.
-    fs.writeFileSync(path.join(workB, 'CHANGES.md'), 'v2\n', 'utf-8');
-    const commitB = await runner.commitAll(workB, 'docs: add CHANGES', author);
-    expect(commitB.ok).toBe(true);
-    const pushB = await runner.push(workB, 'main');
-    expect(pushB.ok).toBe(true);
+    const pullRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'aionui-git-pull-it-'));
+    try {
+      const pullRemote = path.join(pullRoot, 'remote.git');
+      const pullA = path.join(pullRoot, 'workA');
+      const pullB = path.join(pullRoot, 'workB');
+      fs.mkdirSync(pullA, { recursive: true });
+      execFileSync('git', ['init', '--bare', '-b', 'main', pullRemote], { stdio: 'ignore' });
+      const pullRemoteUrl = pullRemote.replace(/\\/g, '/');
 
-    // workA pulls and now sees workB's file (commit its own scratch first to avoid a dirty-tree pull block).
-    await runner.commitAll(workA, 'chore: scratch', author);
-    const pull = await runner.pull(workA, 'main');
-    expect(pull.ok).toBe(true);
-    expect(fs.existsSync(path.join(workA, 'CHANGES.md'))).toBe(true);
+      const init = await runner.initAndSetRemote(pullA, pullRemoteUrl, 'main');
+      expect(init.ok).toBe(true);
+      fs.writeFileSync(path.join(pullA, 'README.md'), '# Pull fixture\n', 'utf-8');
+      expect((await runner.commitAll(pullA, 'feat: seed pull fixture', author)).ok).toBe(true);
+      expect((await runner.push(pullA, 'main')).ok).toBe(true);
+
+      expect((await runner.clone(pullRemoteUrl, pullB, 'main')).ok).toBe(true);
+      fs.writeFileSync(path.join(pullB, 'CHANGES.md'), 'v2\n', 'utf-8');
+      expect((await runner.commitAll(pullB, 'docs: add CHANGES', author)).ok).toBe(true);
+      expect((await runner.push(pullB, 'main')).ok).toBe(true);
+
+      const pull = await runner.pull(pullA, 'main');
+      expect(pull.ok).toBe(true);
+      expect(fs.existsSync(path.join(pullA, 'CHANGES.md'))).toBe(true);
+    } finally {
+      fs.rmSync(pullRoot, { recursive: true, force: true });
+    }
   });
 });

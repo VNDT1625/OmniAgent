@@ -71,7 +71,7 @@ d('sqliteDriver (real better-sqlite3)', () => {
     await driver.connect();
     const schema = await driver.getSchema();
     const names = schema.tables.map((t) => `${t.type}:${t.name}`).toSorted();
-    expect(names).toEqual(['table:users', 'view:active']);
+    expect(names).toEqual(['table:posts', 'table:users', 'view:active']);
     await driver.close();
   });
 
