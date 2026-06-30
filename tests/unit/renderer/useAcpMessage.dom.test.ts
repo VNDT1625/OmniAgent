@@ -44,6 +44,14 @@ vi.mock('@/common', () => ({
         invoke: vi.fn().mockResolvedValue([]),
       },
     },
+    systemSettings: {
+      languageChanged: {
+        on: vi.fn(),
+      },
+      changeLanguage: {
+        invoke: vi.fn().mockResolvedValue(undefined),
+      },
+    },
   },
 }));
 

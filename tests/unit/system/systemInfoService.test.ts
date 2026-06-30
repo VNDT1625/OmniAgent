@@ -92,7 +92,7 @@ describe('createSystemInfoService', () => {
     const snapshot = h.service.getSnapshot();
     expect(snapshot).not.toBeNull();
     expect(snapshot?.history.length).toBe(1);
-    expect(h.writes.length).toBe(1); // first tick writes (lastWrite=0)
+    expect(h.writes.length).toBe(0); // first tick is throttled until the snapshot cadence elapses
     expect(h.reapplyCalls).toEqual([1]);
   });
 

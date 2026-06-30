@@ -269,7 +269,7 @@ describe('createContextBuilder.build', () => {
     expect(pack.renderedContext).toContain('After writes check `diff --last`');
     expect(pack.renderedContext).toContain('accept stale confirmations after reviewing the diff excerpt');
     expect(pack.renderedContext).toContain('Planning runtime');
-    expect(pack.renderedContext).toContain('.aionui/specs/<slug>/');
+    expect(pack.renderedContext).toContain('.omni/specs/<slug>/');
     expect(pack.renderedContext).toContain('plan/temporary/');
     expect(pack.renderedContext).toContain('src/auth/LoginButton.tsx');
     expect(pack.renderedContext).toContain('LoginButton');

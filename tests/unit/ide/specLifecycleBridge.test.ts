@@ -47,7 +47,7 @@ describe('spec lifecycle bridge helpers', () => {
       'tasks.md': true,
       'verification.md': true,
     });
-    const temporaryStat = await stat(join(rootPath, '.aionui', 'specs', status.slug as string, 'plan', 'temporary'));
+    const temporaryStat = await stat(join(rootPath, '.omni', 'specs', status.slug as string, 'plan', 'temporary'));
     expect(temporaryStat.isDirectory()).toBe(true);
     expect(status.taskCounts.total).toBe(3);
   });
@@ -55,7 +55,7 @@ describe('spec lifecycle bridge helpers', () => {
   it('counts task states from tasks.md', async () => {
     const initial = await initSpecDirectory(rootPath, 'Task States');
     await writeFile(
-      join(rootPath, '.aionui', 'specs', initial.slug as string, 'tasks.md'),
+      join(rootPath, '.omni', 'specs', initial.slug as string, 'tasks.md'),
       ['# Tasks', '', '- [x] Done', '- [~] Running', '- [!] Blocked', '- [ ] Pending'].join('\n'),
       'utf-8'
     );
@@ -81,17 +81,14 @@ describe('spec lifecycle bridge helpers', () => {
     expect(runbook.nextTaskId).toBe(runbook.tasks[0]?.id);
     expect(runbook.counts.pending).toBe(3);
 
-    const state = await readFile(
-      join(rootPath, '.aionui', 'specs', initial.slug as string, 'task-state.json'),
-      'utf-8'
-    );
+    const state = await readFile(join(rootPath, '.omni', 'specs', initial.slug as string, 'task-state.json'), 'utf-8');
     expect(state).toContain('Clarify requirements');
   });
 
   it('builds a full spec analysis from requirements, tasks and verification', async () => {
     const initial = await initSpecDirectory(rootPath, 'Analyze Me');
     const slug = initial.slug as string;
-    const specDir = join(rootPath, '.aionui', 'specs', slug);
+    const specDir = join(rootPath, '.omni', 'specs', slug);
     await writeFile(
       join(specDir, 'requirements.md'),
       ['# Analyze Me Requirements', '', '## R1 Capture', '- WHEN x, THEN the system SHALL store it.'].join('\n'),
@@ -129,14 +126,14 @@ describe('spec lifecycle bridge helpers', () => {
     expect(active?.status).toBe('in_progress');
     expect(active?.claimedBy).toBe('agent-1');
 
-    const tasksText = await readFile(join(rootPath, '.aionui', 'specs', initial.slug as string, 'tasks.md'), 'utf-8');
+    const tasksText = await readFile(join(rootPath, '.omni', 'specs', initial.slug as string, 'tasks.md'), 'utf-8');
     expect(tasksText).toContain('- [~] Clarify requirements');
   });
 
   it('claims a task by human selector from the task title', async () => {
     const initial = await initSpecDirectory(rootPath, 'Selector Task');
     await writeFile(
-      join(rootPath, '.aionui', 'specs', initial.slug as string, 'tasks.md'),
+      join(rootPath, '.omni', 'specs', initial.slug as string, 'tasks.md'),
       ['# Tasks', '', '- [ ] 1.1 Build planner action', '- [ ] 1.2 Verify planner action'].join('\n'),
       'utf-8'
     );
@@ -148,9 +145,9 @@ describe('spec lifecycle bridge helpers', () => {
 
   it('updates backend task status and records verification', async () => {
     const initial = await initSpecDirectory(rootPath, 'Update Task');
-    await mkdir(join(rootPath, '.aionui', 'understand'), { recursive: true });
+    await mkdir(join(rootPath, '.omni', 'understand'), { recursive: true });
     await writeFile(
-      join(rootPath, '.aionui', 'understand', 'stale.json'),
+      join(rootPath, '.omni', 'understand', 'stale.json'),
       JSON.stringify({ paths: ['src/a.ts', 'src/b.ts', 'src/a.ts'] }),
       'utf-8'
     );
@@ -167,15 +164,15 @@ describe('spec lifecycle bridge helpers', () => {
     });
 
     expect(runbook.tasks.find((task) => task.id === activeId)?.status).toBe('done');
-    const tasksText = await readFile(join(rootPath, '.aionui', 'specs', initial.slug as string, 'tasks.md'), 'utf-8');
+    const tasksText = await readFile(join(rootPath, '.omni', 'specs', initial.slug as string, 'tasks.md'), 'utf-8');
     expect(tasksText).toContain('- [x] Clarify requirements');
     const verificationText = await readFile(
-      join(rootPath, '.aionui', 'specs', initial.slug as string, 'verification.md'),
+      join(rootPath, '.omni', 'specs', initial.slug as string, 'verification.md'),
       'utf-8'
     );
     expect(verificationText).toContain('bun run test passed');
     const refreshText = await readFile(
-      join(rootPath, '.aionui', 'specs', initial.slug as string, 'plan', 'semantic-refresh.json'),
+      join(rootPath, '.omni', 'specs', initial.slug as string, 'plan', 'semantic-refresh.json'),
       'utf-8'
     );
     const refresh = JSON.parse(refreshText) as { entries: Array<{ taskId: string; changedPaths: string[] }> };

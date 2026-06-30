@@ -142,9 +142,8 @@ const recordPhases = () => {
 describe('startOmniTunnel — happy paths', () => {
   it('emits checking → spawning → waiting when cloudflared is already present', async () => {
     mockIsAvailable.mockResolvedValue(true);
-    // startTunnel fires onSpawn (→ waiting-tunnel-url) then resolves with a URL.
-    mockStartTunnel.mockImplementation(async (_key, _url, opts) => {
-      if (opts && typeof opts !== 'number') opts.onSpawn?.();
+    // The tunnel service now emits waiting-tunnel-url before awaiting startTunnel.
+    mockStartTunnel.mockImplementation(async () => {
       return { ok: true, url: 'https://happy.trycloudflare.com' } satisfies TunnelResult;
     });
 
@@ -155,18 +154,13 @@ describe('startOmniTunnel — happy paths', () => {
     expect(phases).toEqual(['checking-cloudflared', 'spawning-tunnel', 'waiting-tunnel-url']);
     // Already available → must NOT attempt an install.
     expect(mockEnsure).not.toHaveBeenCalled();
-    expect(mockStartTunnel).toHaveBeenCalledWith(
-      OMNI_GATEWAY_TUNNEL_KEY,
-      'http://127.0.0.1:47821',
-      expect.objectContaining({ onSpawn: expect.any(Function) })
-    );
+    expect(mockStartTunnel).toHaveBeenCalledWith(OMNI_GATEWAY_TUNNEL_KEY, 'http://127.0.0.1:47821');
   });
 
   it('emits checking → installing → spawning → waiting when cloudflared must be installed', async () => {
     mockIsAvailable.mockResolvedValue(false);
     mockEnsure.mockResolvedValue({ ok: true, installed: true });
-    mockStartTunnel.mockImplementation(async (_key, _url, opts) => {
-      if (opts && typeof opts !== 'number') opts.onSpawn?.();
+    mockStartTunnel.mockImplementation(async () => {
       return { ok: true, url: 'https://installed.trycloudflare.com' } satisfies TunnelResult;
     });
 
@@ -201,8 +195,7 @@ describe('startOmniTunnel — failure paths', () => {
     const result = await startOmniTunnel(47821, { onProgress });
 
     expect(result).toEqual({ ok: false, reason: 'cloudflared-missing', detail: 'gone' });
-    // onSpawn never fired → no waiting-tunnel-url phase.
-    expect(phases).toEqual(['checking-cloudflared', 'spawning-tunnel']);
+    expect(phases).toEqual(['checking-cloudflared', 'spawning-tunnel', 'waiting-tunnel-url']);
   });
 
   it('passes through a start-failed tunnel result', async () => {
