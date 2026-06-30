@@ -5,7 +5,16 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { armWatchdog, createInitialWatchdogState, disarmWatchdog, enterCooldown, evaluateWatchdog, markResumed, recordActivity, type GoalWatchdogConfig } from '@/common/chat/slash/goalWatchdog';
+import {
+  armWatchdog,
+  createInitialWatchdogState,
+  disarmWatchdog,
+  enterCooldown,
+  evaluateWatchdog,
+  markResumed,
+  recordActivity,
+  type GoalWatchdogConfig,
+} from '@/common/chat/slash/goalWatchdog';
 
 const CONFIG: GoalWatchdogConfig = {
   stallTimeoutMs: 1000,

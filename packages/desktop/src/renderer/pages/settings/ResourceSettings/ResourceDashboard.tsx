@@ -98,7 +98,11 @@ const ResourceDashboard: React.FC = () => {
                 <MachineProfileCard machine={state.machine} />
                 <div className='grid grid-cols-1 lg:grid-cols-2 gap-16px'>
                   <ModeSelector mode={state.mode} onChange={handleModeChange} />
-                  <PresetButtons current={state.preset} onApply={handleApplyPreset} disabled={state.mode === 'suggest'} />
+                  <PresetButtons
+                    current={state.preset}
+                    onApply={handleApplyPreset}
+                    disabled={state.mode === 'suggest'}
+                  />
                 </div>
                 <BudgetEditor budget={state.budget} editable={state.mode === 'detailed'} onSave={handleSaveBudget} />
                 <ActivityPanel active={state.active} queued={state.queued} />

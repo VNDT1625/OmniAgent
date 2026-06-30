@@ -6,7 +6,31 @@
 
 import type { NewSessionMeta } from '@agentclientprotocol/claude-agent-acp';
 
-export const STRICT_IDE_DISALLOWED_TOOLS = ['Read', 'Grep', 'Glob', 'Bash', 'Write', 'Edit', 'NotebookEdit'] as const;
+export const STRICT_IDE_DISALLOWED_TOOLS = [
+  'Read',
+  'Read0',
+  'Grep',
+  'Grep0',
+  'Glob',
+  'Glob0',
+  'Bash',
+  'Bash0',
+  'Write',
+  'Write0',
+  'Edit',
+  'Edit0',
+  'NotebookEdit',
+  'NotebookEdit0',
+  'ApplyPatch',
+  'StrReplace',
+  'Sed',
+  'Awk',
+  'Cat',
+  'Ls',
+  'Find',
+  'Execute',
+  'RunTerminalCmd',
+] as const;
 
 type SessionParams = {
   _meta?: NewSessionMeta;

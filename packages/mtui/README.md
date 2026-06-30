@@ -406,12 +406,13 @@ mtui --json exp feedback exp_abc123 --unhelpful
 
 `exp` reads the projection file `.mtui/exp/index.json` written by the Omni ExpBase engine
 (`packages/desktop/src/process/experience/`). MTUI stays AI-free: it ranks with deterministic lexical
-+ metadata scoring and never computes embeddings. `add` and `forget` only queue intent
-(`.mtui/exp/inbox.jsonl`, `.mtui/exp/forget.jsonl`); the engine embeds, de-dupes, archives, and
-rebuilds the projection on its next drain. `feedback` queues a confidence nudge
-(`.mtui/exp/feedback.jsonl`, `--helpful`/`--unhelpful`) applied on the same drain. Use `exp search`
-when stuck on a hard bug (failed verify/test or two failed fix attempts) to recall a grounded lesson —
-it costs no tokens and no model round-trips.
+
+- metadata scoring and never computes embeddings. `add` and `forget` only queue intent
+  (`.mtui/exp/inbox.jsonl`, `.mtui/exp/forget.jsonl`); the engine embeds, de-dupes, archives, and
+  rebuilds the projection on its next drain. `feedback` queues a confidence nudge
+  (`.mtui/exp/feedback.jsonl`, `--helpful`/`--unhelpful`) applied on the same drain. Use `exp search`
+  when stuck on a hard bug (failed verify/test or two failed fix attempts) to recall a grounded lesson —
+  it costs no tokens and no model round-trips.
 
 ## License
 

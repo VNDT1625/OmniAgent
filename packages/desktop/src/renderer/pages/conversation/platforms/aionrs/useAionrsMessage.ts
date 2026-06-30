@@ -15,6 +15,7 @@ import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conve
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { processLocalCronResponse } from './localCronCommands';
 import { noteAssistantReply } from '@/renderer/services/i18n/responseLanguage';
+import { enforceStrictIdeModeOnConfirmation } from '../strictIdeModeGuard';
 
 type TokenUsage = {
   input_tokens?: number;
@@ -311,7 +312,33 @@ export const useAionrsMessage = (
           // Backend aionrs emits wire type 'acp_permission' but the payload is
           // Confirmation-shaped (legacy), which matches MessagePermission, not
           // MessageAcpPermission. Re-tag so transformMessage routes it correctly.
-          addOrUpdateMessage(transformMessage({ ...message, type: 'permission' }));
+          void enforceStrictIdeModeOnConfirmation({
+            id: message.msg_id || `${message.created_at || Date.now()}`,
+            conversation_id,
+            content: message.data as Parameters<typeof enforceStrictIdeModeOnConfirmation>[0]['content'],
+          })
+            .then((result) => {
+              if (!result.denied) {
+                addOrUpdateMessage(transformMessage({ ...message, type: 'permission' }));
+                return;
+              }
+              addOrUpdateMessage({
+                id: `${message.msg_id || message.created_at || Date.now()}-strict-ide-denied`,
+                type: 'tips',
+                msg_id: message.msg_id,
+                position: 'center',
+                conversation_id,
+                created_at: message.created_at ?? Date.now(),
+                content: {
+                  content: result.reason,
+                  type: 'warning',
+                },
+              });
+            })
+            .catch((error: unknown) => {
+              console.error('Strict IDE Mode guard failed:', error);
+              addOrUpdateMessage(transformMessage({ ...message, type: 'permission' }));
+            });
           break;
         case 'config_changed':
           onConfigChangedRef.current?.(message.data as Record<string, unknown>);

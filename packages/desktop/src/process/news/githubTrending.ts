@@ -92,7 +92,7 @@ const normaliseRepo = (raw: RawRepo): GithubRepo | null => {
   return {
     id: raw.id,
     fullName: raw.full_name,
-    name: isString(raw.name) ? raw.name : raw.full_name.split('/').at(-1) ?? raw.full_name,
+    name: isString(raw.name) ? raw.name : (raw.full_name.split('/').at(-1) ?? raw.full_name),
     owner,
     description: isString(raw.description) ? raw.description : null,
     url: raw.html_url,

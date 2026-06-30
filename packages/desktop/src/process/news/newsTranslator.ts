@@ -214,7 +214,7 @@ export const translateIngestItems = async (
     if (budget <= 0) break;
     if (options.isAlreadyTranslated?.(item)) continue;
 
-    const detected = options.feedLang ? baseLang(options.feedLang) : detectLang(item.title) ?? 'en';
+    const detected = options.feedLang ? baseLang(options.feedLang) : (detectLang(item.title) ?? 'en');
     item.sourceLang = detected;
     // No work when the source is already the app language.
     if (detected === targetBase) continue;

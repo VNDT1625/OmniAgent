@@ -90,6 +90,24 @@ export const createNodePtyBackend = (): IPtyBackend => {
       });
 
       let exited = false;
+      const dataListeners = new Set<(chunk: string) => void>();
+      const earlyData: string[] = [];
+
+      const deliverData = (data: string): void => {
+        if (dataListeners.size === 0) {
+          earlyData.push(data);
+          return;
+        }
+        for (const listener of dataListeners) {
+          try {
+            listener(data);
+          } catch (error) {
+            console.error('[nodePtyBackend] data listener threw:', error);
+          }
+        }
+      };
+
+      proc.onData(deliverData);
 
       return {
         get pid() {
@@ -131,13 +149,16 @@ export const createNodePtyBackend = (): IPtyBackend => {
           }
         },
         onData(listener): void {
-          proc.onData((data) => {
+          dataListeners.add(listener);
+          if (earlyData.length === 0) return;
+          const pending = earlyData.splice(0, earlyData.length);
+          for (const data of pending) {
             try {
               listener(data);
             } catch (error) {
               console.error('[nodePtyBackend] data listener threw:', error);
             }
-          });
+          }
         },
         onExit(listener): void {
           proc.onExit(({ exitCode }) => {

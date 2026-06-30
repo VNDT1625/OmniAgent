@@ -23,7 +23,8 @@ const SECRET_PATTERNS: ReadonlyArray<{ pattern: RegExp; replacement: string }> =
   { pattern: /\b(bearer|token|authorization)\b\s*[:=]?\s*[A-Za-z0-9._~+/-]{12,}=*/gi, replacement: '$1 [REDACTED]' },
   // key=value / "secret": "value" style assignments for sensitive names.
   {
-    pattern: /\b([A-Za-z0-9_]*(?:api[_-]?key|secret|password|passwd|token|access[_-]?key|private[_-]?key)[A-Za-z0-9_]*)\b\s*[:=]\s*["']?[^\s"']{6,}["']?/gi,
+    pattern:
+      /\b([A-Za-z0-9_]*(?:api[_-]?key|secret|password|passwd|token|access[_-]?key|private[_-]?key)[A-Za-z0-9_]*)\b\s*[:=]\s*["']?[^\s"']{6,}["']?/gi,
     replacement: '$1=[REDACTED]',
   },
   // Common provider key prefixes (OpenAI, GitHub, Slack, AWS, Google).
@@ -125,7 +126,10 @@ const contextLine = (context: ExperienceContext): string =>
  * always produces the same text, so re-embedding is reproducible.
  */
 export const buildEmbeddingText = (
-  entry: Pick<ExperienceEntry, 'kind' | 'symptoms' | 'context' | 'rootCause' | 'fix' | 'lesson' | 'verification' | 'tags'>
+  entry: Pick<
+    ExperienceEntry,
+    'kind' | 'symptoms' | 'context' | 'rootCause' | 'fix' | 'lesson' | 'verification' | 'tags'
+  >
 ): string => {
   const passedCommands = (entry.verification.commands ?? [])
     .filter((command) => command.outcome === 'passed')
@@ -151,7 +155,10 @@ export const buildEmbeddingText = (
  * Includes symptom, lesson, root cause, tags, and context identifiers.
  */
 export const buildLexicalText = (
-  source: Pick<ExperienceProjectionEntry, 'symptom' | 'lesson' | 'tags' | 'frameworks' | 'packages' | 'files' | 'commands' | 'errorCategory'> & {
+  source: Pick<
+    ExperienceProjectionEntry,
+    'symptom' | 'lesson' | 'tags' | 'frameworks' | 'packages' | 'files' | 'commands' | 'errorCategory'
+  > & {
     errorMessages?: string[];
     rootCause?: string;
   }

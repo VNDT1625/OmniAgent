@@ -135,9 +135,13 @@ export const createChildProcessBackend = (): IPtyBackend => ({
     let exited = false;
     const dataListeners = new Set<(chunk: string) => void>();
     const exitListeners = new Set<(code: number | null) => void>();
+    const earlyData: string[] = [];
 
-    const emitData = (chunk: Buffer): void => {
-      const text = chunk.toString('utf-8');
+    const deliverData = (text: string): void => {
+      if (dataListeners.size === 0) {
+        earlyData.push(text);
+        return;
+      }
       for (const listener of dataListeners) {
         try {
           listener(text);
@@ -145,6 +149,10 @@ export const createChildProcessBackend = (): IPtyBackend => ({
           console.error('[ptyBackend] data listener threw:', error);
         }
       }
+    };
+
+    const emitData = (chunk: Buffer): void => {
+      deliverData(chunk.toString('utf-8'));
     };
 
     child.stdout.on('data', emitData);
@@ -202,6 +210,15 @@ export const createChildProcessBackend = (): IPtyBackend => ({
       },
       onData(listener): void {
         dataListeners.add(listener);
+        if (earlyData.length === 0) return;
+        const pending = earlyData.splice(0, earlyData.length);
+        for (const text of pending) {
+          try {
+            listener(text);
+          } catch (error) {
+            console.error('[ptyBackend] data listener threw:', error);
+          }
+        }
       },
       onExit(listener): void {
         exitListeners.add(listener);

@@ -20,6 +20,7 @@ import FilePreview from '@renderer/components/media/FilePreview';
 import HorizontalFileList from '@renderer/components/media/HorizontalFileList';
 import MarkdownView from '@renderer/components/Markdown';
 import { stripThinkTags, hasThinkTags } from '@renderer/utils/chat/thinkTagFilter';
+import { stripTokenWatermarkNotice } from '@/common/chat/chatLib';
 import { stripSkillSuggest, hasSkillSuggest } from '@renderer/utils/chat/skillSuggestParser';
 
 /**
@@ -100,6 +101,7 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
   const contentToRender = useMemo(() => {
     let content = message.content.content;
     if (typeof content === 'string') {
+      content = stripTokenWatermarkNotice(content);
       if (hasThinkTags(content)) {
         content = stripThinkTags(content);
       }

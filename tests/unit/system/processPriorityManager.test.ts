@@ -6,10 +6,18 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import type { ProcessMetric } from '@process/system/systemInfoTypes';
-import { createPriorityManager, levelFromNice, PRIORITY_NICE, processIdentity, type PriorityManagerDeps } from '@process/system/processPriorityManager';
+import {
+  createPriorityManager,
+  levelFromNice,
+  PRIORITY_NICE,
+  processIdentity,
+  type PriorityManagerDeps,
+} from '@process/system/processPriorityManager';
 
 /** In-memory fs-backed deps for the priority store. */
-const memoryDeps = (initial?: string): { deps: PriorityManagerDeps; getWritten: () => string | null; setCalls: Array<[number, number]> } => {
+const memoryDeps = (
+  initial?: string
+): { deps: PriorityManagerDeps; getWritten: () => string | null; setCalls: Array<[number, number]> } => {
   let file: string | null = initial ?? null;
   const setCalls: Array<[number, number]> = [];
   const deps: PriorityManagerDeps = {

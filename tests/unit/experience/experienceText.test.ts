@@ -51,7 +51,9 @@ describe('redactSecrets', () => {
   });
 
   it('leaves ordinary text untouched', () => {
-    expect(redactSecrets('TypeError: cannot read property foo of undefined')).toBe('TypeError: cannot read property foo of undefined');
+    expect(redactSecrets('TypeError: cannot read property foo of undefined')).toBe(
+      'TypeError: cannot read property foo of undefined'
+    );
   });
 });
 
@@ -100,10 +102,20 @@ describe('computeVerificationStrength', () => {
   });
 });
 
-const baseCore: Pick<ExperienceEntry, 'kind' | 'symptoms' | 'context' | 'rootCause' | 'fix' | 'lesson' | 'verification' | 'tags'> = {
+const baseCore: Pick<
+  ExperienceEntry,
+  'kind' | 'symptoms' | 'context' | 'rootCause' | 'fix' | 'lesson' | 'verification' | 'tags'
+> = {
   kind: 'successful_fix',
   symptoms: { summary: 'tsc fails with TS2345', errorMessages: ['TS2345: Argument not assignable'] },
-  context: { repoArea: ['process/ide'], files: ['a.ts'], commands: ['bunx tsc'], frameworks: ['typescript'], packages: ['typescript'], errorCategory: 'compile' },
+  context: {
+    repoArea: ['process/ide'],
+    files: ['a.ts'],
+    commands: ['bunx tsc'],
+    frameworks: ['typescript'],
+    packages: ['typescript'],
+    errorCategory: 'compile',
+  },
   rootCause: 'wrong generic',
   fix: { summary: 'add explicit type', steps: ['annotate param'], changedFiles: ['a.ts'] },
   lesson: 'annotate generics explicitly',

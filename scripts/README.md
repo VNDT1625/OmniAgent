@@ -4,11 +4,11 @@ This directory contains scripts for building and packaging Omni across different
 
 ## Scripts Overview
 
-| Script                    | Lines | Purpose                                         |
-| ------------------------- | ----- | ----------------------------------------------- |
+| Script                            | Lines | Purpose                                         |
+| --------------------------------- | ----- | ----------------------------------------------- |
 | `scripts/build-with-builder.js`   | 116   | Coordinates Electron Forge and electron-builder |
 | `scripts/rebuildNativeModules.js` | 219   | **Unified native module rebuild utility**       |
-| `beforeBuild.js`          | 38    | Pre-packaging native module rebuild hook        |
+| `beforeBuild.js`                  | 38    | Pre-packaging native module rebuild hook        |
 | `scripts/afterPack.js`            | 67    | Post-packaging verification (Linux only)        |
 | `scripts/afterSign.js`            | 47    | macOS code signing and notarization             |
 

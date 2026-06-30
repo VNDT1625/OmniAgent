@@ -47,7 +47,8 @@ export const getNewsServices = (): NewsServices => {
     getPrices: async (symbols) => {
       const res = await fetchMarketQuotes();
       const out: Record<string, number> = {};
-      if (res.ok) for (const q of res.quotes) if (symbols.includes(q.symbol) && q.price != null) out[q.symbol] = q.price;
+      if (res.ok)
+        for (const q of res.quotes) if (symbols.includes(q.symbol) && q.price != null) out[q.symbol] = q.price;
       return out;
     },
     getHistory: async (symbol) => {

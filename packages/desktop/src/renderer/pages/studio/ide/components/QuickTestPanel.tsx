@@ -34,8 +34,10 @@ import {
   Code,
   FileCode,
   FolderOpen,
+  Left,
   Lightning,
   Play,
+  Right,
   Robot,
 } from '@icon-park/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -50,6 +52,8 @@ import type { RunPlatform } from '../ideClient';
 
 type QuickTestPanelProps = {
   rootPath: string | null;
+  /** Compact mode hides the IDE activity rail together with the Quick Test right rail. */
+  onCompactChange?: (compact: boolean) => void;
   /** Called when user clicks "Fix with Agent" — opens a new IDE Chat tab with the trace context. */
   onFixWithAgent: (contextPack: ContextPack, errorSummary: string, hasError: boolean) => void;
   /**
@@ -62,7 +66,12 @@ type QuickTestPanelProps = {
 
 type QTStatus = 'idle' | 'recording' | 'done' | 'error';
 
-const QuickTestPanel: React.FC<QuickTestPanelProps> = ({ rootPath, onFixWithAgent, onAskAboutElement }) => {
+const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
+  rootPath,
+  onCompactChange,
+  onFixWithAgent,
+  onAskAboutElement,
+}) => {
   const { t } = useTranslation();
   const [status, setStatus] = useState<QTStatus>('idle');
   const [platform, setPlatform] = useState<TracePlatform>('web');
@@ -81,6 +90,18 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({ rootPath, onFixWithAgen
   const quickRun = useQuickRun(rootPath);
   const logRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
+
+  // Right sidebar (inspect + trace log) visibility + width.
+  // User can hide it for "full browser" UX testing mode, drag to resize,
+  // and the browser area becomes almost identical to a normal browser tab.
+  const [railVisible, setRailVisible] = useState(true);
+  const [railWidth, setRailWidth] = useState(360);
+  const railDragRef = useRef<{ startX: number; startW: number } | null>(null);
+
+  useEffect(() => {
+    onCompactChange?.(!railVisible);
+    return () => onCompactChange?.(false);
+  }, [railVisible, onCompactChange]);
 
   // Keep the tracer platform in sync with the Quick-Run platform the user picks
   // (web → tracer 'web', desktop → 'windows', android → 'android'), so pressing
@@ -276,6 +297,37 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({ rootPath, onFixWithAgen
     if (!quickRun.active && status === 'recording') void handleStop();
   }, [quickRun.active, status, handleStop]);
 
+  // Drag-to-resize right rail (sidebar with inspect + activity trace).
+  useEffect(() => {
+    const onMove = (e: MouseEvent): void => {
+      const drag = railDragRef.current;
+      if (!drag) return;
+      const delta = e.clientX - drag.startX;
+      const next = Math.max(220, Math.min(520, drag.startW + delta));
+      setRailWidth(next);
+    };
+    const onUp = (): void => {
+      railDragRef.current = null;
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  const startRailResize = useCallback(
+    (e: React.MouseEvent): void => {
+      railDragRef.current = { startX: e.clientX, startW: railWidth };
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = 'col-resize';
+    },
+    [railWidth]
+  );
+
   // The status rail content (instructions / live log / trace summary / error).
   // For web it sits beside the embedded browser; for native it fills the panel.
   const railBody = (
@@ -299,33 +351,69 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({ rootPath, onFixWithAgen
 
   return (
     <div className='size-full flex flex-col min-h-0 bg-1'>
-      <QuickTestHeader status={status} platform={platform} target={target} onTargetChange={setTarget} />
-      {/* Quick-Run bar: pick a platform (only supported ones), press Run, and the
-          app boots mechanically (terminal + wiki run data) — no AI. */}
-      <QuickRunBar run={quickRun} disabled={status === 'recording'} />
+      {platform === 'web' ? null : (
+        <QuickTestHeader status={status} platform={platform} target={target} onTargetChange={setTarget} />
+      )}
+      {platform === 'web' ? null : (
+        /* Quick-Run bar: pick a platform (only supported ones), press Run, and the
+            app boots mechanically (terminal + wiki run data) — no AI. */
+        <QuickRunBar
+          run={quickRun}
+          disabled={status === 'recording'}
+          railVisible={railVisible}
+          onToggleRail={() => setRailVisible((v) => !v)}
+        />
+      )}
       {platform === 'web' ? (
-        // Web: the live app under test on the left, the trace rail on the right.
+        // Web: the live app under test sits beside the trace rail. The browser
+        // is a native WebContentsView, so DOM z-index cannot draw the rail above
+        // it; visible rails must occupy real layout space to avoid being covered.
         // The browser stays mounted across status changes so the user keeps
         // their session (and CDP target) while recording and after stopping.
         <div className='flex-1 min-h-0 flex'>
           <div className='flex-1 min-w-0 min-h-0 border-r border-r-1'>
-            <QuickTestBrowser onTabReady={setWebTabId} navigateUrl={quickRun.readyUrl} />
-          </div>
-          <div className='w-360px shrink-0 min-h-0 overflow-y-auto flex flex-col'>
-            {/* Visual element picker — additive to the trace flow above. */}
-            <InspectBar
-              inspecting={inspecting}
-              picked={picks[0] ?? null}
-              designRequest={designRequest}
-              disabled={!webTabId}
-              onInspect={() => void handleInspect()}
-              onCancel={handleCancelInspect}
-              onDesignRequestChange={setDesignRequest}
-              onAsk={handleAskAboutElement}
-              onClearPick={handleClearPicks}
+            <QuickTestBrowser
+              onTabReady={setWebTabId}
+              navigateUrl={quickRun.readyUrl}
+              toolbarLeading={<QuickRunInlineStart run={quickRun} />}
+              toolbarTrailing={
+                <QuickRunInlineEnd
+                  run={quickRun}
+                  disabled={status === 'recording'}
+                  railVisible={railVisible}
+                  onToggleRail={() => setRailVisible((v) => !v)}
+                />
+              }
             />
-            {railBody}
           </div>
+
+          {railVisible ? (
+            <div className='shrink-0 flex min-h-0 bg-1 border-l border-l-1' style={{ width: railWidth }}>
+              {/* Resize handle for the right activity/inspect sidebar */}
+              <div
+                role='separator'
+                aria-orientation='vertical'
+                aria-label={t('ide.quicktest.resizeSidebar')}
+                onMouseDown={startRailResize}
+                className='w-4px shrink-0 cursor-col-resize bg-transparent hover:bg-primary-light-2 active:bg-primary transition-colors'
+              />
+              <div className='flex-1 min-w-0 min-h-0 overflow-y-auto flex flex-col'>
+                {/* Visual element picker — additive to the trace flow above. */}
+                <InspectBar
+                  inspecting={inspecting}
+                  picked={picks[0] ?? null}
+                  designRequest={designRequest}
+                  disabled={!webTabId}
+                  onInspect={() => void handleInspect()}
+                  onCancel={handleCancelInspect}
+                  onDesignRequestChange={setDesignRequest}
+                  onAsk={handleAskAboutElement}
+                  onClearPick={handleClearPicks}
+                />
+                {railBody}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : (
         <div className='flex-1 min-h-0 overflow-y-auto'>{railBody}</div>
@@ -347,14 +435,9 @@ const QuickTestHeader: React.FC<{
   onTargetChange: (v: string) => void;
 }> = ({ status, platform, target, onTargetChange }) => {
   const { t } = useTranslation();
-  const recording = status === 'recording';
   const editable = status === 'idle' || status === 'error';
   return (
-    <div className='shrink-0 flex items-center gap-10px px-16px h-48px border-b border-b-1'>
-      <span className='flex items-center gap-8px text-t-primary'>
-        <Bug theme='outline' size={16} className='text-primary' />
-        <span className='text-13px font-600'>{t('ide.quicktest.title')}</span>
-      </span>
+    <div className='shrink-0 flex items-center gap-10px px-16px h-32px border-b border-b-1'>
       {/* Native targets still take a manual device/exe hint; web needs none. */}
       {editable && platform !== 'web' ? (
         <Input
@@ -369,12 +452,6 @@ const QuickTestHeader: React.FC<{
         />
       ) : null}
       <div className='flex-1' />
-      {recording ? (
-        <span className='flex items-center gap-5px text-11px text-danger'>
-          <span className='size-7px rd-full bg-danger animate-pulse' aria-hidden />
-          {t('ide.quicktest.recording')}
-        </span>
-      ) : null}
     </div>
   );
 };
@@ -667,13 +744,144 @@ const setupBadge = (source: QuickRunState['setupSource']): { key: string; color:
   return { key: 'ide.quickrun.setupMissing', color: 'red' };
 };
 
+const quickRunStatusText = (run: QuickRunState, t: ReturnType<typeof useTranslation>['t']): string | null => {
+  if (run.phase === 'launching') return t('ide.quickrun.launching');
+  if (run.phase === 'waiting') return t('ide.quickrun.waiting', { url: run.recipe?.url ?? '' });
+  if (run.phase !== 'running') return null;
+  return run.fromSaved ? t('ide.quickrun.runningSaved') : t('ide.quickrun.running');
+};
+
+const QuickRunInlineStart: React.FC<{ run: QuickRunState }> = ({ run }) => {
+  const { t } = useTranslation();
+  const setup = setupBadge(run.setupSource);
+  const supported = run.options.filter((o) => o.supported);
+
+  const onPick = useCallback(
+    (option: PlatformOption): void => {
+      if (!option.supported) {
+        const fallback = supported[0];
+        if (fallback) {
+          Message.warning(
+            t('ide.quickrun.unsupportedWarn', {
+              picked: t(PLATFORM_META[option.platform].labelKey),
+              fallback: t(PLATFORM_META[fallback.platform].labelKey),
+            })
+          );
+          run.select(fallback.platform);
+        }
+        return;
+      }
+      run.select(option.platform);
+    },
+    [run, supported, t]
+  );
+
+  return (
+    <div className='shrink-0 flex items-center gap-6px min-w-0'>
+      <span className='flex items-center gap-4px text-11px font-600 uppercase tracking-wide text-t-tertiary'>
+        <Lightning theme='outline' size={13} className='text-primary' />
+        {t('ide.quickrun.title')}
+      </span>
+      <Tooltip content={t('ide.quickrun.setupTooltip')}>
+        <Tag size='small' color={setup.color} className='!m-0 !h-20px !leading-20px'>
+          {t(setup.key)}
+        </Tag>
+      </Tooltip>
+      <div className='flex items-center gap-3px'>
+        {run.options.map((option) => {
+          const active = option.platform === run.selected;
+          return (
+            <Tooltip
+              key={option.platform}
+              content={option.supported ? undefined : t('ide.quickrun.unsupportedHint')}
+              disabled={option.supported}
+            >
+              <Button
+                size='mini'
+                type={active ? 'primary' : 'text'}
+                disabled={!option.supported}
+                onClick={() => onPick(option)}
+                className={active ? '' : '!text-t-secondary'}
+              >
+                <span className='flex items-center gap-3px'>
+                  {t(PLATFORM_META[option.platform].labelKey)}
+                  {option.saved ? <CheckOne theme='filled' size={10} className='text-success' /> : null}
+                </span>
+              </Button>
+            </Tooltip>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const QuickRunInlineEnd: React.FC<{
+  run: QuickRunState;
+  disabled: boolean;
+  railVisible: boolean;
+  onToggleRail: () => void;
+}> = ({ run, disabled, railVisible, onToggleRail }) => {
+  const { t } = useTranslation();
+  const busy = run.phase === 'launching' || run.phase === 'waiting';
+  const selectedOption = run.options.find((o) => o.platform === run.selected);
+  const statusText = quickRunStatusText(run, t);
+
+  return (
+    <div className='shrink-0 flex items-center gap-6px min-w-0'>
+      {statusText ? (
+        <span className='max-w-360px flex items-center gap-5px text-11px text-t-secondary min-w-0'>
+          {busy ? <span className='size-7px rd-full bg-primary animate-pulse shrink-0' aria-hidden /> : null}
+          <span className='truncate'>{statusText}</span>
+        </span>
+      ) : null}
+      <Tooltip content={t(railVisible ? 'ide.quicktest.hideIdeSidebars' : 'ide.quicktest.showIdeSidebars')}>
+        <Button
+          size='mini'
+          type='text'
+          icon={railVisible ? <Right theme='outline' size={14} /> : <Left theme='outline' size={14} />}
+          onClick={onToggleRail}
+          className='!text-t-secondary'
+        />
+      </Tooltip>
+      {run.active ? (
+        <Button
+          size='mini'
+          status='danger'
+          type='primary'
+          icon={<Close theme='outline' size={11} />}
+          loading={busy}
+          onClick={() => run.stop()}
+        >
+          {t('ide.quickrun.stop')}
+        </Button>
+      ) : (
+        <Button
+          size='mini'
+          type='primary'
+          icon={<Play theme='outline' size={11} />}
+          disabled={disabled || run.phase === 'loading'}
+          onClick={() => void run.run()}
+        >
+          {selectedOption?.saved ? t('ide.quickrun.runSaved') : t('ide.quickrun.run')}
+        </Button>
+      )}
+    </div>
+  );
+};
+
 /**
  * `QuickRunBar` — the mechanical (no-AI) Run control. Shows a platform chip per
  * supported target (web/desktop/android — independent), warns + redirects when
  * the user picks an unsupported one, and runs the wiki-derived (or saved, or
  * hand-typed) recipe in the IDE terminal on press.
  */
-const QuickRunBar: React.FC<{ run: QuickRunState; disabled: boolean }> = ({ run, disabled }) => {
+const QuickRunBar: React.FC<{
+  run: QuickRunState;
+  disabled: boolean;
+  railVisible: boolean;
+  onToggleRail: () => void;
+}> = ({ run, disabled, railVisible, onToggleRail }) => {
   const { t } = useTranslation();
   const [warned, setWarned] = useState<RunPlatform | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
@@ -714,23 +922,13 @@ const QuickRunBar: React.FC<{ run: QuickRunState; disabled: boolean }> = ({ run,
   );
 
   const busy = run.phase === 'launching' || run.phase === 'waiting';
-  const running = run.phase === 'running';
   const setup = setupBadge(run.setupSource);
 
-  const statusText =
-    run.phase === 'launching'
-      ? t('ide.quickrun.launching')
-      : run.phase === 'waiting'
-        ? t('ide.quickrun.waiting', { url: run.recipe?.url ?? '' })
-        : running
-          ? run.fromSaved
-            ? t('ide.quickrun.runningSaved')
-            : t('ide.quickrun.running')
-          : null;
+  const statusText = quickRunStatusText(run, t);
 
   return (
-    <div className='shrink-0 flex flex-col gap-8px px-16px py-10px border-b border-b-1 bg-fill-1'>
-      <div className='flex items-center gap-10px flex-wrap'>
+    <div className='shrink-0 flex flex-col gap-2px px-10px py-2px border-b border-b-1 bg-fill-1'>
+      <div className='flex items-center gap-6px flex-wrap min-w-0'>
         <span className='flex items-center gap-6px text-11px font-600 uppercase tracking-wide text-t-tertiary'>
           <Lightning theme='outline' size={13} className='text-primary' />
           {t('ide.quickrun.title')}
@@ -754,7 +952,7 @@ const QuickRunBar: React.FC<{ run: QuickRunState; disabled: boolean }> = ({ run,
                   type='button'
                   onClick={() => onPick(option)}
                   aria-pressed={active}
-                  className={`flex items-center gap-5px h-26px px-10px rd-7px border b-solid text-12px font-[500] transition-colors cursor-pointer ${
+                  className={`flex items-center gap-3px h-22px px-8px rd-5px border b-solid text-11px font-[500] transition-colors cursor-pointer ${
                     active
                       ? 'bg-primary-light-1 border-primary-light-3 text-primary'
                       : option.supported
@@ -763,7 +961,7 @@ const QuickRunBar: React.FC<{ run: QuickRunState; disabled: boolean }> = ({ run,
                   }`}
                 >
                   {t(PLATFORM_META[option.platform].labelKey)}
-                  {option.saved ? <CheckOne theme='filled' size={11} className='text-success' /> : null}
+                  {option.saved ? <CheckOne theme='filled' size={10} className='text-success' /> : null}
                 </button>
               </Tooltip>
             );
@@ -771,9 +969,9 @@ const QuickRunBar: React.FC<{ run: QuickRunState; disabled: boolean }> = ({ run,
         </div>
         <div className='flex-1' />
         {statusText ? (
-          <span className='flex items-center gap-5px text-11px text-t-secondary'>
-            {busy ? <span className='size-7px rd-full bg-primary animate-pulse' aria-hidden /> : null}
-            {statusText}
+          <span className='flex items-center gap-5px text-11px text-t-secondary min-w-0'>
+            {busy ? <span className='size-7px rd-full bg-primary animate-pulse shrink-0' aria-hidden /> : null}
+            <span className='truncate'>{statusText}</span>
           </span>
         ) : null}
         <Tooltip content={t('ide.quickrun.manualToggle')}>
@@ -785,15 +983,24 @@ const QuickRunBar: React.FC<{ run: QuickRunState; disabled: boolean }> = ({ run,
             className={manualOpen ? '!text-primary' : '!text-t-secondary'}
           />
         </Tooltip>
+        <Tooltip content={t(railVisible ? 'ide.quicktest.hideIdeSidebars' : 'ide.quicktest.showIdeSidebars')}>
+          <Button
+            size='small'
+            type='text'
+            icon={railVisible ? <Right theme='outline' size={14} /> : <Left theme='outline' size={14} />}
+            onClick={onToggleRail}
+            className='!text-t-secondary'
+          />
+        </Tooltip>
         {run.active ? (
           // Run↔Stop toggle: while launching/waiting/running, the button STOPS
           // the run — killing the spawned dev server + clearing the embedded
           // browser — so one button starts and tears down everything.
           <Button
-            size='small'
+            size='mini'
             status='danger'
             type='primary'
-            icon={<Close theme='outline' size={13} />}
+            icon={<Close theme='outline' size={11} />}
             loading={busy}
             onClick={() => run.stop()}
           >
@@ -801,9 +1008,9 @@ const QuickRunBar: React.FC<{ run: QuickRunState; disabled: boolean }> = ({ run,
           </Button>
         ) : (
           <Button
-            size='small'
+            size='mini'
             type='primary'
-            icon={<Play theme='outline' size={13} />}
+            icon={<Play theme='outline' size={11} />}
             disabled={disabled || run.phase === 'loading'}
             onClick={() => void run.run()}
           >

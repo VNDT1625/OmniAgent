@@ -19,12 +19,25 @@
 
 import { applyFill, equityOf, positionOf, updatePeak } from './paperBroker';
 import { runStrategy } from './strategies';
-import { emptyPortfolio, type BacktestResult, type OHLCBar, type Portfolio, type RiskLimits, type StrategyId, type StrategyParams } from './botTypes';
+import {
+  emptyPortfolio,
+  type BacktestResult,
+  type OHLCBar,
+  type Portfolio,
+  type RiskLimits,
+  type StrategyId,
+  type StrategyParams,
+} from './botTypes';
 
 const TRADING_DAYS = 252;
 
 const warmupFor = (strategy: StrategyId, params: StrategyParams): number => {
-  const candidates = [params.slowPeriod ?? 30, params.rsiPeriod ?? 14, params.breakoutPeriod ?? 20, params.fastPeriod ?? 10];
+  const candidates = [
+    params.slowPeriod ?? 30,
+    params.rsiPeriod ?? 14,
+    params.breakoutPeriod ?? 20,
+    params.fastPeriod ?? 10,
+  ];
   return Math.max(2, ...candidates) + 1;
 };
 
@@ -44,7 +57,11 @@ export const backtest = (
   bars: OHLCBar[],
   strategy: StrategyId,
   params: StrategyParams = {},
-  risk: Pick<RiskLimits, 'maxPositionPct' | 'stopLossPct' | 'takeProfitPct'> = { maxPositionPct: 0.2, stopLossPct: 0.05, takeProfitPct: 0.12 },
+  risk: Pick<RiskLimits, 'maxPositionPct' | 'stopLossPct' | 'takeProfitPct'> = {
+    maxPositionPct: 0.2,
+    stopLossPct: 0.05,
+    takeProfitPct: 0.12,
+  },
   startingCash = 10_000,
   newsSentiment?: number
 ): BacktestResult => {
@@ -69,7 +86,16 @@ export const backtest = (
       const hitStop = risk.stopLossPct > 0 && change <= -risk.stopLossPct;
       const hitTake = risk.takeProfitPct > 0 && change >= risk.takeProfitPct;
       if (hitStop || hitTake) {
-        const res = applyFill(pf, { symbol, side: 'sell', qty: pos.qty, price, time: bar.time, reason: hitStop ? 'stop-loss' : 'take-profit', mode: 'paper', id: `bt-${seq++}` });
+        const res = applyFill(pf, {
+          symbol,
+          side: 'sell',
+          qty: pos.qty,
+          price,
+          time: bar.time,
+          reason: hitStop ? 'stop-loss' : 'take-profit',
+          mode: 'paper',
+          id: `bt-${seq++}`,
+        });
         if (res.ok) pf = res.portfolio;
       }
     }
@@ -83,11 +109,29 @@ export const backtest = (
         const budget = equity * risk.maxPositionPct * Math.max(0.2, sig.strength);
         const qty = Math.floor(budget / price);
         if (qty > 0) {
-          const res = applyFill(pf, { symbol, side: 'buy', qty, price, time: bar.time, reason: sig.reason, mode: 'paper', id: `bt-${seq++}` });
+          const res = applyFill(pf, {
+            symbol,
+            side: 'buy',
+            qty,
+            price,
+            time: bar.time,
+            reason: sig.reason,
+            mode: 'paper',
+            id: `bt-${seq++}`,
+          });
           if (res.ok) pf = res.portfolio;
         }
       } else if (sig.action === 'sell' && open) {
-        const res = applyFill(pf, { symbol, side: 'sell', qty: open.qty, price, time: bar.time, reason: sig.reason, mode: 'paper', id: `bt-${seq++}` });
+        const res = applyFill(pf, {
+          symbol,
+          side: 'sell',
+          qty: open.qty,
+          price,
+          time: bar.time,
+          reason: sig.reason,
+          mode: 'paper',
+          id: `bt-${seq++}`,
+        });
         if (res.ok) pf = res.portfolio;
       }
     }

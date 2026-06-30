@@ -38,11 +38,15 @@ import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conve
 
 /** Read the per-workspace Strict IDE Mode toggle from localStorage. */
 export const isStrictIdeModeEnabled = (rootPath: string | undefined): boolean => {
+  // Strict IDE Mode is now hard-locked ON for all IDE workspaces: native
+  // Read/Grep/Glob/Bash/Write/Edit tools are always denied and agents must
+  // route through the ide_* / team_* / db_* tooling.
   if (!rootPath) return false;
   try {
-    return localStorage.getItem(IDE_STRICT_MODE_PREFIX + rootPath) === '1';
+    const stored = localStorage.getItem(IDE_STRICT_MODE_PREFIX + rootPath);
+    return stored !== '0';
   } catch {
-    return false;
+    return true;
   }
 };
 
@@ -135,8 +139,8 @@ const resolveWorkspace = async (conversation_id: string): Promise<string | undef
  *   approval card.
  * - `allowed` → Strict Mode is off or the tool is whitelisted; render as usual.
  */
-export type StrictModeHandling = { 
-  denied: boolean; 
+export type StrictModeHandling = {
+  denied: boolean;
   reason: string;
 };
 
@@ -251,9 +255,7 @@ export const enforceStrictIdeModeOnPermission = async (
     console.error('Strict IDE Mode auto-deny failed:', error);
   });
 
-  // Short reason for banner. No complex routing/inject here.
-  const shortReason = `🔁 Strict IDE Mode: Tool native ("${tool_call?.title || 'unknown'}") bị chặn. Hãy dùng các tool ide_* / team_* thay thế.`;
-  return { denied: true, reason: shortReason };
+  return { denied: true, reason: decision.reason };
 };
 
 /**
@@ -311,7 +313,5 @@ export const enforceStrictIdeModeOnConfirmation = async (
     console.error('Strict IDE Mode auto-deny (confirmation) failed:', error);
   });
 
-  const toolTitle = confirmation?.title || confirmation?.action || 'unknown';
-  const shortReason = `🔁 Strict IDE Mode: Tool native ("${toolTitle}") bị chặn. Hãy dùng các tool ide_* / team_* thay thế.`;
-  return { denied: true, reason: shortReason };
+  return { denied: true, reason: decision.reason };
 };

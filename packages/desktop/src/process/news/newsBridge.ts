@@ -26,7 +26,12 @@ import { bridge } from '@office-ai/platform';
 import { validateFeedUrl } from './newsFetcher';
 import { detectLocationByIp } from './geoLocation';
 import { forecastByCity, forecastByCoords } from './weatherFetch';
-import { fetchGithubTrending, type GithubRepo, type GithubTrendingResult, type GithubTrendingSince } from './githubTrending';
+import {
+  fetchGithubTrending,
+  type GithubRepo,
+  type GithubTrendingResult,
+  type GithubTrendingSince,
+} from './githubTrending';
 import { fetchMarketQuotes, type MarketKind, type MarketQuote, type MarketQuotesResult } from './marketFetcher';
 import type { WeatherForecast } from '@process/manager/weatherProvider';
 import type { FetchFeedResult } from './newsFetcher';

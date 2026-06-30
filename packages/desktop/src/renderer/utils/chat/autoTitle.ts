@@ -1,10 +1,12 @@
 import type { TMessage } from '@/common/chat/chatLib';
+import { stripTokenWatermarkNotice } from '@/common/chat/chatLib';
 import { readMessageContent } from '@/renderer/utils/chat/conversationExport';
 import { hasThinkTags, stripThinkTags } from '@/renderer/utils/chat/thinkTagFilter';
 
 export const buildAutoTitleFromContent = (content: string): string | null => {
-  const withoutThinkTags = hasThinkTags(content) ? stripThinkTags(content) : content;
-  const lines = withoutThinkTags
+  let cleaned = stripTokenWatermarkNotice(content);
+  cleaned = hasThinkTags(cleaned) ? stripThinkTags(cleaned) : cleaned;
+  const lines = cleaned
     .replace(/\r/g, '')
     .split('\n')
     .map((line) => line.trim())

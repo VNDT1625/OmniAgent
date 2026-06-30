@@ -56,7 +56,11 @@ const SystemInsightPanel: React.FC = () => {
   return (
     <div className='flex flex-col gap-16px'>
       {staticInfo && <StaticInfoSection info={staticInfo} onRefresh={handleRefresh} refreshing={refreshing} />}
-      {live ? <LiveMetricsSection live={live} history={history} /> : <p className='m-0 text-13px text-t-tertiary px-4px'>{t('system.live.waiting')}</p>}
+      {live ? (
+        <LiveMetricsSection live={live} history={history} />
+      ) : (
+        <p className='m-0 text-13px text-t-tertiary px-4px'>{t('system.live.waiting')}</p>
+      )}
       {live && <ProcessTable processes={live.processes} onSetPriority={setProcessPriority} />}
     </div>
   );

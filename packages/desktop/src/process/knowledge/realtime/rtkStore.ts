@@ -111,8 +111,7 @@ const emptyDocument = (): RtkDocument => ({ version: RTK_STORE_VERSION, facts: [
 export const createRtkStore = (options: RtkStoreOptions = {}): IRtkStore => {
   const fsImpl = options.fs ?? defaultRtkStoreFs;
 
-  const resolveRoot = (): string =>
-    options.rootDir ?? path.join(app.getPath('userData'), RTK_DIR);
+  const resolveRoot = (): string => options.rootDir ?? path.join(app.getPath('userData'), RTK_DIR);
 
   const factsPath = (): string => path.join(resolveRoot(), FACTS_FILE);
 

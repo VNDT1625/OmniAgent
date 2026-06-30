@@ -23,6 +23,7 @@ not defined`.
 ## 2. Đã làm (theo thứ tự)
 
 ### Bước 0 — Fix compile
+
 Hoàn tất refactor: `push` dùng `pushBounded`; thêm state `recorded`/`errorSeen`; implement
 `hasError`/`recordedCount`; wire `case 'Page.frameNavigated'`. Native tracer bỏ `MAX_EVENTS`
 cục bộ, dùng chung `pushBounded`.
@@ -58,6 +59,7 @@ cục bộ, dùng chung `pushBounded`.
 ## 3. File đã đổi
 
 Source (`packages/desktop/src/process/ide/`):
+
 - `quickTestTracer.ts` — push/onEvent, hasError/recordedCount, navigate + re-inject,
   parseDomMarker (record-time), stop đơn giản hóa.
 - `quickTestNativeTracer.ts` — pushBounded, hasError/recordedCount/onEvent, bỏ MAX_EVENTS.
@@ -67,6 +69,7 @@ Source (`packages/desktop/src/process/ide/`):
 - `traceContextBuilder.ts` — map cả failed request (status 0 + error), bỏ import thừa.
 
 Test (`tests/unit/ide/`):
+
 - `quickTestBuffer.test.ts` (mới), `quickTestBridge.test.ts` (mới),
   `quickTestTracer.test.ts`, `quickTestNativeTracer.test.ts`, `quickTestService.test.ts`,
   `traceContextBuilder.test.ts` (mở rộng).

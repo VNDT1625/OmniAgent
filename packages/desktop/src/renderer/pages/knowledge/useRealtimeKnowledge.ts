@@ -68,21 +68,18 @@ export const useRealtimeKnowledge = (): RealtimeKnowledgeState => {
     return result.data.facts;
   }, []);
 
-  const refresh = useCallback(
-    async (topicOrId: string): Promise<KnowledgeFact | null> => {
-      setRefreshing(topicOrId);
-      try {
-        const result = await refreshFact(topicOrId);
-        if (!result.ok) return null;
-        // Reflect the updated fact into the list.
-        setFacts((prev) => prev.map((f) => (f.id === result.data.id ? result.data : f)));
-        return result.data;
-      } finally {
-        setRefreshing(undefined);
-      }
-    },
-    []
-  );
+  const refresh = useCallback(async (topicOrId: string): Promise<KnowledgeFact | null> => {
+    setRefreshing(topicOrId);
+    try {
+      const result = await refreshFact(topicOrId);
+      if (!result.ok) return null;
+      // Reflect the updated fact into the list.
+      setFacts((prev) => prev.map((f) => (f.id === result.data.id ? result.data : f)));
+      return result.data;
+    } finally {
+      setRefreshing(undefined);
+    }
+  }, []);
 
   return { facts, status, reload, lookup, lookupNotice, refresh, refreshing };
 };

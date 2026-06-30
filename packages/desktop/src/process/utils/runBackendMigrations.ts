@@ -449,9 +449,7 @@ const MIGRATION_STEPS: Array<{
   {
     name: 'ensureRealtimeKnowledgeMcpRegistered',
     run: async () => {
-      const { ensureRealtimeKnowledgeMcpRegistered } = await import(
-        '@process/knowledge/registerRealtimeKnowledgeMcp'
-      );
+      const { ensureRealtimeKnowledgeMcpRegistered } = await import('@process/knowledge/registerRealtimeKnowledgeMcp');
       return ensureRealtimeKnowledgeMcpRegistered();
     },
   },
@@ -473,7 +471,7 @@ type BootstrapAgentEntry = {
 
 const ANTIGRAVITY_COMMAND = process.platform === 'win32' ? 'agi.exe' : 'agi';
 
-const BOOTSTRAP_AGENTS: BootstrapAgentEntry[] = [
+const getBootstrapAgents = (): BootstrapAgentEntry[] => [
   {
     name: 'DeepSeek TUI',
     command: 'deepseek-tui',
@@ -489,6 +487,14 @@ const BOOTSTRAP_AGENTS: BootstrapAgentEntry[] = [
     icon: 'tools/antigravity.svg',
     description: 'Antigravity CLI (agi.exe / agi)',
     yolo_id: 'yolo',
+  },
+  {
+    name: 'AionUi Strict Claude',
+    command: process.execPath,
+    args: [getBuiltinMcpScriptPath('strict-claude-acp')],
+    icon: 'ai-china/deepseek.svg',
+    description:
+      'Claude ACP adapter for Strict IDE Mode. Native filesystem and shell tools are disabled before execution.',
   },
 ];
 
@@ -565,7 +571,7 @@ async function ensureBootstrapAgents(): Promise<boolean> {
 
   let changed = 0;
 
-  for (const entry of BOOTSTRAP_AGENTS) {
+  for (const entry of getBootstrapAgents()) {
     const matchedAgent = findBootstrapAgent(existing, entry);
     const payload = buildBootstrapAgentPayload(entry);
 

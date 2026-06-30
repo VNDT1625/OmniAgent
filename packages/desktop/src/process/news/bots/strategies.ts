@@ -76,8 +76,18 @@ export const smaCrossover = (closes: number[], params: StrategyParams): Signal =
   const s = sma(closes, slow);
   if (f == null || s == null) return HOLD;
   const spread = (f - s) / s;
-  if (f > s) return { action: 'buy', strength: clamp01(Math.abs(spread) * 20), reason: `SMA${fast}>${slow} (+${(spread * 100).toFixed(2)}%)` };
-  if (f < s) return { action: 'sell', strength: clamp01(Math.abs(spread) * 20), reason: `SMA${fast}<${slow} (${(spread * 100).toFixed(2)}%)` };
+  if (f > s)
+    return {
+      action: 'buy',
+      strength: clamp01(Math.abs(spread) * 20),
+      reason: `SMA${fast}>${slow} (+${(spread * 100).toFixed(2)}%)`,
+    };
+  if (f < s)
+    return {
+      action: 'sell',
+      strength: clamp01(Math.abs(spread) * 20),
+      reason: `SMA${fast}<${slow} (${(spread * 100).toFixed(2)}%)`,
+    };
   return HOLD;
 };
 
@@ -88,8 +98,14 @@ export const rsiReversion = (closes: number[], params: StrategyParams): Signal =
   const overbought = params.rsiOverbought ?? 70;
   const r = rsi(closes, period);
   if (r == null) return HOLD;
-  if (r <= oversold) return { action: 'buy', strength: clamp01((oversold - r) / oversold), reason: `RSI ${r.toFixed(1)} ≤ ${oversold}` };
-  if (r >= overbought) return { action: 'sell', strength: clamp01((r - overbought) / (100 - overbought)), reason: `RSI ${r.toFixed(1)} ≥ ${overbought}` };
+  if (r <= oversold)
+    return { action: 'buy', strength: clamp01((oversold - r) / oversold), reason: `RSI ${r.toFixed(1)} ≤ ${oversold}` };
+  if (r >= overbought)
+    return {
+      action: 'sell',
+      strength: clamp01((r - overbought) / (100 - overbought)),
+      reason: `RSI ${r.toFixed(1)} ≥ ${overbought}`,
+    };
   return HOLD;
 };
 
@@ -101,8 +117,10 @@ export const breakout = (closes: number[], params: StrategyParams): Signal => {
   const hi = Math.max(...window);
   const lo = Math.min(...window);
   const last = closes[closes.length - 1];
-  if (last > hi) return { action: 'buy', strength: clamp01((last - hi) / hi * 20), reason: `breakout > ${period}-bar high` };
-  if (last < lo) return { action: 'sell', strength: clamp01((lo - last) / lo * 20), reason: `breakdown < ${period}-bar low` };
+  if (last > hi)
+    return { action: 'buy', strength: clamp01(((last - hi) / hi) * 20), reason: `breakout > ${period}-bar high` };
+  if (last < lo)
+    return { action: 'sell', strength: clamp01(((lo - last) / lo) * 20), reason: `breakdown < ${period}-bar low` };
   return HOLD;
 };
 

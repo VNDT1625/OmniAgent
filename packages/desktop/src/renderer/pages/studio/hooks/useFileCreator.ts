@@ -31,6 +31,7 @@ import { readDocxText, writeDocxText } from '@renderer/pages/editor/adapters/stu
 import { readXlsxCsv, writeXlsxCsv, readPptxText } from '@renderer/pages/editor/adapters/studioOfficeClient';
 import { baseName } from '../studioStorage';
 import { studioChatClient, type StudioChatMessage } from '../studioChatClient';
+import { stripTokenWatermarkNotice } from '@/common/chat/chatLib';
 
 /** Failure arm of the chat envelope (cast target under the no-`strictNullChecks` tsconfig). */
 type StudioChatFailure = { ok: false; error: string; code: 'no-model' | 'error' };
@@ -247,7 +248,8 @@ export const useFileCreator = (): UseFileCreator => {
       }
 
       setStatus('writing');
-      await writeContent(fullPath, kind, stripOuterFence(result.data));
+      const clean = stripTokenWatermarkNotice(result.data);
+      await writeContent(fullPath, kind, stripOuterFence(clean));
       return fullPath;
     } catch {
       setError('generate-failed');

@@ -28,7 +28,13 @@ import type {
   ExperienceQuery,
   ExperienceSuggestion,
 } from '../experienceTypes';
-import { buildSignature, classifySeverity, createExperienceTrigger, type ExperienceTrigger, type TriggerDecision } from './experienceTrigger';
+import {
+  buildSignature,
+  classifySeverity,
+  createExperienceTrigger,
+  type ExperienceTrigger,
+  type TriggerDecision,
+} from './experienceTrigger';
 
 /** Minimal slice of the ExperienceService the workflow depends on. */
 export type WorkflowService = {
@@ -89,7 +95,11 @@ export const createExperienceWorkflow = (deps: ExperienceWorkflowDeps) => {
    * On failure the trigger decides whether the agent is stuck enough to warrant
    * a retrieval; if so, lessons are fetched (the service records metrics).
    */
-  const onVerifyOutcome = async (episode: DebugEpisode, projectId: string, outcome: 'passed' | 'failed'): Promise<VerifyOutcomeResult> => {
+  const onVerifyOutcome = async (
+    episode: DebugEpisode,
+    projectId: string,
+    outcome: 'passed' | 'failed'
+  ): Promise<VerifyOutcomeResult> => {
     const signature = episodeSignature(episode);
     const severity = outcome === 'failed' ? classifySeverity(episode.errorText ?? '') : 'normal';
     const decision = trigger.observe({ projectId, signature, outcome, severity });
@@ -120,7 +130,8 @@ export const createExperienceWorkflow = (deps: ExperienceWorkflowDeps) => {
   ): Promise<CaptureResult> => deps.service.record({ ...draft, kind });
 
   /** Record whether a surfaced suggestion helped (delegates to the service). */
-  const recordFeedback = (entryId: string, helped: boolean): Promise<boolean> => deps.service.recordFeedback(entryId, helped);
+  const recordFeedback = (entryId: string, helped: boolean): Promise<boolean> =>
+    deps.service.recordFeedback(entryId, helped);
 
   return { onVerifyOutcome, captureSuccess, captureFailure, recordFeedback, trigger };
 };

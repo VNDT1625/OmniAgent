@@ -103,7 +103,7 @@ export function ToolCallBlock({ content, type }: ToolCallBlockProps) {
     const update = content.update;
     const acpStatus = mapAcpStatus(update.status || 'pending');
     const title = update.title || update.kind || t('chat.toolCall');
-    const info = statusIcons[acpStatus] || statusIcons.pending;
+    const info = statusIcons[acpStatus as keyof typeof statusIcons] || statusIcons.pending;
 
     return (
       <View style={[styles.container, { backgroundColor: surface }]}>
@@ -199,7 +199,7 @@ export function WebSearchBlock({ content }: { content: any }) {
 
 // --- Diff Display ---
 
-function parseDiffStats(unifiedDiff: string): { fileName: string; insertions: number; deletions: number } {
+function parseDiffStats(unifiedDiff: string, t?: (key: string) => string): { fileName: string; insertions: number; deletions: number } {
   let fileName = '';
   let insertions = 0;
   let deletions = 0;
@@ -232,7 +232,8 @@ function parseDiffStats(unifiedDiff: string): { fileName: string; insertions: nu
     fileName = parts[parts.length - 1];
   }
 
-  return { fileName: fileName || t('files.defaultFile'), insertions, deletions };
+  const defaultLabel = t ? t('files.defaultFile') : 'file';
+  return { fileName: fileName || defaultLabel, insertions, deletions };
 }
 
 export function DiffBlock({ content }: { content: any }) {
@@ -247,7 +248,7 @@ export function DiffBlock({ content }: { content: any }) {
   const text = useThemeColor({}, 'text');
 
   const unifiedDiff = content.data?.unified_diff || '';
-  const stats = parseDiffStats(unifiedDiff);
+  const stats = parseDiffStats(unifiedDiff, t);
 
   return (
     <View style={[styles.container, { backgroundColor: surface }]}>
@@ -302,6 +303,7 @@ export function ToolItem({
   iconColor: string;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const { t } = useTranslation();
   const statusIcons = useStatusIcons();
   const status = tool.status || 'Executing';
   const info = statusIcons[status as keyof typeof statusIcons] || statusIcons.Pending;

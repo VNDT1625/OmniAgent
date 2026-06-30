@@ -43,17 +43,33 @@ import type { DebugEpisode, VerifyOutcomeResult } from './workflow/experienceWor
 
 export { EXPERIENCE_CHANNELS, type ExperienceResult } from './index';
 
-export type ExperienceVerifyOutcomeRequest = { projectRoot: string; episode: DebugEpisode; outcome: 'passed' | 'failed' };
+export type ExperienceVerifyOutcomeRequest = {
+  projectRoot: string;
+  episode: DebugEpisode;
+  outcome: 'passed' | 'failed';
+};
 
 export const experienceChannels = {
   record: bridge.buildProvider<ExperienceResult<CaptureResult>, ExperienceRecordRequest>(EXPERIENCE_CHANNELS.record),
-  search: bridge.buildProvider<ExperienceResult<ExperienceSuggestion[]>, ExperienceSearchRequest>(EXPERIENCE_CHANNELS.search),
-  drain: bridge.buildProvider<ExperienceResult<{ processed: number }>, ExperienceDrainRequest>(EXPERIENCE_CHANNELS.drain),
-  forget: bridge.buildProvider<ExperienceResult<{ archived: boolean }>, ExperienceForgetRequest>(EXPERIENCE_CHANNELS.forget),
-  feedback: bridge.buildProvider<ExperienceResult<{ updated: boolean }>, ExperienceFeedbackRequest>(EXPERIENCE_CHANNELS.feedback),
-  metrics: bridge.buildProvider<ExperienceResult<ExperienceMetrics>, ExperienceMetricsRequest>(EXPERIENCE_CHANNELS.metrics),
+  search: bridge.buildProvider<ExperienceResult<ExperienceSuggestion[]>, ExperienceSearchRequest>(
+    EXPERIENCE_CHANNELS.search
+  ),
+  drain: bridge.buildProvider<ExperienceResult<{ processed: number }>, ExperienceDrainRequest>(
+    EXPERIENCE_CHANNELS.drain
+  ),
+  forget: bridge.buildProvider<ExperienceResult<{ archived: boolean }>, ExperienceForgetRequest>(
+    EXPERIENCE_CHANNELS.forget
+  ),
+  feedback: bridge.buildProvider<ExperienceResult<{ updated: boolean }>, ExperienceFeedbackRequest>(
+    EXPERIENCE_CHANNELS.feedback
+  ),
+  metrics: bridge.buildProvider<ExperienceResult<ExperienceMetrics>, ExperienceMetricsRequest>(
+    EXPERIENCE_CHANNELS.metrics
+  ),
   list: bridge.buildProvider<ExperienceResult<ExperienceEntry[]>, ExperienceListRequest>(EXPERIENCE_CHANNELS.list),
-  verifyOutcome: bridge.buildProvider<ExperienceResult<VerifyOutcomeResult>, ExperienceVerifyOutcomeRequest>(EXPERIENCE_CHANNELS.verifyOutcome),
+  verifyOutcome: bridge.buildProvider<ExperienceResult<VerifyOutcomeResult>, ExperienceVerifyOutcomeRequest>(
+    EXPERIENCE_CHANNELS.verifyOutcome
+  ),
 };
 
 // Embedding provider is resolved once (best-effort) and shared. When no provider

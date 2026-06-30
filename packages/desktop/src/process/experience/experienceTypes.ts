@@ -25,7 +25,12 @@ export type ExperienceStatus = 'active' | 'superseded' | 'archived';
 export type VerificationOutcome = 'passed' | 'failed' | 'not_run';
 
 /** All valid {@link ExperienceKind} values, for runtime validation. */
-export const EXPERIENCE_KINDS: readonly ExperienceKind[] = ['successful_fix', 'agent_mistake', 'failed_attempt', 'lesson'];
+export const EXPERIENCE_KINDS: readonly ExperienceKind[] = [
+  'successful_fix',
+  'agent_mistake',
+  'failed_attempt',
+  'lesson',
+];
 
 /** All valid {@link ExperienceStatus} values, for runtime validation. */
 export const EXPERIENCE_STATUSES: readonly ExperienceStatus[] = ['active', 'superseded', 'archived'];
@@ -34,7 +39,12 @@ export const EXPERIENCE_STATUSES: readonly ExperienceStatus[] = ['active', 'supe
 export const VERIFICATION_OUTCOMES: readonly VerificationOutcome[] = ['passed', 'failed', 'not_run'];
 
 /** Typed relations between experience entries (Phase 3 — Exp Graph). */
-export type ExperienceRelationType = 'same_symptom_as' | 'same_root_cause' | 'supersedes' | 'contradicts' | 'applies_to';
+export type ExperienceRelationType =
+  | 'same_symptom_as'
+  | 'same_root_cause'
+  | 'supersedes'
+  | 'contradicts'
+  | 'applies_to';
 
 /** All valid {@link ExperienceRelationType} values, for runtime validation. */
 export const EXPERIENCE_RELATION_TYPES: readonly ExperienceRelationType[] = [

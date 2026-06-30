@@ -6,7 +6,6 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import type { IMessageAcpPermission } from '@/common/chat/chatLib';
-import type { RoutePlan } from '@/common/chat/approval/ideToolRouter';
 import {
   enforceStrictIdeModeOnConfirmation,
   enforceStrictIdeModeOnPermission,
@@ -44,8 +43,8 @@ const message = (toolCall: IMessageAcpPermission['content']['tool_call']): IMess
     },
   }) as IMessageAcpPermission;
 
-describe('enforceStrictIdeModeOnPermission route execution', () => {
-  it('auto-denies a native tool, executes the route, and returns real output text', async () => {
+describe('enforceStrictIdeModeOnPermission', () => {
+  it('auto-denies a native tool and returns the mandatory remap reason', async () => {
     const confirm = vi.fn(
       async (_params: {
         confirm_key: string;
@@ -55,27 +54,20 @@ describe('enforceStrictIdeModeOnPermission route execution', () => {
       }): Promise<void> => undefined
     );
 
-    const executeRoute = vi.fn(
-      async (_rootPath: string, _plan: RoutePlan): Promise<string> => 'real ide_search output'
-    );
-
     const result = await enforceStrictIdeModeOnPermission(
       message({ title: 'Grep', tool_call_id: 'call-1', raw_input: { pattern: 'needle' } }),
       {
         isEnabled: () => true,
         resolveWorkspacePath: async () => 'C:/repo',
         confirm,
-        executeRoute,
       }
     );
 
     expect(result.denied).toBe(true);
     expect(result.reason).toContain('Strict IDE Mode');
-    expect(result.reason).toContain('bị chặn');
+    expect(result.reason).toContain('ide_search');
     // Simple auto-deny: we do call confirm with the reject option
     expect(confirm).toHaveBeenCalled();
-    // No executeRoute in simplified auto-deny
-    expect(executeRoute).not.toHaveBeenCalled();
   });
 
   it('does NOT stop the turn when the backend provides no reject option (shows the card instead)', async () => {

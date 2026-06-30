@@ -262,7 +262,10 @@ const runProviderChat = async (model: string, messages: Array<{ role: string; co
 
       if (!response.ok) {
         const detail = await response.text().catch(() => '');
-        throw withStatus(new Error(`Model request failed (HTTP ${response.status}). ${detail.slice(0, 300)}`), response.status);
+        throw withStatus(
+          new Error(`Model request failed (HTTP ${response.status}). ${detail.slice(0, 300)}`),
+          response.status
+        );
       }
 
       const json = (await response.json()) as { choices?: Array<{ message?: { content?: string | null } }> };

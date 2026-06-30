@@ -281,7 +281,12 @@
     "inspectRequestPlaceholder": "描述对该元素的更改（例如：上移 20px、使用强调色）…",
     "inspectAsk": "询问智能体",
     "viewportResponsive": "自适应",
-    "viewportHint": "预览宽度：以桌面宽度渲染页面（缩放以适应），使其布局与真实的宽屏浏览器一致，而非局促的窄屏。自适应 = 按面板的实际宽度布局。"
+    "viewportHint": "预览宽度：以桌面宽度渲染页面（缩放以适应），使其布局与真实的宽屏浏览器一致，而非局促的窄屏。自适应 = 按面板的实际宽度布局。",
+    "hideRightSidebar": "隐藏右侧边栏（完整浏览器视图）",
+    "showRightSidebar": "显示右侧边栏",
+    "hideIdeSidebars": "隐藏 IDE 左右标签栏",
+    "showIdeSidebars": "显示 IDE 左右标签栏",
+    "resizeSidebar": "调整侧边栏大小"
   },
   "db": {
     "connections": "连接",

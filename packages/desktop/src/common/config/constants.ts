@@ -9,11 +9,11 @@
  */
 
 // ===== Product identity =====
-export const PRODUCT_ID = 'tomni';
-export const PRODUCT_NAME = 'Tomni';
-export const PRODUCT_FULL_NAME = 'Tomni Agentic';
-export const LEGACY_PRODUCT_ID = 'aionui';
-export const LEGACY_PRODUCT_NAME = 'AionUi';
+export const PRODUCT_ID = 'tomny';
+export const PRODUCT_NAME = 'Tomny';
+export const PRODUCT_FULL_NAME = 'Tomny Agentic';
+export const LEGACY_PRODUCT_ID = 'tomny-legacy';
+export const LEGACY_PRODUCT_NAME = 'Tomny Legacy';
 
 // ===== Workspace metadata =====
 export const OMNI_WORKSPACE_META_DIR = '.omni';

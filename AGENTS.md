@@ -153,7 +153,7 @@ For pull request creation, see the `oss-pr` skill (`.claude/skills/oss-pr/SKILL.
 | **pr-fix**               | Fix all issues from a pr-review report, create a follow-up PR, and verify each fix                               | After pr-review, user says "fix all issues", `/pr-fix`                                     |
 | **pr-verify**            | Verify and merge bot:ready-to-merge PRs with impact analysis and test supplementation                            | Verifying PRs, merging ready PRs, `/pr-verify`                                             |
 | **pr-ship**              | End-to-end PR lifecycle: create, CI wait, review, fix, merge in one invocation                                   | `/pr-ship`, after development is done, resume shepherding a PR                             |
-| **pr-automation**        | PR automation orchestrator: poll PRs, review, fix, and merge via label state machine                             | Invoked by daemon script (`scripts/pr-automation.sh`), `/pr-automation`                            |
+| **pr-automation**        | PR automation orchestrator: poll PRs, review, fix, and merge via label state machine                             | Invoked by daemon script (`scripts/pr-automation.sh`), `/pr-automation`                    |
 
 > Skills are located in `.claude/skills/` and contain project conventions that apply to **all** agents and contributors.
 >

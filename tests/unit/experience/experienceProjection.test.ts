@@ -30,7 +30,14 @@ const entry = (overrides: Partial<ExperienceEntry> = {}): ExperienceEntry => ({
   projectId: 'proj_a',
   kind: 'successful_fix',
   symptoms: { summary: 'tsc fails', errorMessages: ['TS2345'] },
-  context: { repoArea: ['ide'], files: ['a.ts'], commands: ['bunx tsc'], frameworks: ['typescript'], packages: ['typescript'], errorCategory: 'compile' },
+  context: {
+    repoArea: ['ide'],
+    files: ['a.ts'],
+    commands: ['bunx tsc'],
+    frameworks: ['typescript'],
+    packages: ['typescript'],
+    errorCategory: 'compile',
+  },
   rootCause: 'wrong type',
   lesson: 'annotate generics',
   verification: { commands: [{ command: 'bunx tsc', outcome: 'passed' }], confidenceEvidence: ['clean'] },
@@ -61,7 +68,11 @@ describe('toProjectionEntry', () => {
 
 describe('buildProjection', () => {
   it('captures dimensions from the first vectored entry', () => {
-    const projection = buildProjection([entry({ id: 'a' }), entry({ id: 'b', vector: [0, 1, 0] })], { now: () => 123, providerId: 'p', model: 'm' });
+    const projection = buildProjection([entry({ id: 'a' }), entry({ id: 'b', vector: [0, 1, 0] })], {
+      now: () => 123,
+      providerId: 'p',
+      model: 'm',
+    });
     expect(projection.dimensions).toBe(3);
     expect(projection.providerId).toBe('p');
     expect(projection.builtAt).toBe(123);
@@ -92,7 +103,10 @@ describe('writeProjection / readProjection', () => {
 describe('inbox', () => {
   it('appends and reads back drafts, tolerating malformed lines', async () => {
     const fsImpl = createMemFs();
-    const item: ExperienceInboxItem = { receivedAt: '2026-06-09T00:00:00.000Z', draft: { projectId: 'proj_a', kind: 'lesson', symptoms: { summary: 'note' } } };
+    const item: ExperienceInboxItem = {
+      receivedAt: '2026-06-09T00:00:00.000Z',
+      draft: { projectId: 'proj_a', kind: 'lesson', symptoms: { summary: 'note' } },
+    };
     await appendInbox(ROOT, item, fsImpl);
     await appendInbox(ROOT, item, fsImpl);
 
@@ -107,7 +121,11 @@ describe('inbox', () => {
 
   it('clearInbox empties the queue', async () => {
     const fsImpl = createMemFs();
-    await appendInbox(ROOT, { receivedAt: 'x', draft: { projectId: 'p', kind: 'lesson', symptoms: { summary: 's' } } }, fsImpl);
+    await appendInbox(
+      ROOT,
+      { receivedAt: 'x', draft: { projectId: 'p', kind: 'lesson', symptoms: { summary: 's' } } },
+      fsImpl
+    );
     await clearInbox(ROOT, fsImpl);
     expect(await readInbox(ROOT, fsImpl)).toEqual([]);
   });

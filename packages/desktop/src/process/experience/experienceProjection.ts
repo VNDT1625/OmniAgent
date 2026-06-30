@@ -179,7 +179,10 @@ export const readProjection = async (
 };
 
 /** Read and parse the `mtui exp add` inbox; tolerant of malformed lines. */
-export const readInbox = async (projectRoot: string, fsImpl: ProjectionFs = defaultProjectionFs): Promise<ExperienceInboxItem[]> => {
+export const readInbox = async (
+  projectRoot: string,
+  fsImpl: ProjectionFs = defaultProjectionFs
+): Promise<ExperienceInboxItem[]> => {
   const filePath = path.join(resolveExpDir(projectRoot), INBOX_FILE);
   let raw: string;
   try {
@@ -235,7 +238,10 @@ export const clearInbox = async (projectRoot: string, fsImpl: ProjectionFs = def
 };
 
 /** Read the `mtui exp forget` queue (one entry id per line). */
-export const readForget = async (projectRoot: string, fsImpl: ProjectionFs = defaultProjectionFs): Promise<string[]> => {
+export const readForget = async (
+  projectRoot: string,
+  fsImpl: ProjectionFs = defaultProjectionFs
+): Promise<string[]> => {
   const filePath = path.join(resolveExpDir(projectRoot), FORGET_FILE);
   try {
     const raw = await fsImpl.readFile(filePath, 'utf-8');
@@ -258,7 +264,10 @@ export const clearForget = async (projectRoot: string, fsImpl: ProjectionFs = de
 };
 
 /** Read the `mtui exp feedback` queue; tolerant of malformed lines. */
-export const readFeedback = async (projectRoot: string, fsImpl: ProjectionFs = defaultProjectionFs): Promise<ExperienceFeedbackItem[]> => {
+export const readFeedback = async (
+  projectRoot: string,
+  fsImpl: ProjectionFs = defaultProjectionFs
+): Promise<ExperienceFeedbackItem[]> => {
   const filePath = path.join(resolveExpDir(projectRoot), FEEDBACK_FILE);
   let raw: string;
   try {

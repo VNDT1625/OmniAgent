@@ -203,12 +203,12 @@ Electron Desktop App
 
 Important boundaries:
 
-| Layer | Role |
-| --- | --- |
-| Renderer | UI, panels, chat surfaces, editor surfaces |
-| Main process | Native desktop capabilities, local tool services, bridges |
-| Backend | Conversations, agents, provider/model settings, MCP registry |
-| MCP tools | Structured capabilities for AI agents |
+| Layer                    | Role                                                          |
+| ------------------------ | ------------------------------------------------------------- |
+| Renderer                 | UI, panels, chat surfaces, editor surfaces                    |
+| Main process             | Native desktop capabilities, local tool services, bridges     |
+| Backend                  | Conversations, agents, provider/model settings, MCP registry  |
+| MCP tools                | Structured capabilities for AI agents                         |
 | MTUI / repo intelligence | Code maps, context packs, guarded file writes, undoable edits |
 
 ---

@@ -89,7 +89,8 @@ const main = async (): Promise<void> => {
     return;
   }
 
-  await startSidecar(paths, port, mode, { setupLog: true });
+  const sidecarStatus = await startSidecar(paths, port, mode, { setupLog: true });
+  if (sidecarStatus === 'existing') await exitStatusCommand();
 };
 
 const parseMode = (args: string[]): ParsedMode => {
@@ -121,15 +122,22 @@ const resolveGatewayDataDir = (): string => {
   const override = process.env.OMNI_GATEWAY_USER_DATA_DIR || process.env.OMNI_APP_USER_DATA_DIR;
   if (override?.trim()) return path.resolve(override.trim());
 
-  const candidates = process.platform === 'win32'
-    ? [
-        path.join(process.env.APPDATA || path.join(process.env.USERPROFILE || process.cwd(), 'AppData', 'Roaming'), 'AionUi-Dev'),
-        path.join(process.env.APPDATA || path.join(process.env.USERPROFILE || process.cwd(), 'AppData', 'Roaming'), 'AionUi'),
-      ]
-    : [
-        path.join(process.env.HOME || process.cwd(), '.config', 'AionUi-Dev'),
-        path.join(process.env.HOME || process.cwd(), '.config', 'AionUi'),
-      ];
+  const candidates =
+    process.platform === 'win32'
+      ? [
+          path.join(
+            process.env.APPDATA || path.join(process.env.USERPROFILE || process.cwd(), 'AppData', 'Roaming'),
+            'AionUi-Dev'
+          ),
+          path.join(
+            process.env.APPDATA || path.join(process.env.USERPROFILE || process.cwd(), 'AppData', 'Roaming'),
+            'AionUi'
+          ),
+        ]
+      : [
+          path.join(process.env.HOME || process.cwd(), '.config', 'AionUi-Dev'),
+          path.join(process.env.HOME || process.cwd(), '.config', 'AionUi'),
+        ];
 
   return (
     candidates.find(
@@ -179,7 +187,10 @@ const readOrCreateBearerToken = async (dataDir: string): Promise<{ token: string
 
 const decodeConfigFile = (raw: string): Record<string, unknown> => {
   try {
-    return JSON.parse(decodeURIComponent(Buffer.from(raw.trim(), 'base64').toString('utf-8'))) as Record<string, unknown>;
+    return JSON.parse(decodeURIComponent(Buffer.from(raw.trim(), 'base64').toString('utf-8'))) as Record<
+      string,
+      unknown
+    >;
   } catch {
     return {};
   }
@@ -206,17 +217,18 @@ const startSidecar = async (
   port: number,
   mode: 'start' | 'rescue',
   options: { setupLog: boolean }
-): Promise<void> => {
+): Promise<'started' | 'existing'> => {
   await mkdir(paths.stateDir, { recursive: true });
   await mkdir(paths.logDir, { recursive: true });
-  if (options.setupLog) setupLogging(paths.logPath, mode === 'rescue');
 
   const existing = await fetchHealth(`http://127.0.0.1:${port}/health`);
   if (existing.ok) {
     console.log(`[${SIDECAR_NAME}] already running on port ${port}`);
     console.log(JSON.stringify(existing.data, null, 2));
-    return;
+    return 'existing';
   }
+
+  if (options.setupLog) setupLogging(paths.logPath, mode === 'rescue');
 
   const startedAt = new Date().toISOString();
   const host = await startIdeMcpHost({
@@ -254,6 +266,7 @@ const startSidecar = async (
 
   process.on('SIGINT', () => void shutdown(paths));
   process.on('SIGTERM', () => void shutdown(paths));
+  return 'started';
 };
 
 const startExternalRescue = async (
@@ -264,13 +277,44 @@ const startExternalRescue = async (
 ): Promise<void> => {
   await mkdir(paths.stateDir, { recursive: true });
   await mkdir(paths.logDir, { recursive: true });
-  setupLogging(paths.logPath, true);
 
-  await startSidecar(paths, port, 'rescue', { setupLog: false });
+  const sidecarStatus = await startSidecar(paths, port, 'rescue', { setupLog: true });
 
   const gatewayDataDir = resolveGatewayDataDir();
   const savedConfig = await readSavedGatewayConfig(gatewayDataDir);
   const bearer = await readOrCreateBearerToken(gatewayDataDir);
+  const gatewayPort = num(savedConfig.port, externalPort);
+  const existingGateway = await fetchGatewayEndpoint(`http://127.0.0.1:${gatewayPort}/ide/mcp`);
+  if (existingGateway.ok) {
+    const saved = await readState(paths.statePath);
+    await writeFile(
+      paths.statePath,
+      JSON.stringify(
+        {
+          ...saved,
+          mode: 'rescue-external',
+          ideMcpUrl: `http://127.0.0.1:${gatewayPort}/ide/mcp`,
+          ideSseUrl: `http://127.0.0.1:${gatewayPort}/ide/sse`,
+        },
+        null,
+        2
+      ) + '\n',
+      'utf-8'
+    );
+    console.log('[' + SIDECAR_NAME + '] app-compatible external gateway already running');
+    console.log('Gateway config dir:  ' + gatewayDataDir);
+    console.log('Gateway token:       ' + bearer.source);
+    console.log('MCP Streamable HTTP: http://127.0.0.1:' + gatewayPort + '/ide/mcp');
+    console.log('MCP local SSE:       http://127.0.0.1:' + gatewayPort + '/ide/sse');
+    console.log('Authorization:       Bearer ' + bearer.token);
+    console.log('Required path:       /ide/mcp');
+    console.log('Bootstrap tool:      omni_bootstrap_session');
+    await attachToExistingRescue({
+      healthUrl: saved?.healthUrl ?? `http://127.0.0.1:${port}/health`,
+      gatewayUrl: `http://127.0.0.1:${gatewayPort}/ide/mcp`,
+    });
+  }
+  if (sidecarStatus === 'existing') setupLogging(paths.logPath, false);
   const security = createOmniSecurityStore({
     dir: gatewayDataDir,
     encryptionKey: createHash('sha256').update(gatewayDataDir).digest(),
@@ -303,10 +347,13 @@ const startExternalRescue = async (
 
   await runtime.start(
     {
-      port: num(savedConfig.port, externalPort),
+      port: gatewayPort,
       rootPath: str(savedConfig.rootPath) ?? paths.repoRoot,
       allowDangerous,
-      externalMode: { enabled: options.tunnel || bool((savedConfig.externalMode as { enabled?: unknown } | undefined)?.enabled, false) },
+      externalMode: {
+        enabled:
+          options.tunnel || bool((savedConfig.externalMode as { enabled?: unknown } | undefined)?.enabled, false),
+      },
     },
     bearer.token
   );
@@ -397,7 +444,7 @@ const runDoctor = async (paths: SidecarPaths, port: number): Promise<void> => {
     console.log(`${check.ok ? 'OK ' : 'ERR'} ${check.name}: ${check.detail}`);
   }
 
-  if (checks.some((check) => !check.ok)) process.exitCode = 1;
+  await exitStatusCommand(checks.some((check) => !check.ok) ? 1 : 0);
 };
 
 const runHealth = async (paths: SidecarPaths, port: number): Promise<void> => {
@@ -406,10 +453,10 @@ const runHealth = async (paths: SidecarPaths, port: number): Promise<void> => {
   const health = await fetchHealth(healthUrl);
   if (!health.ok) {
     console.log(`${SIDECAR_NAME} is not responding at ${healthUrl}`);
-    process.exitCode = 1;
-    return;
+    await exitStatusCommand(1);
   }
   console.log(JSON.stringify(health.data, null, 2));
+  await exitStatusCommand();
 };
 
 const runStop = async (paths: SidecarPaths, port: number): Promise<void> => {
@@ -418,11 +465,11 @@ const runStop = async (paths: SidecarPaths, port: number): Promise<void> => {
   const result = await httpRequest(`http://127.0.0.1:${targetPort}/shutdown`, 'POST');
   if (!result.ok) {
     console.log(`${SIDECAR_NAME} did not accept stop request. Use Ctrl+C in its terminal if it is foregrounded.`);
-    process.exitCode = 1;
-    return;
+    await exitStatusCommand(1);
   }
   await rm(paths.statePath, { force: true });
   console.log(`${SIDECAR_NAME} stop requested.`);
+  await exitStatusCommand();
 };
 
 const setupLogging = (logPath: string, truncate: boolean): void => {
@@ -457,14 +504,36 @@ const readState = async (statePath: string): Promise<SidecarState | null> => {
 };
 
 const fetchHealth = async (url: string): Promise<{ ok: boolean; data?: Record<string, unknown> }> => {
+  const response = await httpProbe(url, 'GET');
+  if (!response.ok) return { ok: false };
   try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(1500) });
-    if (!response.ok) return { ok: false };
-    return { ok: true, data: (await response.json()) as Record<string, unknown> };
+    return { ok: true, data: JSON.parse(response.body) as Record<string, unknown> };
   } catch {
     return { ok: false };
   }
 };
+
+const fetchGatewayEndpoint = async (url: string): Promise<{ ok: boolean }> => httpProbe(url, 'OPTIONS');
+
+const httpProbe = async (url: string, method: string): Promise<{ ok: boolean; body: string }> =>
+  new Promise((resolve) => {
+    const req = http.request(url, { method, timeout: 1500, agent: false }, (res) => {
+      const chunks: Buffer[] = [];
+      res.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
+      });
+      res.on('end', () => {
+        resolve({ ok: (res.statusCode ?? 500) < 400, body: Buffer.concat(chunks).toString('utf-8') });
+      });
+      res.on('error', () => resolve({ ok: false, body: '' }));
+    });
+    req.on('error', () => resolve({ ok: false, body: '' }));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve({ ok: false, body: '' });
+    });
+    req.end();
+  });
 
 const httpRequest = async (url: string, method: string): Promise<{ ok: boolean }> =>
   new Promise((resolve) => {
@@ -481,6 +550,42 @@ const httpRequest = async (url: string, method: string): Promise<{ ok: boolean }
   });
 
 const oneLine = (value: string): string => value.trim().replace(/\s+/g, ' ') || '(no output)';
+
+const attachToExistingRescue = async (input: { healthUrl: string; gatewayUrl: string }): Promise<never> => {
+  console.log('Attached to existing rescue gateway. Keep this terminal open; Ctrl+C detaches.');
+
+  let checking = false;
+  const timer = setInterval(() => {
+    if (checking) return;
+    checking = true;
+    void Promise.all([fetchHealth(input.healthUrl), fetchGatewayEndpoint(input.gatewayUrl)])
+      .then(([health, gateway]) => {
+        if (!health.ok || !gateway.ok) {
+          console.error(`[${SIDECAR_NAME}] existing rescue gateway stopped responding`);
+          clearInterval(timer);
+          process.exit(1);
+        }
+      })
+      .finally(() => {
+        checking = false;
+      });
+  }, 5000);
+
+  const detach = (): void => {
+    clearInterval(timer);
+    console.log(`[${SIDECAR_NAME}] detached`);
+    process.exit(0);
+  };
+  process.once('SIGINT', detach);
+  process.once('SIGTERM', detach);
+
+  return new Promise<never>(() => undefined);
+};
+
+const exitStatusCommand = async (code = 0): Promise<never> => {
+  await new Promise<void>((resolve) => process.stdout.write('', () => resolve()));
+  process.exit(code);
+};
 
 const formatLogArg = (value: unknown): string => {
   if (value instanceof Error) return value.stack || value.message;

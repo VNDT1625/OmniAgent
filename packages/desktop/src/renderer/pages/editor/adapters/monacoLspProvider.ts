@@ -23,7 +23,14 @@
  * Renderer-only. No Node.js APIs.
  */
 
-import { lspClient, type LspCompletion, type LspDiagnostic, type LspLocation, type LspSignature, type LspTextEdit } from '@renderer/pages/studio/ide/lspClient';
+import {
+  lspClient,
+  type LspCompletion,
+  type LspDiagnostic,
+  type LspLocation,
+  type LspSignature,
+  type LspTextEdit,
+} from '@renderer/pages/studio/ide/lspClient';
 
 /** Minimal structural types for the Monaco APIs we touch (no static import). */
 type Position = { lineNumber: number; column: number };
@@ -146,7 +153,10 @@ export const attachLspToModel = (params: AttachLspParams): (() => void) => {
   });
 
   const hoverProvider = monaco.languages.registerHoverProvider(language, {
-    provideHover: async (_model: MonacoModel, position: Position): Promise<{ contents: { value: string }[] } | null> => {
+    provideHover: async (
+      _model: MonacoModel,
+      position: Position
+    ): Promise<{ contents: { value: string }[] } | null> => {
       const res = await lspClient
         .hover(rootPath, serverId, filePath, position.lineNumber, position.column)
         .catch((): null => null);
@@ -194,7 +204,11 @@ export const attachLspToModel = (params: AttachLspParams): (() => void) => {
   // Rename (F2): collect edits across the workspace and hand them to Monaco as
   // a WorkspaceEdit. This is the real cross-file rename a coder expects.
   const renameProvider = monaco.languages.registerRenameProvider(language, {
-    provideRenameEdits: async (_model: MonacoModel, position: Position, newName: string): Promise<{ edits: unknown[] }> => {
+    provideRenameEdits: async (
+      _model: MonacoModel,
+      position: Position,
+      newName: string
+    ): Promise<{ edits: unknown[] }> => {
       const res = await lspClient
         .rename(rootPath, serverId, filePath, position.lineNumber, position.column, newName)
         .catch((): null => null);
@@ -237,7 +251,10 @@ export const attachLspToModel = (params: AttachLspParams): (() => void) => {
   // Signature help (parameter hints) triggered on `(` and `,`.
   const signatureProvider = monaco.languages.registerSignatureHelpProvider(language, {
     signatureHelpTriggerCharacters: ['(', ','],
-    provideSignatureHelp: async (_model: MonacoModel, position: Position): Promise<{ value: unknown; dispose: () => void } | null> => {
+    provideSignatureHelp: async (
+      _model: MonacoModel,
+      position: Position
+    ): Promise<{ value: unknown; dispose: () => void } | null> => {
       const res = await lspClient
         .signature(rootPath, serverId, filePath, position.lineNumber, position.column)
         .catch((): null => null);
@@ -269,11 +286,6 @@ export const attachLspToModel = (params: AttachLspParams): (() => void) => {
 };
 
 /** Push a document edit to the server so diagnostics refresh. Fails soft. */
-export const syncLspDocument = (
-  rootPath: string,
-  serverId: string,
-  filePath: string,
-  content: string
-): void => {
+export const syncLspDocument = (rootPath: string, serverId: string, filePath: string, content: string): void => {
   void lspClient.sync(rootPath, serverId, filePath, content).catch((): undefined => undefined);
 };

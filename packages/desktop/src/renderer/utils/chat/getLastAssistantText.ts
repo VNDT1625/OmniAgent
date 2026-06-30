@@ -1,4 +1,5 @@
 import type { IMessageText, TMessage } from '@/common/chat/chatLib';
+import { stripTokenWatermarkNotice } from '@/common/chat/chatLib';
 import { stripThinkTags } from '@/renderer/utils/chat/thinkTagFilter';
 
 const isCopyableAssistantText = (message: TMessage): message is IMessageText => {
@@ -10,7 +11,7 @@ const stripSkillSuggestPreserveWhitespace = (content: string): string => {
 };
 
 const sanitizeAssistantText = (content: string): string => {
-  return stripSkillSuggestPreserveWhitespace(stripThinkTags(content));
+  return stripTokenWatermarkNotice(stripSkillSuggestPreserveWhitespace(stripThinkTags(content)));
 };
 
 export const getLastAssistantText = (messageList: TMessage[], loading: boolean): string | null => {

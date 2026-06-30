@@ -27,7 +27,9 @@ const isWindows = (): boolean => {
 
 /** Build a one-shot shell + args that runs `command` then exits with its code. */
 const oneShotShell = (): { shell: string; argsFor: (command: string) => string[] } =>
-  isWindows() ? { shell: 'cmd.exe', argsFor: (c) => ['/d', '/s', '/c', c] } : { shell: '/bin/sh', argsFor: (c) => ['-c', c] };
+  isWindows()
+    ? { shell: 'cmd.exe', argsFor: (c) => ['/d', '/s', '/c', c] }
+    : { shell: '/bin/sh', argsFor: (c) => ['-c', c] };
 
 const tail = (text: string, max: number): string => (text.length > max ? `…\n${text.slice(text.length - max)}` : text);
 
@@ -39,7 +41,11 @@ const tail = (text: string, max: number): string => (text.length > max ? `…\n$
  * Best-effort: if the terminal bridge is unavailable, resolves as not-passed so
  * the caller can decide (it never throws).
  */
-export const runWorkspaceVerification = async (workspacePath: string, command: string, timeoutMs: number = DEFAULT_TIMEOUT_MS): Promise<VerificationResult> => {
+export const runWorkspaceVerification = async (
+  workspacePath: string,
+  command: string,
+  timeoutMs: number = DEFAULT_TIMEOUT_MS
+): Promise<VerificationResult> => {
   if (!workspacePath || !command.trim()) {
     return { passed: false, output: '(missing workspace or command)', exitCode: null };
   }
@@ -48,7 +54,9 @@ export const runWorkspaceVerification = async (workspacePath: string, command: s
 
   let sessionId: string | null = null;
   try {
-    const created = await terminalClient.create({ options: { cwd: workspacePath, shell, args: argsFor(command), noShellIntegration: true } });
+    const created = await terminalClient.create({
+      options: { cwd: workspacePath, shell, args: argsFor(command), noShellIntegration: true },
+    });
     if (!created.ok || !created.data?.id) {
       return { passed: false, output: '(could not start verification terminal)', exitCode: null };
     }

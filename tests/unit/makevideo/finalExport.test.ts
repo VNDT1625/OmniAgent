@@ -49,9 +49,9 @@ const memFs = () => ({
 
 describe('exportFinalVideo', () => {
   it('rejects an empty segment list', async () => {
-    await expect(exportFinalVideo([], '/out.mp4', { ffmpegPath: '/ff', spawnImpl: okSpawn(), fs: memFs() })).rejects.toThrow(
-      /no segments/i
-    );
+    await expect(
+      exportFinalVideo([], '/out.mp4', { ffmpegPath: '/ff', spawnImpl: okSpawn(), fs: memFs() })
+    ).rejects.toThrow(/no segments/i);
   });
 
   it('concatenates clips without audio in a single ffmpeg pass', async () => {
@@ -133,7 +133,11 @@ describe('exportFinalVideo', () => {
 
   it('rejects when no segment has a clip or an image', async () => {
     await expect(
-      exportFinalVideo([{ audioPath: '/a.mp3' }], '/out/final.mp4', { ffmpegPath: '/ff', spawnImpl: okSpawn(), fs: memFs() })
+      exportFinalVideo([{ audioPath: '/a.mp3' }], '/out/final.mp4', {
+        ffmpegPath: '/ff',
+        spawnImpl: okSpawn(),
+        fs: memFs(),
+      })
     ).rejects.toThrow(/no segment had a video clip or a rendered image/i);
   });
 });

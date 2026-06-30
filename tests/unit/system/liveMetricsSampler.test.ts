@@ -61,7 +61,13 @@ describe('createLiveSampler', () => {
         getCpus: () => [core(1, 1)],
         getAppMetrics: () => [
           { pid: 1, type: 'Browser', cpu: { percentCPUUsage: 3.2 }, memory: { workingSetSize: 200 * 1024 } },
-          { pid: 2, type: 'Tab', name: 'Renderer', cpu: { percentCPUUsage: 42.7 }, memory: { workingSetSize: 512 * 1024 } },
+          {
+            pid: 2,
+            type: 'Tab',
+            name: 'Renderer',
+            cpu: { percentCPUUsage: 42.7 },
+            memory: { workingSetSize: 512 * 1024 },
+          },
         ],
         getPriority: (pid) => (pid === 2 ? 10 : 0),
       })

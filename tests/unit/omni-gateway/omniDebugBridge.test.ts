@@ -155,10 +155,7 @@ describe('omniGatewayDebugBridge', () => {
     const { bridge, tokenStore, ide } = setup();
     const t = tokenStore.mintDebugToken(60_000);
     const r = makeRes();
-    await bridge.handle(
-      makeReq('GET', `/debug/omni/search?token=${t.token}&q=createIdeServer`),
-      r.res
-    );
+    await bridge.handle(makeReq('GET', `/debug/omni/search?token=${t.token}&q=createIdeServer`), r.res);
     expect(r.getStatus()).toBe(200);
     expect(ide.search).toHaveBeenCalledWith('/repo', 'createIdeServer', expect.any(Object));
   });

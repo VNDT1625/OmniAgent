@@ -297,7 +297,12 @@
     "inspectRequestPlaceholder": "Bu öğe için değişikliği açıklayın (ör. 20px yukarı al, vurgu rengi kullan)…",
     "inspectAsk": "Ajana sor",
     "viewportResponsive": "Duyarlı",
-    "viewportHint": "Önizleme genişliği: sayfayı masaüstü genişliğinde (sığacak şekilde ölçeklenerek) işleyerek, dar değil gerçek geniş bir tarayıcıyla aynı düzende gösterir. Duyarlı = panelin gerçek genişliğine göre düzen."
+    "viewportHint": "Önizleme genişliği: sayfayı masaüstü genişliğinde (sığacak şekilde ölçeklenerek) işleyerek, dar değil gerçek geniş bir tarayıcıyla aynı düzende gösterir. Duyarlı = panelin gerçek genişliğine göre düzen.",
+    "hideRightSidebar": "Sağ kenar çubuğunu gizle (tam tarayıcı görünümü)",
+    "showRightSidebar": "Sağ kenar çubuğunu göster",
+    "hideIdeSidebars": "IDE sol ve sağ sekmelerini gizle",
+    "showIdeSidebars": "IDE sol ve sağ sekmelerini göster",
+    "resizeSidebar": "Kenar çubuğunu yeniden boyutlandır"
   },
   "db": {
     "connections": "Bağlantılar",

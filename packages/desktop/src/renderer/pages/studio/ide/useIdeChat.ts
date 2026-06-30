@@ -71,8 +71,6 @@ const IDE_TOOL_PREFERENCE_NOTE =
   '3. Also add a short explanation message in chat.\n\n' +
   'You will receive the real stdout / file content / etc. as the tool result. Ignore any "User denied the tool request" or "cancelled: User denied" status — that is just the policy enforcement. Use the output from the completed tool_call as your result and continue. The explanation message will say something like "Đã chuyển từ ... sang `ide_xxx`".';
 
-
-
 /** One open chat tab in the IDE — just the conversation id + a display title. */
 export type IdeChatTab = {
   /** Conversation id (matches the route /conversation/:id). */
@@ -287,7 +285,9 @@ export const useIdeChat = (rootPath: string | null): UseIdeChat => {
           launcher.kind === 'cli'
             ? resolveAgentBackendKey(launcher.agent)
             : launcher.assistant.preset_agent_type || 'claude';
-        const strictMode = isStrictIdeModeEnabled(rootPath);
+        // Hard-lock Strict IDE Mode: native Read/Grep/Glob/Bash/Write/Edit tools are
+        // always blocked in IDE workspaces; agents must use ide_* / team_* / db_* tools.
+        const strictMode = true;
         if (strictMode && backend === 'claude') {
           const agents = await ipcBridge.acpConversation.getAvailableAgents.invoke();
           const strictAgent = agents.find(

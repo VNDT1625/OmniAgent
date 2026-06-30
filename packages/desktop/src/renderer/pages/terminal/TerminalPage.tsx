@@ -137,6 +137,7 @@ const TerminalPage: React.FC = () => {
               buffer={activeSession ? (state.buffers[activeSession.id] ?? '') : ''}
               onInput={(data) => activeSession && state.writeSession(activeSession.id, data)}
               onResize={(cols, rows) => activeSession && state.resizeSession(activeSession.id, cols, rows)}
+              visible
             />
           </div>
         </Tabs.TabPane>

@@ -60,7 +60,8 @@ const withTimeout = async <T>(promise: Promise<RtkBridgeResult<T>>, ms = 8000): 
 };
 
 /** List all stored facts (newest first). */
-export const fetchFacts = (): Promise<RtkBridgeResult<KnowledgeFact[]>> => withTimeout(realtimeKnowledgeClient.list.invoke());
+export const fetchFacts = (): Promise<RtkBridgeResult<KnowledgeFact[]>> =>
+  withTimeout(realtimeKnowledgeClient.list.invoke());
 
 /** Semantic lookup for a query. */
 export const lookupFacts = (query: string, topK?: number): Promise<RtkBridgeResult<GroundingPack>> =>

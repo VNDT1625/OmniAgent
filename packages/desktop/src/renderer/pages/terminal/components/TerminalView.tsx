@@ -94,6 +94,12 @@ type TerminalViewProps = {
    * the terminal can apply the fix by typing `y` — not just by clicking the button.
    */
   autoConfirm?: boolean;
+  /**
+   * Hint that the view is currently the active/visible one (e.g. IDE terminal tab vs console tab).
+   * When it becomes true we aggressively fit so xterm paints if it was created while the
+   * container was still settling.
+   */
+  visible?: boolean;
 };
 
 const TerminalView: React.FC<TerminalViewProps> = ({
@@ -109,6 +115,7 @@ const TerminalView: React.FC<TerminalViewProps> = ({
   pendingRemap,
   onDismissRemap,
   autoConfirm,
+  visible = true,
 }) => {
   const { t } = useTranslation();
   const hostRef = useRef<HTMLDivElement>(null);
@@ -169,6 +176,25 @@ const TerminalView: React.FC<TerminalViewProps> = ({
 
   const isRunning = session?.status === 'running';
   const staleNotice = useMemo(() => findMtuiStaleConfirmation(buffer), [buffer]);
+
+  const forceRepaint = useCallback((): void => {
+    const term = termRef.current;
+    if (!term) return;
+    try {
+      term.refresh(0, Math.max(0, term.rows - 1));
+    } catch {
+      /* xterm can throw while its renderer is being attached/detached. */
+    }
+  }, []);
+
+  const fitAndRepaint = useCallback((): void => {
+    try {
+      fitRef.current?.fit();
+      forceRepaint();
+    } catch {
+      /* The host may still be hidden or 0px during IDE dock transitions. */
+    }
+  }, [forceRepaint]);
 
   /** Drop all command decorations + markers (on session switch / clear). */
   const clearDecorations = useCallback((): void => {
@@ -279,9 +305,7 @@ const TerminalView: React.FC<TerminalViewProps> = ({
     ghostTailRef.current = tail;
     // Anchor to the actual cursor DOM node so the ghost never misaligns,
     // regardless of font metrics / renderer. If we cannot find it, hide it.
-    const cursorEl = host.querySelector(
-      '.xterm-cursor, .xterm-cursor-block, .xterm-cursor-bar, .xterm-cursor-outline'
-    );
+    const cursorEl = host.querySelector('.xterm-cursor, .xterm-cursor-block, .xterm-cursor-bar, .xterm-cursor-outline');
     const containerRect = host.getBoundingClientRect();
     if (!cursorEl) {
       setGhost(null);
@@ -333,118 +357,177 @@ const TerminalView: React.FC<TerminalViewProps> = ({
   const handleInputDataRef = useRef(handleInputData);
   handleInputDataRef.current = handleInputData;
 
-  // ── Create the xterm instance once the host has a real size ───────────────
-  // Inside Arco Tabs the host can mount at 0×0, then get a height a frame later.
-  // Opening xterm (especially its canvas/WebGL renderer) at 0×0 leaves a broken,
-  // blank surface that never recovers. So we WAIT (via rAF) until the host is
-  // measurable, THEN create + open the terminal. We also use the DOM renderer
-  // (no WebGL) which is robust to Electron GPU quirks that show as a black pane.
+  // ── Create xterm as soon as host exists, then keep fitting as layout settles ──
+  // The previous strict "wait until client size >2 before new Terminal" could fail
+  // on first mount in the IDE bottom dock because the flex height allocation for
+  // the new TerminalView children happens in a later paint cycle than the effect.
+  // Switching tabs caused a remount after layout had stabilized → "magic fix".
+  //
+  // New approach:
+  // - Create + open the Terminal immediately when the host div is mounted.
+  // - Give it a default size first so the renderer is initialized in a sane state.
+  // - Write any existing buffer.
+  // - Then rely on:
+  //   • immediate + repeated scheduleFits (rAF + timeouts)
+  //   • ResizeObserver that calls fit on any size change
+  //   • fit after every buffer update
+  //   • the `visible` effect that forces fits when the tab becomes active
+  // This ensures that as soon as the parent (dock footer, flex-col, chips, etc.)
+  // gives the host real dimensions, fit() will be called and the content appears.
   useEffect(() => {
     const host = hostRef.current;
     if (!host) return;
 
     let term: Terminal | null = null;
     let fit: FitAddon | null = null;
+    let search: SearchAddon | null = null;
     const disposers: Array<() => void> = [];
-    let rafId = 0;
-    let cancelled = false;
 
-    const boot = (): void => {
-      if (cancelled || term) return;
-      const el = hostRef.current;
-      if (!el) return;
-      // Wait for a measurable host before opening xterm.
-      if (el.clientWidth < 2 || el.clientHeight < 2) {
-        rafId = requestAnimationFrame(boot);
-        return;
-      }
-
-      let search: SearchAddon;
-      try {
-        term = new Terminal({
-          fontFamily: 'Consolas, "Cascadia Mono", "Cascadia Code", Menlo, "DejaVu Sans Mono", "Courier New", monospace',
-          fontSize: 13,
-          lineHeight: 1.0,
-          letterSpacing: 0,
-          cursorBlink: true,
-          cursorStyle: 'bar',
-          scrollback: 5000,
-          allowProposedApi: true,
-          theme: buildXtermTheme(),
-        });
-        fit = new FitAddon();
-        search = new SearchAddon();
-        term.loadAddon(fit);
-        term.loadAddon(search);
-        term.loadAddon(new WebLinksAddon());
-        term.open(el);
-        fit.fit();
-      } catch (error) {
-        console.error('[TerminalView] xterm init failed:', error);
-        setInitError(error instanceof Error ? error.message : String(error));
-        return;
-      }
-
-      termRef.current = term;
-      fitRef.current = fit;
-      searchRef.current = search;
-
-      // Repaint whatever buffer we already have into the freshly-opened terminal.
-      writtenLenRef.current = 0;
-      const initialBuffer = bufferRef.current;
-      if (initialBuffer.length > 0) writeWithMarkers(term, initialBuffer);
-      writtenLenRef.current = initialBuffer.length;
-      term.focus();
-      setBooted((n) => n + 1);
-
-      const resultsSub = search.onDidChangeResults((result) => {
-        if (!result || result.resultCount === 0) {
-          setMatchInfo(result ? { current: 0, total: 0 } : null);
-        } else {
-          setMatchInfo({ current: result.resultIndex + 1, total: result.resultCount });
-        }
-      });
-      const fileLinks = registerFileLinks(term, (p: string, line?: number, col?: number) =>
-        onOpenPathRef.current?.(p, line, col)
-      );
-      const dataSub = term.onData((data) => handleInputDataRef.current(data));
-      const resizeSub = term.onResize(({ cols, rows }) => onResizeRef.current?.(cols, rows));
-      // Hide the ghost while scrolling (the cursor row may move off-screen).
-      const scrollSub = term.onScroll(() => setGhost(null));
-
-      const doFit = (): void => {
-        const node = hostRef.current;
-        if (!node || node.clientWidth < 2 || node.clientHeight < 2) return;
-        try {
-          fit?.fit();
-        } catch {
-          // ignore transient measure errors
-        }
+    const scheduleFits = () => {
+      const doOne = () => {
+        fitAndRepaint();
       };
-      const ro = new ResizeObserver(doFit);
-      ro.observe(el);
-
+      doOne();
+      const r1 = requestAnimationFrame(doOne);
+      const t1 = setTimeout(doOne, 0);
+      const t2 = setTimeout(doOne, 16);
+      const t3 = setTimeout(doOne, 50);
+      const t4 = setTimeout(doOne, 120);
+      const t5 = setTimeout(doOne, 300);
       disposers.push(
-        () => ro.disconnect(),
-        () => resultsSub.dispose(),
-        () => fileLinks.dispose(),
-        () => dataSub.dispose(),
-        () => resizeSub.dispose(),
-        () => scrollSub.dispose()
+        () => cancelAnimationFrame(r1),
+        () => clearTimeout(t1),
+        () => clearTimeout(t2),
+        () => clearTimeout(t3),
+        () => clearTimeout(t4),
+        () => clearTimeout(t5)
       );
     };
 
-    rafId = requestAnimationFrame(boot);
+    try {
+      term = new Terminal({
+        fontFamily: 'Consolas, "Cascadia Mono", "Cascadia Code", Menlo, "DejaVu Sans Mono", "Courier New", monospace',
+        fontSize: 13,
+        lineHeight: 1.0,
+        letterSpacing: 0,
+        cursorBlink: true,
+        cursorStyle: 'bar',
+        scrollback: 5000,
+        allowProposedApi: true,
+        theme: buildXtermTheme(),
+      });
+      fit = new FitAddon();
+      search = new SearchAddon();
+      term.loadAddon(fit);
+      term.loadAddon(search);
+      term.loadAddon(new WebLinksAddon());
+
+      term.open(host);
+
+      // Seed with a reasonable size so the internal buffers/canvas are initialized.
+      // Subsequent fits will correct to the real container size. The first fit may
+      // run before the IDE dock has a real height, so do not fail initialization on it.
+      term.resize(80, 24);
+      try {
+        fit.fit();
+      } catch {
+        /* The scheduled fits below will retry after layout settles. */
+      }
+
+    } catch (error) {
+      console.error('[TerminalView] xterm init failed:', error);
+      setInitError(error instanceof Error ? error.message : String(error));
+      return;
+    }
+
+    termRef.current = term;
+    fitRef.current = fit;
+    searchRef.current = search;
+
+    // Write whatever we have right now
+    writtenLenRef.current = 0;
+    const initialBuffer = bufferRef.current;
+    if (initialBuffer.length > 0) {
+      writeWithMarkers(term, initialBuffer);
+    }
+    writtenLenRef.current = initialBuffer.length;
+    term.focus();
+    setBooted((n) => n + 1);
+
+    // Extra fits after initial write
+    scheduleFits();
+
+    const resultsSub = search!.onDidChangeResults((result) => {
+      if (!result || result.resultCount === 0) {
+        setMatchInfo(result ? { current: 0, total: 0 } : null);
+      } else {
+        setMatchInfo({ current: result.resultIndex + 1, total: result.resultCount });
+      }
+    });
+
+    const fileLinks = registerFileLinks(term, (p: string, line?: number, col?: number) =>
+      onOpenPathRef.current?.(p, line, col)
+    );
+    const dataSub = term.onData((data) => handleInputDataRef.current(data));
+    const resizeSub = term.onResize(({ cols, rows }) => onResizeRef.current?.(cols, rows));
+    const scrollSub = term.onScroll(() => setGhost(null));
+
+    // Observe the host for any size changes (dock resize, tab switch, outer layout, etc.)
+    // and fit aggressively.
+    let didFirstRealFit = false;
+    const doFit = (): void => {
+      const node = hostRef.current;
+      if (!node || node.clientWidth < 1 || node.clientHeight < 1) return;
+      try {
+        fit?.fit();
+        const tt = termRef.current;
+        if (tt) tt.refresh(0, tt.rows);
+
+        // First time we see real size after creation: re-feed the full buffer.
+        // This fixes cases where initial writes happened while the terminal had 0 rows.
+        if (!didFirstRealFit && bufferRef.current.length > 0) {
+          didFirstRealFit = true;
+          const t = termRef.current;
+          if (t) {
+            t.reset();
+            writeWithMarkers(t, bufferRef.current);
+            writtenLenRef.current = bufferRef.current.length;
+            // one more fit after rewrite
+            requestAnimationFrame(() => {
+              try {
+                fitAndRepaint();
+              } catch {}
+            });
+          }
+        }
+      } catch {
+        /* */
+      }
+    };
+    const ro = new ResizeObserver(doFit);
+    ro.observe(host);
+
+    // Also try fitting a few more times shortly after mount (belt and suspenders)
+    const mountTimeouts: any[] = [];
+    mountTimeouts.push(setTimeout(doFit, 0));
+    mountTimeouts.push(setTimeout(doFit, 30));
+    mountTimeouts.push(setTimeout(doFit, 100));
+
+    disposers.push(
+      () => ro.disconnect(),
+      () => resultsSub.dispose(),
+      () => fileLinks.dispose(),
+      () => dataSub.dispose(),
+      () => resizeSub.dispose(),
+      () => scrollSub.dispose(),
+      ...mountTimeouts.map((t) => () => clearTimeout(t))
+    );
 
     return () => {
-      cancelled = true;
-      cancelAnimationFrame(rafId);
       for (const d of disposers) {
         try {
           d();
-        } catch {
-          // ignore
-        }
+        } catch {}
       }
       for (const d of decorationsRef.current) d.dispose();
       decorationsRef.current = [];
@@ -461,24 +544,20 @@ const TerminalView: React.FC<TerminalViewProps> = ({
   // ── Reset xterm when the bound session changes (switch tabs / new pane) ───
   useEffect(() => {
     const term = termRef.current;
-    const fit = fitRef.current;
     if (!term) return;
     term.reset();
     clearDecorations();
-    writtenLenRef.current = 0;
-    // The host now certainly has a size (a session is active) — refit + focus so
-    // a terminal that mounted while its container was 0px finally renders.
-    if (fit) {
-      requestAnimationFrame(() => {
-        try {
-          const el = hostRef.current;
-          if (el && el.clientWidth > 1 && el.clientHeight > 1) fit.fit();
-        } catch {
-          // ignore
-        }
-      });
-    }
-  }, [session?.id, clearDecorations]);
+    const currentBuffer = bufferRef.current;
+    if (currentBuffer.length > 0) writeWithMarkers(term, currentBuffer);
+    writtenLenRef.current = currentBuffer.length;
+    requestAnimationFrame(fitAndRepaint);
+    const t1 = setTimeout(fitAndRepaint, 16);
+    const t2 = setTimeout(fitAndRepaint, 80);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [session?.id, clearDecorations, fitAndRepaint, writeWithMarkers]);
 
   // ── Stream `buffer` into xterm as deltas (append), or repaint on shrink ───
   useEffect(() => {
@@ -495,7 +574,12 @@ const TerminalView: React.FC<TerminalViewProps> = ({
       if (buffer.length > 0) writeWithMarkers(term, buffer);
     }
     writtenLenRef.current = buffer.length;
-  }, [buffer, booted, writeWithMarkers, clearDecorations]);
+
+    // After we push content (especially the very first payload or after a tab switch remount),
+    // force a fit + refresh. This is the "switch to output and back" that used to unblock rendering.
+    // Doing it here guarantees the viewport knows its real rows after data is present.
+    requestAnimationFrame(fitAndRepaint);
+  }, [buffer, booted, writeWithMarkers, clearDecorations, fitAndRepaint]);
 
   // ── Keep the xterm theme in sync with the app's light/dark scheme ─────────
   useEffect(() => {
@@ -521,6 +605,40 @@ const TerminalView: React.FC<TerminalViewProps> = ({
   useEffect(() => {
     if (isRunning) termRef.current?.focus();
   }, [isRunning, session?.id]);
+
+  // When the view becomes the active visible pane (IDE terminal tab selected,
+  // or the settings sessions tab), force fits. This catches cases where the
+  // terminal instance was created while its flex ancestor still had transient 0 height.
+  // When using display toggle (instead of unmount), becoming visible again triggers
+  // this and we re-feed the buffer + refresh to guarantee the content appears.
+  useEffect(() => {
+    if (!visible) return;
+    fitAndRepaint();
+    const r1 = requestAnimationFrame(fitAndRepaint);
+    const t1 = setTimeout(fitAndRepaint, 16);
+    const t2 = setTimeout(fitAndRepaint, 80);
+
+    // When becoming visible, re-feed full buffer to be sure (in case previous
+    // writes were done while hidden or 0-size).
+    const t = termRef.current;
+    if (t && bufferRef.current.length > 0) {
+      // Use a microtask + raf to let the display:flex take effect first
+      requestAnimationFrame(() => {
+        try {
+          t.reset();
+          writeWithMarkers(t, bufferRef.current);
+          writtenLenRef.current = bufferRef.current.length;
+          fitAndRepaint();
+        } catch {}
+      });
+    }
+
+    return () => {
+      cancelAnimationFrame(r1);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [visible, session?.id, fitAndRepaint, writeWithMarkers]);
 
   // Focus the search box when the search bar opens.
   useEffect(() => {
@@ -685,10 +803,19 @@ const TerminalView: React.FC<TerminalViewProps> = ({
         <span
           aria-hidden
           className='pointer-events-none absolute z-10 flex items-center whitespace-pre text-t-tertiary opacity-55 font-mono'
-          style={{ left: ghost.left, top: ghost.top, height: ghost.height, lineHeight: `${ghost.height}px`, fontSize: 13 }}
+          style={{
+            left: ghost.left,
+            top: ghost.top,
+            height: ghost.height,
+            lineHeight: `${ghost.height}px`,
+            fontSize: 13,
+          }}
         >
           {ghost.tail}
-          <span className='ml-8px px-5px rd-4px bg-fill-3 text-t-tertiary opacity-90' style={{ fontSize: 10, lineHeight: '16px' }}>
+          <span
+            className='ml-8px px-5px rd-4px bg-fill-3 text-t-tertiary opacity-90'
+            style={{ fontSize: 10, lineHeight: '16px' }}
+          >
             Tab
           </span>
         </span>
@@ -732,7 +859,12 @@ const TerminalView: React.FC<TerminalViewProps> = ({
                   {t('smartTerminal.smartFix.run', { program: pendingRemap.to })}
                 </Button>
               </Tooltip>
-              <Button size='mini' type='text' icon={<Close theme='outline' size={12} />} onClick={() => onDismissRemap?.()}>
+              <Button
+                size='mini'
+                type='text'
+                icon={<Close theme='outline' size={12} />}
+                onClick={() => onDismissRemap?.()}
+              >
                 {t('smartTerminal.smartFix.dismiss')}
               </Button>
             </div>

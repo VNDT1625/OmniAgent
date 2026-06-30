@@ -15,7 +15,13 @@
  * No I/O, no Node/DOM APIs.
  */
 
-import { DEFAULT_TTL_BY_CLASS, STALE_THRESHOLD_RATIO, type Freshness, type KnowledgeFact, type VolatilityClass } from './rtkTypes';
+import {
+  DEFAULT_TTL_BY_CLASS,
+  STALE_THRESHOLD_RATIO,
+  type Freshness,
+  type KnowledgeFact,
+  type VolatilityClass,
+} from './rtkTypes';
 
 /** Resolve the TTL for a volatility class, honouring an explicit override. */
 export const resolveTtlMs = (volatilityClass: VolatilityClass, override?: number): number => {
@@ -71,10 +77,7 @@ export const computeFreshness = (
 };
 
 /** Whether a fact should be considered for a refresh (stale or expired). */
-export const needsRefresh = (
-  fact: Pick<KnowledgeFact, 'validAsOf' | 'expiresAt' | 'ttlMs'>,
-  now: number
-): boolean => {
+export const needsRefresh = (fact: Pick<KnowledgeFact, 'validAsOf' | 'expiresAt' | 'ttlMs'>, now: number): boolean => {
   const freshness = computeFreshness(fact, now);
   return freshness === 'stale' || freshness === 'expired' || freshness === 'unknown';
 };

@@ -90,8 +90,7 @@ const firstLineExtractor: ValueExtractor = async ({ answer }) => {
 
 /** Build the question sent to the researcher. */
 const buildRefreshQuestion = (target: RefreshTarget): string => {
-  const aliasHint =
-    target.aliases && target.aliases.length > 0 ? ` (also known as: ${target.aliases.join('; ')})` : '';
+  const aliasHint = target.aliases && target.aliases.length > 0 ? ` (also known as: ${target.aliases.join('; ')})` : '';
   return `${target.question}${aliasHint}. Provide the current, up-to-date answer with reliable sources and the date it is valid as of.`;
 };
 
@@ -99,12 +98,14 @@ const buildRefreshQuestion = (target: RefreshTarget): string => {
 const toFactSources = (sources: ResearchSource[], fetchedAt: string): FactSource[] =>
   sources
     .filter((s): s is ResearchSource & { url: string } => typeof s.url === 'string' && s.url.trim().length > 0)
-    .map((s) => ({
-      url: s.url.trim(),
-      ...(s.title ? { title: s.title } : {}),
-      fetchedAt,
-      ...(s.snippet ? { snippet: s.snippet } : {}),
-    }));
+    .map((s) =>
+      Object.assign(
+        { url: s.url.trim() },
+        s.title ? { title: s.title } : {},
+        { fetchedAt },
+        s.snippet ? { snippet: s.snippet } : {}
+      )
+    );
 
 /**
  * Create an {@link IRefreshPipeline}.

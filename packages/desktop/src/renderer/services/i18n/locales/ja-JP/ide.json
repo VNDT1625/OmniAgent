@@ -297,7 +297,12 @@
     "inspectRequestPlaceholder": "この要素への変更を記述してください（例：20px 上へ、アクセントカラーを使用）…",
     "inspectAsk": "エージェントに質問",
     "viewportResponsive": "レスポンシブ",
-    "viewportHint": "プレビュー幅: ページをデスクトップ幅でレンダリング（縮小して収める）し、狭い幅ではなく実際のワイドブラウザと同じレイアウトにします。レスポンシブ = パネルの実際の幅でレイアウト。"
+    "viewportHint": "プレビュー幅: ページをデスクトップ幅でレンダリング（縮小して収める）し、狭い幅ではなく実際のワイドブラウザと同じレイアウトにします。レスポンシブ = パネルの実際の幅でレイアウト。",
+    "hideRightSidebar": "右サイドバーを非表示（ブラウザ全体表示）",
+    "showRightSidebar": "右サイドバーを表示",
+    "hideIdeSidebars": "IDE の左右タブを非表示",
+    "showIdeSidebars": "IDE の左右タブを表示",
+    "resizeSidebar": "サイドバーのサイズを変更"
   },
   "db": {
     "connections": "接続",

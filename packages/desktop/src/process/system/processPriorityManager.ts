@@ -64,7 +64,8 @@ export const levelFromNice = (nice: number): ProcessPriorityLevel => {
 };
 
 /** Stable identity for a process across restarts (pid is ephemeral). */
-export const processIdentity = (process: Pick<ProcessMetric, 'type' | 'name'>): string => `${process.type}:${process.name}`;
+export const processIdentity = (process: Pick<ProcessMetric, 'type' | 'name'>): string =>
+  `${process.type}:${process.name}`;
 
 /** External reads/writes injected for testability. */
 export type PriorityManagerDeps = {

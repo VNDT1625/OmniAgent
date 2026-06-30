@@ -19,11 +19,12 @@ import type { VoiceConfigElevenLabs, VoiceConfigOpenAI } from '@/process/makevid
 
 /** Build a fake `fetch` returning binary audio with the given status. */
 const audioFetch = (status = 200) =>
-  vi.fn(async () =>
-    new Response(new Uint8Array([1, 2, 3, 4]).buffer, {
-      status,
-      statusText: status === 200 ? 'OK' : 'Bad',
-    })
+  vi.fn(
+    async () =>
+      new Response(new Uint8Array([1, 2, 3, 4]).buffer, {
+        status,
+        statusText: status === 200 ? 'OK' : 'Bad',
+      })
   );
 
 /** In-memory fs capturing the written file. */

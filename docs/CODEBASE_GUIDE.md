@@ -3,25 +3,24 @@
 > Tài liệu này ghi lại toàn bộ kiến trúc, cấu trúc thư mục, luồng dữ liệu, quy ước code,
 > và các điểm quan trọng của dự án AionUi để agent/developer nắm được codebase nhanh nhất.
 >
-> **Phiên bản:** 2.1.7 | **License:** Apache-2.0 | **Cập nhật:** 2026-06-09 (Response-language directive — giữ AI trả lời đúng ngôn ngữ cài trong app. Helper renderer `packages/desktop/src/renderer/services/i18n/responseLanguage.ts` (`getResponseLanguageName` map 9 mã ngôn ngữ → endonym; `withResponseLanguageDirective(modelInput, conversationId?)` nối tag tối thiểu `\n\n[Respond in <native>]` (~3-8 token) vào CUỐI model input; khi conversation bị "strict" thì nối directive mạnh "[IMPORTANT — language] ... only in <native>"). ADAPTIVE escalation: bộ dò thuần `packages/desktop/src/renderer/services/i18n/languageDetect.ts` (`foreignLanguageRatio(text, langCode)` 0..1, strip code/URL, đếm script Unicode, Latin en/vi/tr phân biệt bằng mật độ dấu) chấm câu trả lời ở turn-completed (`noteAssistantReply`); bật strict khi ≥0.45, tắt khi ≤0.2 (hysteresis, lưu `sessionStorage` `aionui.langStrict.<id>`). Dò ở `useAionrsMessage` (messageBuffer) + `useAcpMessage` (`turnTextRef`). Mặc định rẻ, chỉ tốn token directive mạnh khi model thật sự trượt ngôn ngữ. Test `tests/unit/i18n/languageDetect.test.ts` 12/12. Cố ý ngắn vì tag được aioncore lưu cùng user message ⇒ re-read mỗi lượt; verbose sẽ tích lũy token. Lặp mỗi lượt nên cũng chống drift sang ngôn ngữ code (English) giữa hội thoại. Lý do dùng lớp desktop: system prompt chat chính nằm ở aioncore (Rust, không sửa) — mô phỏng cách `buildPlanningGuard` augment message. Bubble hiển thị giữ NGUYÊN text thô; chỉ model input mang directive. Bỏ qua khi message rỗng hoặc là slash command (bắt đầu `/`) để không phá lệnh điều khiển. Wire SAU `buildPlanningGuard` ở `packages/desktop/src/renderer/pages/conversation/platforms/aionrs/AionrsSendBox.tsx`, `packages/desktop/src/renderer/pages/conversation/platforms/acp/AcpSendBox.tsx`, `packages/desktop/src/renderer/pages/conversation/platforms/acp/useAcpInitialMessage.ts`. Không thêm i18n key (directive gửi model, không hiển thị). tsc sạch các file phạm vi.) | **Cập nhật trước:** 2026-06-09 (Slash command `/goal` + `/goal-all` — lệnh thật trong ô chat agent tự chủ (aionrs), KHÔNG chỉ là doc. Module pure `packages/desktop/src/common/chat/slash/goalCommand.ts` (`parseGoalCommand`/`expandGoalCommand`) biến `/goal <yêu cầu>` và `/goal-all <yêu cầu>` thành prompt mở rộng đầy đủ gửi tới agent: nhúng MỤC TIÊU + QUY TRÌNH BẮT BUỘC 100% (9 pha: phân tích query → lấy data → suy luận+bổ sung skill → planning → tối ưu plan cho sub-agent → thực hiện → quick test mỗi bước → quick test tracker cuối → vòng sửa lỗi root-cause), điều kiện dừng (≈100% hoặc hết credit), phục hồi treo (đóng tiến trình, chờ ~5 phút, tự tiếp tục), và ràng buộc autonomous-run/an toàn. `goal-all` = biến thể toàn quyền, mục tiêu 101%. Bubble vẫn hiển thị `/goal ...`, agent nhận `modelInput` đã expand. Wire: `SendBox/index.tsx` thêm prop `enableGoal` + 2 builtin slash item (dropdown gợi ý khi gõ `/`); cả 5 platform send box (aionrs/acp/openclaw/nanobot/remote) gọi `expandGoalCommand` trong `executeCommand` (acp chèn trước `buildPlanningGuard`; openclaw/nanobot/remote expand cả initial-message path) + truyền `enableGoal`. **Auto-resume watchdog** (production-grade): lõi thuần `packages/desktop/src/common/chat/slash/goalWatchdog.ts` (`evaluateWatchdog` + transitions, deterministic, no timers) + hook `renderer/hooks/chat/useGoalWatchdog.ts` (heartbeat từ `responseStream`, ticker 15s) wire ở aionrs — CHỈ kích hoạt khi lệnh đang chạy là `/goal`/`/goal-all`; turn treo (running + im lặng ≥5') → stop → cooldown 5' → tự gửi lại goal gốc, tối đa 3 lần (cap chống loop/cost), giveup thì báo + dừng; resume KHÔNG re-arm (giữ cap), user tương tác/turn xong thì disarm. i18n `conversation.goalCommand.{description,allDescription,autoResumeNotice,autoResumeGiveup}` 9 locale. Test `tests/unit/common/chat/slash/goalCommand.test.ts` 9 + `tests/unit/common/chat/slash/goalWatchdog.test.ts` 11 = 20/20, tsc sạch mọi file phạm vi (lỗi tsc còn lại ở db/spec/experience/rtk là tiền tồn của feature khác), check-i18n in sync. Doc thiết kế: `.claude/commands/goal.md`.) | **Goal Mode (steering bền vững):** `/goal X` bật Goal Mode per-conversation (`packages/desktop/src/renderer/utils/chat/goalMode.ts`, localStorage `aionui.goal.mode.<cid>`); `packages/desktop/src/common/chat/slash/goalSteering.ts` (`GOAL_TURN_REMINDER`/`buildGoalSteering`) + `withGoalSteeringDirective` chèn steering bắt buộc vào MỌI turn ở `AionrsSendBox.executeCommand` (không ghi đè `extra.preset_rules`, không phụ thuộc Rust backend); `/goal off` tắt mode (i18n `conversation.goalCommand.modeOff`). Lưu ý: đảm bảo steering có mặt mỗi turn (code chèn), KHÔNG ép LLM tuân thủ 100% — enforce cứng cần gating tool-loop ở aioncore. Test bổ sung: goalSteering 5 + goalMode.dom 11 + isGoalOff/parse 4. | **Hard enforcement (renderer control-loop):** `packages/desktop/src/common/chat/slash/goalCompliance.ts` (pure: marker `[[GOAL next=continue|done|blocked tests=pass|fail|none phase=N]]`, `parseGoalStatus`+`decideCompliance`+`advanceComplianceState`, cap maxAutoTurns/maxCorrections) + `GOAL_STATUS_CONTRACT` nhồi vào steering; `packages/desktop/src/renderer/hooks/chat/useGoalRunner.ts` (gộp watchdog treo + compliance finish, 1 stream sub): on finish parse marker → accept chỉ khi done&tests=pass, ngược lại tự lái continue/correct/reject (capped) hoặc halt; on stall → stop→cooldown→resend. Wire aionrs (+ badge Goal Mode UI, click tắt). 5 platform đều có Goal Mode steering per-turn + `/goal off`; auto-drive loop chỉ aionrs. i18n thêm `goalCommand.{modeBadge,done,blocked,maxTurns,enforcing}`. Full suite 2580 pass/3 fail(không liên quan)/9 skip; slash+renderer goal tests 49/49. Trần: renderer gate theo marker agent khai báo — ép cứng tuyệt đối cần aioncore. | **Kiểm chứng độc lập (đóng lỗ hổng tự-khai-báo):** `/goal verify <lệnh>` / `/goal verify off` (store `packages/desktop/src/renderer/utils/chat/goalVerify.ts`); khi agent báo done + có verify → `packages/desktop/src/renderer/utils/chat/runWorkspaceVerification.ts` chạy one-shot qua terminal bridge (cwd=workspace, onExit→exitCode, timeout 5'), `useGoalRunner.verify?` chỉ accept khi exit 0, fail thì tự lái lượt fix kèm output (trong cap). Opt-in. i18n `goalCommand.{verifySet,verifyOff,verifyRunning,verifyFailed}`. Test +9 (parseGoalVerify+goalVerify.dom), slash+renderer goal 58/58. Giờ "done" gate bằng exit code thật, không tin lời agent. | **Cập nhật trước:** 2026-06-06 (IDE Database — client SQL đa kết nối tích hợp trong app + agent dùng được. Backend `process/ide/db/`: `dbTypes` (DbKind sqlite|postgres|mysql, config/schema/column/result), `dbDriver` (contract + `isReadOnlySql`/`splitStatements`/`normalizeCell` thuần), 3 driver `sqliteDriver` (better-sqlite3, đã bundle), `postgresDriver` (pg), `mysqlDriver` (mysql2) — mỗi driver connect/getSchema/getColumns/query/close + read-only guard + row cap; `dbConnectionStore` (config JSON ở userData + **password mã hóa tại chỗ qua Electron `safeStorage`** trong cùng record, fallback base64; crypto seam inject); `dbService` singleton (mở driver lazy theo id, dùng chung 2 plane); `dbWiring` (safeStorage crypto, driver factory map); `dbBridge` (kênh `ide.db-*` envelope) wire ở `initAllBridges()`. Driver mới: `pg`, `mysql2`, `@types/pg`. Renderer `renderer/pages/studio/ide/db/`: `dbClient` (timeout guard), `useDatabasePanel`, `DbConnectionModal` (form theo engine + Test), `DatabasePanel` (rail connections + schema tree + SQL editor Ctrl/Cmd+Enter + bảng kết quả) → **mode `database`** trong IdeWorkspace activity bar (icon DataSheet + palette). **Agent plane**: tool `db_list_connections`/`db_list_tables`/`db_describe_table`/`db_query` thêm vào IDE MCP `aionui-ide` (dep `db?` optional, wire `getDbService()`), `superGuidance` thêm hướng dẫn. i18n `ide.mode.database` + block `ide.db.*` 9 locale. Test `tests/unit/ide/db/` (dbDriver 13 + dbService/store 7 + sqlite integration 6 skip ngoài Electron ABI) + ideServer +1 = 23 pass; tsc sạch, check-i18n pass. Xem `.kiro/status.md`.) | **Cập nhật trước:** 2026-06-06 (Quick Test cho Agent (Super) — agent giờ tự chạy Quick Test qua MCP. Thêm `packages/desktop/src/process/ide/quickTestService.ts` (Agent-plane twin của Quick Test: `runSession({platform,rootPath,target,durationMs})` khởi tracer đúng platform, quan sát có giới hạn thời gian + **early-exit khi gặp firstError**, stop + map trace→code graph; TÁI DÙNG đúng 2 tracer + `buildTraceContext` của UI, deps inject nên test được; clamp duration ≤60s). Lộ qua **tool `ide_quick_test`** trong IDE MCP server `aionui-ide` (`packages/desktop/src/process/ide/mcp/ideServer.ts` thêm `IdeServerDeps.quickTest?` optional → chỉ expose khi inject; `ideMcpWiring.getQuickTestRunner()` resolve focused WebContents qua Electron + `openNativeLogStream` + `loadGraph`). `superGuidance.IDE_TOOLS_RULES` thêm dòng hướng dẫn `ide_quick_test` để Super agent biết dùng. Test `tests/unit/ide/quickTestService.test.ts` 5 + ideServer +1 (quick_test) = 30/30 (cùng 2 tracer); tsc sạch. Xem `.kiro/status.md`.) | **Cập nhật trước:** 2026-06-06 (Quick Test đa nền tảng — mở rộng IDE Quick Test (trước chỉ web qua CDP) sang **android + windows**. Thêm `packages/desktop/src/process/ide/quickTestNativeTracer.ts` (observer thụ động dùng chung shape `RuntimeTrace`: parse log line→`TraceEvent` qua `mapNativeLogLine`; crash/`FATAL EXCEPTION`/priority `F`→exception, `E/`→console error, `W/`→warn; ghi exit code≠0 thành exception) + `packages/desktop/src/process/ide/quickTestNativeStream.ts` (real `NativeStreamOpener`: android = `adb -s <serial> logcat` reuse `toolResolver.resolveAdb`, clear buffer trước; windows = spawn `.exe` stream stdout/stderr). `packages/desktop/src/process/ide/quickTestTracer.ts` đổi `TracePlatform='web'|'android'|'windows'`, export helper `findFirstError`. `quickTestBridge` thêm `QtStartRequest.platform/target` + chọn tracer theo platform + inject `openNativeStream` (wire ở `process/bridge/index.ts`). `ideClient.qtStart(rootPath, platform?, target?)`. `QuickTestPanel` thêm Select platform + Input target (serial/exe), idle steps + lỗi `noDevice`/`noApp` theo platform. i18n `ide.quicktest.{platform*,androidStep*,windowsStep*,target*Hint,noDevice,noApp}` 9 locale. Test `tests/unit/ide/quickTestNativeTracer.test.ts` 12 mới (tracer+native 17/17), tsc sạch, check-i18n pass. Xem `.kiro/status.md`.) | **Cập nhật trước:** 2026-06-06 (Spec-driven workflow ngang/hơn Kiro — thêm lớp phân tích spec "Kiro-grade" mà trước còn thiếu. Pure shared `common/spec/` (4 file, không I/O, renderer+main dùng chung): `packages/desktop/src/common/spec/earsRequirements.ts` parse + validate EARS (5 pattern ubiquitous/event/state/unwanted/optional + check normative SHALL/MUST → diagnostics), `packages/desktop/src/common/spec/traceability.ts` ma trận Req↔Task↔Test (đọc ref `(Req: R1)` trong tasks.md + mention trong verification.md → coverage/uncovered/orphan/verified), `packages/desktop/src/common/spec/phaseGates.ts` parse `## Phase N` + CHECKPOINT + Definition of Done → gate readiness + active phase, `index.ts` barrel `analyzeSpec` + `computeSpecScore` 0..100 (weighted). Bridge `packages/desktop/src/process/ide/specLifecycleBridge.ts` thêm `buildSpecAnalysis` + kênh `ide.spec-analyze` (đọc 3 file → gọi pure); client `ideClient.specAnalyze`. UI `packages/desktop/src/renderer/pages/studio/ide/components/SpecManagerPanel.tsx` (Arco Progress gauge score + EARS per-criterion pattern tag + coverage matrix + phase gates + DoD badge + diagnostics) thành **mode `spec`** mới trong `IdeWorkspace` activity bar (icon FileCode + palette command). i18n `ide.mode.spec` + block `ide.spec.*` 9 locale. Test: `tests/unit/spec/` 23 (pure) + bridge analyze 1 + `SpecManagerPanel.dom` 3 = 27 mới, tsc sạch mọi file phạm vi, check-i18n ide.json đủ key. Nâng mảng spec/task lifecycle ~7.8→~8.3. Xem `.kiro/status.md` "GOAL: Spec-driven".) | **Cập nhật trước:** 2026-06-06 (Tối ưu phân bổ tài nguyên — hiểu laptop hơn + giảm lag: thêm `packages/desktop/src/process/resource/gpuProbe.ts` detect GPU rời qua Electron `app.getGPUInfo('basic')` (heuristic thuần `hasDiscreteGpuFromDevices`, không thêm dependency) nối vào `systemProbe.getHasDiscreteGPU` (trước luôn `false` ⇒ preset `performance` gần như không bao giờ được gợi ý); `balancePolicy.suggestPreset` thêm đường `performance` cho máy rất mạnh KHÔNG có GPU rời (≥32GB + ≥12 core); `browserViewManager.createTab` đặt `backgroundThrottling` theo cờ `background` (tab user ẩn lại được Chromium throttle ⇒ tiết kiệm CPU/GPU, chỉ tab research nền tắt throttle); thêm `packages/desktop/src/renderer/utils/hardwareConcurrency.ts` (`recommendedConcurrency` theo `navigator.hardwareConcurrency`) thay magic-number ở `useMcpConnection` (4→theo core) và `companyPipeline` (3→theo core). Test mới `tests/unit/resource/` + `tests/unit/renderer/hardwareConcurrency.dom.test.ts` 20/20; hồi quy browser 145/145; tsc CLEAN. Xem `.kiro/status.md`.) | **Cập nhật trước:** 2026-06-03 (9Router connector GĐ2 — nút **Apply** ghi config tự động: `packages/desktop/src/common/router9/applyPlan.ts` (PURE expandHome/deepMerge/mergeConfigContent), `packages/desktop/src/process/router9/router9Applier.ts` (ghi atomic + backup `.bak`, recompute plan ở Main, fs seam DI) + `packages/desktop/src/process/router9/router9Bridge.ts` kênh `router9.apply-plan` wire ở `initAllBridges()`, renderer `packages/desktop/src/renderer/pages/settings/router9/router9BridgeClient.ts` + nút Apply trong `Router9ConnectorPanel`. i18n +8 key `settings.router9.*` (9 locale). Test `tests/unit/router9/` 28/28, tsc/i18n sạch. Điều tra: freemodel.dev chỉ phục vụ claude qua Claude Code CLI → dùng Claude Code (CLI agent) trỏ 9Router. Xem callout "9Router — GĐ2" + `.kiro/status.md`.) | **Cập nhật trước:** 2026-06-02 (Music Studio (Tomni Agentic music) — capability làm nhạc cho CẢ user lẫn agent, gated sau cờ `MUSIC_STUDIO_ENABLED=false`. Workspace package mới `packages/music-core` (`@aionui/music-core`, headless thuần TS: schema/engine commands/scheduler+render/WAV/synth, analysis "đôi tai" pitch-YIN+key-Krumhansl+tempo, theory+vocal-tune planning, producer brain, agent `dispatchTool`). Renderer `pages/music/` (UI Arco + `useMusicPlayer` Tone.js realtime + `musicClient`); process `process/music/` (fileProjectRepo node:fs + musicBridge `music.*` render WAV/stems + MCP `aionui-music` host/wiring/register gated). Route `/music` + `SiderMusicEntry` + i18n module `music` (9 locale). Dep mới `tone@15.0.4`. Perf fix: cap chroma DFT ~5kHz + cap số frame → test 22.5s→4.4s. Test `tests/unit/music/` 17/17 (core 10 + mcp 7), tsc sạch, build OK. Xem `.kiro/status.md` "HOÀN TẤT TÍCH HỢP".) | **Cập nhật trước:** 2026-06-02 (Studio Editor AI — thay panel "AI yếu" bằng chat thật `<ChatConversation>` (hook `useDocChat`, conversation pin `extra.workspace`) + MCP `aionui-office-editor` 13 tool `office_*` sửa live ONLYOFFICE qua RPC Main→Renderer (`editorToolsBridge`/`editorToolsProvider`/`editorToolsClient` + server/host/wiring + đăng ký ở `runBackendMigrations`); xóa `useDocAssistant`/`useDocAgent`/`docAgentStore`/`extractCodeBlock`/`useDocAgentActivity`; i18n thay `studio.assistant.*` + `studio.create.pickModel` (9 locale). tsc EXIT=0, studio 31/31 + editor 16, i18n PASS. Xem callout "Studio Editor AI".) | **Cập nhật trước:** 2026-06-01 (Office/PDF mở theo PATH — bỏ giới hạn 256 MB của aioncore: docx/xlsx/pptx/pdf không còn nạp cả file qua `POST /api/fs/read-buffer` (nơi aioncore chặn >256 MB + tốn RAM). `useEditorFile` thêm content mode **`'none'`** (bỏ qua đọc whole-file, `load` settle rỗng, `save` no-op — adapter tự đọc/lưu theo path); `ADAPTER_CONTENT_MODE` đặt docx/spreadsheet/slide/pdf=`'none'`. Office mở theo path qua integration host `packages/desktop/src/process/studio/onlyOfficeServer.ts`; `PdfAdapter` viewer fallback đọc bytes lazy theo path qua `studio.read-binary` (Node fs, không cap). File Office/PDF rất lớn nay mở được. getDiagnostics sạch, tsc không lỗi mới, test editor+studio 50/50.) | **Cập nhật trước:** 2026-06-01 (Studio Editor — không gian tài liệu + Office mặc định + PDF edit: `StudioEditorView` thêm nút **fullscreen** (`position:fixed` phủ cửa sổ, Esc thoát, không remount editor) + nút **ẩn/hiện thanh công cụ** (chevron) để lấy lại chiều cao cho tài liệu. Bỏ toggle "Sửa (Office)/Sửa" ở docx/xlsx/pptx — luôn mở Office trước, lỗi thì **tự** fallback editor nhẹ qua callback `onFatalError` mới của `OnlyOfficeEditor` + strip `OfficeFallbackNotice` (Thử lại Office / Cài đặt DS). **PDF giờ edit được**: `documentTypeFor` nhận `pdf` → ONLYOFFICE Docs 7.2+ mở PDF editor (ghi chú/thêm chữ/ký/điền form, lưu về đĩa), `PdfAdapter` fallback trình xem Chromium khi Office lỗi (PDF không có Automation API → bỏ qua connector AI). i18n: +`studio.editor.*`, +`editor.office.*`; xoá key chết `editor.{docx,spreadsheet,slide}.mode.*`/`.formattedFailed` + `editor.pdf.{scopeNotice,annotate,fillForm}` (9 locale). getDiagnostics sạch, i18n:types+check-i18n pass.) | **Cập nhật trước:** 2026-06-01 (Terminal manager — chức năng quản lý Terminal mới ở `/settings/terminal` (desktop-only): backend `process/terminal/` (8 file) — `IPtyBackend` + **child_process backend (KHÔNG node-pty, zero native dep)**, `terminalManager` (registry session interactive + scrollback + event), `systemProcesses` (đếm/list shell OS read-only qua tasklist/ps), `terminalScheduleStore` + `terminalScheduler` (croner, fire script vào session mới — vd mở 9router theo lịch), `terminalBridge` (kênh `terminal.*` envelope always-resolve) + `terminalWiring`; wire ở `initAllBridges()` (scheduler.start arm lịch ngay). Renderer `renderer/pages/terminal/` (3 tab Sessions/System/Schedules, view tự viết Arco strip-ANSI, KHÔNG xterm) + `terminalBridgeClient` timeout-guard + route + nav SettingsSider. i18n module `terminal` 9 locale. Test `tests/unit/terminal/` 36/36, tsc terminal sạch. Giai đoạn 3 (nhúng panel vào IDE) chưa làm. Xem callout "Terminal manager" + `.kiro/status.md`.) | **Cập nhật trước:** 2026-06-01 (PRD Feature Packs — kế hoạch dài hạn modular hoá app: tách lõi (Chat) + feature pack tải về theo yêu cầu (Browser/Studio/Manager/Testing/Monitor/Company/IDE…). Đã CHỐT NGUYÊN TẮC, **HOÃN TRIỂN KHAI** đến khi feature chính ổn định (gần ra mắt v3) để tránh rework. Tài liệu đầy đủ: `docs/prds/feature-packs/README.md`. Lộ trình 3 giai đoạn (asset pack → code pack thử nghiệm → modular toàn bộ).) | **Cập nhật trước:** 2026-06-01 (Content-extraction service chung — `process/services/contentExtract/`: transcript YouTube qua **yt-dlp** → anonymous fetcher cũ (fallback); file→Markdown qua **markitdown**/`uvx` → Node fallback (mammoth/officeparser/turndown); facade `extract({kind:youtube|file|html|auto})`; wiring Browser `fetchTranscript` + Manager `docExtractor` + tool MCP `extract_content`. Không bundle, công cụ ngoài resolve lúc chạy, degrade an toàn. Test 22/22, tsc EXIT=0.) | **Cập nhật trước:** 2026-06-01 (IDE Understand — gen summary theo NGÔN NGỮ HỆ THỐNG: summary/tours/overview được LLM sinh bằng đúng ngôn ngữ hiển thị (thread `i18n.language` → `kgBuild(rootPath,model,language)` → `KnowledgeBuildRequest.language` → `builder.build({language})`); prompt thêm `langDirective` (viết prose theo ngôn ngữ, giữ nguyên code identifiers/path/JSON keys); fallback summary LOCALIZED 9 locale ở `packages/desktop/src/process/ide/fallbackSummaryLocale.ts`; `graph.language` lưu + incremental reuse chỉ giữ summary cũ khi ngôn ngữ khớp (đổi ngôn ngữ → re-summarize, live rebuild cũng truyền language); `OverviewPanel` hint rebuild khi `graph.language` lệch UI (key `ide.understand.overview.langMismatch`). Test builder 24, test ide 82/82, tsc IDE sạch. LƯU Ý: lỗi tsc ở `process/services/contentExtract/` là feature untracked của agent khác, ngoài phạm vi.) | **Cập nhật trước:** 2026-06-01 (IDE — nhớ phiên + mở folder khác có cảnh báo: `useIdeWorkspace` persist `{rootPath, openFiles, activeFile}` vào `localStorage` `studio.ide.session` + khôi phục khi vào lại IDE (cờ `restoring` hiện spinner thay vì màn hình mở folder); thêm thanh tab `EditorTabs` (đóng từng file) + dấu chấm "chưa lưu"; `UniversalEditor` thêm prop `onDirtyChange` báo dirty lên, hook gom qua `markDirty`/`dirtyFiles`/`hasUnsaved`; nút header "Open another folder" → `Modal.confirm` cảnh báo mất thay đổi chưa lưu trước khi `pickFolder` reset tabs/dirty. i18n `ide.workspace.*` (9 locale), tsc sạch, test `tests/unit/ide/` 78/78 (+`tests/unit/ide/useIdeWorkspace.dom.test.ts` 6). Xem callout "IDE Understand — incremental/realtime/C4" cho phần trước.) | **Cập nhật trước:** 2026-06-01 (IDE Understand — incremental + realtime + C4 + diff + fallback: builder thêm fingerprint pure (FNV-1a) + fallback summary deterministic (node nào LLM bỏ qua vẫn có tóm tắt, gắn `summarySource` llm/fallback) + reuse incremental khi fingerprint trùng + `extractExternals` (C4 Context) + polyglot symbols Python/Rust/Go/Java; `packages/desktop/src/process/ide/repoWatcher.ts` (realtime DI fs.watch + debounce) + kênh `ide.kg-watch-start/-stop` + emitter `ide.kg-changed`; renderer `packages/desktop/src/renderer/pages/studio/ide/graphModel.ts` pure (deriveC4 4 cấp Context/Container/Component/Code + computeImpact diff + liftChangedToView), `packages/desktop/src/renderer/pages/studio/ide/components/layerColors.ts`, `packages/desktop/src/renderer/pages/studio/ide/components/C4GraphView.tsx` (columns/force, diff overlay), `packages/desktop/src/renderer/pages/studio/ide/components/OverviewPanel.tsx` (overview-first), `packages/desktop/src/renderer/pages/studio/ide/components/NodeDetailRail.tsx` (summary badge); `useUnderstand` thêm Live + changedFiles. i18n 9 locale, tsc sạch, test ide 72/72. Xem callout "IDE Understand — incremental/realtime/C4" bên dưới.) | **Cập nhật trước:** 2026-06-01 (IDE Chat — bỏ 2 AI yếu (mode Ask + mode Agent) trong Studio › IDE, thay bằng MỘT mode **Chat** đa-tab tái dùng hệ conversation/CLI-agent chính: mỗi tab = `TChatConversation` thật pin `extra.workspace = rootPath` (CLI agent chạy cwd là folder mở, đọc mọi subdir) + embed `<ChatConversation>`. Xóa 8 file (`AgentChatPanel`/`ExplainPanel`/`useCodeAgent`/`codeAgentRunner`/`codeAgentBridge`/`ideExplainBridge` + 2 test); thêm `packages/desktop/src/renderer/pages/studio/ide/useIdeChat.ts` + `packages/desktop/src/renderer/pages/studio/ide/components/IdeChatPanel.tsx`; activity bar IDE giờ **Files/Understand/Chat/Wiki**. i18n `ide.mode.chat`+`ide.chat.*` (9 locale, bỏ `ide.explain.*`/`ide.agent.*`). tsc sạch, `tests/unit/ide/` 66/66. Xem callout "IDE Chat — bỏ Ask+Agent" trong `.kiro/status.md`.) | **Cập nhật trước:** 2026-06-01 (Đợt 13 — Automation liên kết App ↔ Cloud ↔ Social: 6 node kind mới cho Studio › Automation (Make Video+render mp4 / Editor / Cloud upload S3-WebDAV / Email SMTP / Facebook / TikTok), connector DI ở `process/automation/connectors/`, i18n 9 locale, test 35/35. Xem callout "Đợt 13" bên dưới.) | **Cập nhật trước:** 2026-06-01 (Company — xóa công ty thật + chủ tịch/role nhận đúng identity + bar gen chạy ngầm: (1) thêm kênh `company.delete-company` (bridge+client+`ICompanyConfigStore.deleteCompany` xóa hẳn folder `<userData>/companies/<id>/`); nút X picker → nút Delete có Popconfirm; `useCompanyState.forgetCompany` xóa đĩa + dọn map `aionui.company.roleConversations` ⇒ tạo lại cùng tên là sạch hoàn toàn. (2) `openRoleChat` LUÔN nhồi briefing đầy đủ (identity + soul/workflow qua `composeSoul`) vào `extra.preset_context` cho cả CLI lẫn assistant + gửi "primer turn" (SYSTEM BRIEFING) sau khi tạo conversation ⇒ chủ tịch tự biết role/company/rules; option `skipPrimer` cho pipeline. (3) `GenerationProgress` seed `percent` từ `elapsed` khi remount ⇒ đổi tab quay lại bar không reset về 0; thêm hint "đang chạy ngầm". i18n `company.picker.delete*`/`company.describe.tabSwitchHint` (9 locale). Test `tests/unit/company/` **117/117**. Xem callout "Company — delete + identity + bg progress" bên dưới.) | **Cập nhật trước:** 2026-06-01 (Browser web-agent chạy ngầm khi rời trang — transcript + cờ running của web-agent chuyển từ React state `useAgentChat` sang store module-level `packages/desktop/src/renderer/pages/browser/agentChatStore.ts` (subscribe `onAgentEvent` always-on + mirror `sessionStorage`); rời trang Browser không còn mất transcript/ngừng nghe (runner Main vốn vẫn chạy ngầm). `useAgentChat` thành binding `useSyncExternalStore`, API public giữ nguyên. Test `tests/unit/browser/agentChatStore.dom.test.ts` (4), `tests/unit/browser/` 136/136. Xem callout "Browser web-agent chạy ngầm khi rời trang" bên dưới.) | **Cập nhật trước:** 2026-06-01 (CLI agent cho tác vụ AI nền — module dùng chung `process/services/agentChat/` cho phép các surface AI nền (Browser web-agent, Studio chat, IDE explain/wiki, Make Video, Testing scenario/app-detect) chạy bằng **CLI agent** (Claude Code/Codex/Gemini CLI…) thay vì chỉ provider api*key. Model id mã hoá `cli:<agentId>` → `withCliAgent`/`runAgentChatMessages` định tuyến qua driver tạo conversation tạm + chờ turn (WS riêng cho Main + poll REST) + đọc kết quả + cleanup. Picker Browser thêm nhóm "CLI Agents". Xem callout "Đợt 11 — CLI agent cho tác vụ AI nền" bên dưới.) | **Cập nhật trước:** 2026-06-01 (gỡ bỏ "Make Film Studio" — placeholder phase 2 chưa có pipeline: xóa `MakeFilmStudio.tsx`, mode `film` trong `StudioPage`, prop `onMakeFilm` + nút trong `StudioDashboard`, key i18n `studio.makeFilm`/`studio.film.*`ở cả 9 locale; nút Make Video lên làm action chính của rail. Studio sub-app còn lại: Make Video, Automation, Repo IDE, IDE.) | **Cập nhật trước:** 2026-05-31 (đối chiếu lại với CODE thực tế — chỉ tin code. Đợt 1: bổ sung`process/cron/`+`process/manager/`, route `/manager`, file thiếu cho browser/studio/testing/monitor, i18n 30 module, built-in MCP cron/manager. Đợt 2 (dùng sub-agent verify song song Sections 10/11/13/14/15): Section 10 bổ sung cột `source`/`channel\*chat\*id`(conversations),`hidden`(messages),`session\*mode`(teams),`files`(mailbox) + liệt kê các bảng`assistant\**`/`cron*jobs`/`remote\*agents`/`acp_session`; Section 11 sửa Teams API (bỏ `PUT /api/teams/:id`không tồn tại → các sub-resource thật); Section 13 thêm`components/devtools`, `components/workspace`, `IconParkHOC`, `ShimmerText`; Section 14 thêm `hooks/assistant`, `hooks/config`+ các hook lẻ; Section 15 thêm`utils/devtools`, `utils/workspace`, file gốc `utils/`+`writeBinaryFile`. Đợt 3: Studio ONLYOFFICE full-edit on-demand — `packages/desktop/src/process/studio/documentServerManager.ts`(ensureDocumentServer: URL cấu hình hoặc tự start Docker DS), kênh`studio.office-ensure-server`, chế độ "Office" WYSIWYG cho cả 3 adapter docx/xlsx/pptx, i18n `editor.onlyoffice.\*`. Đợt 4: Browser agent — fix điều hướng SPA (emitter `browser.tab-updated`) + grounding URL tab hiện tại, transcript passive/active (tab ẩn), lớp `process/browser/research/`(readability + summarizer map-reduce + deepResearch đa nguồn có citation), tool`summarize`/`deep_research`. Đợt 8 (đối chiếu lại toàn bộ feature từ code): Section 1 tách bảng tính năng thành (A) lõi + (B) Tomni Agentic/Studio/Manager (13 chức năng mở rộng có route/bridge/i18n riêng); sửa i18n Section 16 từ 30 → **33 module** (thêm `automation`/`ide`/`makeVideo`); bỏ con số cứng "21 Assistants" (code không seed cố định — assistants do backend quản lý qua `/api/assistants`). Đợt 9: bổ sung thư mục `process/editor/` (`packages/desktop/src/process/editor/editorFrameStore.ts`+`packages/desktop/src/process/editor/editorControlBridge.ts`) vào cây Section 5.1 và thêm `editor-control`vào danh sách bridge đăng ký trong "Lưu ý wiring" (khớp`registerEditorControlBridge()`trong`initAllBridges()`). Đợt 10: gộp IDE Studio (`StudioIde`+`RepoIntelView`→`IdeWorkspace` 4 chế độ Files/Map/Ask/Wiki) + thêm Wiki kiểu DeepWiki (`packages/desktop/src/process/ide/ideWikiBridge.ts`+`packages/desktop/src/process/ide/wikiPlanner.ts`+`packages/desktop/src/process/ide/ideProvider.ts`; kênh `ide.wiki-plan`/`ide.wiki-section`) — xem callout "Đợt 8 — IDE hợp nhất + Wiki" bên dưới)
-tiếp
-**Cập nhật 2026-06-09 (IDE Wiki → production-grade: verify-doc → tự sửa → viết + tự đánh giá/cải thiện → lưu bền):**
-nâng tab Wiki (DeepWiki) của IDE từ "sinh lại mỗi lần, chỉ ở React state" lên pipeline bền sản xuất ở
-`process/ide/wiki/`. **(1) Không tin doc — kiểm chứng**: `packages/desktop/src/process/ide/wiki/docVerify.ts` (PURE) đối chiếu mọi claim kiểm
-được của doc (đường dẫn file trong `inline code`/link + lệnh `npm run X`) với code thật; sai thì tự sửa
-(moved-path khi basename duy nhất, near-miss script edit-distance ≤2) và ghi lại doc đã sửa. **(2) Agent
-khác viết wiki TỪ doc đã verify**: `packages/desktop/src/process/ide/wiki/wikiBootstrap.ts` (deps injected) chạy scan→verify→fix→plan→write→save;
-mỗi mục đi qua **vòng tự đánh giá–cải thiện** `packages/desktop/src/process/ide/wiki/wikiRefine.ts` + `packages/desktop/src/process/ide/wiki/wikiCritic.ts` (PURE: chấm
-placeholder/too-short/hallucinated-path/low-grounding/missing-diagram/no-subheadings/duplicate-title/
-coverage; `hasConverged` dừng khi điểm ≥0.95, hoặc lượt cải thiện không tăng đủ, hoặc chạm trần) — "hoàn
-thiện tới khi không tối ưu được nữa". Coverage chỉ bật khi prose tiếng Anh (tránh phạt oan wiki vi-VN…).
-**(3) Lưu bền**: `packages/desktop/src/process/ide/wiki/wikiStore.ts` ghi `userData/ide-wiki/<hash>.json` + export người-đọc-được
-`<repo>/.aionui/wiki/` (atomic tmp+rename, fs injected) → sống qua restart, mở lại dùng ngay không gọi model.
-Bridge `packages/desktop/src/process/ide/wiki/wikiBuildBridge.ts` (`ide.wiki-build`/`ide.wiki-load` + emitter `ide.wiki-progress`, wire Node
-fs + `runIdeChat`), đăng ký ở `initAllBridges()`. Renderer: `packages/desktop/src/renderer/pages/studio/ide/useRepoWiki.ts` (load persisted on open + build
-với progress) + `packages/desktop/src/renderer/pages/studio/ide/components/WikiPanel.tsx` (phase strip + "documentation check" report + điểm chất lượng + saved badge).
-i18n `ide.wiki.*` (phase_*/building/verifiedDocs/docsFixed/quality/savedBadge… 9 locale). Verify: `tests/unit/ide/wiki/`
-+`tests/unit/ide/wiki/wikiCritic.test.ts` (16) +`tests/unit/ide/wiki/wikiRefine.test.ts` (6) + bootstrap refine test = **66 pass** (toàn `tests/unit/ide` 503+); tsc + oxlint (0/0) + check-i18n sạch.
+> **Phiên bản:** 2.1.7 | **License:** Apache-2.0 | **Cập nhật:** 2026-06-09 (Response-language directive — giữ AI trả lời đúng ngôn ngữ cài trong app. Helper renderer `packages/desktop/src/renderer/services/i18n/responseLanguage.ts` (`getResponseLanguageName` map 9 mã ngôn ngữ → endonym; `withResponseLanguageDirective(modelInput, conversationId?)` nối tag tối thiểu `\n\n[Respond in <native>]` (~3-8 token) vào CUỐI model input; khi conversation bị "strict" thì nối directive mạnh "[IMPORTANT — language] ... only in <native>"). ADAPTIVE escalation: bộ dò thuần `packages/desktop/src/renderer/services/i18n/languageDetect.ts` (`foreignLanguageRatio(text, langCode)` 0..1, strip code/URL, đếm script Unicode, Latin en/vi/tr phân biệt bằng mật độ dấu) chấm câu trả lời ở turn-completed (`noteAssistantReply`); bật strict khi ≥0.45, tắt khi ≤0.2 (hysteresis, lưu `sessionStorage` `aionui.langStrict.<id>`). Dò ở `useAionrsMessage` (messageBuffer) + `useAcpMessage` (`turnTextRef`). Mặc định rẻ, chỉ tốn token directive mạnh khi model thật sự trượt ngôn ngữ. Test `tests/unit/i18n/languageDetect.test.ts` 12/12. Cố ý ngắn vì tag được aioncore lưu cùng user message ⇒ re-read mỗi lượt; verbose sẽ tích lũy token. Lặp mỗi lượt nên cũng chống drift sang ngôn ngữ code (English) giữa hội thoại. Lý do dùng lớp desktop: system prompt chat chính nằm ở aioncore (Rust, không sửa) — mô phỏng cách `buildPlanningGuard` augment message. Bubble hiển thị giữ NGUYÊN text thô; chỉ model input mang directive. Bỏ qua khi message rỗng hoặc là slash command (bắt đầu `/`) để không phá lệnh điều khiển. Wire SAU `buildPlanningGuard` ở `packages/desktop/src/renderer/pages/conversation/platforms/aionrs/AionrsSendBox.tsx`, `packages/desktop/src/renderer/pages/conversation/platforms/acp/AcpSendBox.tsx`, `packages/desktop/src/renderer/pages/conversation/platforms/acp/useAcpInitialMessage.ts`. Không thêm i18n key (directive gửi model, không hiển thị). tsc sạch các file phạm vi.) | **Cập nhật trước:** 2026-06-09 (Slash command `/goal` + `/goal-all` — lệnh thật trong ô chat agent tự chủ (aionrs), KHÔNG chỉ là doc. Module pure `packages/desktop/src/common/chat/slash/goalCommand.ts` (`parseGoalCommand`/`expandGoalCommand`) biến `/goal <yêu cầu>` và `/goal-all <yêu cầu>` thành prompt mở rộng đầy đủ gửi tới agent: nhúng MỤC TIÊU + QUY TRÌNH BẮT BUỘC 100% (9 pha: phân tích query → lấy data → suy luận+bổ sung skill → planning → tối ưu plan cho sub-agent → thực hiện → quick test mỗi bước → quick test tracker cuối → vòng sửa lỗi root-cause), điều kiện dừng (≈100% hoặc hết credit), phục hồi treo (đóng tiến trình, chờ ~5 phút, tự tiếp tục), và ràng buộc autonomous-run/an toàn. `goal-all` = biến thể toàn quyền, mục tiêu 101%. Bubble vẫn hiển thị `/goal ...`, agent nhận `modelInput` đã expand. Wire: `SendBox/index.tsx` thêm prop `enableGoal` + 2 builtin slash item (dropdown gợi ý khi gõ `/`); cả 5 platform send box (aionrs/acp/openclaw/nanobot/remote) gọi `expandGoalCommand` trong `executeCommand` (acp chèn trước `buildPlanningGuard`; openclaw/nanobot/remote expand cả initial-message path) + truyền `enableGoal`. **Auto-resume watchdog** (production-grade): lõi thuần `packages/desktop/src/common/chat/slash/goalWatchdog.ts` (`evaluateWatchdog` + transitions, deterministic, no timers) + hook `renderer/hooks/chat/useGoalWatchdog.ts` (heartbeat từ `responseStream`, ticker 15s) wire ở aionrs — CHỈ kích hoạt khi lệnh đang chạy là `/goal`/`/goal-all`; turn treo (running + im lặng ≥5') → stop → cooldown 5' → tự gửi lại goal gốc, tối đa 3 lần (cap chống loop/cost), giveup thì báo + dừng; resume KHÔNG re-arm (giữ cap), user tương tác/turn xong thì disarm. i18n `conversation.goalCommand.{description,allDescription,autoResumeNotice,autoResumeGiveup}` 9 locale. Test `tests/unit/common/chat/slash/goalCommand.test.ts` 9 + `tests/unit/common/chat/slash/goalWatchdog.test.ts` 11 = 20/20, tsc sạch mọi file phạm vi (lỗi tsc còn lại ở db/spec/experience/rtk là tiền tồn của feature khác), check-i18n in sync. Doc thiết kế: `.claude/commands/goal.md`.) | **Goal Mode (steering bền vững):** `/goal X` bật Goal Mode per-conversation (`packages/desktop/src/renderer/utils/chat/goalMode.ts`, localStorage `aionui.goal.mode.<cid>`); `packages/desktop/src/common/chat/slash/goalSteering.ts` (`GOAL_TURN_REMINDER`/`buildGoalSteering`) + `withGoalSteeringDirective` chèn steering bắt buộc vào MỌI turn ở `AionrsSendBox.executeCommand` (không ghi đè `extra.preset_rules`, không phụ thuộc Rust backend); `/goal off` tắt mode (i18n `conversation.goalCommand.modeOff`). Lưu ý: đảm bảo steering có mặt mỗi turn (code chèn), KHÔNG ép LLM tuân thủ 100% — enforce cứng cần gating tool-loop ở aioncore. Test bổ sung: goalSteering 5 + goalMode.dom 11 + isGoalOff/parse 4. | **Hard enforcement (renderer control-loop):** `packages/desktop/src/common/chat/slash/goalCompliance.ts` (pure: marker `[[GOAL next=continue|done|blocked tests=pass|fail|none phase=N]]`, `parseGoalStatus`+`decideCompliance`+`advanceComplianceState`, cap maxAutoTurns/maxCorrections) + `GOAL_STATUS_CONTRACT` nhồi vào steering; `packages/desktop/src/renderer/hooks/chat/useGoalRunner.ts` (gộp watchdog treo + compliance finish, 1 stream sub): on finish parse marker → accept chỉ khi done&tests=pass, ngược lại tự lái continue/correct/reject (capped) hoặc halt; on stall → stop→cooldown→resend. Wire aionrs (+ badge Goal Mode UI, click tắt). 5 platform đều có Goal Mode steering per-turn + `/goal off`; auto-drive loop chỉ aionrs. i18n thêm `goalCommand.{modeBadge,done,blocked,maxTurns,enforcing}`. Full suite 2580 pass/3 fail(không liên quan)/9 skip; slash+renderer goal tests 49/49. Trần: renderer gate theo marker agent khai báo — ép cứng tuyệt đối cần aioncore. | **Kiểm chứng độc lập (đóng lỗ hổng tự-khai-báo):** `/goal verify <lệnh>` / `/goal verify off` (store `packages/desktop/src/renderer/utils/chat/goalVerify.ts`); khi agent báo done + có verify → `packages/desktop/src/renderer/utils/chat/runWorkspaceVerification.ts` chạy one-shot qua terminal bridge (cwd=workspace, onExit→exitCode, timeout 5'), `useGoalRunner.verify?` chỉ accept khi exit 0, fail thì tự lái lượt fix kèm output (trong cap). Opt-in. i18n `goalCommand.{verifySet,verifyOff,verifyRunning,verifyFailed}`. Test +9 (parseGoalVerify+goalVerify.dom), slash+renderer goal 58/58. Giờ "done" gate bằng exit code thật, không tin lời agent. | **Cập nhật trước:** 2026-06-06 (IDE Database — client SQL đa kết nối tích hợp trong app + agent dùng được. Backend `process/ide/db/`: `dbTypes` (DbKind sqlite|postgres|mysql, config/schema/column/result), `dbDriver` (contract + `isReadOnlySql`/`splitStatements`/`normalizeCell` thuần), 3 driver `sqliteDriver` (better-sqlite3, đã bundle), `postgresDriver` (pg), `mysqlDriver` (mysql2) — mỗi driver connect/getSchema/getColumns/query/close + read-only guard + row cap; `dbConnectionStore` (config JSON ở userData + **password mã hóa tại chỗ qua Electron `safeStorage`** trong cùng record, fallback base64; crypto seam inject); `dbService` singleton (mở driver lazy theo id, dùng chung 2 plane); `dbWiring` (safeStorage crypto, driver factory map); `dbBridge` (kênh `ide.db-*` envelope) wire ở `initAllBridges()`. Driver mới: `pg`, `mysql2`, `@types/pg`. Renderer `renderer/pages/studio/ide/db/`: `dbClient` (timeout guard), `useDatabasePanel`, `DbConnectionModal` (form theo engine + Test), `DatabasePanel` (rail connections + schema tree + SQL editor Ctrl/Cmd+Enter + bảng kết quả) → **mode `database`** trong IdeWorkspace activity bar (icon DataSheet + palette). **Agent plane**: tool `db_list_connections`/`db_list_tables`/`db_describe_table`/`db_query` thêm vào IDE MCP `aionui-ide` (dep `db?` optional, wire `getDbService()`), `superGuidance` thêm hướng dẫn. i18n `ide.mode.database` + block `ide.db.*` 9 locale. Test `tests/unit/ide/db/` (dbDriver 13 + dbService/store 7 + sqlite integration 6 skip ngoài Electron ABI) + ideServer +1 = 23 pass; tsc sạch, check-i18n pass. Xem `.kiro/status.md`.) | **Cập nhật trước:** 2026-06-06 (Quick Test cho Agent (Super) — agent giờ tự chạy Quick Test qua MCP. Thêm `packages/desktop/src/process/ide/quickTestService.ts` (Agent-plane twin của Quick Test: `runSession({platform,rootPath,target,durationMs})` khởi tracer đúng platform, quan sát có giới hạn thời gian + **early-exit khi gặp firstError**, stop + map trace→code graph; TÁI DÙNG đúng 2 tracer + `buildTraceContext` của UI, deps inject nên test được; clamp duration ≤60s). Lộ qua **tool `ide_quick_test`** trong IDE MCP server `aionui-ide` (`packages/desktop/src/process/ide/mcp/ideServer.ts` thêm `IdeServerDeps.quickTest?` optional → chỉ expose khi inject; `ideMcpWiring.getQuickTestRunner()` resolve focused WebContents qua Electron + `openNativeLogStream` + `loadGraph`). `superGuidance.IDE_TOOLS_RULES` thêm dòng hướng dẫn `ide_quick_test` để Super agent biết dùng. Test `tests/unit/ide/quickTestService.test.ts` 5 + ideServer +1 (quick*test) = 30/30 (cùng 2 tracer); tsc sạch. Xem `.kiro/status.md`.) | **Cập nhật trước:** 2026-06-06 (Quick Test đa nền tảng — mở rộng IDE Quick Test (trước chỉ web qua CDP) sang **android + windows**. Thêm `packages/desktop/src/process/ide/quickTestNativeTracer.ts` (observer thụ động dùng chung shape `RuntimeTrace`: parse log line→`TraceEvent` qua `mapNativeLogLine`; crash/`FATAL EXCEPTION`/priority `F`→exception, `E/`→console error, `W/`→warn; ghi exit code≠0 thành exception) + `packages/desktop/src/process/ide/quickTestNativeStream.ts` (real `NativeStreamOpener`: android = `adb -s <serial> logcat` reuse `toolResolver.resolveAdb`, clear buffer trước; windows = spawn `.exe` stream stdout/stderr). `packages/desktop/src/process/ide/quickTestTracer.ts` đổi `TracePlatform='web'|'android'|'windows'`, export helper `findFirstError`. `quickTestBridge` thêm `QtStartRequest.platform/target` + chọn tracer theo platform + inject `openNativeStream` (wire ở `process/bridge/index.ts`). `ideClient.qtStart(rootPath, platform?, target?)`. `QuickTestPanel` thêm Select platform + Input target (serial/exe), idle steps + lỗi `noDevice`/`noApp` theo platform. i18n `ide.quicktest.{platform*,androidStep*,windowsStep*,target*Hint,noDevice,noApp}` 9 locale. Test `tests/unit/ide/quickTestNativeTracer.test.ts` 12 mới (tracer+native 17/17), tsc sạch, check-i18n pass. Xem `.kiro/status.md`.) | **Cập nhật trước:** 2026-06-06 (Spec-driven workflow ngang/hơn Kiro — thêm lớp phân tích spec "Kiro-grade" mà trước còn thiếu. Pure shared `common/spec/` (4 file, không I/O, renderer+main dùng chung): `packages/desktop/src/common/spec/earsRequirements.ts` parse + validate EARS (5 pattern ubiquitous/event/state/unwanted/optional + check normative SHALL/MUST → diagnostics), `packages/desktop/src/common/spec/traceability.ts` ma trận Req↔Task↔Test (đọc ref `(Req: R1)` trong tasks.md + mention trong verification.md → coverage/uncovered/orphan/verified), `packages/desktop/src/common/spec/phaseGates.ts` parse `## Phase N` + CHECKPOINT + Definition of Done → gate readiness + active phase, `index.ts` barrel `analyzeSpec` + `computeSpecScore` 0..100 (weighted). Bridge `packages/desktop/src/process/ide/specLifecycleBridge.ts` thêm `buildSpecAnalysis` + kênh `ide.spec-analyze` (đọc 3 file → gọi pure); client `ideClient.specAnalyze`. UI `packages/desktop/src/renderer/pages/studio/ide/components/SpecManagerPanel.tsx` (Arco Progress gauge score + EARS per-criterion pattern tag + coverage matrix + phase gates + DoD badge + diagnostics) thành **mode `spec`** mới trong `IdeWorkspace` activity bar (icon FileCode + palette command). i18n `ide.mode.spec` + block `ide.spec.*` 9 locale. Test: `tests/unit/spec/` 23 (pure) + bridge analyze 1 + `SpecManagerPanel.dom` 3 = 27 mới, tsc sạch mọi file phạm vi, check-i18n ide.json đủ key. Nâng mảng spec/task lifecycle ~7.8→~8.3. Xem `.kiro/status.md` "GOAL: Spec-driven".) | **Cập nhật trước:** 2026-06-06 (Tối ưu phân bổ tài nguyên — hiểu laptop hơn + giảm lag: thêm `packages/desktop/src/process/resource/gpuProbe.ts` detect GPU rời qua Electron `app.getGPUInfo('basic')` (heuristic thuần `hasDiscreteGpuFromDevices`, không thêm dependency) nối vào `systemProbe.getHasDiscreteGPU` (trước luôn `false` ⇒ preset `performance` gần như không bao giờ được gợi ý); `balancePolicy.suggestPreset` thêm đường `performance` cho máy rất mạnh KHÔNG có GPU rời (≥32GB + ≥12 core); `browserViewManager.createTab` đặt `backgroundThrottling` theo cờ `background` (tab user ẩn lại được Chromium throttle ⇒ tiết kiệm CPU/GPU, chỉ tab research nền tắt throttle); thêm `packages/desktop/src/renderer/utils/hardwareConcurrency.ts` (`recommendedConcurrency` theo `navigator.hardwareConcurrency`) thay magic-number ở `useMcpConnection` (4→theo core) và `companyPipeline` (3→theo core). Test mới `tests/unit/resource/` + `tests/unit/renderer/hardwareConcurrency.dom.test.ts` 20/20; hồi quy browser 145/145; tsc CLEAN. Xem `.kiro/status.md`.) | **Cập nhật trước:** 2026-06-03 (9Router connector GĐ2 — nút **Apply** ghi config tự động: `packages/desktop/src/common/router9/applyPlan.ts` (PURE expandHome/deepMerge/mergeConfigContent), `packages/desktop/src/process/router9/router9Applier.ts` (ghi atomic + backup `.bak`, recompute plan ở Main, fs seam DI) + `packages/desktop/src/process/router9/router9Bridge.ts` kênh `router9.apply-plan` wire ở `initAllBridges()`, renderer `packages/desktop/src/renderer/pages/settings/router9/router9BridgeClient.ts` + nút Apply trong `Router9ConnectorPanel`. i18n +8 key `settings.router9.*` (9 locale). Test `tests/unit/router9/` 28/28, tsc/i18n sạch. Điều tra: freemodel.dev chỉ phục vụ claude qua Claude Code CLI → dùng Claude Code (CLI agent) trỏ 9Router. Xem callout "9Router — GĐ2" + `.kiro/status.md`.) | **Cập nhật trước:** 2026-06-02 (Music Studio (Tomni Agentic music) — capability làm nhạc cho CẢ user lẫn agent, gated sau cờ `MUSIC_STUDIO_ENABLED=false`. Workspace package mới `packages/music-core` (`@aionui/music-core`, headless thuần TS: schema/engine commands/scheduler+render/WAV/synth, analysis "đôi tai" pitch-YIN+key-Krumhansl+tempo, theory+vocal-tune planning, producer brain, agent `dispatchTool`). Renderer `pages/music/` (UI Arco + `useMusicPlayer` Tone.js realtime + `musicClient`); process `process/music/` (fileProjectRepo node:fs + musicBridge `music.*` render WAV/stems + MCP `aionui-music` host/wiring/register gated). Route `/music` + `SiderMusicEntry` + i18n module `music` (9 locale). Dep mới `tone@15.0.4`. Perf fix: cap chroma DFT ~5kHz + cap số frame → test 22.5s→4.4s. Test `tests/unit/music/` 17/17 (core 10 + mcp 7), tsc sạch, build OK. Xem `.kiro/status.md` "HOÀN TẤT TÍCH HỢP".) | **Cập nhật trước:** 2026-06-02 (Studio Editor AI — thay panel "AI yếu" bằng chat thật `<ChatConversation>` (hook `useDocChat`, conversation pin `extra.workspace`) + MCP `aionui-office-editor` 13 tool `office*_` sửa live ONLYOFFICE qua RPC Main→Renderer (`editorToolsBridge`/`editorToolsProvider`/`editorToolsClient`+ server/host/wiring + đăng ký ở`runBackendMigrations`); xóa `useDocAssistant`/`useDocAgent`/`docAgentStore`/`extractCodeBlock`/`useDocAgentActivity`; i18n thay `studio.assistant._`+`studio.create.pickModel`(9 locale). tsc EXIT=0, studio 31/31 + editor 16, i18n PASS. Xem callout "Studio Editor AI".) | **Cập nhật trước:** 2026-06-01 (Office/PDF mở theo PATH — bỏ giới hạn 256 MB của aioncore: docx/xlsx/pptx/pdf không còn nạp cả file qua`POST /api/fs/read-buffer`(nơi aioncore chặn >256 MB + tốn RAM).`useEditorFile` thêm content mode **`'none'`** (bỏ qua đọc whole-file, `load`settle rỗng,`save`no-op — adapter tự đọc/lưu theo path);`ADAPTER*CONTENT_MODE` đặt docx/spreadsheet/slide/pdf=`'none'`. Office mở theo path qua integration host `packages/desktop/src/process/studio/onlyOfficeServer.ts`; `PdfAdapter`viewer fallback đọc bytes lazy theo path qua`studio.read-binary`(Node fs, không cap). File Office/PDF rất lớn nay mở được. getDiagnostics sạch, tsc không lỗi mới, test editor+studio 50/50.) | **Cập nhật trước:** 2026-06-01 (Studio Editor — không gian tài liệu + Office mặc định + PDF edit:`StudioEditorView` thêm nút **fullscreen** (`position:fixed`phủ cửa sổ, Esc thoát, không remount editor) + nút **ẩn/hiện thanh công cụ** (chevron) để lấy lại chiều cao cho tài liệu. Bỏ toggle "Sửa (Office)/Sửa" ở docx/xlsx/pptx — luôn mở Office trước, lỗi thì **tự** fallback editor nhẹ qua callback`onFatalError`mới của`OnlyOfficeEditor`+ strip`OfficeFallbackNotice`(Thử lại Office / Cài đặt DS). **PDF giờ edit được**:`documentTypeFor`nhận`pdf`→ ONLYOFFICE Docs 7.2+ mở PDF editor (ghi chú/thêm chữ/ký/điền form, lưu về đĩa),`PdfAdapter` fallback trình xem Chromium khi Office lỗi (PDF không có Automation API → bỏ qua connector AI). i18n: +`studio.editor.*`, +`editor.office.*`; xoá key chết `editor.{docx,spreadsheet,slide}.mode.*`/`.formattedFailed`+`editor.pdf.{scopeNotice,annotate,fillForm}`(9 locale). getDiagnostics sạch, i18n:types+check-i18n pass.) | **Cập nhật trước:** 2026-06-01 (Terminal manager — chức năng quản lý Terminal mới ở`/settings/terminal`(desktop-only): backend`process/terminal/`(8 file) —`IPtyBackend`+ **child_process backend (KHÔNG node-pty, zero native dep)**,`terminalManager`(registry session interactive + scrollback + event),`systemProcesses`(đếm/list shell OS read-only qua tasklist/ps),`terminalScheduleStore`+`terminalScheduler`(croner, fire script vào session mới — vd mở 9router theo lịch),`terminalBridge`(kênh`terminal.*`envelope always-resolve) +`terminalWiring`; wire ở `initAllBridges()`(scheduler.start arm lịch ngay). Renderer`renderer/pages/terminal/`(3 tab Sessions/System/Schedules, view tự viết Arco strip-ANSI, KHÔNG xterm) +`terminalBridgeClient`timeout-guard + route + nav SettingsSider. i18n module`terminal`9 locale. Test`tests/unit/terminal/`36/36, tsc terminal sạch. Giai đoạn 3 (nhúng panel vào IDE) chưa làm. Xem callout "Terminal manager" +`.kiro/status.md`.) | **Cập nhật trước:** 2026-06-01 (PRD Feature Packs — kế hoạch dài hạn modular hoá app: tách lõi (Chat) + feature pack tải về theo yêu cầu (Browser/Studio/Manager/Testing/Monitor/Company/IDE…). Đã CHỐT NGUYÊN TẮC, **HOÃN TRIỂN KHAI** đến khi feature chính ổn định (gần ra mắt v3) để tránh rework. Tài liệu đầy đủ: `docs/prds/feature-packs/README.md`. Lộ trình 3 giai đoạn (asset pack → code pack thử nghiệm → modular toàn bộ).) | **Cập nhật trước:** 2026-06-01 (Content-extraction service chung — `process/services/contentExtract/`: transcript YouTube qua **yt-dlp** → anonymous fetcher cũ (fallback); file→Markdown qua **markitdown**/`uvx`→ Node fallback (mammoth/officeparser/turndown); facade`extract({kind:youtube|file|html|auto})`; wiring Browser `fetchTranscript`+ Manager`docExtractor`+ tool MCP`extract_content`. Không bundle, công cụ ngoài resolve lúc chạy, degrade an toàn. Test 22/22, tsc EXIT=0.) | **Cập nhật trước:** 2026-06-01 (IDE Understand — gen summary theo NGÔN NGỮ HỆ THỐNG: summary/tours/overview được LLM sinh bằng đúng ngôn ngữ hiển thị (thread `i18n.language`→`kgBuild(rootPath,model,language)`→`KnowledgeBuildRequest.language`→`builder.build({language})`); prompt thêm `langDirective`(viết prose theo ngôn ngữ, giữ nguyên code identifiers/path/JSON keys); fallback summary LOCALIZED 9 locale ở`packages/desktop/src/process/ide/fallbackSummaryLocale.ts`; `graph.language`lưu + incremental reuse chỉ giữ summary cũ khi ngôn ngữ khớp (đổi ngôn ngữ → re-summarize, live rebuild cũng truyền language);`OverviewPanel`hint rebuild khi`graph.language`lệch UI (key`ide.understand.overview.langMismatch`). Test builder 24, test ide 82/82, tsc IDE sạch. LƯU Ý: lỗi tsc ở `process/services/contentExtract/`là feature untracked của agent khác, ngoài phạm vi.) | **Cập nhật trước:** 2026-06-01 (IDE — nhớ phiên + mở folder khác có cảnh báo:`useIdeWorkspace`persist`{rootPath, openFiles, activeFile}`vào`localStorage` `studio.ide.session`+ khôi phục khi vào lại IDE (cờ`restoring`hiện spinner thay vì màn hình mở folder); thêm thanh tab`EditorTabs`(đóng từng file) + dấu chấm "chưa lưu";`UniversalEditor`thêm prop`onDirtyChange`báo dirty lên, hook gom qua`markDirty`/`dirtyFiles`/`hasUnsaved`; nút header "Open another folder" → `Modal.confirm`cảnh báo mất thay đổi chưa lưu trước khi`pickFolder`reset tabs/dirty. i18n`ide.workspace.*`(9 locale), tsc sạch, test`tests/unit/ide/` 78/78 (+`tests/unit/ide/useIdeWorkspace.dom.test.ts`6). Xem callout "IDE Understand — incremental/realtime/C4" cho phần trước.) | **Cập nhật trước:** 2026-06-01 (IDE Understand — incremental + realtime + C4 + diff + fallback: builder thêm fingerprint pure (FNV-1a) + fallback summary deterministic (node nào LLM bỏ qua vẫn có tóm tắt, gắn`summarySource`llm/fallback) + reuse incremental khi fingerprint trùng +`extractExternals`(C4 Context) + polyglot symbols Python/Rust/Go/Java;`packages/desktop/src/process/ide/repoWatcher.ts`(realtime DI fs.watch + debounce) + kênh`ide.kg-watch-start/-stop`+ emitter`ide.kg-changed`; renderer `packages/desktop/src/renderer/pages/studio/ide/graphModel.ts`pure (deriveC4 4 cấp Context/Container/Component/Code + computeImpact diff + liftChangedToView),`packages/desktop/src/renderer/pages/studio/ide/components/layerColors.ts`, `packages/desktop/src/renderer/pages/studio/ide/components/C4GraphView.tsx`(columns/force, diff overlay),`packages/desktop/src/renderer/pages/studio/ide/components/OverviewPanel.tsx`(overview-first),`packages/desktop/src/renderer/pages/studio/ide/components/NodeDetailRail.tsx`(summary badge);`useUnderstand`thêm Live + changedFiles. i18n 9 locale, tsc sạch, test ide 72/72. Xem callout "IDE Understand — incremental/realtime/C4" bên dưới.) | **Cập nhật trước:** 2026-06-01 (IDE Chat — bỏ 2 AI yếu (mode Ask + mode Agent) trong Studio › IDE, thay bằng MỘT mode **Chat** đa-tab tái dùng hệ conversation/CLI-agent chính: mỗi tab =`TChatConversation`thật pin`extra.workspace = rootPath`(CLI agent chạy cwd là folder mở, đọc mọi subdir) + embed`<ChatConversation>`. Xóa 8 file (`AgentChatPanel`/`ExplainPanel`/`useCodeAgent`/`codeAgentRunner`/`codeAgentBridge`/`ideExplainBridge`+ 2 test); thêm`packages/desktop/src/renderer/pages/studio/ide/useIdeChat.ts`+`packages/desktop/src/renderer/pages/studio/ide/components/IdeChatPanel.tsx`; activity bar IDE giờ **Files/Understand/Chat/Wiki**. i18n `ide.mode.chat`+`ide.chat.*`(9 locale, bỏ`ide.explain.*`/`ide.agent.*`). tsc sạch, `tests/unit/ide/`66/66. Xem callout "IDE Chat — bỏ Ask+Agent" trong`.kiro/status.md`.) | **Cập nhật trước:** 2026-06-01 (Đợt 13 — Automation liên kết App ↔ Cloud ↔ Social: 6 node kind mới cho Studio › Automation (Make Video+render mp4 / Editor / Cloud upload S3-WebDAV / Email SMTP / Facebook / TikTok), connector DI ở `process/automation/connectors/`, i18n 9 locale, test 35/35. Xem callout "Đợt 13" bên dưới.) | **Cập nhật trước:** 2026-06-01 (Company — xóa công ty thật + chủ tịch/role nhận đúng identity + bar gen chạy ngầm: (1) thêm kênh `company.delete-company` (bridge+client+`ICompanyConfigStore.deleteCompany`xóa hẳn folder`<userData>/companies/<id>/`); nút X picker → nút Delete có Popconfirm; `useCompanyState.forgetCompany`xóa đĩa + dọn map`aionui.company.roleConversations`⇒ tạo lại cùng tên là sạch hoàn toàn. (2)`openRoleChat`LUÔN nhồi briefing đầy đủ (identity + soul/workflow qua`composeSoul`) vào `extra.preset_context`cho cả CLI lẫn assistant + gửi "primer turn" (SYSTEM BRIEFING) sau khi tạo conversation ⇒ chủ tịch tự biết role/company/rules; option`skipPrimer`cho pipeline. (3)`GenerationProgress`seed`percent`từ`elapsed`khi remount ⇒ đổi tab quay lại bar không reset về 0; thêm hint "đang chạy ngầm". i18n`company.picker.delete*`/`company.describe.tabSwitchHint`(9 locale). Test`tests/unit/company/`**117/117**. Xem callout "Company — delete + identity + bg progress" bên dưới.) | **Cập nhật trước:** 2026-06-01 (Browser web-agent chạy ngầm khi rời trang — transcript + cờ running của web-agent chuyển từ React state`useAgentChat`sang store module-level`packages/desktop/src/renderer/pages/browser/agentChatStore.ts`(subscribe`onAgentEvent`always-on + mirror`sessionStorage`); rời trang Browser không còn mất transcript/ngừng nghe (runner Main vốn vẫn chạy ngầm). `useAgentChat`thành binding`useSyncExternalStore`, API public giữ nguyên. Test `tests/unit/browser/agentChatStore.dom.test.ts`(4),`tests/unit/browser/`136/136. Xem callout "Browser web-agent chạy ngầm khi rời trang" bên dưới.) | **Cập nhật trước:** 2026-06-01 (CLI agent cho tác vụ AI nền — module dùng chung`process/services/agentChat/` cho phép các surface AI nền (Browser web-agent, Studio chat, IDE explain/wiki, Make Video, Testing scenario/app-detect) chạy bằng **CLI agent** (Claude Code/Codex/Gemini CLI…) thay vì chỉ provider api*key. Model id mã hoá `cli:<agentId>` → `withCliAgent`/`runAgentChatMessages` định tuyến qua driver tạo conversation tạm + chờ turn (WS riêng cho Main + poll REST) + đọc kết quả + cleanup. Picker Browser thêm nhóm "CLI Agents". Xem callout "Đợt 11 — CLI agent cho tác vụ AI nền" bên dưới.) | **Cập nhật trước:** 2026-06-01 (gỡ bỏ "Make Film Studio" — placeholder phase 2 chưa có pipeline: xóa `MakeFilmStudio.tsx`, mode `film` trong `StudioPage`, prop `onMakeFilm` + nút trong `StudioDashboard`, key i18n `studio.makeFilm`/`studio.film.*`ở cả 9 locale; nút Make Video lên làm action chính của rail. Studio sub-app còn lại: Make Video, Automation, Repo IDE, IDE.) | **Cập nhật trước:** 2026-05-31 (đối chiếu lại với CODE thực tế — chỉ tin code. Đợt 1: bổ sung`process/cron/`+`process/manager/`, route `/manager`, file thiếu cho browser/studio/testing/monitor, i18n 30 module, built-in MCP cron/manager. Đợt 2 (dùng sub-agent verify song song Sections 10/11/13/14/15): Section 10 bổ sung cột `source`/`channel\*chat\*id`(conversations),`hidden`(messages),`session\*mode`(teams),`files`(mailbox) + liệt kê các bảng`assistant\**`/`cron*jobs`/`remote\*agents`/`acp_session`; Section 11 sửa Teams API (bỏ `PUT /api/teams/:id`không tồn tại → các sub-resource thật); Section 13 thêm`components/devtools`, `components/workspace`, `IconParkHOC`, `ShimmerText`; Section 14 thêm `hooks/assistant`, `hooks/config`+ các hook lẻ; Section 15 thêm`utils/devtools`, `utils/workspace`, file gốc `utils/`+`writeBinaryFile`. Đợt 3: Studio ONLYOFFICE full-edit on-demand — `packages/desktop/src/process/studio/documentServerManager.ts`(ensureDocumentServer: URL cấu hình hoặc tự start Docker DS), kênh`studio.office-ensure-server`, chế độ "Office" WYSIWYG cho cả 3 adapter docx/xlsx/pptx, i18n `editor.onlyoffice.\*`. Đợt 4: Browser agent — fix điều hướng SPA (emitter `browser.tab-updated`) + grounding URL tab hiện tại, transcript passive/active (tab ẩn), lớp `process/browser/research/`(readability + summarizer map-reduce + deepResearch đa nguồn có citation), tool`summarize`/`deep_research`. Đợt 8 (đối chiếu lại toàn bộ feature từ code): Section 1 tách bảng tính năng thành (A) lõi + (B) Tomni Agentic/Studio/Manager (13 chức năng mở rộng có route/bridge/i18n riêng); sửa i18n Section 16 từ 30 → **33 module** (thêm `automation`/`ide`/`makeVideo`); bỏ con số cứng "21 Assistants" (code không seed cố định — assistants do backend quản lý qua `/api/assistants`). Đợt 9: bổ sung thư mục `process/editor/` (`packages/desktop/src/process/editor/editorFrameStore.ts`+`packages/desktop/src/process/editor/editorControlBridge.ts`) vào cây Section 5.1 và thêm `editor-control`vào danh sách bridge đăng ký trong "Lưu ý wiring" (khớp`registerEditorControlBridge()`trong`initAllBridges()`). Đợt 10: gộp IDE Studio (`StudioIde`+`RepoIntelView`→`IdeWorkspace` 4 chế độ Files/Map/Ask/Wiki) + thêm Wiki kiểu DeepWiki (`packages/desktop/src/process/ide/ideWikiBridge.ts`+`packages/desktop/src/process/ide/wikiPlanner.ts`+`packages/desktop/src/process/ide/ideProvider.ts`; kênh `ide.wiki-plan`/`ide.wiki-section`) — xem callout "Đợt 8 — IDE hợp nhất + Wiki" bên dưới)
+> tiếp
+> **Cập nhật 2026-06-09 (IDE Wiki → production-grade: verify-doc → tự sửa → viết + tự đánh giá/cải thiện → lưu bền):**
+> nâng tab Wiki (DeepWiki) của IDE từ "sinh lại mỗi lần, chỉ ở React state" lên pipeline bền sản xuất ở
+> `process/ide/wiki/`. **(1) Không tin doc — kiểm chứng**: `packages/desktop/src/process/ide/wiki/docVerify.ts` (PURE) đối chiếu mọi claim kiểm
+> được của doc (đường dẫn file trong `inline code`/link + lệnh `npm run X`) với code thật; sai thì tự sửa
+> (moved-path khi basename duy nhất, near-miss script edit-distance ≤2) và ghi lại doc đã sửa. **(2) Agent
+> khác viết wiki TỪ doc đã verify**: `packages/desktop/src/process/ide/wiki/wikiBootstrap.ts` (deps injected) chạy scan→verify→fix→plan→write→save;
+> mỗi mục đi qua **vòng tự đánh giá–cải thiện** `packages/desktop/src/process/ide/wiki/wikiRefine.ts` + `packages/desktop/src/process/ide/wiki/wikiCritic.ts` (PURE: chấm
+> placeholder/too-short/hallucinated-path/low-grounding/missing-diagram/no-subheadings/duplicate-title/
+> coverage; `hasConverged` dừng khi điểm ≥0.95, hoặc lượt cải thiện không tăng đủ, hoặc chạm trần) — "hoàn
+> thiện tới khi không tối ưu được nữa". Coverage chỉ bật khi prose tiếng Anh (tránh phạt oan wiki vi-VN…).
+> **(3) Lưu bền**: `packages/desktop/src/process/ide/wiki/wikiStore.ts` ghi `userData/ide-wiki/<hash>.json` + export người-đọc-được
+> `<repo>/.aionui/wiki/` (atomic tmp+rename, fs injected) → sống qua restart, mở lại dùng ngay không gọi model.
+> Bridge `packages/desktop/src/process/ide/wiki/wikiBuildBridge.ts` (`ide.wiki-build`/`ide.wiki-load` + emitter `ide.wiki-progress`, wire Node
+> fs + `runIdeChat`), đăng ký ở `initAllBridges()`. Renderer: `packages/desktop/src/renderer/pages/studio/ide/useRepoWiki.ts` (load persisted on open + build
+> với progress) + `packages/desktop/src/renderer/pages/studio/ide/components/WikiPanel.tsx` (phase strip + "documentation check" report + điểm chất lượng + saved badge).
+> i18n `ide.wiki.*` (phase*\*/building/verifiedDocs/docsFixed/quality/savedBadge… 9 locale). Verify: `tests/unit/ide/wiki/` +`tests/unit/ide/wiki/wikiCritic.test.ts` (16) +`tests/unit/ide/wiki/wikiRefine.test.ts` (6) + bootstrap refine test = **66 pass** (toàn `tests/unit/ide` 503+); tsc + oxlint (0/0) + check-i18n sạch.
 > Bridge cũ `ide.wiki-plan`/`ide.wiki-section` (ideWikiBridge) còn đăng ký nhưng renderer không dùng nữa.
 
 **Cập nhật 2026-06-09 (IDE Database → production-grade: safeStorage + URL/DSN + pool + index/FK + script + export + test pg/mysql):**
@@ -83,69 +82,65 @@ memory chuyên cho kinh nghiệm sửa lỗi: mỗi lần fix bug khó thành c�
 khi gặp bug tương tự. Kiến trúc **lai** (người dùng duyệt): engine TS sở hữu embedding+store, MTUI là
 mặt gọi 0-token cho agent. Engine `packages/desktop/src/process/experience/` (9 file, main process,
 không DOM): `experienceTypes`, `experienceText` (redact secret + embeddingText tất định + lexical soup
-+ verificationStrength, pure), `experienceStore` (JSON theo entry, atomic, inject fs, mẫu
-`company/memoryStore`), `experienceVectorIndex` (normalize/cosine + embed wrapper, embedding OPTIONAL →
-degrade lexical), `experienceCapture` (normalize+sanitize+dedupe lexical Jaccard≥0.82+merge),
-`experienceRetrieval` (rank 0.5*semantic-or-lexical+0.22*contextMatch+0.1*confidence+0.1*verification+
-0.08*recency−penalty), `experienceProjection` (ghi `.mtui/exp/index.json` + hàng đợi `inbox.jsonl`/
-`forget.jsonl`), `index` (`createExperienceService` facade + `projectIdFromRoot`), `experienceBridge`
-(IPC `experience.{record,search,drain,forget}` wire ở `initAllBridges()`; `search` drain inbox+forget →
-rebuild → rank, khép vòng capture→index→retrieve; embedder best-effort qua `createDefaultEmbedder`).
-**MTUI Rust** `packages/mtui/src/exp/mod.rs` + cli `Exp` + dispatch: `mtui exp search/add/get/list/
+
+- verificationStrength, pure), `experienceStore` (JSON theo entry, atomic, inject fs, mẫu
+  `company/memoryStore`), `experienceVectorIndex` (normalize/cosine + embed wrapper, embedding OPTIONAL →
+  degrade lexical), `experienceCapture` (normalize+sanitize+dedupe lexical Jaccard≥0.82+merge),
+  `experienceRetrieval` (rank 0.5*semantic-or-lexical+0.22*contextMatch+0.1*confidence+0.1*verification+
+  0.08*recency−penalty), `experienceProjection` (ghi `.mtui/exp/index.json` + hàng đợi `inbox.jsonl`/
+  `forget.jsonl`), `index` (`createExperienceService` facade + `projectIdFromRoot`), `experienceBridge`
+  (IPC `experience.{record,search,drain,forget}` wire ở `initAllBridges()`; `search` drain inbox+forget →
+  rebuild → rank, khép vòng capture→index→retrieve; embedder best-effort qua `createDefaultEmbedder`).
+  **MTUI Rust** `packages/mtui/src/exp/mod.rs` + cli `Exp` + dispatch: `mtui exp search/add/get/list/
 forget` AI-free — đọc projection rank lexical+metadata mirror TS, `add`→inbox, `forget`→forget queue +
-patch index `archived`. Trigger CÓ ĐIỀU KIỆN (agent gọi `mtui exp search` khi bug khó, không inject mỗi
-query → tiết kiệm token). **Phase 2** `workflow/experienceTrigger` (fail/signature, ngưỡng 2 hoặc hard) +
-`workflow/experienceWorkflow` (onVerifyOutcome/captureSuccess/captureFailure/recordFeedback) + confidence
-tuning. **Phase 3** `workflow/experienceGraph` (relations same_symptom_as/same_root_cause/contradicts/
-applies_to + enrichSuggestions). **Phase 4** `workflow/experienceMetrics` + IDE mode **ExpBase** (icon
-Brain, `renderer/pages/studio/ide/expbase/`, wire IdeWorkspace) search/browse/feedback/archive/metrics;
-bridge `experience.{record,search,drain,forget,feedback,metrics,list,verify-outcome}`, IPC contract ở
-`packages/desktop/src/process/experience/experienceTypes.ts` (renderer-safe). Test: TS `tests/unit/experience/` 102 (workflow + DOM), Rust
-`cargo test exp::` 5/5, ide 340 pass không hồi quy, i18n 9 locale. Spec `.aionui/specs/exp-graph/`. Xem
-`.kiro/status.md`.
-**Cập nhật 2026-06-09 (IDE session super-memory — trí nhớ ephemeral cho agent ở IDE):** thêm một
-"super-memory" sống-trong-RAM, scoped theo phiên chat IDE (1 tab = 1 conversation). Lõi pure
-`packages/desktop/src/process/ide/memory/sessionMemoryStore.ts` (`createSessionMemoryStore` DI summarizer/clock/estimator;
-singleton `getSessionMemoryStore` dùng `heuristicSummarizer` không cần model): note có kind+pinned,
-secrets session-only (API key), forced compaction inline khi vượt `tokenBudget` (fold note cũ nhất trừ
-pinned + `keepRecent` → 1 summary, loop-guard), `clearSession` xóa hẳn khi đóng tab (KHÔNG ghi đĩa —
-ngược với company `memoryStore`). Agent dùng qua IDE MCP `aionui-ide`: tool `ide_memory_remember`/
-`ide_memory_recall`/`ide_memory_forget`/`ide_memory_set_secret`/`ide_memory_status` (gate
-`IdeServerDeps.memory?`, wire ở `ideMcpWiring.buildIdeServer`). sessionId = `memId` (`ide-mem-<uuid>`)
-sinh mỗi tab, nhúng vào primer qua `superGuidance.buildIdeMemoryRules`/`withIdeMemoryRules`; `useIdeChat`
-persist {id,memId} (tương thích legacy string[]), clear memory khi `close` tab. Renderer-facing bridge
-`packages/desktop/src/process/ide/memory/ideMemoryBridge.ts` (kênh `ide.memory-snapshot`/`ide.memory-clear`, đăng ký ở
-`initAllBridges()`) + `ideClient.memorySnapshot/memoryClear`. **Production-grade (giảm token/tăng tốc/
-rộng recall, KHÔNG vector DB/model/network):** dedup-consolidate khi ghi (Jaccard ≥0.82 hoặc containment
-≥0.9 superset → update note cũ giữ text dài hơn + bump access, không append trùng), salience-based
-eviction (fold note ít accessCount+recency nhất; pinned bất khả xâm phạm), recall token-bounded
-(`recallTokenBudget` 1500) + xếp hạng theo query/salience trả kèm `tokens`, estimator đếm
-word+CJK thay chars/4, concurrency-safe (serialize `remember` per-session), guard note/secret quá khổ.
-**Semantic recall (offline, 0-dep):** `packages/desktop/src/process/ide/memory/embedding.ts` (`createLocalEmbedder`
-feature-hashing bag-of-n-grams 256-chiều L2-norm + `cosineSimilarity`, deterministic, không model/network)
-inject qua `SessionMemoryStoreOptions.embedder?`; `recall` xếp hạng theo cosine (ngưỡng 0.12 + phrase
-bonus) khi có embedder, fallback lexical khi không — bắt sub-word ("auth"↔"authentication"). Hybrid
-score (cosine + overlap + phrase), meta-summary (fold summary cũ khi phiên cực dài), pinned cap
-(maxPinned 32 tự bỏ ghim cũ). **UI**:
-`renderer/pages/studio/ide/memory/` (`useIdeMemory` poll snapshot + `packages/desktop/src/renderer/pages/studio/ide/memory/MemorySessionDrawer.tsx` Arco Drawer:
-gauge token, stat counters, note list nhóm, secret keys chỉ tên, Clear/Refresh) — nút "Memory" ở tab
-strip `IdeChatPanel` mở drawer theo `memId` tab active. i18n `ide.memory.*` đủ 9 locale. Test
-`tests/unit/ide/memory/` (store + embedding + DOM drawer) → toàn bộ `tests/unit/ide` 347+ pass; oxlint
-0/0; getDiagnostics sạch mọi file phạm vi. Xem `.kiro/status.md`.
+  patch index `archived`. Trigger CÓ ĐIỀU KIỆN (agent gọi `mtui exp search` khi bug khó, không inject mỗi
+  query → tiết kiệm token). **Phase 2** `workflow/experienceTrigger` (fail/signature, ngưỡng 2 hoặc hard) +
+  `workflow/experienceWorkflow` (onVerifyOutcome/captureSuccess/captureFailure/recordFeedback) + confidence
+  tuning. **Phase 3** `workflow/experienceGraph` (relations same_symptom_as/same_root_cause/contradicts/
+  applies_to + enrichSuggestions). **Phase 4** `workflow/experienceMetrics` + IDE mode **ExpBase** (icon
+  Brain, `renderer/pages/studio/ide/expbase/`, wire IdeWorkspace) search/browse/feedback/archive/metrics;
+  bridge `experience.{record,search,drain,forget,feedback,metrics,list,verify-outcome}`, IPC contract ở
+  `packages/desktop/src/process/experience/experienceTypes.ts` (renderer-safe). Test: TS `tests/unit/experience/` 102 (workflow + DOM), Rust
+  `cargo test exp::` 5/5, ide 340 pass không hồi quy, i18n 9 locale. Spec `.aionui/specs/exp-graph/`. Xem
+  `.kiro/status.md`.
+  **Cập nhật 2026-06-09 (IDE session super-memory — trí nhớ ephemeral cho agent ở IDE):** thêm một
+  "super-memory" sống-trong-RAM, scoped theo phiên chat IDE (1 tab = 1 conversation). Lõi pure
+  `packages/desktop/src/process/ide/memory/sessionMemoryStore.ts` (`createSessionMemoryStore` DI summarizer/clock/estimator;
+  singleton `getSessionMemoryStore` dùng `heuristicSummarizer` không cần model): note có kind+pinned,
+  secrets session-only (API key), forced compaction inline khi vượt `tokenBudget` (fold note cũ nhất trừ
+  pinned + `keepRecent` → 1 summary, loop-guard), `clearSession` xóa hẳn khi đóng tab (KHÔNG ghi đĩa —
+  ngược với company `memoryStore`). Agent dùng qua IDE MCP `aionui-ide`: tool `ide_memory_remember`/
+  `ide_memory_recall`/`ide_memory_forget`/`ide_memory_set_secret`/`ide_memory_status` (gate
+  `IdeServerDeps.memory?`, wire ở `ideMcpWiring.buildIdeServer`). sessionId = `memId` (`ide-mem-<uuid>`)
+  sinh mỗi tab, nhúng vào primer qua `superGuidance.buildIdeMemoryRules`/`withIdeMemoryRules`; `useIdeChat`
+  persist {id,memId} (tương thích legacy string[]), clear memory khi `close` tab. Renderer-facing bridge
+  `packages/desktop/src/process/ide/memory/ideMemoryBridge.ts` (kênh `ide.memory-snapshot`/`ide.memory-clear`, đăng ký ở
+  `initAllBridges()`) + `ideClient.memorySnapshot/memoryClear`. **Production-grade (giảm token/tăng tốc/
+  rộng recall, KHÔNG vector DB/model/network):** dedup-consolidate khi ghi (Jaccard ≥0.82 hoặc containment
+  ≥0.9 superset → update note cũ giữ text dài hơn + bump access, không append trùng), salience-based
+  eviction (fold note ít accessCount+recency nhất; pinned bất khả xâm phạm), recall token-bounded
+  (`recallTokenBudget` 1500) + xếp hạng theo query/salience trả kèm `tokens`, estimator đếm
+  word+CJK thay chars/4, concurrency-safe (serialize `remember` per-session), guard note/secret quá khổ.
+  **Semantic recall (offline, 0-dep):** `packages/desktop/src/process/ide/memory/embedding.ts` (`createLocalEmbedder`
+  feature-hashing bag-of-n-grams 256-chiều L2-norm + `cosineSimilarity`, deterministic, không model/network)
+  inject qua `SessionMemoryStoreOptions.embedder?`; `recall` xếp hạng theo cosine (ngưỡng 0.12 + phrase
+  bonus) khi có embedder, fallback lexical khi không — bắt sub-word ("auth"↔"authentication"). Hybrid
+  score (cosine + overlap + phrase), meta-summary (fold summary cũ khi phiên cực dài), pinned cap
+  (maxPinned 32 tự bỏ ghim cũ). **UI**:
+  `renderer/pages/studio/ide/memory/` (`useIdeMemory` poll snapshot + `packages/desktop/src/renderer/pages/studio/ide/memory/MemorySessionDrawer.tsx` Arco Drawer:
+  gauge token, stat counters, note list nhóm, secret keys chỉ tên, Clear/Refresh) — nút "Memory" ở tab
+  strip `IdeChatPanel` mở drawer theo `memId` tab active. i18n `ide.memory.*`đủ 9 locale. Test`tests/unit/ide/memory/`(store + embedding + DOM drawer) → toàn bộ`tests/unit/ide`347+ pass; oxlint
+0/0; getDiagnostics sạch mọi file phạm vi. Xem`.kiro/status.md`.
 **Cập nhật 2026-06-06 (LSP execution layer — IDE code-aware không cần agent):** bổ sung lớp thực thi
 LSP tải-theo-yêu-cầu (KHÔNG bundle, chỉ tải khi người dùng opt-in). Backend `process/ide/lang/`:
-`lspProtocol` (PURE JSON-RPC over stdio codec), `lspConvert` (PURE WorkspaceEdit/TextEdit/
-DocumentSymbol → 1-based), `lspInstallManager` (npm tải thật `typescript-language-server`/`pyright`
-vào `<userData>/lsp/`; binary `rust-analyzer`/`gopls`/`clangd` adopt-PATH hoặc needs-manual — không
-hardcode URL), `lspRuntime` (spawn + handshake + completion/hover/definition/references/rename/format/
-documentSymbols/signatureHelp), `ideLspBridge` (kênh `ide.lsp-*` + diagnostics emitter). Renderer:
-`packages/desktop/src/renderer/pages/studio/ide/lspClient.ts`, `packages/desktop/src/renderer/pages/editor/adapters/monacoLspProvider.ts` (nối Monaco providers + markers),
-`TextCodeAdapter` attach khi server đã cài, `components/LspServersPanel` + mode `lsp` (icon Puzzle)
-opt-in dựa trên `mtui analyze type`. i18n `ide.lsp.*` 9 locale. Test `tests/unit/ide/lang/`
-lspProtocol+lspConvert 24/24. **MTUI**: rebuild release để có lệnh `analyze type` (binary cũ thiếu).
+`lspProtocol`(PURE JSON-RPC over stdio codec),`lspConvert`(PURE WorkspaceEdit/TextEdit/
+DocumentSymbol → 1-based),`lspInstallManager`(npm tải thật`typescript-language-server`/`pyright`vào`<userData>/lsp/`; binary `rust-analyzer`/`gopls`/`clangd`adopt-PATH hoặc needs-manual — không
+hardcode URL),`lspRuntime`(spawn + handshake + completion/hover/definition/references/rename/format/
+documentSymbols/signatureHelp),`ideLspBridge`(kênh`ide.lsp-_`+ diagnostics emitter). Renderer:`packages/desktop/src/renderer/pages/studio/ide/lspClient.ts`, `packages/desktop/src/renderer/pages/editor/adapters/monacoLspProvider.ts`(nối Monaco providers + markers),`TextCodeAdapter`attach khi server đã cài,`components/LspServersPanel`+ mode`lsp`(icon Puzzle)
+opt-in dựa trên`mtui analyze type`. i18n `ide.lsp._`9 locale. Test`tests/unit/ide/lang/`lspProtocol+lspConvert 24/24. **MTUI**: rebuild release để có lệnh`analyze type`(binary cũ thiếu).
 **Cập nhật 2026-06-02 (Studio Editor AI — thay "AI yếu" bằng chat thật + Office-edit MCP):** giải
 quyết phản hồi người dùng "phần AI của editor ngơ ngơ, chat không giống chat trang chính". **Lớp 1
-(chat giống trang chính):** `packages/desktop/src/renderer/pages/studio/components/DocAssistantPanel.tsx`VIẾT LẠI — bỏ engine tự viết
+(chat giống trang chính):**`packages/desktop/src/renderer/pages/studio/components/DocAssistantPanel.tsx`VIẾT LẠI — bỏ engine tự viết
 (single-shot completion + vòng ReAct JSON tự parse), embed thẳng`<ChatConversation>`(component chat
 chính) qua hook mới`packages/desktop/src/renderer/pages/studio/hooks/useDocChat.ts`(MỘT conversation thật/ file, pin`extra.workspace`= thư mục
 chứa file, persist convId theo filePath ở localStorage, restore/prune khi mở lại) + picker CLI agents/
@@ -159,7 +154,7 @@ run_api). Vì ONLYOFFICE chạy ở renderer còn MCP ở Main, thêm **RPC Main
 (`ensureOfficeEditorMcpRegistered`, catalog `enabled:false`). `useDocChat`tự attach Office MCP vào`selected*session_mcp_servers`+ nhồi rules`packages/desktop/src/renderer/pages/studio/hooks/officeEditorGuidance.ts`(nhúng filePath) khi tạo chat.
 Xóa file chết:`useDocAssistant`/`useDocAgent`/`docAgentStore`/`extractCodeBlock`/`useDocAgentActivity`;
 `SiderStudioEntry`bỏ green-dot. i18n: thay block`studio.assistant.\*` (9 locale, bỏ key cũ, +`newChat/
-> startHint/startChat/loading/noAgents/cliGroup/presetGroup`) + thêm `studio.create.pickModel`. tsc EXIT=0,
+  > startHint/startChat/loading/noAgents/cliGroup/presetGroup`) + thêm `studio.create.pickModel`. tsc EXIT=0,
 `tests/unit/studio`31/31 +`tests/unit/editor/officeEditorServer`8 +`officeEditorGuidance`8, i18n PASS.
 Xem`.kiro/status.md` callout "Studio Editor AI".
 báo nhiều lần "không tóm tắt được video YouTube" (`solver script (deno) were skipped`, `track empty`,
@@ -185,84 +180,84 @@ go-to-def, đa-root) hoãn vì lớn/rủi ro — xem `.kiro/status.md`.
 **Cập nhật 2026-06-02 (9Router — lớp tích hợp provider + connector phân phối, GĐ1):** thêm 9Router
 như một provider preset trong Settings › Model (`packages/desktop/src/renderer/utils/model/modelPlatforms.ts`: value
 `9router`, platform `custom`, base_url `http://127.0.0.1:20128/v1`, i18nKey `settings.platform9router`)
-> → người dùng chọn 9Router + nhập key dashboard → auto-import model list qua `GET /v1/models` (tái dùng
-> `useModeModeList`). Thêm module **pure** `common/router9/` (4 file: `types.ts`/`packages/desktop/src/common/router9/targets.ts`/
-> `packages/desktop/src/common/router9/connectorEngine.ts`/`index.ts`) — engine `buildConnectorPlan(targetId, endpoint)` tính \_plan_ cấu hình
-> đúng định dạng cho từng CLI/IDE đích (kiro/antigravity/claude-code/codex/cursor/cline/openclaw): env
-> vars (Codex), config file deep-merge (Claude Code `.gemini/config.json`, OpenClaw
-> `~/.openclaw/openclaw.json`), hoặc copy-paste fields (manual). Không side effect — applier ghi file thật
-> để GĐ sau. Kiến trúc: **companion/explicit-proxy**, KHÔNG nhúng router vào aioncore, KHÔNG mitm TLS;
-> dịch định dạng do 9router lo. i18n `settings.platform9router` + `settings.router9.*` (9 locale). UI:
-> panel **"Distribute via 9Router"** (`packages/desktop/src/renderer/pages/settings/router9/Router9ConnectorPanel.tsx`) render
-> cuối `ModelModalContent` — chọn target + endpoint/key/model → hiện copy-paste fields + env block + nội
-> dung config file, mỗi khối có nút Copy (clipboard). Side-effect-free: chỉ tính plan + copy, applier ghi
-> file thật để GĐ sau. Test `tests/unit/router9/connectorEngine.test.ts` 12/12, getDiagnostics sạch,
-> i18n PASS. Xem `.kiro/status.md` callout "9Router".
->
-> **Cập nhật 2026-06-03 (9Router — GĐ2: nút Apply ghi config tự động):** hoàn thiện "applier" để panel
-> "Distribute via 9Router" KHÔNG chỉ copy-paste mà ghi config thật một-chạm (renderer + Main, KHÔNG đụng
-> aioncore/Rust). Thêm `packages/desktop/src/common/router9/applyPlan.ts` (PURE: `expandHome`/`deepMerge`/`mergeConfigContent`
-> — JSON deep-merge incoming-thắng, không mutate, existing JSON hỏng thì throw để không mất file),
-> `packages/desktop/src/process/router9/router9Applier.ts` (`applyConnectorPlan` recompute plan ở Main + ghi atomic tmp→rename
->
-> - backup `.bak` timestamp trước khi đè; env-target trả `notes`; fs seam DI), `packages/desktop/src/process/router9/router9Bridge.ts` (kênh
->   `router9.apply-plan` always-resolve, wire ở `initAllBridges()`), renderer `packages/desktop/src/renderer/pages/settings/router9/router9BridgeClient.ts`
->   (timeout-guard 15s). `Router9ConnectorPanel` thêm nút **Apply** (ẩn với target `manual`) + khối kết quả
->   (đã ghi/giữ file, báo backup, env note). i18n +8 key `settings.router9.{apply,applyHint,applied,
+  > → người dùng chọn 9Router + nhập key dashboard → auto-import model list qua `GET /v1/models` (tái dùng
+  > `useModeModeList`). Thêm module **pure** `common/router9/` (4 file: `types.ts`/`packages/desktop/src/common/router9/targets.ts`/
+  > `packages/desktop/src/common/router9/connectorEngine.ts`/`index.ts`) — engine `buildConnectorPlan(targetId, endpoint)` tính \_plan_ cấu hình
+  > đúng định dạng cho từng CLI/IDE đích (kiro/antigravity/claude-code/codex/cursor/cline/openclaw): env
+  > vars (Codex), config file deep-merge (Claude Code `.gemini/config.json`, OpenClaw
+  > `~/.openclaw/openclaw.json`), hoặc copy-paste fields (manual). Không side effect — applier ghi file thật
+  > để GĐ sau. Kiến trúc: **companion/explicit-proxy**, KHÔNG nhúng router vào aioncore, KHÔNG mitm TLS;
+  > dịch định dạng do 9router lo. i18n `settings.platform9router` + `settings.router9.*` (9 locale). UI:
+  > panel **"Distribute via 9Router"** (`packages/desktop/src/renderer/pages/settings/router9/Router9ConnectorPanel.tsx`) render
+  > cuối `ModelModalContent` — chọn target + endpoint/key/model → hiện copy-paste fields + env block + nội
+  > dung config file, mỗi khối có nút Copy (clipboard). Side-effect-free: chỉ tính plan + copy, applier ghi
+  > file thật để GĐ sau. Test `tests/unit/router9/connectorEngine.test.ts` 12/12, getDiagnostics sạch,
+  > i18n PASS. Xem `.kiro/status.md` callout "9Router".
+  >
+  > **Cập nhật 2026-06-03 (9Router — GĐ2: nút Apply ghi config tự động):** hoàn thiện "applier" để panel
+  > "Distribute via 9Router" KHÔNG chỉ copy-paste mà ghi config thật một-chạm (renderer + Main, KHÔNG đụng
+  > aioncore/Rust). Thêm `packages/desktop/src/common/router9/applyPlan.ts` (PURE: `expandHome`/`deepMerge`/`mergeConfigContent`
+  > — JSON deep-merge incoming-thắng, không mutate, existing JSON hỏng thì throw để không mất file),
+  > `packages/desktop/src/process/router9/router9Applier.ts` (`applyConnectorPlan` recompute plan ở Main + ghi atomic tmp→rename
+  >
+  > - backup `.bak` timestamp trước khi đè; env-target trả `notes`; fs seam DI), `packages/desktop/src/process/router9/router9Bridge.ts` (kênh
+  >   `router9.apply-plan` always-resolve, wire ở `initAllBridges()`), renderer `packages/desktop/src/renderer/pages/settings/router9/router9BridgeClient.ts`
+  >   (timeout-guard 15s). `Router9ConnectorPanel` thêm nút **Apply** (ẩn với target `manual`) + khối kết quả
+  >   (đã ghi/giữ file, báo backup, env note). i18n +8 key `settings.router9.{apply,applyHint,applied,
 applyFailed,fileWritten,fileSkipped,backupSaved,envNote}` (9 locale). Test `tests/unit/router9/` **28/28**
->   (engine 12 + applyPlan 10 + applier 6), tsc không lỗi mới ở router9, i18n PASS. **Bối cảnh điều tra:**
->   freemodel.dev chỉ phục vụ claude qua Claude Code CLI (gọi HTTP thường trả "Please use Claude Code CLI",
->   stream nuốt nội dung) → cách dùng đúng là cấu hình Claude Code (CLI agent) trỏ 9Router, nay làm được
->   bằng 1 nút. Xem `.kiro/status.md` callout "9Router connector — Apply".
->
-> **Cập nhật 2026-06-02 (Testing → phát hiện app: thêm thiết lập thủ công + thanh tiến trình AI):** trang
-> Testing (`renderer/pages/testing/`) thêm 2 tính năng cho bước chọn folder. (1) **Thiết lập thủ công** —
-> nút mới `testing.form.manualSetup` trong `NewSessionPanel`: chọn folder rồi tự nhập URL/command/services
-> qua `AppUnderTestEditor` (mở sẵn advanced, seed `cwd`), KHÔNG gọi model — dùng khi chưa cấu hình model
-> hoặc AI đoán sai. (2) **Thanh tiến trình AI** — `appDetector.detect()` nhận `onProgress` phát
-> `DetectProgress` (phase `scanning|reading|analyzing|parsing|cache|done|error`, kèm tên file đang đọc);
-> `testingBridge` bơm qua emitter mới `testing.detect-progress`; `useTestingState.onDetectProgress` hứng và
-> render component mới `DetectProgressBar` (Arco `Progress` + icon `@icon-park/react` + token UnoCSS) để thấy
-> AI đang đọc/làm gì thay vì spinner trống. i18n: +`testing.form.manualSetup/manualReady` +
-> `testing.detect.phase_*` (9 locale, reference en-US). getDiagnostics sạch, test `tests/unit/testing/` 59/59,
-> i18n:types + check-i18n pass.
-> **Cập nhật 2026-06-02 (Manager → Notes: theo theme chung + font tiếng Việt):** sửa 2 điểm người dùng báo.
-> (1) **Background theo theme**: `packages/desktop/src/renderer/pages/manager/manager.module.css` `.root` trước ghim palette "paper" trắng + override
-> token Arco/app → ép workspace always-light. Nay remap alias Notion (`--paper/--ink/--line/--canvas`) sang
-> token theme toàn cục (`--bg-base/--bg-1/--bg-2/--text-primary/--border-base`), bỏ override `--color-*`
-> cứng → Notes (và cả Manager) theo light/dark chung. BlockNote `theme` follow `data-theme` qua
-> `useEditorScheme` (observe attribute + media query). (2) **Font hỗ trợ tiếng Việt**: `packages/desktop/src/renderer/pages/manager/components/appearance.ts`
-> `FONT_STACK` bỏ `'Inter'` dẫn đầu → system stack (`system-ui`+`Segoe UI/Roboto/Noto Sans/PingFang...`);
-> bỏ import `@blocknote/core/fonts/inter.css` (editor inherit font app). tsc/manager test (84) sạch.
->
-> **Cập nhật 2026-06-02 (Agent detection — Kiro CLI không hiện do tên binary lệch):** làm rõ cơ chế
-> detect + fix tại máy. aioncore giữ CATALOG tĩnh các agent (mỗi entry có `agent_source_info.binary_name`)
-> và resolve tên đó trên `$PATH` (`available` nếu thấy). Kiro ĐÃ có sẵn trong catalog (`backend=kiro`)
-> nhưng probe binary `kiro-cli-chat`, trong khi bản cài tên `kiro-cli` → báo `missing`. Fix không đụng
-> Rust: tạo shim `kiro-cli-chat.cmd` trên PATH forward `kiro-cli %*`. Verify bằng `aioncore.exe doctor`
-> (subcommand self-check in bảng availability) + `GET /api/agents` thật (Kiro `available:true` +
-> handshake ACP `kiro-cli acp`). Thêm mục giải thích vào Section "Agent Detection" (binary*name probing +
-> `doctor`). Chi tiết: `.kiro/status.md` callout "Kiro CLI không được app detect".
-> **Cập nhật 2026-06-02 (Manager → Notes: editor full-page kiểu Notion cho mọi loại note):** thống nhất
-> trải nghiệm viết note (Daily/Learn/Data) sang một editor full-page kiểu Notion thay cho các modal cũ.
-> Mới: `notes/editor/NotePageEditor` (overlay full-surface, tạo note lười + bỏ nếu để trống, Esc/Back để
-> đóng, convert-to-task, delete), `notes/editor/NoteProperties` (hàng thuộc tính inline: tags + link
-> task/event; Data thêm URL/file + nút mở nguồn + AI summarize), `notes/editor/LearnLinksFooter`
-> (outgoing/backlink bàn phím-accessible). `NotePage` thêm slot `toolbar`/`properties` + prop `bodyVersion`
-> (ép re-parse sau AI fill). `useManagerStore` thêm `mutate()` trả document mới. **Fix bug:** Data mở nguồn
-> file path qua `ipcBridge.shell.openFile` (trước đây bấm không làm gì), URL qua `openExternalUrl` (không
-> `window.open`). Bỏ `NoteEditor`/`DataEntryEditor` (modal) + `linking/{WikiTextArea,WikiMarkdown}` (orphan;
-> wiki-link giữ qua footer + graph). a11y: list Learn + link rows + data source row có role/tabindex/Enter-Space.
-> Test mới `tests/unit/manager/NoteProperties.dom.test.tsx` (3) — manager 84/84 pass; i18n 9 locale +3 key
-> (`notes.back`, `notes.data.open`, `notes.data.openFailed`); tsc sạch ở mọi file manager.
-> **Cập nhật 2026-06-02 (Git Manager — trình quản lý Git/GitHub thật, NẰM TRONG IDE — mode `git` của
-> activity bar IDE, không phải Settings):** push/pull/clone repo GitHub thật như một trình quản lý.
-> **Backend `process/git/` (6 file):** `gitTypes` (type renderer-safe), `gitCredentialStore` (lưu
-> Personal Access Token **mã hóa qua Electron `safeStorage`**, renderer chỉ thấy 4 ký tự cuối, token
-> giải mã CHỈ ở Main), `gitRepoStore` (CRUD repo đăng ký, `git-repos.json` atomic), `gitRunner` (git
-> thật qua child_process: clone/status/changes/log/commitAll/push/pull/initAndSetRemote; **auth không lộ
-> token** qua `-c http.extraheader=Authorization: Basic <base64>` one-shot + `redact()` xóa token mọi
-> shape; `GIT_TERMINAL_PROMPT=0` fail-fast), `gitManagerBridge` (kênh `gitmgr.*`always-resolve + emitter
+  >   (engine 12 + applyPlan 10 + applier 6), tsc không lỗi mới ở router9, i18n PASS. **Bối cảnh điều tra:**
+  >   freemodel.dev chỉ phục vụ claude qua Claude Code CLI (gọi HTTP thường trả "Please use Claude Code CLI",
+  >   stream nuốt nội dung) → cách dùng đúng là cấu hình Claude Code (CLI agent) trỏ 9Router, nay làm được
+  >   bằng 1 nút. Xem `.kiro/status.md` callout "9Router connector — Apply".
+  >
+  > **Cập nhật 2026-06-02 (Testing → phát hiện app: thêm thiết lập thủ công + thanh tiến trình AI):** trang
+  > Testing (`renderer/pages/testing/`) thêm 2 tính năng cho bước chọn folder. (1) **Thiết lập thủ công** —
+  > nút mới `testing.form.manualSetup` trong `NewSessionPanel`: chọn folder rồi tự nhập URL/command/services
+  > qua `AppUnderTestEditor` (mở sẵn advanced, seed `cwd`), KHÔNG gọi model — dùng khi chưa cấu hình model
+  > hoặc AI đoán sai. (2) **Thanh tiến trình AI** — `appDetector.detect()` nhận `onProgress` phát
+  > `DetectProgress` (phase `scanning|reading|analyzing|parsing|cache|done|error`, kèm tên file đang đọc);
+  > `testingBridge` bơm qua emitter mới `testing.detect-progress`; `useTestingState.onDetectProgress` hứng và
+  > render component mới `DetectProgressBar` (Arco `Progress` + icon `@icon-park/react` + token UnoCSS) để thấy
+  > AI đang đọc/làm gì thay vì spinner trống. i18n: +`testing.form.manualSetup/manualReady` +
+  > `testing.detect.phase_*` (9 locale, reference en-US). getDiagnostics sạch, test `tests/unit/testing/` 59/59,
+  > i18n:types + check-i18n pass.
+  > **Cập nhật 2026-06-02 (Manager → Notes: theo theme chung + font tiếng Việt):** sửa 2 điểm người dùng báo.
+  > (1) **Background theo theme**: `packages/desktop/src/renderer/pages/manager/manager.module.css` `.root` trước ghim palette "paper" trắng + override
+  > token Arco/app → ép workspace always-light. Nay remap alias Notion (`--paper/--ink/--line/--canvas`) sang
+  > token theme toàn cục (`--bg-base/--bg-1/--bg-2/--text-primary/--border-base`), bỏ override `--color-*`
+  > cứng → Notes (và cả Manager) theo light/dark chung. BlockNote `theme` follow `data-theme` qua
+  > `useEditorScheme` (observe attribute + media query). (2) **Font hỗ trợ tiếng Việt**: `packages/desktop/src/renderer/pages/manager/components/appearance.ts`
+  > `FONT_STACK` bỏ `'Inter'` dẫn đầu → system stack (`system-ui`+`Segoe UI/Roboto/Noto Sans/PingFang...`);
+  > bỏ import `@blocknote/core/fonts/inter.css` (editor inherit font app). tsc/manager test (84) sạch.
+  >
+  > **Cập nhật 2026-06-02 (Agent detection — Kiro CLI không hiện do tên binary lệch):** làm rõ cơ chế
+  > detect + fix tại máy. aioncore giữ CATALOG tĩnh các agent (mỗi entry có `agent_source_info.binary_name`)
+  > và resolve tên đó trên `$PATH` (`available` nếu thấy). Kiro ĐÃ có sẵn trong catalog (`backend=kiro`)
+  > nhưng probe binary `kiro-cli-chat`, trong khi bản cài tên `kiro-cli` → báo `missing`. Fix không đụng
+  > Rust: tạo shim `kiro-cli-chat.cmd` trên PATH forward `kiro-cli %*`. Verify bằng `aioncore.exe doctor`
+  > (subcommand self-check in bảng availability) + `GET /api/agents` thật (Kiro `available:true` +
+  > handshake ACP `kiro-cli acp`). Thêm mục giải thích vào Section "Agent Detection" (binary*name probing +
+  > `doctor`). Chi tiết: `.kiro/status.md` callout "Kiro CLI không được app detect".
+  > **Cập nhật 2026-06-02 (Manager → Notes: editor full-page kiểu Notion cho mọi loại note):** thống nhất
+  > trải nghiệm viết note (Daily/Learn/Data) sang một editor full-page kiểu Notion thay cho các modal cũ.
+  > Mới: `notes/editor/NotePageEditor` (overlay full-surface, tạo note lười + bỏ nếu để trống, Esc/Back để
+  > đóng, convert-to-task, delete), `notes/editor/NoteProperties` (hàng thuộc tính inline: tags + link
+  > task/event; Data thêm URL/file + nút mở nguồn + AI summarize), `notes/editor/LearnLinksFooter`
+  > (outgoing/backlink bàn phím-accessible). `NotePage` thêm slot `toolbar`/`properties` + prop `bodyVersion`
+  > (ép re-parse sau AI fill). `useManagerStore` thêm `mutate()` trả document mới. **Fix bug:** Data mở nguồn
+  > file path qua `ipcBridge.shell.openFile` (trước đây bấm không làm gì), URL qua `openExternalUrl` (không
+  > `window.open`). Bỏ `NoteEditor`/`DataEntryEditor` (modal) + `linking/{WikiTextArea,WikiMarkdown}` (orphan;
+  > wiki-link giữ qua footer + graph). a11y: list Learn + link rows + data source row có role/tabindex/Enter-Space.
+  > Test mới `tests/unit/manager/NoteProperties.dom.test.tsx` (3) — manager 84/84 pass; i18n 9 locale +3 key
+  > (`notes.back`, `notes.data.open`, `notes.data.openFailed`); tsc sạch ở mọi file manager.
+  > **Cập nhật 2026-06-02 (Git Manager — trình quản lý Git/GitHub thật, NẰM TRONG IDE — mode `git` của
+  > activity bar IDE, không phải Settings):** push/pull/clone repo GitHub thật như một trình quản lý.
+  > **Backend `process/git/` (6 file):** `gitTypes` (type renderer-safe), `gitCredentialStore` (lưu
+  > Personal Access Token **mã hóa qua Electron `safeStorage`**, renderer chỉ thấy 4 ký tự cuối, token
+  > giải mã CHỈ ở Main), `gitRepoStore` (CRUD repo đăng ký, `git-repos.json` atomic), `gitRunner` (git
+  > thật qua child_process: clone/status/changes/log/commitAll/push/pull/initAndSetRemote; **auth không lộ
+  > token** qua `-c http.extraheader=Authorization: Basic <base64>` one-shot + `redact()` xóa token mọi
+  > shape; `GIT_TERMINAL_PROMPT=0` fail-fast), `gitManagerBridge` (kênh `gitmgr.*`always-resolve + emitter
 repos-changed),`gitManagerWiring`. Wire ở `initAllBridges()`. **Renderer `renderer/pages/git/`:**
 `gitManagerClient`(timeout guard 6s/180s),`useGitManager`, `GitPage`(rail repos + detail),`components/`(RepoList/RepoDetail/RegisterRepoModal/CredentialsModal). **Render trong`packages/desktop/src/renderer/pages/studio/ide/IdeWorkspace.tsx`mode`git`**
 (thay GitPanel cũ). Register repo = điền URL + chọn folder + branch + credential + clone-now; detail có
@@ -280,51 +275,51 @@ semantic token qua `packages/desktop/src/renderer/pages/terminal/components/xter
 `useTerminalState`thêm`resizeSession`. Console tab vẫn dùng `normalizeOutputRich` (viewer read-only).
 Deps root: +`@xterm/xterm`+4 addon, +`node-pty@1.1.0`(tường minh). Test terminal **36/36** (cập nhật
 case scrollback của`TerminalPage.dom` sang assert replay-qua-bridge vì xterm render vào canvas). tsc
-> không lỗi mới ở file terminal. \*(Quyết định cũ "KHÔNG node-pty/xterm để giữ zero-dep" bên dưới đã bị
-> thay thế: binary node-pty có sẵn + builder đã cấu hình → rủi ro thấp, đổi lấy fidelity ngang VS Code.)\_
->
-> **Cập nhật 2026-06-01 (Terminal manager — Settings › Terminal, Giai đoạn 1+2):** thêm chức năng
-> quản lý Terminal tích hợp ("một app cho tất cả") ở `/settings/terminal` (desktop-only). Ba khả năng:
-> **(1) Session app quản lý** — shell tương tác thật (gõ lệnh → nhận output), tạo/tắt/xóa, đếm số
-> đang chạy; **(2) System (read-only)** — đếm + liệt kê tiến trình shell của OS (`tasklist`/`ps`),
-> KHÔNG tương tác (chỉ quan sát); **(3) Schedules** — cài lịch chạy script vào session mới theo cron
-> (vd mở `9router` mỗi sáng), dựa trên `croner`.
->
-> **Giai đoạn 3 (IDE Terminal panel) — DONE:** `IdeTerminalPanel` nhúng vào đáy `IdeWorkspace` như
-> bottom dock của mọi IDE chuyên nghiệp. Hai tab: **Terminal** (shell tương tác, chip strip chuyển
-> session, terminal mới mở với `cwd` = thư mục dự án đang mở) + **Console** (xem output read-only của
-> bất kỳ session nào — tiện theo dõi script dài như `9router`). Dock có thể kéo resize (160–560px),
-> thu gọn thành thanh mỏng 38px hiện badge số session đang chạy. Tái dùng 100% `useTerminalState` +
-> `TerminalView` từ Settings › Terminal — cùng backend, cùng session registry. i18n `ide.terminal.*`
-> thêm vào 9 locale `ide.json`. getDiagnostics sạch, tsc không lỗi mới.
->
-> **Quyết định kiến trúc quan trọng:** engine PTY dùng **`node:child_process` thuần, KHÔNG thêm
-> `node-pty`** (tránh native module + rebuild rủi ro). Trừu tượng hoá qua `IPtyBackend` để swap sang
-> `node-pty` sau mà không đổi manager/UI. Đánh đổi: không có TTY thật (full-screen curses như vim/htop
-> có thể khác), nhưng đủ cho chạy lệnh + mở tool dài hạn. UI render bằng view tự viết (Arco
-> `Input.TextArea` + scrollback strip-ANSI), KHÔNG thêm `xterm` (giữ zero-dep). Lịch chỉ chạy khi app
-> mở, local-only, không expose qua kênh remote.
->
-> **Backend** `process/terminal/` (9 file): `terminalTypes` (type renderer-safe), `ptyBackend`
-> (`IPtyBackend` + child_process FALLBACK backend + `resolveDefaultShell`), `nodePtyBackend` (pty THẬT
-> qua node-pty — DEFAULT), `terminalManager` (registry session
->
-> - scrollback bounded 200k + event `data`/`exit`/`sessions-changed` + `runningCount`), `systemProcesses`
->   (`parseTasklistCsv`/`parsePsOutput` + `listSystemTerminals` degrade-safe), `terminalScheduleStore`
->   (CRUD atomic tmp+rename, `userData/terminal-schedules.json`), `terminalScheduler` (arm cron/once qua
->   croner, fire = create session + write script), `terminalBridge` (kênh `terminal.*` envelope
->   always-resolve + emitter push), `terminalWiring` (`getTerminalServices`). Wire ở `initAllBridges()`
->   (block try/catch riêng, `scheduler.start()` arm lịch ngay). **Renderer** `renderer/pages/terminal/`:
->   `terminalBridgeClient` (timeout-guard, rebuild invoker từ tên kênh, chỉ `import type`), `constants`
->   (`stripAnsi`/`normalizeOutput` + `ScheduleDraft`), `useTerminalState` (load + live subscribe, buffer
->   per-session, degrade `unavailable`), `TerminalPage` (3 tab + header running-count), `index` (wrap
->   SettingsPageWrapper), `components/` (BridgeNotice, SessionList, TerminalView [xterm.js], xtermTheme,
->   SystemProcessPanel,
->   SchedulePanel, ScheduleEditor). Route `/settings/terminal` + nav `SettingsSider` (icon `Terminal`,
->   sau `monitor`, desktop-only). i18n module `terminal` (9 locale). Test `tests/unit/terminal/` **36/36**
->   (manager 7, systemProcesses 6, scheduler 5, scheduleStore 7, constants.dom 7, TerminalPage.dom 5),
->   tsc các file terminal sạch, i18n PASS. **Giai đoạn 3 (chưa làm):** nhúng panel Terminal + Console
->   vào Studio IDE (tái dùng `terminalClient`/`useTerminalState`).
+  > không lỗi mới ở file terminal. \*(Quyết định cũ "KHÔNG node-pty/xterm để giữ zero-dep" bên dưới đã bị
+  > thay thế: binary node-pty có sẵn + builder đã cấu hình → rủi ro thấp, đổi lấy fidelity ngang VS Code.)\_
+  >
+  > **Cập nhật 2026-06-01 (Terminal manager — Settings › Terminal, Giai đoạn 1+2):** thêm chức năng
+  > quản lý Terminal tích hợp ("một app cho tất cả") ở `/settings/terminal` (desktop-only). Ba khả năng:
+  > **(1) Session app quản lý** — shell tương tác thật (gõ lệnh → nhận output), tạo/tắt/xóa, đếm số
+  > đang chạy; **(2) System (read-only)** — đếm + liệt kê tiến trình shell của OS (`tasklist`/`ps`),
+  > KHÔNG tương tác (chỉ quan sát); **(3) Schedules** — cài lịch chạy script vào session mới theo cron
+  > (vd mở `9router` mỗi sáng), dựa trên `croner`.
+  >
+  > **Giai đoạn 3 (IDE Terminal panel) — DONE:** `IdeTerminalPanel` nhúng vào đáy `IdeWorkspace` như
+  > bottom dock của mọi IDE chuyên nghiệp. Hai tab: **Terminal** (shell tương tác, chip strip chuyển
+  > session, terminal mới mở với `cwd` = thư mục dự án đang mở) + **Console** (xem output read-only của
+  > bất kỳ session nào — tiện theo dõi script dài như `9router`). Dock có thể kéo resize (160–560px),
+  > thu gọn thành thanh mỏng 38px hiện badge số session đang chạy. Tái dùng 100% `useTerminalState` +
+  > `TerminalView` từ Settings › Terminal — cùng backend, cùng session registry. i18n `ide.terminal.*`
+  > thêm vào 9 locale `ide.json`. getDiagnostics sạch, tsc không lỗi mới.
+  >
+  > **Quyết định kiến trúc quan trọng:** engine PTY dùng **`node:child_process` thuần, KHÔNG thêm
+  > `node-pty`** (tránh native module + rebuild rủi ro). Trừu tượng hoá qua `IPtyBackend` để swap sang
+  > `node-pty` sau mà không đổi manager/UI. Đánh đổi: không có TTY thật (full-screen curses như vim/htop
+  > có thể khác), nhưng đủ cho chạy lệnh + mở tool dài hạn. UI render bằng view tự viết (Arco
+  > `Input.TextArea` + scrollback strip-ANSI), KHÔNG thêm `xterm` (giữ zero-dep). Lịch chỉ chạy khi app
+  > mở, local-only, không expose qua kênh remote.
+  >
+  > **Backend** `process/terminal/` (9 file): `terminalTypes` (type renderer-safe), `ptyBackend`
+  > (`IPtyBackend` + child_process FALLBACK backend + `resolveDefaultShell`), `nodePtyBackend` (pty THẬT
+  > qua node-pty — DEFAULT), `terminalManager` (registry session
+  >
+  > - scrollback bounded 200k + event `data`/`exit`/`sessions-changed` + `runningCount`), `systemProcesses`
+  >   (`parseTasklistCsv`/`parsePsOutput` + `listSystemTerminals` degrade-safe), `terminalScheduleStore`
+  >   (CRUD atomic tmp+rename, `userData/terminal-schedules.json`), `terminalScheduler` (arm cron/once qua
+  >   croner, fire = create session + write script), `terminalBridge` (kênh `terminal.*` envelope
+  >   always-resolve + emitter push), `terminalWiring` (`getTerminalServices`). Wire ở `initAllBridges()`
+  >   (block try/catch riêng, `scheduler.start()` arm lịch ngay). **Renderer** `renderer/pages/terminal/`:
+  >   `terminalBridgeClient` (timeout-guard, rebuild invoker từ tên kênh, chỉ `import type`), `constants`
+  >   (`stripAnsi`/`normalizeOutput` + `ScheduleDraft`), `useTerminalState` (load + live subscribe, buffer
+  >   per-session, degrade `unavailable`), `TerminalPage` (3 tab + header running-count), `index` (wrap
+  >   SettingsPageWrapper), `components/` (BridgeNotice, SessionList, TerminalView [xterm.js], xtermTheme,
+  >   SystemProcessPanel,
+  >   SchedulePanel, ScheduleEditor). Route `/settings/terminal` + nav `SettingsSider` (icon `Terminal`,
+  >   sau `monitor`, desktop-only). i18n module `terminal` (9 locale). Test `tests/unit/terminal/` **36/36**
+  >   (manager 7, systemProcesses 6, scheduler 5, scheduleStore 7, constants.dom 7, TerminalPage.dom 5),
+  >   tsc các file terminal sạch, i18n PASS. **Giai đoạn 3 (chưa làm):** nhúng panel Terminal + Console
+  >   vào Studio IDE (tái dùng `terminalClient`/`useTerminalState`).
 
 > **Cập nhật 2026-06-01 (Omni IDE Phase 1+2 — Context Builder + Quick Test Tracer):**
 > **(Phase 1)** `packages/desktop/src/process/ide/graphSnapshot.ts` diff 2 KG snapshot theo thời gian (commitHash+fingerprint, pure);
@@ -640,23 +635,23 @@ xác minh qua `packages/desktop/src/renderer/components/layout/Router.tsx`, `pro
 
 #### B. Chức năng Tomni Agentic / Studio / Manager (mở rộng)
 
-| Tính năng               | Route / vị trí              | Mô tả (xác minh qua code)                                                                                                                                                                                                                                                                                             |
-| ----------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Resource Dashboard**  | `/settings/resource`        | ResourceCoordinator — cấp/queue lease cho tác vụ nặng, 3 mức cân bằng (desktop-only)                                                                                                                                                                                                                                  |
-| **Agent Company**       | `/settings/company`         | Mô hình công ty tác nhân: sinh sơ đồ vai trò, gán CLI/Assistant, chat sếp↔nhân viên, pipeline                                                                                                                                                                                                                         |
-| **Embedded Browser**    | `/settings/browser`         | Trình duyệt nhúng (WebContentsView) + web-agent ReAct (navigate/click/type/screenshot)                                                                                                                                                                                                                                |
-| **Studio**              | `/studio`                   | File hub kiểu WPS → Universal Editor; sub-app: Make Video, Automation, Repo IDE                                                                                                                                                                                                                                       |
-| **Universal Editor**    | (nhúng trong Studio)        | 8 adapter: text-code (Monaco), docx, spreadsheet, slide, pdf, image, media, binary-inspect — docx/xlsx/pptx/**pdf** mặc định mở ONLYOFFICE (WYSIWYG), tự fallback editor nhẹ khi Office lỗi                                                                                                                           |
-| **Multi-platform Test** | `/settings/testing`         | Sinh kịch bản → chạy test (web chạy thật; Android/Windows "unavailable"); script + computer-use                                                                                                                                                                                                                       |
-| **Bug Monitor**         | `/settings/monitor`         | Thu lỗi → phân tích → đề xuất bản vá → cổng duyệt → rollback (vòng khép kín)                                                                                                                                                                                                                                          |
-| **Personal Manager**    | `/manager`                  | Tasks / Note / Schedule + AI (parse, optimize, nhắc lịch, weather/travel/web search)                                                                                                                                                                                                                                  |
+| Tính năng               | Route / vị trí              | Mô tả (xác minh qua code)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ----------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Resource Dashboard**  | `/settings/resource`        | ResourceCoordinator — cấp/queue lease cho tác vụ nặng, 3 mức cân bằng (desktop-only)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Agent Company**       | `/settings/company`         | Mô hình công ty tác nhân: sinh sơ đồ vai trò, gán CLI/Assistant, chat sếp↔nhân viên, pipeline                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| **Embedded Browser**    | `/settings/browser`         | Trình duyệt nhúng (WebContentsView) + web-agent ReAct (navigate/click/type/screenshot)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| **Studio**              | `/studio`                   | File hub kiểu WPS → Universal Editor; sub-app: Make Video, Automation, Repo IDE                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Universal Editor**    | (nhúng trong Studio)        | 8 adapter: text-code (Monaco), docx, spreadsheet, slide, pdf, image, media, binary-inspect — docx/xlsx/pptx/**pdf** mặc định mở ONLYOFFICE (WYSIWYG), tự fallback editor nhẹ khi Office lỗi                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| **Multi-platform Test** | `/settings/testing`         | Sinh kịch bản → chạy test (web chạy thật; Android/Windows "unavailable"); script + computer-use                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Bug Monitor**         | `/settings/monitor`         | Thu lỗi → phân tích → đề xuất bản vá → cổng duyệt → rollback (vòng khép kín)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Personal Manager**    | `/manager`                  | Tasks / Note / Schedule + AI (parse, optimize, nhắc lịch, weather/travel/web search)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | **News Aggregator**     | `/settings/realtime`        | "Thời gian thực" — 2 view **News / Chứng khoán**. News: RSS/Atom + realtime social (Bluesky Jetstream WS, `packages/desktop/src/process/news/realtimeConnector.ts` — **opt-in** qua nút Live, watchdog + reconnect jitter + gating theo setting); trang tech **Top 10 GitHub** (`packages/desktop/src/process/news/githubTrending.ts`); dịch không-LLM (`packages/desktop/src/process/news/newsTranslator.ts`, MyMemory, budget ký tự/ngày); fetch feed chỉ http(s). Chứng khoán: `packages/desktop/src/process/news/marketFetcher.ts` — **Yahoo v8** (daily-change chuẩn vs prev close) + fallback Stooq + crypto CoinGecko, keyless → `packages/desktop/src/renderer/pages/news/components/MarketView.tsx` với **watchlist tùy chỉnh** (thêm/xóa mã Yahoo: `AAPL`/`^GSPC`/`BTC-USD`, lưu `settings.marketSymbols`). UI thuần Arco (Radio.Group/Button/Input). |
-| **Automation**          | Studio › Automation         | Workflow n8n-style: trigger/HTTP/AI/transform + app (Make Video→mp4, Editor) + cloud (S3/WebDAV) + Email/Facebook/TikTok + Agent Company (create/goal/tasks)                                                                                                                                                          |
-| **Repo Intelligence**   | Studio › IDE                | Quét repo → dependency graph + giải thích codebase (provider-backed)                                                                                                                                                                                                                                                  |
-| **Make Video**          | Studio › Make Video         | Sinh kịch bản LLM + render ảnh từng cảnh (cloud, provider người dùng)                                                                                                                                                                                                                                                 |
-| **Tool Selector**       | (Agent-plane MCP)           | Tự chọn skill/tool 2 tầng (keyword → semantic) trước khi nạp                                                                                                                                                                                                                                                          |
-| **Workspace frames**    | (nhúng trong chat, "Super") | Nhiều sub-agent chạy song song trên các surface live (browser/editor)                                                                                                                                                                                                                                                 |
-| **Terminal manager**    | `/settings/terminal`        | Quản lý terminal: tạo/tương tác shell thật, đếm shell toàn máy (read-only), lập lịch chạy script (croner)                                                                                                                                                                                                             |
+| **Automation**          | Studio › Automation         | Workflow n8n-style: trigger/HTTP/AI/transform + app (Make Video→mp4, Editor) + cloud (S3/WebDAV) + Email/Facebook/TikTok + Agent Company (create/goal/tasks)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Repo Intelligence**   | Studio › IDE                | Quét repo → dependency graph + giải thích codebase (provider-backed)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| **Make Video**          | Studio › Make Video         | Sinh kịch bản LLM + render ảnh từng cảnh (cloud, provider người dùng)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Tool Selector**       | (Agent-plane MCP)           | Tự chọn skill/tool 2 tầng (keyword → semantic) trước khi nạp                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| **Workspace frames**    | (nhúng trong chat, "Super") | Nhiều sub-agent chạy song song trên các surface live (browser/editor)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| **Terminal manager**    | `/settings/terminal`        | Quản lý terminal: tạo/tương tác shell thật, đếm shell toàn máy (read-only), lập lịch chạy script (croner)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 ### Thông tin dự án
 
@@ -1164,7 +1159,7 @@ AppProviders
 | `/settings/about`        | SystemSettings                    | Alias của System info                                                                                                                                                       |
 | `/settings`              | → `/settings/model`               | Redirect mặc định                                                                                                                                                           |
 | `/settings/ext/:tabId`   | ExtensionSettingsPage             | Extension settings                                                                                                                                                          |
-| `/test/components`       | ComponentsShowcase                | Component showcase (`packages/desktop/src/renderer/pages/TestShowcase.tsx`, dev)                                                                                                                                |
+| `/test/components`       | ComponentsShowcase                | Component showcase (`packages/desktop/src/renderer/pages/TestShowcase.tsx`, dev)                                                                                            |
 | `/scheduled`             | ScheduledTasksPage                | Danh sách cron jobs                                                                                                                                                         |
 | `/scheduled/:job_id`     | TaskDetailPage                    | Chi tiết cron job                                                                                                                                                           |
 
@@ -1835,12 +1830,12 @@ manager/
 
 ### `components/layout/`
 
-| Component               | Mô tả                                  |
-| ----------------------- | -------------------------------------- |
+| Component                                                               | Mô tả                                  |
+| ----------------------------------------------------------------------- | -------------------------------------- |
 | `packages/desktop/src/renderer/components/layout/Layout.tsx`            | App layout chính (Sider + content)     |
 | `packages/desktop/src/renderer/components/layout/Router.tsx`            | HashRouter + routes                    |
-| `Sider/`                | Sidebar: conversation list, navigation |
-| `Titlebar/`             | Custom title bar (Windows/Linux)       |
+| `Sider/`                                                                | Sidebar: conversation list, navigation |
+| `Titlebar/`                                                             | Custom title bar (Windows/Linux)       |
 | `packages/desktop/src/renderer/components/layout/AppLoader.tsx`         | Loading spinner                        |
 | `packages/desktop/src/renderer/components/layout/WindowControls.tsx`    | Min/max/close buttons                  |
 | `packages/desktop/src/renderer/components/layout/FlexFullContainer.tsx` | Full-height flex container             |
@@ -1848,12 +1843,12 @@ manager/
 
 ### `components/chat/`
 
-| Component                | Mô tả                                                |
-| ------------------------ | ---------------------------------------------------- |
-| `SendBox/`               | Input box gửi message (textarea, file attach, voice) |
-| `AtFileMenu/`            | @file mention dropdown                               |
-| `BtwOverlay/`            | Between-message overlay                              |
-| `MobileActionSheet/`     | Mobile action sheet                                  |
+| Component                                                              | Mô tả                                                |
+| ---------------------------------------------------------------------- | ---------------------------------------------------- |
+| `SendBox/`                                                             | Input box gửi message (textarea, file attach, voice) |
+| `AtFileMenu/`                                                          | @file mention dropdown                               |
+| `BtwOverlay/`                                                          | Between-message overlay                              |
+| `MobileActionSheet/`                                                   | Mobile action sheet                                  |
 | `packages/desktop/src/renderer/components/chat/SlashCommandMenu.tsx`   | `/command` dropdown                                  |
 | `packages/desktop/src/renderer/components/chat/SpeechInputButton.tsx`  | Voice input button                                   |
 | `packages/desktop/src/renderer/components/chat/ThoughtDisplay.tsx`     | Hiển thị AI thinking process                         |
@@ -1863,21 +1858,21 @@ manager/
 
 ### `components/agent/`
 
-| Component                    | Mô tả                                                                                                                                                                                                                                                                                                              |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `packages/desktop/src/renderer/components/agent/AgentModeSelector.tsx`      | Chọn agent mode (YOLO, auto-approve...)                                                                                                                                                                                                                                                                            |
-| `packages/desktop/src/renderer/components/agent/AgentSetupCard.tsx`         | Card setup agent mới                                                                                                                                                                                                                                                                                               |
-| `packages/desktop/src/renderer/components/agent/AgentBadge.tsx`             | Badge hiển thị agent type                                                                                                                                                                                                                                                                                          |
-| `packages/desktop/src/renderer/components/agent/AcpModelSelector.tsx`       | Chọn model cho ACP agents                                                                                                                                                                                                                                                                                          |
-| `packages/desktop/src/renderer/components/agent/ContextUsageIndicator.tsx`  | Hiển thị context window usage                                                                                                                                                                                                                                                                                      |
-| `packages/desktop/src/renderer/components/agent/ChannelConflictWarning.tsx` | Cảnh báo channel conflict                                                                                                                                                                                                                                                                                          |
-| `packages/desktop/src/renderer/components/agent/MarqueePillLabel.tsx`       | Animated pill label                                                                                                                                                                                                                                                                                                |
-| `QuickActive/`               | "Quick Active" dock ở đáy chat/team/company — sổ ra trang đang hoạt động (tab Browser đang mở, Company đã biết) và đi thẳng tới đó. `packages/desktop/src/renderer/components/agent/QuickActive/useActiveSurfaces.ts` gom dữ liệu read-only qua bridge client (degrade khi chưa wire); hand-off chọn tab/company qua `requestActiveTab`/`requestActiveCompany`. Desktop-only. |
+| Component                                                                   | Mô tả                                                                                                                                                                                                                                                                                                                                                                         |
+| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/desktop/src/renderer/components/agent/AgentModeSelector.tsx`      | Chọn agent mode (YOLO, auto-approve...)                                                                                                                                                                                                                                                                                                                                       |
+| `packages/desktop/src/renderer/components/agent/AgentSetupCard.tsx`         | Card setup agent mới                                                                                                                                                                                                                                                                                                                                                          |
+| `packages/desktop/src/renderer/components/agent/AgentBadge.tsx`             | Badge hiển thị agent type                                                                                                                                                                                                                                                                                                                                                     |
+| `packages/desktop/src/renderer/components/agent/AcpModelSelector.tsx`       | Chọn model cho ACP agents                                                                                                                                                                                                                                                                                                                                                     |
+| `packages/desktop/src/renderer/components/agent/ContextUsageIndicator.tsx`  | Hiển thị context window usage                                                                                                                                                                                                                                                                                                                                                 |
+| `packages/desktop/src/renderer/components/agent/ChannelConflictWarning.tsx` | Cảnh báo channel conflict                                                                                                                                                                                                                                                                                                                                                     |
+| `packages/desktop/src/renderer/components/agent/MarqueePillLabel.tsx`       | Animated pill label                                                                                                                                                                                                                                                                                                                                                           |
+| `QuickActive/`                                                              | "Quick Active" dock ở đáy chat/team/company — sổ ra trang đang hoạt động (tab Browser đang mở, Company đã biết) và đi thẳng tới đó. `packages/desktop/src/renderer/components/agent/QuickActive/useActiveSurfaces.ts` gom dữ liệu read-only qua bridge client (degrade khi chưa wire); hand-off chọn tab/company qua `requestActiveTab`/`requestActiveCompany`. Desktop-only. |
 
 ### `components/media/`
 
-| Component                | Mô tả                                     |
-| ------------------------ | ----------------------------------------- |
+| Component                                                               | Mô tả                                     |
+| ----------------------------------------------------------------------- | ----------------------------------------- |
 | `packages/desktop/src/renderer/components/media/FilePreview.tsx`        | Preview file (dispatch đến renderer đúng) |
 | `packages/desktop/src/renderer/components/media/LocalImageView.tsx`     | Hiển thị ảnh local                        |
 | `packages/desktop/src/renderer/components/media/Diff2Html.tsx`          | Hiển thị git diff                         |
@@ -1888,9 +1883,9 @@ manager/
 
 ### `components/Markdown/`
 
-| Component          | Mô tả                                  |
-| ------------------ | -------------------------------------- |
-| `index.tsx`        | Markdown renderer chính                |
+| Component                                                            | Mô tả                                  |
+| -------------------------------------------------------------------- | -------------------------------------- |
+| `index.tsx`                                                          | Markdown renderer chính                |
 | `packages/desktop/src/renderer/components/Markdown/CodeBlock.tsx`    | Code block với syntax highlight + copy |
 | `packages/desktop/src/renderer/components/Markdown/MermaidBlock.tsx` | Mermaid diagram renderer               |
 | `packages/desktop/src/renderer/components/Markdown/ShadowView.tsx`   | Shadow DOM cho HTML isolation          |
@@ -1898,9 +1893,9 @@ manager/
 
 ### `components/settings/`
 
-| Component                     | Mô tả                  |
-| ----------------------------- | ---------------------- |
-| `SettingsModal/`              | Settings modal wrapper |
+| Component                                                                       | Mô tả                  |
+| ------------------------------------------------------------------------------- | ---------------------- |
+| `SettingsModal/`                                                                | Settings modal wrapper |
 | `packages/desktop/src/renderer/components/settings/ThemeSwitcher.tsx`           | Chọn theme             |
 | `packages/desktop/src/renderer/components/settings/LanguageSwitcher.tsx`        | Chọn ngôn ngữ          |
 | `packages/desktop/src/renderer/components/settings/FontSizeControl.tsx`         | Điều chỉnh font size   |
@@ -1909,12 +1904,12 @@ manager/
 
 ### `components/` — khác (top-level + subfolder)
 
-| Mục               | Mô tả                                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------------------ |
-| `devtools/`       | `packages/desktop/src/renderer/components/devtools/DevConsoleOverlay.tsx` — overlay console dev (in-app)                                                 |
-| `workspace/`      | `packages/desktop/src/renderer/components/workspace/WorkspaceFolderSelect.tsx` + `packages/desktop/src/renderer/components/workspace/recentWorkspaces.ts` — chọn thư mục workspace (KHÁC `pages/workspace/`) |
-| `packages/desktop/src/renderer/components/IconParkHOC.tsx` | HOC bọc icon @icon-park (chuẩn hóa props/size)                                                         |
-| `packages/desktop/src/renderer/components/ShimmerText.tsx` | Text hiệu ứng shimmer (loading/placeholder)                                                            |
+| Mục                                                        | Mô tả                                                                                                                                                                                                        |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `devtools/`                                                | `packages/desktop/src/renderer/components/devtools/DevConsoleOverlay.tsx` — overlay console dev (in-app)                                                                                                     |
+| `workspace/`                                               | `packages/desktop/src/renderer/components/workspace/WorkspaceFolderSelect.tsx` + `packages/desktop/src/renderer/components/workspace/recentWorkspaces.ts` — chọn thư mục workspace (KHÁC `pages/workspace/`) |
+| `packages/desktop/src/renderer/components/IconParkHOC.tsx` | HOC bọc icon @icon-park (chuẩn hóa props/size)                                                                                                                                                               |
+| `packages/desktop/src/renderer/components/ShimmerText.tsx` | Text hiệu ứng shimmer (loading/placeholder)                                                                                                                                                                  |
 
 ---
 
@@ -1922,11 +1917,11 @@ manager/
 
 ### `hooks/context/` — Global Contexts
 
-| Hook/Context                     | Mô tả                                                             |
-| -------------------------------- | ----------------------------------------------------------------- |
+| Hook/Context                                                                 | Mô tả                                                             |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | `packages/desktop/src/renderer/hooks/context/AuthContext.tsx`                | JWT auth state (`status: checking/authenticated/unauthenticated`) |
 | `packages/desktop/src/renderer/hooks/context/ThemeContext.tsx`               | Theme + color scheme                                              |
-| `ConversationContext.tsx`        | Current conversation state                                        |
+| `ConversationContext.tsx`                                                    | Current conversation state                                        |
 | `packages/desktop/src/renderer/hooks/context/ConversationHistoryContext.tsx` | Conversation list + pagination                                    |
 | `packages/desktop/src/renderer/hooks/context/FeedbackContext.tsx`            | Feedback modal state                                              |
 | `packages/desktop/src/renderer/hooks/context/LayoutContext.tsx`              | Layout dimensions                                                 |
@@ -1934,8 +1929,8 @@ manager/
 
 ### `hooks/agent/`
 
-| Hook                             | Mô tả                        |
-| -------------------------------- | ---------------------------- |
+| Hook                                                                       | Mô tả                        |
+| -------------------------------------------------------------------------- | ---------------------------- |
 | `packages/desktop/src/renderer/hooks/agent/useAgents.ts`                   | Danh sách agents (SWR)       |
 | `packages/desktop/src/renderer/hooks/agent/useHubAgents.ts`                | Hub agents                   |
 | `packages/desktop/src/renderer/hooks/agent/useModelProviderList.ts`        | Danh sách providers + models |
@@ -1949,25 +1944,25 @@ manager/
 
 ### `hooks/assistant/`
 
-| Hook                    | Mô tả                      |
-| ----------------------- | -------------------------- |
+| Hook                                                                  | Mô tả                      |
+| --------------------------------------------------------------------- | -------------------------- |
 | `packages/desktop/src/renderer/hooks/assistant/useAssistantList.ts`   | Danh sách assistants (SWR) |
 | `packages/desktop/src/renderer/hooks/assistant/useAssistantEditor.ts` | State sửa/tạo assistant    |
 | `packages/desktop/src/renderer/hooks/assistant/useDetectedAgents.ts`  | Agents (CLI) tự phát hiện  |
 
 ### `hooks/config/`
 
-| Hook           | Mô tả                       |
-| -------------- | --------------------------- |
+| Hook                                                      | Mô tả                       |
+| --------------------------------------------------------- | --------------------------- |
 | `packages/desktop/src/renderer/hooks/config/useConfig.ts` | Đọc/ghi client config (SWR) |
 
 ### `hooks/chat/`
 
-| Hook                           | Mô tả                        |
-| ------------------------------ | ---------------------------- |
+| Hook                                                                    | Mô tả                        |
+| ----------------------------------------------------------------------- | ---------------------------- |
 | `packages/desktop/src/renderer/hooks/chat/useSendBoxDraft.ts`           | Draft message state          |
 | `packages/desktop/src/renderer/hooks/chat/useSendBoxFiles.ts`           | Files đính kèm               |
-| `useAutoScroll.ts`             | Auto-scroll to bottom        |
+| `useAutoScroll.ts`                                                      | Auto-scroll to bottom        |
 | `packages/desktop/src/renderer/hooks/chat/useAutoTitle.ts`              | Tự động đặt tên conversation |
 | `packages/desktop/src/renderer/hooks/chat/useSlashCommands.ts`          | Slash command list           |
 | `packages/desktop/src/renderer/hooks/chat/useSlashCommandController.ts` | Slash command UI state       |
@@ -1978,8 +1973,8 @@ manager/
 
 ### `hooks/file/`
 
-| Hook                                     | Mô tả                                     |
-| ---------------------------------------- | ----------------------------------------- |
+| Hook                                                                              | Mô tả                                     |
+| --------------------------------------------------------------------------------- | ----------------------------------------- |
 | `packages/desktop/src/renderer/hooks/file/useDragUpload.ts`                       | Drag-and-drop file upload                 |
 | `packages/desktop/src/renderer/hooks/file/useOpenFileSelector.ts`                 | Native file picker                        |
 | `packages/desktop/src/renderer/hooks/file/usePasteService.ts`                     | Paste image/file                          |
@@ -1994,21 +1989,21 @@ manager/
 
 ### `hooks/mcp/`
 
-| Hook                  | Mô tả                       |
-| --------------------- | --------------------------- |
+| Hook                                                          | Mô tả                       |
+| ------------------------------------------------------------- | --------------------------- |
 | `packages/desktop/src/renderer/hooks/mcp/useMcpServers.ts`    | Danh sách MCP servers (SWR) |
 | `packages/desktop/src/renderer/hooks/mcp/useMcpServerCRUD.ts` | CRUD operations             |
 | `packages/desktop/src/renderer/hooks/mcp/useMcpConnection.ts` | Test kết nối                |
 | `packages/desktop/src/renderer/hooks/mcp/useMcpModal.ts`      | MCP modal state             |
 | `packages/desktop/src/renderer/hooks/mcp/useMcpOAuth.ts`      | OAuth flow                  |
-| `catalog.ts`          | MCP server catalog          |
-| `index.ts`            | Barrel export hooks MCP     |
+| `catalog.ts`                                                  | MCP server catalog          |
+| `index.ts`                                                    | Barrel export hooks MCP     |
 | `packages/desktop/src/renderer/hooks/mcp/messageQueue.ts`     | Message queue cho MCP       |
 
 ### `hooks/system/`
 
-| Hook                                  | Mô tả                                                                           |
-| ------------------------------------- | ------------------------------------------------------------------------------- |
+| Hook                                                                             | Mô tả                                                                           |
+| -------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `packages/desktop/src/renderer/hooks/system/useTheme.ts`                         | Theme management                                                                |
 | `packages/desktop/src/renderer/hooks/system/useDeepLink.ts`                      | Handle aionui:// deep links + open-url (mở web URL từ OS vào tab Browser nhúng) |
 | `packages/desktop/src/renderer/hooks/system/usePwaMode.ts`                       | PWA detection                                                                   |
@@ -2021,8 +2016,8 @@ manager/
 
 ### `hooks/ui/`
 
-| Hook                          | Mô tả                 |
-| ----------------------------- | --------------------- |
+| Hook                                                                 | Mô tả                 |
+| -------------------------------------------------------------------- | --------------------- |
 | `packages/desktop/src/renderer/hooks/ui/useDebounce.ts`              | Debounce value        |
 | `packages/desktop/src/renderer/hooks/ui/useThrottle.ts`              | Throttle callback     |
 | `packages/desktop/src/renderer/hooks/ui/useResizableSplit.tsx`       | Resizable split panel |
@@ -2039,11 +2034,11 @@ manager/
 
 ### Services (`renderer/services/`)
 
-| File                     | Mô tả                           |
-| ------------------------ | ------------------------------- |
-| `i18n/index.ts`          | i18next setup cho renderer      |
+| File                                                            | Mô tả                           |
+| --------------------------------------------------------------- | ------------------------------- |
+| `i18n/index.ts`                                                 | i18next setup cho renderer      |
 | `packages/desktop/src/renderer/services/i18n/i18n-keys.d.ts`    | Type generated cho i18n keys    |
-| `i18n/locales/`          | Locale JSON files               |
+| `i18n/locales/`                                                 | Locale JSON files               |
 | `packages/desktop/src/renderer/services/FileService.ts`         | File operations (upload, read)  |
 | `packages/desktop/src/renderer/services/PasteService.ts`        | Clipboard paste handling        |
 | `packages/desktop/src/renderer/services/SpeechToTextService.ts` | STT service wrapper             |
@@ -2053,8 +2048,8 @@ manager/
 
 #### `utils/chat/`
 
-| File                      | Mô tả                                        |
-| ------------------------- | -------------------------------------------- |
+| File                                                               | Mô tả                                        |
+| ------------------------------------------------------------------ | -------------------------------------------- |
 | `packages/desktop/src/renderer/utils/chat/autoTitle.ts`            | Generate conversation title từ first message |
 | `packages/desktop/src/renderer/utils/chat/messageHistory.ts`       | Message history management                   |
 | `packages/desktop/src/renderer/utils/chat/latexDelimiters.ts`      | LaTeX delimiter normalization                |
@@ -2062,14 +2057,14 @@ manager/
 | `packages/desktop/src/renderer/utils/chat/conversationExport.ts`   | Export conversation to markdown/text         |
 | `packages/desktop/src/renderer/utils/chat/atFileQuery.ts`          | Query files cho @mention                     |
 | `packages/desktop/src/renderer/utils/chat/skillSuggestParser.ts`   | Parse skill suggestions                      |
-| `timeline.ts`             | Message timeline grouping                    |
+| `timeline.ts`                                                      | Message timeline grouping                    |
 | `packages/desktop/src/renderer/utils/chat/chatMinimapEvents.ts`    | Minimap event handling                       |
 | `packages/desktop/src/renderer/utils/chat/getLastAssistantText.ts` | Lấy text cuối của assistant                  |
 
 #### `utils/file/`
 
-| File                   | Mô tả                                                                 |
-| ---------------------- | --------------------------------------------------------------------- |
+| File                                                            | Mô tả                                                                 |
+| --------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `packages/desktop/src/renderer/utils/file/fileType.ts`          | Detect file type                                                      |
 | `packages/desktop/src/renderer/utils/file/fileTypes.ts`         | File type constants                                                   |
 | `packages/desktop/src/renderer/utils/file/base64.ts`            | Base64 encode/decode                                                  |
@@ -2083,28 +2078,28 @@ manager/
 
 #### `utils/model/`
 
-| File                          | Mô tả                                |
-| ----------------------------- | ------------------------------------ |
-| `packages/desktop/src/renderer/utils/model/agentTypes.ts`               | Agent type detection + SWR key       |
-| `agentModes.ts`               | Agent mode definitions               |
-| `packages/desktop/src/renderer/utils/model/agentLogo.ts`                | Agent logo mapping                   |
-| `modelCapabilities.ts`        | Model capability flags               |
-| `packages/desktop/src/renderer/utils/model/modelContextLimits.ts`       | Context window limits                |
-| `packages/desktop/src/renderer/utils/model/modelPlatforms.ts`           | Platform definitions (30+ platforms) |
-| `packages/desktop/src/renderer/utils/model/errorDetection.ts`           | Detect error types từ AI response    |
-| `presetAssistantResources.ts` | Preset assistant metadata            |
+| File                                                              | Mô tả                                |
+| ----------------------------------------------------------------- | ------------------------------------ |
+| `packages/desktop/src/renderer/utils/model/agentTypes.ts`         | Agent type detection + SWR key       |
+| `agentModes.ts`                                                   | Agent mode definitions               |
+| `packages/desktop/src/renderer/utils/model/agentLogo.ts`          | Agent logo mapping                   |
+| `modelCapabilities.ts`                                            | Model capability flags               |
+| `packages/desktop/src/renderer/utils/model/modelContextLimits.ts` | Context window limits                |
+| `packages/desktop/src/renderer/utils/model/modelPlatforms.ts`     | Platform definitions (30+ platforms) |
+| `packages/desktop/src/renderer/utils/model/errorDetection.ts`     | Detect error types từ AI response    |
+| `presetAssistantResources.ts`                                     | Preset assistant metadata            |
 
 #### `utils/theme/`
 
-| File                    | Mô tả                    |
-| ----------------------- | ------------------------ |
+| File                                                              | Mô tả                    |
+| ----------------------------------------------------------------- | ------------------------ |
 | `packages/desktop/src/renderer/utils/theme/customCssProcessor.ts` | Process user custom CSS  |
 | `packages/desktop/src/renderer/utils/theme/themeCssSync.ts`       | Sync theme CSS variables |
 
 #### `utils/ui/`
 
-| File                | Mô tả                     |
-| ------------------- | ------------------------- |
+| File                                                       | Mô tả                     |
+| ---------------------------------------------------------- | ------------------------- |
 | `packages/desktop/src/renderer/utils/ui/HOC.tsx`           | Higher-order components   |
 | `packages/desktop/src/renderer/utils/ui/ModalHOC.tsx`      | Modal HOC                 |
 | `packages/desktop/src/renderer/utils/ui/createContext.tsx` | Type-safe context creator |
@@ -2115,17 +2110,17 @@ manager/
 
 #### `utils/devtools/` & `utils/workspace/`
 
-| File                            | Mô tả                                    |
-| ------------------------------- | ---------------------------------------- |
+| File                                                                | Mô tả                                    |
+| ------------------------------------------------------------------- | ---------------------------------------- |
 | `packages/desktop/src/renderer/utils/devtools/devConsoleStore.ts`   | Store cho in-app dev console overlay     |
-| `workspace/workspace.ts`        | Helper workspace (resolve/validate path) |
+| `workspace/workspace.ts`                                            | Helper workspace (resolve/validate path) |
 | `packages/desktop/src/renderer/utils/workspace/workspaceEvents.ts`  | Event bus thay đổi workspace             |
 | `packages/desktop/src/renderer/utils/workspace/workspaceHistory.ts` | Lịch sử workspace gần đây                |
 
 #### `utils/` (file gốc)
 
-| File              | Mô tả                                                        |
-| ----------------- | ------------------------------------------------------------ |
+| File                                                  | Mô tả                                                        |
+| ----------------------------------------------------- | ------------------------------------------------------------ |
 | `packages/desktop/src/renderer/utils/common.ts`       | Tiện ích chung                                               |
 | `packages/desktop/src/renderer/utils/emitter.ts`      | Event emitter dùng chung renderer                            |
 | `packages/desktop/src/renderer/utils/platform.ts`     | Phát hiện nền tảng + `openInAppBrowserTab`/`openExternalUrl` |
@@ -2422,8 +2417,8 @@ Snapshot được lưu vào `extra.mcp_server_ids` và `extra.mcp_servers`.
 
 `process/resources/builtinMcp/` chứa các MCP server tích hợp sẵn (chạy in-process), không cần cấu hình:
 
-| File                      | Mô tả                                           |
-| ------------------------- | ----------------------------------------------- |
+| File                                                                        | Mô tả                                           |
+| --------------------------------------------------------------------------- | ----------------------------------------------- |
 | `packages/desktop/src/process/resources/builtinMcp/imageGenServer.ts`       | Image generation                                |
 | `packages/desktop/src/process/resources/builtinMcp/browserControlServer.ts` | Điều khiển embedded browser (Yêu cầu 1)         |
 | `packages/desktop/src/process/resources/builtinMcp/companyServer.ts`        | Tools cho mô hình công ty tác nhân (Yêu cầu 3)  |
@@ -2432,7 +2427,7 @@ Snapshot được lưu vào `extra.mcp_server_ids` và `extra.mcp_servers`.
 | `packages/desktop/src/process/resources/builtinMcp/toolSelectorServer.ts`   | Tự chọn skill/tool (Yêu cầu 7)                  |
 | `packages/desktop/src/process/resources/builtinMcp/managerServer.ts`        | Tasks/Note/Schedule cá nhân (stdio)             |
 | `packages/desktop/src/process/resources/builtinMcp/cronServer.ts`           | Quản lý Scheduled Tasks (cron) — 7 tools        |
-| `constants.ts`            | Hằng số chung                                   |
+| `constants.ts`                                                              | Hằng số chung                                   |
 
 > Ngoài ra Testing MCP còn được host qua `packages/desktop/src/process/testing/testingMcpHost.ts` trên loopback
 > `127.0.0.1:<ephemeral>/sse` và đăng ký vào catalog bằng `packages/desktop/src/process/testing/registerTestingMcp.ts` (xem mục 29, Yêu cầu 2b).
@@ -2594,8 +2589,8 @@ Nhân vật ảo tương tác với trạng thái AI.
 
 ### Pet Windows
 
-| Window         | File               | Mô tả                     |
-| -------------- | ------------------ | ------------------------- |
+| Window         | File                                                 | Mô tả                     |
+| -------------- | ---------------------------------------------------- | ------------------------- |
 | Main pet       | `packages/desktop/src/renderer/pet/pet.html`         | Nhân vật chính            |
 | Confirm bubble | `packages/desktop/src/renderer/pet/pet-confirm.html` | Tool confirmation qua pet |
 | Hit animation  | `packages/desktop/src/renderer/pet/pet-hit.html`     | Animation khi click       |
@@ -2620,16 +2615,16 @@ Settings → Pet
 
 ### Naming Conventions
 
-| Loại             | Convention                        | Ví dụ                             |
-| ---------------- | --------------------------------- | --------------------------------- |
-| React components | PascalCase                        | `Button.tsx`, `SettingsModal.tsx` |
-| Hooks            | camelCase + `use` prefix          | `packages/desktop/src/renderer/hooks/system/useTheme.ts`, `packages/desktop/src/renderer/pages/cron/useCronJobs.ts`   |
-| Utilities        | camelCase                         | `formatDate.ts`, `packages/desktop/src/renderer/pages/cron/cronUtils.ts`   |
-| Constants files  | camelCase                         | `constants.ts`                    |
-| Constants values | UPPER_SNAKE_CASE                  | `MAX_RETRY_COUNT`                 |
-| Type files       | camelCase                         | `types.ts`                        |
-| Style files      | kebab-case hoặc `Name.module.css` | `packages/desktop/src/renderer/pages/conversation/components/ChatLayout/chat-layout.css`                 |
-| Unused params    | `_` prefix                        | `_event`, `_id`                   |
+| Loại             | Convention                        | Ví dụ                                                                                                               |
+| ---------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| React components | PascalCase                        | `Button.tsx`, `SettingsModal.tsx`                                                                                   |
+| Hooks            | camelCase + `use` prefix          | `packages/desktop/src/renderer/hooks/system/useTheme.ts`, `packages/desktop/src/renderer/pages/cron/useCronJobs.ts` |
+| Utilities        | camelCase                         | `formatDate.ts`, `packages/desktop/src/renderer/pages/cron/cronUtils.ts`                                            |
+| Constants files  | camelCase                         | `constants.ts`                                                                                                      |
+| Constants values | UPPER_SNAKE_CASE                  | `MAX_RETRY_COUNT`                                                                                                   |
+| Type files       | camelCase                         | `types.ts`                                                                                                          |
+| Style files      | kebab-case hoặc `Name.module.css` | `packages/desktop/src/renderer/pages/conversation/components/ChatLayout/chat-layout.css`                            |
+| Unused params    | `_` prefix                        | `_event`, `_id`                                                                                                     |
 
 ### Directory Naming
 
@@ -2767,11 +2762,11 @@ bun run test:bun          # Bun-specific database tests
 
 ### Test File Mapping
 
-| Source                                   | Test                                   |
-| ---------------------------------------- | -------------------------------------- |
-| `process/services/CronService.ts`        | `tests/unit/cronService.test.ts`       |
-| `renderer/hooks/ui/useAutoScroll.ts`     | `tests/unit/useAutoScroll.dom.test.ts` |
-| `packages/desktop/src/renderer/utils/chat/latexDelimiters.ts` | `tests/unit/renderer/utils/latexDelimiters.test.ts`   |
+| Source                                                        | Test                                                |
+| ------------------------------------------------------------- | --------------------------------------------------- |
+| `process/services/CronService.ts`                             | `tests/unit/cronService.test.ts`                    |
+| `renderer/hooks/ui/useAutoScroll.ts`                          | `tests/unit/useAutoScroll.dom.test.ts`              |
+| `packages/desktop/src/renderer/utils/chat/latexDelimiters.ts` | `tests/unit/renderer/utils/latexDelimiters.test.ts` |
 
 ### Test Structure
 
@@ -3132,13 +3127,13 @@ Trạng thái: code Tasks/Notes/Schedule done (unit/DOM test pass, tsc sạch ph
 thu UI thật do người dùng tự chạy `bun start` — KHÔNG dùng Claude/computer-use (xem
 `.kiro/steering/claude-ui-testing.md`). Chi tiết tiến độ ở `.kiro/status.md`.
 
-
 ---
 
 ## Callout 2026-06-09 — Realtime Knowledge + Smart Terminal (production-grade)
 
-**Realtime Knowledge (RTK)** — kho kiến thức *sự kiện dễ lỗi thời* (versions/prices/role holders/spec…),
+**Realtime Knowledge (RTK)** — kho kiến thức _sự kiện dễ lỗi thời_ (versions/prices/role holders/spec…),
 chống AI trả lời cũ. Backend Main-process thuần TS, KHÔNG đụng aioncore:
+
 - `packages/desktop/src/process/knowledge/realtime/` — `rtkTypes`, `freshness`, `embeddingText`,
   `rtkStore` (atomic JSON ở `userData/knowledge/realtime`), `rtkVectorIndex` (cosine + `Embedder`),
   `verificationService` (guardrail: đủ nguồn độc lập mới ghi đè), `refreshPipeline` (crawl→verify→diff),
@@ -3152,6 +3147,7 @@ chống AI trả lời cũ. Backend Main-process thuần TS, KHÔNG đụng aion
   i18n module `realtimeKnowledge`. `superGuidance.withRealtimeKnowledgeRules` dạy agent lookup→verify→record.
 
 **Smart Terminal** — terminal của app tự thông minh (không dựa MTUI):
+
 - docTerminal `process/terminal/commandDoc/` — học lệnh khi `command-end exitCode=0`, gợi ý ghost-text
   (prefix+frequency+recency, scorer pure renderer-safe), Tab-accept. Bridge `terminal.cmd-snapshot`/
   `terminal.cmd-capture`; redact secret trước khi lưu.

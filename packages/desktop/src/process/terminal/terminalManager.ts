@@ -123,8 +123,6 @@ export const createTerminalManager = (deps: TerminalManagerDeps = {}): ITerminal
   const newId = deps.newId ?? randomUUID;
   const emitter = new EventEmitter();
   const sessions = new Map<string, LiveSession>();
-  /** Monotonic counter for default titles ("cmd 1", "bash 2", …). */
-  let counter = 0;
 
   const snapshot = (): TerminalSession[] => Array.from(sessions.values(), (s) => ({ ...s.meta }));
 
@@ -162,9 +160,20 @@ export const createTerminalManager = (deps: TerminalManagerDeps = {}): ITerminal
     const id = newId();
     const shell = options.shell && options.shell.trim().length > 0 ? options.shell : resolveDefaultShell();
     const cwd = options.cwd && options.cwd.trim().length > 0 ? options.cwd : defaultCwd();
-    counter += 1;
-    const title =
-      options.title && options.title.trim().length > 0 ? options.title : `${shellBaseName(shell)} ${counter}`;
+    const base = shellBaseName(shell);
+    // Pick lowest available number for this shell base so closing e.g. "pwsh 1" allows the next
+    // new terminal of same kind to reuse 1 instead of monotonically increasing forever.
+    const used = new Set<number>();
+    for (const live of sessions.values()) {
+      const t = live.meta.title;
+      if (t.startsWith(base + ' ')) {
+        const m = t.match(/\s+(\d+)$/);
+        if (m) used.add(parseInt(m[1], 10));
+      }
+    }
+    let n = 1;
+    while (used.has(n)) n += 1;
+    const title = options.title && options.title.trim().length > 0 ? options.title : `${base} ${n}`;
     const env: Record<string, string> = {
       ...(process.env as Record<string, string>),
       ...options.env,

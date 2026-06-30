@@ -10,7 +10,12 @@
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { createExperienceStore } from '@/process/experience/experienceStore';
-import { createExperienceCapture, lexicalJaccard, mergeEntries, normalizeDraft } from '@/process/experience/experienceCapture';
+import {
+  createExperienceCapture,
+  lexicalJaccard,
+  mergeEntries,
+  normalizeDraft,
+} from '@/process/experience/experienceCapture';
 import type { ExperienceEmbedder } from '@/process/experience/experienceVectorIndex';
 import type { ExperienceEntryDraft } from '@/process/experience/experienceTypes';
 import { createMemFs } from './memFs';
@@ -21,7 +26,13 @@ const draft = (overrides: Partial<ExperienceEntryDraft> = {}): ExperienceEntryDr
   projectId: 'proj_a',
   kind: 'successful_fix',
   symptoms: { summary: 'vitest mock not applied', errorMessages: ['expected spy to be called'] },
-  context: { files: ['useThing.ts'], commands: ['bun run test'], frameworks: ['vitest'], packages: ['vitest'], errorCategory: 'test-failure' },
+  context: {
+    files: ['useThing.ts'],
+    commands: ['bun run test'],
+    frameworks: ['vitest'],
+    packages: ['vitest'],
+    errorCategory: 'test-failure',
+  },
   rootCause: 'mock declared after import',
   fix: { summary: 'hoist vi.mock', steps: ['move vi.mock above imports'], changedFiles: ['useThing.ts'] },
   lesson: 'vi.mock must be hoisted above imports',
@@ -45,7 +56,11 @@ const makeCapture = (embedder?: ExperienceEmbedder | null) => {
 
 describe('normalizeDraft', () => {
   it('sanitizes secrets and derives embeddingText/status', () => {
-    const entry = normalizeDraft(draft({ rootCause: 'leaked api_key=topsecret123456' }), 'exp_x', '2026-06-09T00:00:00.000Z');
+    const entry = normalizeDraft(
+      draft({ rootCause: 'leaked api_key=topsecret123456' }),
+      'exp_x',
+      '2026-06-09T00:00:00.000Z'
+    );
     expect(entry.rootCause).toContain('[REDACTED]');
     expect(entry.status).toBe('active');
     expect(entry.embeddingText).toContain('Kind: successful_fix');
@@ -87,7 +102,11 @@ describe('createExperienceCapture', () => {
   it('merges a near-duplicate instead of creating a second entry', async () => {
     const { store, capture } = makeCapture();
     await capture.capture(draft());
-    const second = await capture.capture(draft({ symptoms: { summary: 'vitest mock not applied', errorMessages: ['expected spy to be called', 'extra detail'] } }));
+    const second = await capture.capture(
+      draft({
+        symptoms: { summary: 'vitest mock not applied', errorMessages: ['expected spy to be called', 'extra detail'] },
+      })
+    );
 
     expect(second.action).toBe('updated');
     expect(second.entry.id).toBe('exp_1');
@@ -105,7 +124,13 @@ describe('createExperienceCapture', () => {
         rootCause: 'missing ozone platform flag',
         fix: { summary: 'pass --ozone-platform-hint=auto', steps: [], changedFiles: ['main.ts'] },
         lesson: 'set ozone platform hint on wayland',
-        context: { files: ['main.ts'], commands: ['bun start'], frameworks: ['electron'], packages: ['electron'], errorCategory: 'runtime' },
+        context: {
+          files: ['main.ts'],
+          commands: ['bun start'],
+          frameworks: ['electron'],
+          packages: ['electron'],
+          errorCategory: 'runtime',
+        },
         tags: ['electron', 'linux'],
       })
     );
@@ -114,14 +139,24 @@ describe('createExperienceCapture', () => {
   });
 
   it('attaches a vector when an embedder is available', async () => {
-    const embedder: ExperienceEmbedder = { providerId: 'fake', model: 'm', embed: async (texts) => texts.map(() => [0, 3, 4]) };
+    const embedder: ExperienceEmbedder = {
+      providerId: 'fake',
+      model: 'm',
+      embed: async (texts) => texts.map(() => [0, 3, 4]),
+    };
     const { capture } = makeCapture(embedder);
     const result = await capture.capture(draft());
     expect(result.entry.vector).toEqual([0, 0.6, 0.8]);
   });
 
   it('degrades to no vector when embedding throws', async () => {
-    const embedder: ExperienceEmbedder = { providerId: 'fake', model: 'm', embed: async () => { throw new Error('offline'); } };
+    const embedder: ExperienceEmbedder = {
+      providerId: 'fake',
+      model: 'm',
+      embed: async () => {
+        throw new Error('offline');
+      },
+    };
     const { capture } = makeCapture(embedder);
     const result = await capture.capture(draft());
     expect(result.entry.vector).toBeUndefined();
@@ -132,7 +167,11 @@ describe('createExperienceCapture', () => {
 describe('mergeEntries', () => {
   it('unions context and raises confidence', () => {
     const a = normalizeDraft(draft(), 'a', '2026-06-01T00:00:00.000Z');
-    const b = normalizeDraft(draft({ context: { files: ['other.ts'], frameworks: ['vitest'], packages: [], commands: [] }, tags: ['extra'] }), 'b', '2026-06-02T00:00:00.000Z');
+    const b = normalizeDraft(
+      draft({ context: { files: ['other.ts'], frameworks: ['vitest'], packages: [], commands: [] }, tags: ['extra'] }),
+      'b',
+      '2026-06-02T00:00:00.000Z'
+    );
     const merged = mergeEntries(a, b, '2026-06-03T00:00:00.000Z');
     expect(merged.context.files).toEqual(expect.arrayContaining(['useThing.ts', 'other.ts']));
     expect(merged.tags).toEqual(expect.arrayContaining(['vitest', 'mock', 'extra']));

@@ -147,7 +147,10 @@ export const enrichSuggestions = (
     }
     const related: ExperienceRelatedLesson[] = source.relations
       .map((relation) => ({ relation, target: entriesById.get(relation.targetId) }))
-      .filter((item): item is { relation: ExperienceRelation; target: RelatedSource } => Boolean(item.target) && item.target?.status !== 'archived')
+      .filter(
+        (item): item is { relation: ExperienceRelation; target: RelatedSource } =>
+          Boolean(item.target) && item.target?.status !== 'archived'
+      )
       .toSorted((a, b) => relationPriority[a.relation.type] - relationPriority[b.relation.type])
       .slice(0, MAX_RELATED_PER_SUGGESTION)
       .map(({ relation, target }) => ({

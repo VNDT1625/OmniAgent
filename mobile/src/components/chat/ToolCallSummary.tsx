@@ -121,7 +121,8 @@ function ToolStepRow({ message }: { message: TMessage }) {
 function StepRowHeader({ message, onCollapse }: { message: TMessage; onCollapse: () => void }) {
   const iconColor = useThemeColor({}, 'icon');
   const tint = useThemeColor({}, 'tint');
-  const items = getStepItems(message);
+  const { t } = useTranslation();
+  const items = getStepItems(message, t);
   const label = items.map((i) => i.name).join(', ');
 
   return (
@@ -140,8 +141,9 @@ function StepRowCollapsed({ message, onPress }: { message: TMessage; onPress: ()
   const tint = useThemeColor({}, 'tint');
   const success = useThemeColor({}, 'success');
   const errorColor = useThemeColor({}, 'error');
+  const { t } = useTranslation();
 
-  const items = getStepItems(message);
+  const items = getStepItems(message, t);
 
   return (
     <View>
@@ -176,17 +178,18 @@ function StepRowCollapsed({ message, onPress }: { message: TMessage; onPress: ()
 
 type StepItem = { name: string; status: 'executing' | 'success' | 'error' | 'pending' };
 
-function getStepItems(msg: TMessage): StepItem[] {
+function getStepItems(msg: TMessage, translate?: (key: string) => string): StepItem[] {
+  const tt = translate || ((k: string) => '');
   if (msg.type === 'tool_group' && Array.isArray(msg.content)) {
-    return msg.content.map((t: any) => ({
-      name: t.description || t.name || t('chat.toolCall'),
-      status: normalizeStatus(t.status),
+    return msg.content.map((item: any) => ({
+      name: item.description || item.name || tt('chat.toolCall'),
+      status: normalizeStatus(item.status),
     }));
   }
   if (msg.type === 'tool_call') {
     return [
       {
-        name: msg.content?.name || t('chat.toolCall'),
+        name: msg.content?.name || tt('chat.toolCall'),
         status: normalizeStatus(msg.content?.status),
       },
     ];
@@ -195,7 +198,7 @@ function getStepItems(msg: TMessage): StepItem[] {
     const update = msg.content?.update;
     return [
       {
-        name: update?.title || update?.kind || t('chat.toolCall'),
+        name: update?.title || update?.kind || tt('chat.toolCall'),
         status: normalizeAcpStatus(update?.status),
       },
     ];
@@ -203,12 +206,12 @@ function getStepItems(msg: TMessage): StepItem[] {
   if (msg.type === 'codex_tool_call') {
     return [
       {
-        name: msg.content?.title || msg.content?.description || msg.content?.kind || t('chat.toolCall'),
+        name: msg.content?.title || msg.content?.description || msg.content?.kind || tt('chat.toolCall'),
         status: normalizeStatus(msg.content?.status),
       },
     ];
   }
-  return [{ name: t('chat.toolCall'), status: 'pending' }];
+  return [{ name: tt('chat.toolCall'), status: 'pending' }];
 }
 
 function normalizeStatus(s: string | undefined): StepItem['status'] {

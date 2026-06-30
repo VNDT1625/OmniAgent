@@ -26,10 +26,22 @@
  */
 
 import { createLiveSampler, type LiveSampler } from './liveMetricsSampler';
-import { createPriorityManager, defaultPriorityManagerDeps, processIdentity, type ProcessPriorityManager } from './processPriorityManager';
+import {
+  createPriorityManager,
+  defaultPriorityManagerDeps,
+  processIdentity,
+  type ProcessPriorityManager,
+} from './processPriorityManager';
 import { createSnapshotStore, defaultSnapshotStoreDeps, type SnapshotStore } from './systemSnapshotStore';
 import { probeStaticSystemInfo } from './staticInfoProbe';
-import type { LiveSystemMetrics, MetricSample, ProcessPriorityLevel, SetPriorityResult, StaticSystemInfo, SystemSnapshot } from './systemInfoTypes';
+import type {
+  LiveSystemMetrics,
+  MetricSample,
+  ProcessPriorityLevel,
+  SetPriorityResult,
+  StaticSystemInfo,
+  SystemSnapshot,
+} from './systemInfoTypes';
 
 /** Fast sampling interval (ms) used while a renderer is streaming. */
 export const SAMPLE_INTERVAL_MS = 2000;

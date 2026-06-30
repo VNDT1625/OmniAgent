@@ -297,7 +297,12 @@
     "inspectRequestPlaceholder": "Describe the change for this element (e.g. nudge up 20px, use accent color)…",
     "inspectAsk": "Ask the agent",
     "viewportResponsive": "Responsive",
-    "viewportHint": "Preview width: render the page at a desktop width (scaled to fit) so its layout matches a real wide browser instead of a cramped narrow one. Responsive = lay out at the panel's actual width."
+    "viewportHint": "Preview width: render the page at a desktop width (scaled to fit) so its layout matches a real wide browser instead of a cramped narrow one. Responsive = lay out at the panel's actual width.",
+    "hideRightSidebar": "Hide right sidebar (full browser view)",
+    "showRightSidebar": "Show right sidebar",
+    "hideIdeSidebars": "Hide left and right IDE tabs",
+    "showIdeSidebars": "Show left and right IDE tabs",
+    "resizeSidebar": "Resize sidebar"
   },
   "db": {
     "connections": "Connections",

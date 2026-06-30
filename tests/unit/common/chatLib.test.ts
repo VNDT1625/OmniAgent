@@ -159,6 +159,46 @@ describe('transformMessage', () => {
     expect(transformMessage(message)).toBeUndefined();
   });
 
+  it('drops token watermark notices from streamed assistant text', () => {
+    const message: IResponseMessage = {
+      type: 'content',
+      data: 'Token watermark override: provider=0, local_estimate=35068, using=35068',
+      msg_id: 'watermark-1',
+      conversation_id: CONVERSATION_ID,
+    };
+
+    expect(transformMessage(message)).toBeUndefined();
+  });
+
+  it('removes token watermark notices while preserving nearby assistant text', () => {
+    const message: IResponseMessage = {
+      type: 'content',
+      data: 'Before\n✅ Token watermark override: provider=0, local_estimate=35068, using=35068\nAfter',
+      msg_id: 'watermark-2',
+      conversation_id: CONVERSATION_ID,
+    };
+
+    const transformed = transformMessage(message);
+
+    expect(transformed?.type).toBe('text');
+    if (transformed?.type !== 'text') throw new Error('expected text message');
+    expect(transformed.content.content).toBe('Before\nAfter');
+  });
+
+  it('strips inline token watermark even without surrounding newlines', () => {
+    const message: IResponseMessage = {
+      type: 'content',
+      data: 'Hello Token watermark override: provider=0, local_estimate=12047, using=12047 world',
+      msg_id: 'watermark-inline',
+      conversation_id: CONVERSATION_ID,
+    };
+
+    const transformed = transformMessage(message);
+    expect(transformed?.type).toBe('text');
+    if (transformed?.type !== 'text') throw new Error('expected text message');
+    expect(transformed.content.content).toBe('Hello world');
+  });
+
   it('preserves structured agent stream error metadata', () => {
     const message: IResponseMessage = {
       type: 'error',

@@ -21,7 +21,12 @@ const TONE_COLOR: Record<'normal' | 'warning' | 'danger', string> = {
  * single short stroke transition; users with `prefers-reduced-motion` get the
  * project-wide reduced-motion treatment from global CSS.
  */
-const Gauge: React.FC<{ percent: number; label: string; caption?: string; size?: number }> = ({ percent, label, caption, size = 104 }) => {
+const Gauge: React.FC<{ percent: number; label: string; caption?: string; size?: number }> = ({
+  percent,
+  label,
+  caption,
+  size = 104,
+}) => {
   const value = clampPercent(percent);
   const stroke = 8;
   const radius = (size - stroke) / 2;

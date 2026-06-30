@@ -77,7 +77,8 @@ export const withGoalSteeringDirective = (modelInput: string, conversationId: st
   const trimmed = modelInput.trim();
   if (trimmed.length === 0) return modelInput;
   if (trimmed.startsWith('/')) return modelInput;
-  if (trimmed.startsWith('[GOAL MODE') || trimmed.startsWith('[GOAL-ALL MODE') || trimmed.startsWith('MỤC TIÊU (GOAL')) return modelInput;
+  if (trimmed.startsWith('[GOAL MODE') || trimmed.startsWith('[GOAL-ALL MODE') || trimmed.startsWith('MỤC TIÊU (GOAL'))
+    return modelInput;
   if (!isGoalModeActive(conversationId)) return modelInput;
   return `${GOAL_TURN_REMINDER}\n\n${modelInput}`;
 };

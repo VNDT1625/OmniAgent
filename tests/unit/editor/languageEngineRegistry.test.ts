@@ -82,7 +82,7 @@ describe('shouldUseMonacoTsWorker', () => {
 describe('optInCandidates', () => {
   it('lists costly engines not yet enabled', () => {
     const candidates = optInCandidates(analysis);
-    const langs = candidates.map((entry) => entry.language).sort();
+    const langs = candidates.map((entry) => entry.language).toSorted();
     expect(langs).toEqual(['rust', 'shell']);
   });
 

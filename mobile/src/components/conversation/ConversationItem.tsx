@@ -18,7 +18,7 @@ const agentBadgeColors: Record<string, string> = {
   qwen: '#7C3AED',
 };
 
-function formatTime(timestamp: number): string {
+function formatTime(timestamp: number, t: (key: string) => string): string {
   const date = new Date(timestamp);
   const now = new Date();
   const isToday = date.toDateString() === now.toDateString();
@@ -90,7 +90,7 @@ export function ConversationItem({ conversation, onPress, onDelete }: Conversati
             {conversation.name || t('conversations.untitled')}
           </ThemedText>
         </View>
-        <ThemedText type='caption'>{formatTime(conversation.modifyTime)}</ThemedText>
+        <ThemedText type='caption'>{formatTime(conversation.modifyTime, t)}</ThemedText>
       </View>
 
       <View style={styles.row}>

@@ -44,7 +44,10 @@ const basename = (token: string): string => {
  * @returns The classified parts (program is '' for an empty/blank command).
  */
 export const classifyCommand = (command: string): ClassifiedCommand => {
-  const tokens = command.trim().split(/\s+/).filter((t) => t.length > 0);
+  const tokens = command
+    .trim()
+    .split(/\s+/)
+    .filter((t) => t.length > 0);
   const env: string[] = [];
   let i = 0;
   while (i < tokens.length && isEnvAssignment(tokens[i])) {

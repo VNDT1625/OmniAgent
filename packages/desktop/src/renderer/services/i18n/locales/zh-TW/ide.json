@@ -297,7 +297,12 @@
     "inspectRequestPlaceholder": "描述對此元素的變更（例如：上移 20px、使用強調色）…",
     "inspectAsk": "詢問智能體",
     "viewportResponsive": "自適應",
-    "viewportHint": "預覽寬度：以桌面寬度渲染頁面（縮放以適應），使其版面與真實的寬螢幕瀏覽器一致，而非侷促的窄螢幕。自適應 = 按面板的實際寬度版面配置。"
+    "viewportHint": "預覽寬度：以桌面寬度渲染頁面（縮放以適應），使其版面與真實的寬螢幕瀏覽器一致，而非侷促的窄螢幕。自適應 = 按面板的實際寬度版面配置。",
+    "hideRightSidebar": "隱藏右側邊欄（完整瀏覽器檢視）",
+    "showRightSidebar": "顯示右側邊欄",
+    "hideIdeSidebars": "隱藏 IDE 左右標籤欄",
+    "showIdeSidebars": "顯示 IDE 左右標籤欄",
+    "resizeSidebar": "調整側邊欄大小"
   },
   "db": {
     "connections": "連線",

@@ -29,7 +29,7 @@
   **Icon @icon-park: kiểm tra export tồn tại** (đã gặp `Database`/`Battery` KHÔNG export → crash; dùng
   `DataSheet`/`Lightning`/`Refresh` đã xác nhận tồn tại).
 - Mỗi thư mục ≤ 10 children. `process/terminal/commandDoc/` đang 8 file (còn chỗ); `process/knowledge/
-  realtime/` đang 10 file (ĐẦY — thêm logic mới nên gộp vào file có sẵn, đừng tạo file thứ 11).
+realtime/` đang 10 file (ĐẦY — thêm logic mới nên gộp vào file có sẵn, đừng tạo file thứ 11).
 
 ## Realtime Knowledge (RTK) — kiến trúc (ĐÃ HOÀN THIỆN core)
 
@@ -38,7 +38,7 @@ thuần TS, KHÔNG đụng aioncore.
 
 - `process/knowledge/realtime/` (PURE + store + engine): `rtkTypes`, `freshness` (TTL theo
   `volatilityClass`, stale ở 75% TTL), `embeddingText`, `rtkStore` (atomic JSON `userData/knowledge/
-  realtime/facts.json`, fs DI), `rtkVectorIndex` (cosine + `Embedder`, fingerprint FNV skip re-embed),
+realtime/facts.json`, fs DI), `rtkVectorIndex` (cosine + `Embedder`, fingerprint FNV skip re-embed),
   `verificationService` (**guardrail FR7**: đếm host độc lập + agreement, change cần ≥2 nguồn, confirm ≥1),
   `refreshPipeline` (researcher + extractValue inject), `rtkScheduler` (croner, re-entrancy guard, backoff),
   `staleDetector` (PURE), `rtkService` (facade: `lookup/record/refresh/refreshExpired/relate/list`;

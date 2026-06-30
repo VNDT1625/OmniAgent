@@ -7,7 +7,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { buildSignature, classifySeverity, createExperienceTrigger } from '@/process/experience/workflow/experienceTrigger';
+import {
+  buildSignature,
+  classifySeverity,
+  createExperienceTrigger,
+} from '@/process/experience/workflow/experienceTrigger';
 
 describe('classifySeverity', () => {
   it('marks crashes/OOM/panics as hard', () => {
@@ -23,7 +27,9 @@ describe('classifySeverity', () => {
 
 describe('buildSignature', () => {
   it('joins salient parts lower-cased', () => {
-    expect(buildSignature({ command: 'Bun Run Test', errorCategory: 'Test-Failure', file: 'A.ts' })).toBe('bun run test|test-failure|a.ts');
+    expect(buildSignature({ command: 'Bun Run Test', errorCategory: 'Test-Failure', file: 'A.ts' })).toBe(
+      'bun run test|test-failure|a.ts'
+    );
   });
 
   it('falls back to unknown when empty', () => {

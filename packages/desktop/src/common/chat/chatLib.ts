@@ -302,6 +302,32 @@ const isResponseTextData = (data: unknown): data is ResponseTextData =>
   'content' in data &&
   typeof (data as { content?: unknown }).content === 'string';
 
+const TOKEN_WATERMARK_LINE =
+  /^\s*(?:✅\s*)?Token watermark override:\s*provider=\d+,\s*local_estimate=\d+,\s*using=\d+\s*$/i;
+
+const TOKEN_WATERMARK_ANY = /Token watermark override:\s*provider=\d+,\s*local_estimate=\d+,\s*using=\d+/gi;
+
+/**
+ * Remove internal "Token watermark override" diagnostic lines emitted by some
+ * model/agent runtimes. These must never be shown to the user (and must not
+ * cause a real assistant reply to become empty and get hidden).
+ */
+export const stripTokenWatermarkNotice = (content: string): string => {
+  // Line-based removal first (preserves original join behavior for tests/mixed content)
+  let cleaned = content
+    .split(/\r?\n/)
+    .filter((line) => !TOKEN_WATERMARK_LINE.test(line))
+    .join('\n');
+
+  // Substring removal for cases where diagnostic is stuck inline (no \n boundaries)
+  cleaned = cleaned.replace(TOKEN_WATERMARK_ANY, '');
+
+  return cleaned
+    .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+};
+
 export const isTextContentReplacement = (content: IMessageText['content'] | undefined): boolean =>
   content?.replace === true;
 
@@ -514,9 +540,12 @@ export const transformMessage = (message: IResponseMessage): TMessage | undefine
         error?: unknown;
       };
       const tipType = data.type ?? 'warning';
+      const rawTip = typeof data.content === 'string' ? data.content : '';
+      const tipContent = stripTokenWatermarkNotice(rawTip);
+      if (tipContent.length === 0) return undefined;
       const structuredError =
         tipType === 'error'
-          ? (normalizeAgentStreamError(data.error) ?? normalizeAgentStreamError({ ...data, message: data.content }))
+          ? (normalizeAgentStreamError(data.error) ?? normalizeAgentStreamError({ ...data, message: tipContent }))
           : undefined;
       return {
         id: uuid(),
@@ -526,7 +555,7 @@ export const transformMessage = (message: IResponseMessage): TMessage | undefine
         conversation_id: message.conversation_id,
         created_at,
         content: {
-          content: data.content,
+          content: tipContent,
           type: tipType,
           ...(structuredError ? { error: structuredError } : {}),
         },
@@ -538,6 +567,9 @@ export const transformMessage = (message: IResponseMessage): TMessage | undefine
       const data = message.data;
       const isRichData = isResponseTextData(data);
       const shouldReplace = message.replace === true || (isRichData && data.replace === true);
+      const rawContent = isRichData ? data.content : typeof data === 'string' ? data : String(data ?? '');
+      const content = stripTokenWatermarkNotice(rawContent);
+      if (content.length === 0) return undefined;
       return {
         id: uuid(),
         type: 'text',
@@ -547,7 +579,7 @@ export const transformMessage = (message: IResponseMessage): TMessage | undefine
         created_at,
         content: isRichData
           ? {
-              content: data.content,
+              content,
               cronMeta: data.cronMeta,
               ...(shouldReplace ? { replace: true } : {}),
               ...(data.teammate_message ? { teammateMessage: true } : {}),
@@ -556,7 +588,7 @@ export const transformMessage = (message: IResponseMessage): TMessage | undefine
               ...(data.sender_conversation_id ? { senderConversationId: data.sender_conversation_id } : {}),
             }
           : {
-              content: data as string,
+              content,
               ...(shouldReplace ? { replace: true } : {}),
             },
         ...(message.hidden && { hidden: true }),

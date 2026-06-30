@@ -297,7 +297,12 @@
     "inspectRequestPlaceholder": "이 요소에 대한 변경을 설명하세요(예: 20px 위로, 강조색 사용)…",
     "inspectAsk": "에이전트에게 질문",
     "viewportResponsive": "반응형",
-    "viewportHint": "미리보기 너비: 페이지를 데스크톱 너비로 렌더링(축소하여 맞춤)하여 좁은 너비가 아닌 실제 와이드 브라우저와 동일한 레이아웃으로 표시합니다. 반응형 = 패널의 실제 너비로 레이아웃."
+    "viewportHint": "미리보기 너비: 페이지를 데스크톱 너비로 렌더링(축소하여 맞춤)하여 좁은 너비가 아닌 실제 와이드 브라우저와 동일한 레이아웃으로 표시합니다. 반응형 = 패널의 실제 너비로 레이아웃.",
+    "hideRightSidebar": "오른쪽 사이드바 숨기기(전체 브라우저 보기)",
+    "showRightSidebar": "오른쪽 사이드바 표시",
+    "hideIdeSidebars": "IDE 왼쪽 및 오른쪽 탭 숨기기",
+    "showIdeSidebars": "IDE 왼쪽 및 오른쪽 탭 표시",
+    "resizeSidebar": "사이드바 크기 조정"
   },
   "db": {
     "connections": "연결",

@@ -83,10 +83,7 @@ export type OmniGatewayProgressSink = (event: OmniGatewayProgressEvent) => void;
 export const makeProgressEmitter = (
   sink: OmniGatewayProgressSink | undefined,
   now: () => number = Date.now
-): ((
-  phase: OmniGatewayProgressPhase,
-  extra?: { message?: string; tunnelUrl?: string; error?: string }
-) => void) => {
+): ((phase: OmniGatewayProgressPhase, extra?: { message?: string; tunnelUrl?: string; error?: string }) => void) => {
   return (phase, extra) => {
     if (!sink) return;
     sink({

@@ -65,7 +65,8 @@ describe('parseScenes — repair fallback', () => {
   });
 
   it('parses an array wrapped in prose with smart quotes', () => {
-    const dirty = 'Sure!\n[{\u201Ctitle\u201D:\u201CDawn\u201D,\u201Cnarration\u201D:\u201Cx\u201D,\u201CimagePrompt\u201D:\u201Cy\u201D}]';
+    const dirty =
+      'Sure!\n[{\u201Ctitle\u201D:\u201CDawn\u201D,\u201Cnarration\u201D:\u201Cx\u201D,\u201CimagePrompt\u201D:\u201Cy\u201D}]';
     const scenes = parseScenes(dirty, 1, seqIds());
     expect(scenes[0].title).toBe('Dawn');
     expect(scenes[0].imagePrompt).toBe('y');
@@ -78,7 +79,8 @@ describe('parseScenes — repair fallback', () => {
   });
 
   it('assigns sequential indices regardless of an index the model invented', () => {
-    const reply = '[{"title":"A","narration":"n","imagePrompt":"p","index":99},{"title":"B","narration":"n","imagePrompt":"p","index":7}]';
+    const reply =
+      '[{"title":"A","narration":"n","imagePrompt":"p","index":99},{"title":"B","narration":"n","imagePrompt":"p","index":7}]';
     const scenes = parseScenes(reply, 2, seqIds());
     expect(scenes.map((s) => s.index)).toEqual([0, 1]);
   });

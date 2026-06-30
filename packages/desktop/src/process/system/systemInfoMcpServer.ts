@@ -25,7 +25,11 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { BUILTIN_SYSTEM_NAME, BUILTIN_SYSTEM_TOOL_NAME, SYSTEM_SNAPSHOT_DIR_ENV_KEY } from '../resources/builtinMcp/constants';
+import {
+  BUILTIN_SYSTEM_NAME,
+  BUILTIN_SYSTEM_TOOL_NAME,
+  SYSTEM_SNAPSHOT_DIR_ENV_KEY,
+} from '../resources/builtinMcp/constants';
 // Type-only import — erased at compile time, adds no runtime dependency.
 import type { SystemSnapshot } from './systemInfoTypes';
 
@@ -82,7 +86,13 @@ function summarize(snapshot: SystemSnapshot) {
       onBattery: live.power.onBattery,
       topProcesses: live.processes
         .slice(0, TOP_PROCESS_LIMIT)
-        .map((process) => ({ pid: process.pid, name: process.name, type: process.type, cpuPercent: process.cpuPercent, memoryMB: process.memoryMB })),
+        .map((process) => ({
+          pid: process.pid,
+          name: process.name,
+          type: process.type,
+          cpuPercent: process.cpuPercent,
+          memoryMB: process.memoryMB,
+        })),
     },
   };
 }
@@ -90,7 +100,12 @@ function summarize(snapshot: SystemSnapshot) {
 /** Human-readable headline for the text payload. */
 function describe(summary: ReturnType<typeof summarize>): string {
   const { cpu, live } = summary;
-  const pressure = live.cpuPercent >= 85 || live.memoryUsedPercent >= 90 ? 'under heavy load' : live.cpuPercent >= 50 || live.memoryUsedPercent >= 70 ? 'moderately busy' : 'idle / light';
+  const pressure =
+    live.cpuPercent >= 85 || live.memoryUsedPercent >= 90
+      ? 'under heavy load'
+      : live.cpuPercent >= 50 || live.memoryUsedPercent >= 70
+        ? 'moderately busy'
+        : 'idle / light';
   return `Host ${summary.hostname}: ${cpu.model} (${cpu.cores} cores). CPU ${live.cpuPercent}%, RAM ${live.memoryUsedMB}/${live.memoryTotalMB}MB (${live.memoryUsedPercent}%). The machine is currently ${pressure}.`;
 }
 

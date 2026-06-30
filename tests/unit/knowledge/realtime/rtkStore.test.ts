@@ -102,7 +102,9 @@ describe('rtkStore', () => {
 
   it('filters by status, expiry and topic prefix', async () => {
     await store.upsert(makeFact({ id: 'a', topic: 'node.v', status: 'active', expiresAt: '2026-01-01T00:00:00.000Z' }));
-    await store.upsert(makeFact({ id: 'b', topic: 'node.x', status: 'archived', expiresAt: '2030-01-01T00:00:00.000Z' }));
+    await store.upsert(
+      makeFact({ id: 'b', topic: 'node.x', status: 'archived', expiresAt: '2030-01-01T00:00:00.000Z' })
+    );
     expect((await store.list({ status: 'active' })).map((f) => f.id)).toEqual(['a']);
     expect((await store.list({ expiredBefore: '2027-01-01T00:00:00.000Z' })).map((f) => f.id)).toEqual(['a']);
     expect((await store.list({ topicPrefix: 'node.' })).length).toBe(2);

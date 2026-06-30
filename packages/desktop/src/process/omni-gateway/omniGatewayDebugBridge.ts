@@ -68,14 +68,7 @@ export type OmniDebugBridge = {
 };
 
 /** Names of the debug-bridge tools advertised back to the caller. */
-export const OMNI_DEBUG_TOOLS = [
-  'health',
-  'bootstrap',
-  'search',
-  'read',
-  'list_dir',
-  'find_definition',
-] as const;
+export const OMNI_DEBUG_TOOLS = ['health', 'bootstrap', 'search', 'read', 'list_dir', 'find_definition'] as const;
 
 const sendJson = (res: ServerResponse, status: number, body: unknown): void => {
   if (res.headersSent) return;
@@ -83,14 +76,11 @@ const sendJson = (res: ServerResponse, status: number, body: unknown): void => {
   res.end(JSON.stringify(body, null, 2));
 };
 
-const send403 = (res: ServerResponse, reason: string): void =>
-  sendJson(res, 403, { ok: false, error: reason });
+const send403 = (res: ServerResponse, reason: string): void => sendJson(res, 403, { ok: false, error: reason });
 
-const send400 = (res: ServerResponse, reason: string): void =>
-  sendJson(res, 400, { ok: false, error: reason });
+const send400 = (res: ServerResponse, reason: string): void => sendJson(res, 400, { ok: false, error: reason });
 
-const send404 = (res: ServerResponse): void =>
-  sendJson(res, 404, { ok: false, error: 'Unknown debug endpoint.' });
+const send404 = (res: ServerResponse): void => sendJson(res, 404, { ok: false, error: 'Unknown debug endpoint.' });
 
 /**
  * Build the debug bridge. The host mounts the returned `handle` on any URL

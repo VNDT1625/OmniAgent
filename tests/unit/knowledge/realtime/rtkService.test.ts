@@ -44,7 +44,11 @@ const createMemoryFs = (): RtkStoreFs => {
 };
 
 /** Constant embedder — retrieval plumbing only (ranking is covered elsewhere). */
-const constEmbedder: Embedder = { providerId: 't', model: 'const', embed: (texts) => Promise.resolve(texts.map(() => [1])) };
+const constEmbedder: Embedder = {
+  providerId: 't',
+  model: 'const',
+  embed: (texts) => Promise.resolve(texts.map(() => [1])),
+};
 
 const src = (url: string): FactSource => ({ url, fetchedAt: '2026-01-01T00:00:00.000Z' });
 
@@ -70,7 +74,12 @@ describe('rtkService.record + lookup', () => {
   });
 
   it('records a new fact and retrieves it via lookup', async () => {
-    await service.record({ topic: 'nodejs.lts.version', question: 'latest node lts?', value: '20.x', volatilityClass: 'version' });
+    await service.record({
+      topic: 'nodejs.lts.version',
+      question: 'latest node lts?',
+      value: '20.x',
+      volatilityClass: 'version',
+    });
     const pack = await service.lookup('node lts');
     expect(pack.facts).toHaveLength(1);
     expect(pack.facts[0].fact.value).toBe('20.x');
@@ -158,9 +167,22 @@ describe('rtkService.refresh', () => {
     };
     const service = build(pipeline);
     // fresh fact (long TTL) — should be skipped
-    await service.record({ topic: 'fresh', question: 'q1', value: 'v', volatilityClass: 'role_holder', validAsOf: new Date(NOW).toISOString() });
+    await service.record({
+      topic: 'fresh',
+      question: 'q1',
+      value: 'v',
+      volatilityClass: 'role_holder',
+      validAsOf: new Date(NOW).toISOString(),
+    });
     // expired fact — should be refreshed
-    await service.record({ topic: 'old', question: 'q2', value: 'v', volatilityClass: 'status_event', ttlMs: 1, validAsOf: new Date(NOW - 1000).toISOString() });
+    await service.record({
+      topic: 'old',
+      question: 'q2',
+      value: 'v',
+      volatilityClass: 'status_event',
+      ttlMs: 1,
+      validAsOf: new Date(NOW - 1000).toISOString(),
+    });
 
     const result = await service.refreshExpired({ now: NOW });
     expect(result.attempted).toBe(1);

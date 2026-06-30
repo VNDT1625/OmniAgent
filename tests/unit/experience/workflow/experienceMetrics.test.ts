@@ -53,8 +53,38 @@ describe('createExperienceMetrics', () => {
   });
 
   it('computes hit and acceptance rates', () => {
-    expect(hitRate({ retrievals: 4, retrievalsWithHits: 3, suggestionsShown: 0, accepted: 0, falseMatches: 0, captures: 0, updatedAt: '' })).toBe(0.75);
-    expect(acceptanceRate({ retrievals: 0, retrievalsWithHits: 0, suggestionsShown: 0, accepted: 3, falseMatches: 1, captures: 0, updatedAt: '' })).toBe(0.75);
-    expect(hitRate({ retrievals: 0, retrievalsWithHits: 0, suggestionsShown: 0, accepted: 0, falseMatches: 0, captures: 0, updatedAt: '' })).toBe(0);
+    expect(
+      hitRate({
+        retrievals: 4,
+        retrievalsWithHits: 3,
+        suggestionsShown: 0,
+        accepted: 0,
+        falseMatches: 0,
+        captures: 0,
+        updatedAt: '',
+      })
+    ).toBe(0.75);
+    expect(
+      acceptanceRate({
+        retrievals: 0,
+        retrievalsWithHits: 0,
+        suggestionsShown: 0,
+        accepted: 3,
+        falseMatches: 1,
+        captures: 0,
+        updatedAt: '',
+      })
+    ).toBe(0.75);
+    expect(
+      hitRate({
+        retrievals: 0,
+        retrievalsWithHits: 0,
+        suggestionsShown: 0,
+        accepted: 0,
+        falseMatches: 0,
+        captures: 0,
+        updatedAt: '',
+      })
+    ).toBe(0);
   });
 });

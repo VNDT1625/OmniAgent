@@ -177,7 +177,10 @@ export const rankExperiences = (
     .filter((entry) => entry.status !== 'archived')
     .map((entry): ExperienceSuggestion => {
       const lexical = lexicalSimilarity(queryText, entry.lexicalText);
-      const semantic = hasQueryVector && entry.vector && entry.vector.length > 0 ? cosineSimilarity(options.queryVector as number[], entry.vector) : lexical;
+      const semantic =
+        hasQueryVector && entry.vector && entry.vector.length > 0
+          ? cosineSimilarity(options.queryVector as number[], entry.vector)
+          : lexical;
       const context = computeContextMatch(query, entry);
       const recency = recencyScore(entry.updatedAt, now);
       const raw =

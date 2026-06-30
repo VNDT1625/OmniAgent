@@ -101,7 +101,10 @@ export const fetchDailyHistory = async (
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const res = await doFetch(url, { signal: controller.signal, headers: { 'User-Agent': USER_AGENT, Accept: 'text/csv' } });
+    const res = await doFetch(url, {
+      signal: controller.signal,
+      headers: { 'User-Agent': USER_AGENT, Accept: 'text/csv' },
+    });
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
     const bars = parseHistoryCsv(await res.text());
     if (bars.length === 0) return { ok: false, error: 'no history' };
@@ -109,7 +112,10 @@ export const fetchDailyHistory = async (
     return { ok: true, bars: options.limit ? bars.slice(-options.limit) : bars };
   } catch (error) {
     if (cached) return { ok: true, bars: cached.bars };
-    return { ok: false, error: controller.signal.aborted ? 'timeout' : error instanceof Error ? error.message : String(error) };
+    return {
+      ok: false,
+      error: controller.signal.aborted ? 'timeout' : error instanceof Error ? error.message : String(error),
+    };
   } finally {
     clearTimeout(timer);
   }

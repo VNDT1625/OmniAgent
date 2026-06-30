@@ -23,7 +23,7 @@ const suggestion: ExperienceSuggestion = {
 };
 
 const fakeService = (overrides: Partial<WorkflowService> = {}): WorkflowService => ({
-  record: vi.fn(async () => ({ action: 'created', entry: { id: 'e1' } } as unknown as CaptureResult)),
+  record: vi.fn(async () => ({ action: 'created', entry: { id: 'e1' } }) as unknown as CaptureResult),
   search: vi.fn(async () => [suggestion]),
   recordFeedback: vi.fn(async () => true),
   ...overrides,
@@ -33,7 +33,11 @@ describe('createExperienceWorkflow.onVerifyOutcome', () => {
   it('does not retrieve on the first ordinary failure', async () => {
     const service = fakeService();
     const workflow = createExperienceWorkflow({ service, trigger: createExperienceTrigger({ threshold: 2 }) });
-    const result = await workflow.onVerifyOutcome({ command: 'bun run test', errorText: 'expected a to equal b' }, 'p', 'failed');
+    const result = await workflow.onVerifyOutcome(
+      { command: 'bun run test', errorText: 'expected a to equal b' },
+      'p',
+      'failed'
+    );
     expect(result.decision.shouldRetrieve).toBe(false);
     expect(result.suggestions).toEqual([]);
     expect(service.search).not.toHaveBeenCalled();
@@ -52,7 +56,11 @@ describe('createExperienceWorkflow.onVerifyOutcome', () => {
   it('retrieves immediately on a hard failure', async () => {
     const service = fakeService();
     const workflow = createExperienceWorkflow({ service });
-    const result = await workflow.onVerifyOutcome({ command: 'bun start', errorText: 'thread panicked at unwrap' }, 'p', 'failed');
+    const result = await workflow.onVerifyOutcome(
+      { command: 'bun start', errorText: 'thread panicked at unwrap' },
+      'p',
+      'failed'
+    );
     expect(result.decision.shouldRetrieve).toBe(true);
     expect(service.search).toHaveBeenCalledTimes(1);
   });

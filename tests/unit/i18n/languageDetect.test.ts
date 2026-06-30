@@ -71,11 +71,15 @@ describe('foreignLanguageRatio', () => {
 
   describe('Russian system language', () => {
     it('treats a Russian reply as native', () => {
-      expect(foreignLanguageRatio('Я закончил обновление конфигурации и перепроверил весь поток данных.', 'ru-RU')).toBeLessThan(0.2);
+      expect(
+        foreignLanguageRatio('Я закончил обновление конфигурации и перепроверил весь поток данных.', 'ru-RU')
+      ).toBeLessThan(0.2);
     });
 
     it('flags an English reply as foreign', () => {
-      expect(foreignLanguageRatio('I have finished updating the configuration completely.', 'ru-RU')).toBeGreaterThan(0.8);
+      expect(foreignLanguageRatio('I have finished updating the configuration completely.', 'ru-RU')).toBeGreaterThan(
+        0.8
+      );
     });
   });
 });

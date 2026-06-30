@@ -50,7 +50,7 @@ vi.mock('@/common', () => ({
   ipcBridge: { dialog: { showOpen: { invoke: showOpenMock } } },
 }));
 
-import { useIdeWorkspace } from '@renderer/pages/studio/ide/useIdeWorkspace';
+import { collectTreeFilePaths, useIdeWorkspace, type TreeNode } from '@renderer/pages/studio/ide/useIdeWorkspace';
 
 const SESSION_KEY = 'studio.ide.session';
 const ROOT = '/repo';
@@ -85,6 +85,20 @@ describe('useIdeWorkspace', () => {
     expect(result.current.rootPath).toBeNull();
     expect(result.current.openFiles).toEqual([]);
     expect(result.current.hasUnsaved).toBe(false);
+  });
+
+  it('collects loaded tree files for chat mentions when the graph is empty', () => {
+    const tree: TreeNode[] = [
+      { key: '/repo/design.md', title: 'design.md', isLeaf: true },
+      {
+        key: '/repo/specs',
+        title: 'specs',
+        isLeaf: false,
+        children: [{ key: '/repo/specs/required.md', title: 'required.md', isLeaf: true }],
+      },
+    ];
+
+    expect(collectTreeFilePaths(tree, ROOT)).toEqual(['design.md', 'specs/required.md']);
   });
 
   it('restores the persisted folder + tabs on mount', async () => {

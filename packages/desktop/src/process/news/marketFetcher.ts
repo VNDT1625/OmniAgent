@@ -43,9 +43,7 @@ export type MarketQuote = {
   source: 'yahoo' | 'stooq' | 'coingecko';
 };
 
-export type MarketQuotesResult =
-  | { ok: true; quotes: MarketQuote[]; fetchedAt: number }
-  | { ok: false; error: string };
+export type MarketQuotesResult = { ok: true; quotes: MarketQuote[]; fetchedAt: number } | { ok: false; error: string };
 
 export type MarketFetcherDeps = {
   fetch?: typeof fetch;
@@ -119,7 +117,13 @@ const instrumentsFromSymbols = (symbols: string[]): Instrument[] =>
   symbols.map((raw) => {
     const yahoo = raw.trim();
     const kind = inferKind(yahoo);
-    return { yahoo, stooq: '', symbol: displaySymbol(yahoo, kind), name: KNOWN_NAMES[yahoo] ?? displaySymbol(yahoo, kind), kind };
+    return {
+      yahoo,
+      stooq: '',
+      symbol: displaySymbol(yahoo, kind),
+      name: KNOWN_NAMES[yahoo] ?? displaySymbol(yahoo, kind),
+      kind,
+    };
   });
 
 const withTimeout = async (
@@ -152,15 +156,20 @@ const mapLimit = async <T, R>(items: T[], limit: number, worker: (item: T) => Pr
 };
 
 type YahooChart = {
-  chart?: { result?: Array<{ meta?: { regularMarketPrice?: unknown; previousClose?: unknown; chartPreviousClose?: unknown; currency?: unknown } }> };
+  chart?: {
+    result?: Array<{
+      meta?: {
+        regularMarketPrice?: unknown;
+        previousClose?: unknown;
+        chartPreviousClose?: unknown;
+        currency?: unknown;
+      };
+    }>;
+  };
 };
 
 /** Fetch one instrument from Yahoo v8 chart. Returns `null` on any failure. */
-const fetchYahoo = async (
-  inst: Instrument,
-  doFetch: typeof fetch,
-  timeoutMs: number
-): Promise<MarketQuote | null> => {
+const fetchYahoo = async (inst: Instrument, doFetch: typeof fetch, timeoutMs: number): Promise<MarketQuote | null> => {
   const url = `${YAHOO_CHART_URL}${encodeURIComponent(inst.yahoo)}?range=1d&interval=1d`;
   try {
     const res = await withTimeout(doFetch, url, timeoutMs, { 'User-Agent': USER_AGENT, Accept: 'application/json' });
@@ -193,7 +202,10 @@ const parseStooqCsv = (csv: string): Map<string, { open: number | null; close: n
     const cols = line.split(',');
     const sym = cols[iSym]?.toLowerCase();
     if (!sym) continue;
-    out.set(sym, { open: iOpen >= 0 ? numOrNull(Number(cols[iOpen])) : null, close: iClose >= 0 ? numOrNull(Number(cols[iClose])) : null });
+    out.set(sym, {
+      open: iOpen >= 0 ? numOrNull(Number(cols[iOpen])) : null,
+      close: iClose >= 0 ? numOrNull(Number(cols[iClose])) : null,
+    });
   }
   return out;
 };

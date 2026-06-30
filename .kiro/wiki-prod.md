@@ -1,6 +1,7 @@
 # Wiki Production-Grade — Log riêng (KHÔNG ghi vào status.md)
 
 > Người dùng yêu cầu: nâng IDE/Wiki lên production-grade. Pipeline mới:
+>
 > 1. Bước khởi động: Agent đọc doc nhưng KHÔNG tin doc — kiểm chứng doc với code thật.
 >    Doc sai thì TỰ SỬA doc trước.
 > 2. Gọi "agent khác" viết wiki TỪ doc đã verify.
@@ -35,15 +36,11 @@
 - [x] E. ideClient: +wikiBuild/wikiLoad/onWikiProgress (+types). useRepoWiki: viết lại flow persistent
       (load on open + build với phase progress + docReports/quality/persisted). WikiPanel: viết lại
       (phase strip, documentation-check report, saved badge, evidence string[]). DOM test viết lại.
-- [x] F. i18n: +ide.wiki.{phase_*,building,loadingSaved,buildFailed,reportTitle,verifiedDocs,docsFixed,
+- [x] F. i18n: +ide.wiki.{phase\_\*,building,loadingSaved,buildFailed,reportTitle,verifiedDocs,docsFixed,
       docsClean,quality,savedBadge,savedAt,refinedTooltip} ở 9 locale. i18n:types in-sync, check-i18n PASS.
-- [x] G. Tự đánh giá & cải thiện tới hội tụ:
-      - Sửa lỗi đúng đắn: critic coverage chấm bằng từ khóa tiếng Anh → phạt oan wiki non-English →
-        gate coverage chỉ khi prose English (wikiBootstrap). +test critic briefKeywords=[].
-      - Sửa TS7018 ở useRepoWiki (annotate return của map callback).
-      - Dọn lint: 3 lỗi unicorn (Array.from thay new Array, startsWith thay regex) + 4 justify
-        no-await-in-loop (refine/bootstrap/store tuần tự có chủ đích) → oxlint 0/0.
-      - Thêm test bootstrap "records per-section quality and refines a weak section".
+- [x] G. Tự đánh giá & cải thiện tới hội tụ: - Sửa lỗi đúng đắn: critic coverage chấm bằng từ khóa tiếng Anh → phạt oan wiki non-English →
+      gate coverage chỉ khi prose English (wikiBootstrap). +test critic briefKeywords=[]. - Sửa TS7018 ở useRepoWiki (annotate return của map callback). - Dọn lint: 3 lỗi unicorn (Array.from thay new Array, startsWith thay regex) + 4 justify
+      no-await-in-loop (refine/bootstrap/store tuần tự có chủ đích) → oxlint 0/0. - Thêm test bootstrap "records per-section quality and refines a weak section".
 
 ## Kết quả cuối (production-grade ĐẠT)
 

@@ -386,7 +386,9 @@ const NanobotSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id
         setWorkspacePath(resolvedWorkspace);
         const initialDisplayMessage = buildDisplayMessage(input, files, resolvedWorkspace);
         const initialGoalExpansion = expandGoalCommand(input);
-        const initialModelInput = initialGoalExpansion ? buildDisplayMessage(initialGoalExpansion, files, resolvedWorkspace) : initialDisplayMessage;
+        const initialModelInput = initialGoalExpansion
+          ? buildDisplayMessage(initialGoalExpansion, files, resolvedWorkspace)
+          : initialDisplayMessage;
         if (initialGoalExpansion) {
           const parsedGoal = parseGoalCommand(input);
           if (parsedGoal) setGoalMode(conversation_id, parsedGoal.variant, parsedGoal.requirement);

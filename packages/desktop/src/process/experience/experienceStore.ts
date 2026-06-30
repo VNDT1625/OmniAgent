@@ -73,7 +73,9 @@ const UNSAFE_ID_PATTERN = /[/\\]|\.\./;
 
 const assertSafeId = (kind: 'projectId' | 'entryId', value: string): void => {
   if (value.length === 0 || UNSAFE_ID_PATTERN.test(value)) {
-    throw new Error(`[Experience] Invalid ${kind} ${JSON.stringify(value)}: must be non-empty with no path separators or "..".`);
+    throw new Error(
+      `[Experience] Invalid ${kind} ${JSON.stringify(value)}: must be non-empty with no path separators or "..".`
+    );
   }
 };
 

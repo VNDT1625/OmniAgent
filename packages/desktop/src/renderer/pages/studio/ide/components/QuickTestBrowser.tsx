@@ -25,8 +25,8 @@
  * Renderer-only module: positions the view via IPC; never renders web content.
  */
 
-import { Button, Input, Select, Tooltip } from '@arco-design/web-react';
-import { Left, Monitor, Redo, Refresh, Right } from '@icon-park/react';
+import { Button, Input, Tooltip } from '@arco-design/web-react';
+import { Left, Redo, Refresh, Right } from '@icon-park/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { browserClient } from '@renderer/pages/browser/browserBridgeClient';
@@ -44,43 +44,14 @@ export type QuickTestBrowserProps = {
    * navigation, so the panel can auto-open the app once the dev server is up.
    */
   navigateUrl?: string | null;
+  /** Optional controls rendered inside the address toolbar before navigation. */
+  toolbarLeading?: React.ReactNode;
+  /** Optional controls rendered inside the address toolbar before the Go button. */
+  toolbarTrailing?: React.ReactNode;
 };
 
-/** Debounce window (ms) for pushing the frame's bounds. */
-const BOUNDS_DEBOUNCE_MS = 90;
-
-/**
- * Desktop viewport widths (CSS px) the user can preview against. The embedded
- * page is rendered as if its viewport were this wide — its real DESKTOP layout —
- * and then scaled with zoom so it fits the (usually narrower) panel region. This
- * is what fixes the "tracker shrinks the page so it triggers mobile breakpoints
- * and the design looks wrong" report: the page now lays out at a true desktop
- * width instead of at the panel's cramped physical width.
- *
- * `0` is the "Responsive / fit" option — no forced width, the page lays out at
- * the panel's own width at 100% zoom (useful for checking real responsive
- * behaviour at the current size).
- */
-const VIEWPORT_WIDTHS = [0, 1280, 1440, 1920] as const;
-
-/** Default preview width: 1440 is the most common design baseline for desktop. */
-const DEFAULT_VIEWPORT_WIDTH = 1440;
-
-/** Zoom is clamped to Chromium's practical range so a value can't break rendering. */
-const MIN_ZOOM = 0.25;
-const MAX_ZOOM = 1;
-
-/**
- * Compute the zoom factor that fits a `referenceWidth`-wide desktop layout into
- * the panel's actual on-screen `hostWidth`. When `referenceWidth` is `0`
- * (Responsive), the page renders 1:1 at the panel width (zoom = 1).
- */
-const fitZoom = (hostWidth: number, referenceWidth: number): number => {
-  if (referenceWidth <= 0) return 1;
-  if (!Number.isFinite(hostWidth) || hostWidth <= 0) return MIN_ZOOM;
-  const raw = hostWidth / referenceWidth;
-  return Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, raw));
-};
+/** Debounce window (ms) for pushing the frame's bounds. Higher = calmer, less pulsing. */
+const BOUNDS_DEBOUNCE_MS = 120;
 
 /**
  * Stable id for the Quick Test embedded tab. Using a FIXED id (rather than a
@@ -107,7 +78,12 @@ const normalizeUrl = (raw: string): string => {
  * The embedded browser the user tests against. Header = navigation controls +
  * address bar; body = the reserved region the native view paints over.
  */
-const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({ onTabReady, navigateUrl }) => {
+const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({
+  onTabReady,
+  navigateUrl,
+  toolbarLeading,
+  toolbarTrailing,
+}) => {
   const { t } = useTranslation();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -115,14 +91,14 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({ onTabReady, navigat
   const [tabId, setTabId] = useState<string | null>(null);
   const [address, setAddress] = useState('');
   const [currentUrl, setCurrentUrl] = useState('');
-  // The desktop viewport width (CSS px) the page is laid out at; 0 = Responsive
-  // (no forced width, 1:1). Drives the fit-zoom so the page renders its true
-  // desktop layout scaled into the panel instead of a cramped, narrow viewport.
-  const [viewportWidth, setViewportWidth] = useState<number>(DEFAULT_VIEWPORT_WIDTH);
-  // Last zoom factor pushed to the native view, so we only re-push when it
-  // changes meaningfully (avoids spamming the bridge on every resize tick).
+  // Last zoom factor pushed to the native view. Quick Test keeps zoom at 1 so
+  // the selected viewport width is stable and never pulses due to side panels.
   const lastZoomRef = useRef<number>(0);
-  const viewportWidthRef = useRef<number>(DEFAULT_VIEWPORT_WIDTH);
+  // Last pushed geometry (rounded) to avoid redundant setBounds when ResizeObserver
+  // or timers report micro-jitter or no-op resizes.
+  const lastRectRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+  /** Force next push to re-apply zoom=1 after navigations that may reset Chromium zoom. */
+  const forceZoomRef = useRef(false);
 
   // Reposition the native view to cover the reserved region (or hide it when
   // the region is off-screen / collapsed). Mirrors LiveBrowserFrame.
@@ -133,26 +109,41 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({ onTabReady, navigat
     const rect = el.getBoundingClientRect();
     const offscreen = rect.width <= 1 || rect.height <= 1 || rect.bottom <= 0 || rect.top >= window.innerHeight;
     if (offscreen) {
+      lastRectRef.current = null;
       void browserClient.setVisible({ id, visible: false }).catch(() => {});
       return;
     }
-    void browserClient
-      .setBounds({
-        id,
-        bounds: {
-          x: Math.round(rect.left),
-          y: Math.round(rect.top),
-          width: Math.round(rect.width),
-          height: Math.round(rect.height),
-        },
-      })
-      .catch(() => {});
-    const zoom = fitZoom(rect.width, viewportWidthRef.current);
-    if (Math.abs(zoom - lastZoomRef.current) > 0.01) {
-      lastZoomRef.current = zoom;
-      void browserClient.setZoom({ id, factor: zoom }).catch(() => {});
+    const rw = Math.round(rect.width);
+    const rh = Math.round(rect.height);
+    const rx = Math.round(rect.left);
+    const ry = Math.round(rect.top);
+    const prev = lastRectRef.current;
+    // Ignore subpixel micro-jitter, but still move when the real container moves.
+    const geometryChanged =
+      !prev ||
+      Math.abs(prev.x - rx) > 2 ||
+      Math.abs(prev.y - ry) > 2 ||
+      Math.abs(prev.w - rw) > 2 ||
+      Math.abs(prev.h - rh) > 2;
+    if (geometryChanged) {
+      lastRectRef.current = { x: rx, y: ry, w: rw, h: rh };
+      void browserClient
+        .setBounds({
+          id,
+          bounds: { x: rx, y: ry, width: rw, height: rh },
+        })
+        .catch(() => {});
     }
-    void browserClient.setVisible({ id, visible: true }).catch(() => {});
+
+    const shouldForceZoom = forceZoomRef.current || lastZoomRef.current !== 1;
+    if (shouldForceZoom) {
+      lastZoomRef.current = 1;
+      forceZoomRef.current = false;
+      void browserClient.setZoom({ id, factor: 1 }).catch(() => {});
+    }
+    if (geometryChanged) {
+      void browserClient.setVisible({ id, visible: true }).catch(() => {});
+    }
   }, []);
 
   const schedulePush = useCallback(() => {
@@ -160,9 +151,9 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({ onTabReady, navigat
     debounceRef.current = setTimeout(pushBounds, BOUNDS_DEBOUNCE_MS);
   }, [pushBounds]);
 
-  // Open the dedicated tab on mount; destroy it on unmount. The tab is fit-zoomed
-  // so the page lays out at a desktop viewport width (see fitZoom), scaled to the
-  // panel — not a cramped narrow viewport that would trip mobile breakpoints.
+  // Open the dedicated tab on mount; destroy it on unmount. Bounds are pushed
+  // only when the real reserved region changes, and zoom is kept at 1 to avoid
+  // repeated native repaint pulses during recording.
   //
   // The tab uses a FIXED id ({@link QT_TAB_ID}). A renderer refresh (F5/Ctrl+R)
   // skips React cleanup, so the old native view would otherwise be orphaned and
@@ -180,6 +171,8 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({ onTabReady, navigat
         return;
       }
       tabIdRef.current = id;
+      lastRectRef.current = null;
+      lastZoomRef.current = 0;
       setTabId(id);
       onTabReady(id);
       pushBounds();
@@ -193,6 +186,8 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({ onTabReady, navigat
       alive = false;
       const id = tabIdRef.current;
       tabIdRef.current = null;
+      lastRectRef.current = null;
+      lastZoomRef.current = 0;
       onTabReady(null);
       if (id) {
         void browserClient.setVisible({ id, visible: false }).catch(() => {});
@@ -239,8 +234,11 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({ onTabReady, navigat
     if (!tabId) return undefined;
     const unsub = browserClient.onTabUpdated((update) => {
       if (update.id !== tabId) return;
-      setCurrentUrl(update.url);
-      setAddress(update.url);
+      // Only update state (and trigger downstream zoom re-apply) on actual change.
+      // Rapid did-navigate / title events from the loaded app must not cause
+      // spurious repeated setZoom that make the display pulse.
+      setCurrentUrl((prev) => (prev === update.url ? prev : update.url));
+      setAddress((prev) => (prev === update.url ? prev : update.url));
     });
     return () => unsub();
   }, [tabId]);
@@ -267,7 +265,21 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({ onTabReady, navigat
     setAddress(url);
     setCurrentUrl(url);
     void browserClient.navigate({ id: tabId, url }).catch(() => {});
+    // Force re-apply the desktop viewport zoom after the navigation (Chromium resets it).
+    forceZoomRef.current = true;
+    schedulePush();
   }, [navigateUrl, tabId]);
+
+  // When the controlled run stops (readyUrl cleared), reset tracking so the
+  // next "Run" starts with a clean zoom/size baseline. This helps stability
+  // across multiple test iterations after clicks/inspect.
+  useEffect(() => {
+    if (!navigateUrl) {
+      forceZoomRef.current = false;
+      lastZoomRef.current = 0;
+      lastRectRef.current = null;
+    }
+  }, [navigateUrl]);
 
   const goBack = useCallback(() => {
     const id = tabIdRef.current;
@@ -282,30 +294,15 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({ onTabReady, navigat
     if (id && currentUrl) void browserClient.navigate({ id, url: currentUrl }).catch(() => {});
   }, [currentUrl]);
 
-  // Change the desktop preview width: update the ref the bounds-pusher reads,
-  // reset the last-zoom guard so the new factor is force-applied, then re-push.
-  const handleViewportChange = useCallback(
-    (width: number) => {
-      setViewportWidth(width);
-      viewportWidthRef.current = width;
-      lastZoomRef.current = 0;
-      pushBounds();
-    },
-    [pushBounds]
-  );
-
-  // Chromium resets the zoom factor on navigation (redirect or in-page nav), so
-  // re-apply the fit-zoom whenever the URL changes — otherwise the page snaps
-  // back to a narrow 100% viewport after the user navigates their app.
-  useEffect(() => {
-    if (!tabId) return;
-    lastZoomRef.current = 0;
-    schedulePush();
-  }, [currentUrl, tabId, schedulePush]);
+  // Only re-apply zoom on controlled navigates (readyUrl from Run).
+  // Do NOT force on every currentUrl / in-page nav from the app under test.
+  // This prevents continuous pulsing when the user clicks around during recording.
+  // If Chromium resets zoom on SPA nav, it will be corrected on the next explicit navigation or viewport action.
 
   return (
     <div className='size-full flex flex-col min-h-0 bg-fill-1'>
-      <div className='shrink-0 flex items-center gap-6px px-10px py-7px border-b border-b-1 bg-1'>
+      <div className='shrink-0 flex items-center gap-5px px-8px py-3px border-b border-b-1 bg-1'>
+        {toolbarLeading}
         <Tooltip content={t('browser.address.back')}>
           <Button size='mini' type='text' icon={<Left theme='outline' size={15} />} onClick={goBack} />
         </Tooltip>
@@ -316,7 +313,7 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({ onTabReady, navigat
           <Button size='mini' type='text' icon={<Refresh theme='outline' size={14} />} onClick={reload} />
         </Tooltip>
         <Input
-          size='small'
+          size='mini'
           value={address}
           onChange={setAddress}
           onPressEnter={navigate}
@@ -324,23 +321,8 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({ onTabReady, navigat
           placeholder={t('browser.address.placeholder')}
           className='flex-1'
         />
-        <Tooltip content={t('ide.quicktest.viewportHint')}>
-          <Select
-            size='small'
-            value={viewportWidth}
-            onChange={handleViewportChange}
-            prefix={<Monitor theme='outline' size={13} />}
-            className='w-128px shrink-0'
-            triggerProps={{ autoAlignPopupWidth: false }}
-          >
-            {VIEWPORT_WIDTHS.map((w) => (
-              <Select.Option key={w} value={w}>
-                {w === 0 ? t('ide.quicktest.viewportResponsive') : `${w}px`}
-              </Select.Option>
-            ))}
-          </Select>
-        </Tooltip>
-        <Button size='small' type='primary' icon={<Redo theme='outline' size={13} />} onClick={navigate}>
+        {toolbarTrailing}
+        <Button size='mini' type='primary' icon={<Redo theme='outline' size={12} />} onClick={navigate}>
           {t('browser.address.go')}
         </Button>
       </div>

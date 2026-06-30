@@ -149,7 +149,7 @@ const stringValue = (value: unknown): string | undefined => (typeof value === 's
 export const findMtuiStaleConfirmation = (buffer: string): MtuiStaleConfirmationNotice | null => {
   const normalized = normalizeOutput(buffer);
   const objects = balancedJsonObjects(normalized);
-  for (const parsed of [...objects].reverse()) {
+  for (const parsed of [...objects].toReversed()) {
     const root = objectRecord(parsed);
     if (!root) continue;
     const details = objectRecord(root.details);

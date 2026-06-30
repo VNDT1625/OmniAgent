@@ -7,23 +7,26 @@
 ## ✅ Đã xong & verify (không cần làm lại)
 
 ### Realtime Knowledge (RTK) — Phase 1–4 hoàn chỉnh
+
 - Backend `process/knowledge/realtime/` (10 file) + `rtkEmbedder`/`rtkWiring`/`realtimeKnowledgeBridge`
-  + MCP `aionui-realtime-knowledge` (register ở `runBackendMigrations`). 4 cơ chế: (a) vector lookup +
-  freshness/sources, (b) scheduler refresh hết hạn, (c) staleDetector + verify-trước-khi-ghi,
-  (d) query→lookup→ground→verify→update. Guardrail FR7 + relation graph (relate supersedes/contradicts).
+  - MCP `aionui-realtime-knowledge` (register ở `runBackendMigrations`). 4 cơ chế: (a) vector lookup +
+    freshness/sources, (b) scheduler refresh hết hạn, (c) staleDetector + verify-trước-khi-ghi,
+    (d) query→lookup→ground→verify→update. Guardrail FR7 + relation graph (relate supersedes/contradicts).
 - Renderer inspector `pages/knowledge/` (`/settings/knowledge`, desktop-only) + i18n `realtimeKnowledge`
   9 locale + `superGuidance.withRealtimeKnowledgeRules`.
 
 ### Smart Terminal — core (docTerminal + Smart Fix) hoàn chỉnh
+
 - `process/terminal/commandDoc/` (8 file) đã conform đúng contract `commandDoc.test.ts` (19 test xanh).
   Bridge `terminal.cmd-snapshot`/`cmd-capture`; renderer `commandDocClient` + `useTerminalIntelligence`
-  + ghost-text/notice trong `TerminalView`.
+  - ghost-text/notice trong `TerminalView`.
 - `process/terminal/smartFix/` (`commandRemap` seed gemini→agi + RTK resolver, `smartFixBridge`).
 - i18n module **`smartTerminal`** (9 locale) đã tạo + đăng ký vào i18n-config **VÀ** cả 9
   `locales/*/index.ts` (đồng thời sửa luôn bug: `realtimeKnowledge` + `system` trước đây cũng thiếu
   trong index.ts → đã thêm).
 
 ### Verify ở lần chốt
+
 - `tests/unit/{terminal,knowledge}`: **164/164 pass** (commandDoc 19 + commandRemap 9 + RTK + DOM inspector).
 - `bunx tsc --noEmit`: **0 lỗi toàn repo** (đã sửa luôn 4 lỗi pre-existing: icon `Battery`→`Lightning`,
   Arco `Empty` bỏ children, 2 TS7011 `()=>undefined`→`()=>{}`).
@@ -36,6 +39,7 @@ Yêu cầu người dùng: thêm **toggle auto-rerun**; khi phát hiện remap (
 bấm nút GUI). **Mặc định auto-rerun TẮT** (an toàn, không tự chạy lệnh user không gõ).
 
 ĐÃ làm:
+
 - `process/terminal/smartFix/smartFixPrompt.ts` (PURE): `interpretConfirmKey` (y/Y→accept; n/N/Esc→reject;
   Enter KHÔNG default-yes; khác→ignore), `buildConfirmPrompt`, `buildAckLine`. + test
   `tests/unit/terminal/smartFix/smartFixPrompt.test.ts` — **đã chạy: `tests/unit/terminal/smartFix` 15/15 pass**
@@ -43,9 +47,10 @@ bấm nút GUI). **Mặc định auto-rerun TẮT** (an toàn, không tự chạ
 - `TerminalView.tsx`: đã THÊM prop `autoConfirm?: boolean` vào `TerminalViewProps` (mới chỉ khai báo).
 
 CÒN LẠI (để hoàn tất #2):
+
 1. **TerminalView**: destructure `autoConfirm`; thêm `awaitingConfirmRef` + `onDismissRemapRef`. Effect
    theo dõi `pendingRemap` + `autoConfirm`: khi remap xuất hiện & autoConfirm → `termRef.current?.write(
-   buildConfirmPrompt(from,to,{tag,question}))` + set awaiting. Khi remap=null → clear awaiting.
+buildConfirmPrompt(from,to,{tag,question}))` + set awaiting. Khi remap=null → clear awaiting.
 2. Trong `handleInputData`, XỬ LÝ awaiting TRƯỚC ghost/Tab: `interpretConfirmKey(data)` →
    accept: `onInputRef.current(`${replacementCommand}\r`)` + write ack + clear awaiting + `onDismissRemap`;
    reject: write ack "skipped" + clear + dismiss; ignore: clear awaiting + cho key đi tiếp bình thường.
@@ -91,5 +96,5 @@ CÒN LẠI (để hoàn tất #2):
 
 - Không có lỗi tồn đọng thuộc RTK/Smart Terminal ở lần chốt (tsc 0 lỗi).
 - **CHƯA chạy full `bun run test`** (mọi module) hay e2e trong phiên — chỉ chạy `tests/unit/{terminal,
-  knowledge,news,resource,workspace}` + tsc toàn repo + i18n. Agent kế tiếp nên chạy full suite trước release.
+knowledge,news,resource,workspace}` + tsc toàn repo + i18n. Agent kế tiếp nên chạy full suite trước release.
 - Nhắc lại cạm bẫy i18n index.ts (xem memory.md) — dễ quên nhất.

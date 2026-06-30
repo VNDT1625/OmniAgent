@@ -30,7 +30,20 @@ const POLL_MS = 60_000;
 const GROUP_ORDER: MarketKind[] = ['index', 'stock', 'crypto'];
 
 /** Built-in default watchlist (Yahoo symbols), used to seed a custom list. */
-const DEFAULT_SYMBOLS = ['^GSPC', '^IXIC', '^DJI', 'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'BTC-USD', 'ETH-USD', 'SOL-USD'];
+const DEFAULT_SYMBOLS = [
+  '^GSPC',
+  '^IXIC',
+  '^DJI',
+  'AAPL',
+  'MSFT',
+  'NVDA',
+  'GOOGL',
+  'AMZN',
+  'TSLA',
+  'BTC-USD',
+  'ETH-USD',
+  'SOL-USD',
+];
 
 const formatPrice = (price: number | null): string => {
   if (price == null) return '—';
@@ -49,7 +62,11 @@ const changeClass = (pct: number | null): string => {
   return pct > 0 ? 'text-success-6' : 'text-danger-6';
 };
 
-const QuoteCard: React.FC<{ quote: MarketQuote; onRemove?: () => void; removeLabel: string }> = ({ quote, onRemove, removeLabel }) => (
+const QuoteCard: React.FC<{ quote: MarketQuote; onRemove?: () => void; removeLabel: string }> = ({
+  quote,
+  onRemove,
+  removeLabel,
+}) => (
   <div className='group relative flex items-center justify-between gap-12px px-14px py-12px rd-10px border border-solid border-border-2 bg-bg-2 hover:border-primary-4 transition-colors'>
     <div className='min-w-0'>
       <div className='text-13px font-700 text-t-primary truncate'>{quote.symbol}</div>
@@ -57,7 +74,9 @@ const QuoteCard: React.FC<{ quote: MarketQuote; onRemove?: () => void; removeLab
     </div>
     <div className='text-right shrink-0'>
       <div className='text-14px font-600 text-t-primary tabular-nums'>{formatPrice(quote.price)}</div>
-      <div className={`text-11px font-600 tabular-nums ${changeClass(quote.changePercent)}`}>{formatChange(quote.changePercent)}</div>
+      <div className={`text-11px font-600 tabular-nums ${changeClass(quote.changePercent)}`}>
+        {formatChange(quote.changePercent)}
+      </div>
     </div>
     {onRemove && (
       <Tooltip content={removeLabel}>
@@ -133,7 +152,9 @@ const MarketView: React.FC<MarketViewProps> = ({ customSymbols, onUpdateSymbols 
     onUpdateSymbols(next);
   };
 
-  const groups = GROUP_ORDER.map((kind) => ({ kind, items: quotes.filter((q) => q.kind === kind) })).filter((g) => g.items.length > 0);
+  const groups = GROUP_ORDER.map((kind) => ({ kind, items: quotes.filter((q) => q.kind === kind) })).filter(
+    (g) => g.items.length > 0
+  );
 
   return (
     <div className='h-full overflow-y-auto'>
@@ -143,8 +164,18 @@ const MarketView: React.FC<MarketViewProps> = ({ customSymbols, onUpdateSymbols 
           <ChartLine theme='outline' size='18' className='text-primary-6' />
           <Text className='text-16px font-700 text-t-primary'>{t('news.market.title')}</Text>
           <span className='ml-auto flex items-center gap-8px'>
-            {updatedAt != null && <span className='text-11px text-t-tertiary'>{t('news.market.updated', { time: dayjs(updatedAt).format('HH:mm:ss') })}</span>}
-            <Button size='mini' type='text' aria-label={t('news.refresh')} icon={<Refresh theme='outline' size='13' />} onClick={() => void load(true)} />
+            {updatedAt != null && (
+              <span className='text-11px text-t-tertiary'>
+                {t('news.market.updated', { time: dayjs(updatedAt).format('HH:mm:ss') })}
+              </span>
+            )}
+            <Button
+              size='mini'
+              type='text'
+              aria-label={t('news.refresh')}
+              icon={<Refresh theme='outline' size='13' />}
+              onClick={() => void load(true)}
+            />
           </span>
         </div>
 
@@ -183,10 +214,17 @@ const MarketView: React.FC<MarketViewProps> = ({ customSymbols, onUpdateSymbols 
         ) : (
           groups.map((group) => (
             <div key={group.kind} className='flex flex-col gap-10px'>
-              <Text className='text-12px font-700 text-t-secondary uppercase tracking-wider'>{t(`news.market.group.${group.kind}`)}</Text>
+              <Text className='text-12px font-700 text-t-secondary uppercase tracking-wider'>
+                {t(`news.market.group.${group.kind}`)}
+              </Text>
               <div className='grid grid-cols-2 gap-12px'>
                 {group.items.map((q) => (
-                  <QuoteCard key={`${q.kind}:${q.symbol}`} quote={q} removeLabel={t('news.market.remove')} onRemove={() => removeSymbol(q.symbol)} />
+                  <QuoteCard
+                    key={`${q.kind}:${q.symbol}`}
+                    quote={q}
+                    removeLabel={t('news.market.remove')}
+                    onRemove={() => removeSymbol(q.symbol)}
+                  />
                 ))}
               </div>
             </div>

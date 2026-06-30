@@ -33,6 +33,13 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ISessionMemoryStore } from '../memory/sessionMemoryStore';
+import type {
+  ArtifactEditMode,
+  ArtifactFileInput,
+  ArtifactPurpose,
+  MediaKind,
+  OmniArtifactStore,
+} from './omniArtifactStore';
 import type { ToolGuard } from './ideServerToolGuard';
 
 /**
@@ -228,6 +235,8 @@ export type IdeServerDeps = {
    * that don't need it.
    */
   teamEdit?: TeamEditAgentService;
+  /** Optional connector artifact intake store. When present, exposes import/apply media/text artifact tools. */
+  artifactStore?: OmniArtifactStore;
   /**
    * Optional per-call tool guard. When supplied (by the Omni External MCP
    * Gateway), every tool registration on this server is transparently wrapped:
@@ -908,10 +917,22 @@ Input:
   // --- ide_command ---------------------------------------------------------
   server.tool(
     'ide_command',
-    `Run an ARBITRARY shell command under guard rails — the sanctioned escape hatch for work no
-dedicated tool models (npm/bun install, build scripts, git, a one-off command). Prefer the structured
-tools first: ide_search (grep), ide_list_dir (find/ls), ide_read_file (cat). Reach for ide_command
-only when none of those fit.
+    `Run an ARBITRARY shell command under guard rails — the LAST-RESORT escape hatch for work no
+dedicated ide_* tool models. You MUST try the structured IDE tools first and only call ide_command
+when none of them fit:
+- Search file contents → ide_search
+- Find files by name/glob → ide_glob
+- List directory entries → ide_list_dir
+- Read a file → ide_read_file
+- Edit a file → team_edit_file
+- Write a new file → team_write_file
+- Understand a file/folder → ide_summary / ide_info
+- Explore relevant code → ide_context / ide_compass / ide_map
+- Run tests/build and the output is huge → ide_compact
+
+Allowed use cases for ide_command: package-manager installs (npm/bun install), build scripts
+(npm run build), git operations, one-off commands that have no ide_* equivalent. Never use
+ide_command for simple read/search/list/edit tasks that the structured tools cover.
 
 Unlike a raw shell this CANNOT hang your session and CANNOT flood your context: every run has a hard
 timeout, interactive prompts are disabled (a command waiting for input fails fast), and output is
@@ -1540,6 +1561,124 @@ Input:
             snap.leases.length > 0 ? snap.leases.map((l) => `- ${renderLease(l)}`).join('\n') : '- (no files held)';
           return [`## Participants`, people, '', `## Held files`, held].join('\n');
         })
+    );
+  }
+
+  if (deps.artifactStore) {
+    const artifacts = deps.artifactStore;
+    const artifactFileSchema = z
+      .string()
+      .describe(
+        'Connector-rewritten local path for an uploaded/generated file. Marked as a file param via _meta["openai/fileParams"].'
+      );
+    const fileParamMeta = { 'openai/fileParams': ['file'] };
+
+    server.registerTool(
+      'import_artifact_text',
+      {
+        description: `Import a connector-provided text file into this MCP session without placing the full content in
+the tool input. The file is validated as UTF-8 text, copied into the session artifact store, and
+returned as metadata plus a short preview. This tool does not modify the repo.`,
+        inputSchema: {
+          sessionId: z.string().describe('Session id from omni_bootstrap_session.'),
+          file: artifactFileSchema,
+          purpose: z.enum(['snippet', 'patch', 'prompt', 'codemod', 'spec']).describe('How the artifact will be used.'),
+          maxBytes: z.number().optional().describe('Optional byte cap. Default is 5MB.'),
+        },
+        _meta: fileParamMeta,
+      },
+      ({ sessionId, file, purpose, maxBytes }) =>
+        guard(async () =>
+          JSON.stringify(
+            await artifacts.importText({
+              sessionId,
+              file: file as ArtifactFileInput,
+              purpose: purpose as ArtifactPurpose,
+              maxBytes,
+            }),
+            null,
+            2
+          )
+        )
+    );
+
+    server.tool(
+      'apply_artifact_edit',
+      `Apply a previously imported text artifact to a workspace file. targetPath is resolved inside the
+workspace root and path traversal is rejected. Use dryRun:true first to preview the diff.`,
+      {
+        sessionId: z.string().describe('Session id from omni_bootstrap_session.'),
+        artifactId: z.string().describe('artifactId returned by import_artifact_text.'),
+        targetPath: z.string().describe('Workspace-relative or in-workspace absolute target file path.'),
+        mode: z
+          .enum(['replace_anchor', 'insert_before', 'insert_after', 'apply_unified_diff'])
+          .describe('How to apply the text artifact.'),
+        anchor: z.string().optional().describe('Required for replace_anchor/insert_before/insert_after.'),
+        dryRun: z.boolean().optional().describe('When true, preview only and do not write files.'),
+      },
+      ({ sessionId, artifactId, targetPath, mode, anchor, dryRun }) =>
+        guard(async () =>
+          JSON.stringify(
+            await artifacts.applyEdit({
+              sessionId,
+              artifactId,
+              targetPath,
+              mode: mode as ArtifactEditMode,
+              anchor,
+              dryRun,
+            }),
+            null,
+            2
+          )
+        )
+    );
+
+    server.registerTool(
+      'import_media_asset',
+      {
+        description: `Import a connector-provided image/video file into an allowed repo asset folder. Allowed roots:
+public/, assets/, packages/desktop/src/renderer/assets/, docs/assets/.`,
+        inputSchema: {
+          sessionId: z.string().describe('Session id from omni_bootstrap_session.'),
+          file: artifactFileSchema,
+          destPath: z.string().describe('Destination path under an allowed asset folder in the workspace.'),
+          kind: z.enum(['image', 'video']).describe('Media type to validate.'),
+          overwrite: z.boolean().optional().describe('Set true to replace an existing asset.'),
+        },
+        _meta: fileParamMeta,
+      },
+      ({ file, destPath, kind, overwrite }) =>
+        guard(async () =>
+          JSON.stringify(
+            await artifacts.importMediaAsset({
+              file: file as ArtifactFileInput,
+              destPath,
+              kind: kind as MediaKind,
+              overwrite,
+            }),
+            null,
+            2
+          )
+        )
+    );
+
+    server.tool(
+      'list_artifacts',
+      `List text artifacts imported into this MCP session.`,
+      { sessionId: z.string().describe('Session id from omni_bootstrap_session.') },
+      ({ sessionId }) => guard(async () => JSON.stringify({ artifacts: artifacts.list(sessionId) }, null, 2))
+    );
+
+    server.tool(
+      'delete_artifact',
+      `Delete one temporary imported artifact from this MCP session. This never deletes files copied into
+the repo by import_media_asset.`,
+      {
+        sessionId: z.string().describe('Session id from omni_bootstrap_session.'),
+        artifactId: z.string().describe('artifactId returned by import_artifact_text.'),
+      },
+      ({ sessionId, artifactId }) =>
+        guard(async () => JSON.stringify({ ok: await artifacts.delete(sessionId, artifactId), artifactId }, null, 2))
     );
   }
 

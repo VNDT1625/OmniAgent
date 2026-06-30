@@ -297,7 +297,12 @@
     "inspectRequestPlaceholder": "Mô tả thay đổi cho phần tử này (vd: nâng lên 20px, dùng màu nhấn)…",
     "inspectAsk": "Hỏi agent",
     "viewportResponsive": "Tự thích ứng",
-    "viewportHint": "Chiều rộng xem trước: render trang ở khổ desktop (thu nhỏ cho vừa) để bố cục giống trình duyệt rộng thật, thay vì khổ hẹp. Tự thích ứng = bố cục theo đúng chiều rộng thực của panel."
+    "viewportHint": "Chiều rộng xem trước: render trang ở khổ desktop (thu nhỏ cho vừa) để bố cục giống trình duyệt rộng thật, thay vì khổ hẹp. Tự thích ứng = bố cục theo đúng chiều rộng thực của panel.",
+    "hideRightSidebar": "Ẩn thanh bên phải (xem trình duyệt đầy đủ)",
+    "showRightSidebar": "Hiện thanh bên phải",
+    "hideIdeSidebars": "Ẩn tab trái và phải của IDE",
+    "showIdeSidebars": "Hiện tab trái và phải của IDE",
+    "resizeSidebar": "Đổi kích thước thanh bên"
   },
   "db": {
     "connections": "Kết nối",

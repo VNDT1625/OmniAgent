@@ -13,7 +13,7 @@
 
 import React from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ConfigProvider } from '@arco-design/web-react';
 import type { TerminalSession } from '@/process/terminal/terminalTypes';
@@ -68,6 +68,8 @@ vi.mock('@/renderer/pages/terminal/terminalBridgeClient', () => ({
 
 import TerminalPage from '@/renderer/pages/terminal/TerminalPage';
 
+let sessionsChangedListener: ((sessions: TerminalSession[]) => void) | null = null;
+
 const renderPage = () =>
   render(
     <ConfigProvider>
@@ -79,7 +81,8 @@ beforeEach(() => {
   for (const fn of Object.values(mocks)) (fn as ReturnType<typeof vi.fn>).mockReset?.();
   mocks.onData.mockReturnValue(() => {});
   mocks.onExit.mockReturnValue(() => {});
-  mocks.onSessionsChanged.mockReturnValue(() => {});
+  sessionsChangedListener = null;
+  mocks.onSessionsChanged.mockImplementation((listener) => ((sessionsChangedListener = listener), () => {}));
   mocks.onSchedulesChanged.mockReturnValue(() => {});
   mocks.list.mockResolvedValue({ ok: true, data: { sessions: [session()], runningCount: 1 } });
   mocks.scrollback.mockResolvedValue({ ok: true, data: 'welcome\n' });
@@ -106,6 +109,18 @@ describe('TerminalPage', () => {
     // its own canvas/cell grid, not the DOM text tree), so assert the replay
     // mechanism — the session's scrollback was fetched through the bridge.
     await waitFor(() => expect(mocks.scrollback).toHaveBeenCalledWith({ id: 's1' }));
+  });
+
+  it('hydrates scrollback for sessions announced after the initial load', async () => {
+    renderPage();
+    await waitFor(() => expect(mocks.scrollback).toHaveBeenCalledWith({ id: 's1' }));
+    mocks.scrollback.mockClear();
+
+    act(() => {
+      sessionsChangedListener?.([session(), session({ id: 's2', title: 'bash 2', pid: 4243 })]);
+    });
+
+    await waitFor(() => expect(mocks.scrollback).toHaveBeenCalledWith({ id: 's2' }));
   });
 
   it('surfaces MTUI stale-edit confirmations from terminal output', async () => {

@@ -163,15 +163,17 @@ export const createLiveSampler = (deps?: Partial<LiveSamplerDeps>): LiveSampler 
 
     const processes: ProcessMetric[] = resolved
       .getAppMetrics()
-      .map((metric): ProcessMetric => ({
-        pid: metric.pid,
-        type: metric.type ?? 'unknown',
-        name: processName(metric),
-        cpuPercent: Math.round((metric.cpu?.percentCPUUsage ?? 0) * 10) / 10,
-        memoryMB: Math.round((metric.memory?.workingSetSize ?? 0) / KB_PER_MB),
-        priority: resolved.getPriority(metric.pid),
-      }))
-      .sort((a, b) => b.cpuPercent - a.cpuPercent);
+      .map(
+        (metric): ProcessMetric => ({
+          pid: metric.pid,
+          type: metric.type ?? 'unknown',
+          name: processName(metric),
+          cpuPercent: Math.round((metric.cpu?.percentCPUUsage ?? 0) * 10) / 10,
+          memoryMB: Math.round((metric.memory?.workingSetSize ?? 0) / KB_PER_MB),
+          priority: resolved.getPriority(metric.pid),
+        })
+      )
+      .toSorted((a, b) => b.cpuPercent - a.cpuPercent);
 
     const load = resolved.getLoadAvg();
 

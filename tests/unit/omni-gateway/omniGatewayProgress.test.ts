@@ -32,11 +32,7 @@ import {
   type OmniGatewayProgressEvent,
   type OmniGatewayProgressPhase,
 } from '@/process/omni-gateway/omniGatewayProgress';
-import {
-  OMNI_GATEWAY_TUNNEL_KEY,
-  startOmniTunnel,
-  stopOmniTunnel,
-} from '@/process/omni-gateway/omniGatewayTunnel';
+import { OMNI_GATEWAY_TUNNEL_KEY, startOmniTunnel, stopOmniTunnel } from '@/process/omni-gateway/omniGatewayTunnel';
 import {
   ensureCloudflared,
   isCloudflaredAvailable,
@@ -68,7 +64,10 @@ describe('omniGatewayProgress — makeProgressEmitter', () => {
   it('stamps `at` from the injected clock and forwards the phase', () => {
     const events: OmniGatewayProgressEvent[] = [];
     let t = 1000;
-    const emit = makeProgressEmitter((e) => events.push(e), () => t);
+    const emit = makeProgressEmitter(
+      (e) => events.push(e),
+      () => t
+    );
 
     emit('checking-cloudflared');
     t = 2500;
@@ -82,7 +81,10 @@ describe('omniGatewayProgress — makeProgressEmitter', () => {
 
   it('copies optional message / tunnelUrl / error from extra', () => {
     const events: OmniGatewayProgressEvent[] = [];
-    const emit = makeProgressEmitter((e) => events.push(e), () => 42);
+    const emit = makeProgressEmitter(
+      (e) => events.push(e),
+      () => 42
+    );
 
     emit('installing-cloudflared', { message: 'Downloading…' });
     emit('ready', { tunnelUrl: 'https://abc.trycloudflare.com' });
@@ -107,7 +109,7 @@ describe('omniGatewayProgress — makeProgressEmitter', () => {
 
 describe('omniGatewayProgress — OMNI_GATEWAY_INFLIGHT_PHASES', () => {
   it('contains exactly the in-flight phases', () => {
-    expect([...OMNI_GATEWAY_INFLIGHT_PHASES].sort()).toEqual(
+    expect([...OMNI_GATEWAY_INFLIGHT_PHASES].toSorted()).toEqual(
       [
         'checking-cloudflared',
         'installing-cloudflared',
@@ -115,7 +117,7 @@ describe('omniGatewayProgress — OMNI_GATEWAY_INFLIGHT_PHASES', () => {
         'spawning-tunnel',
         'stopping',
         'waiting-tunnel-url',
-      ].sort()
+      ].toSorted()
     );
   });
 
@@ -172,12 +174,7 @@ describe('startOmniTunnel — happy paths', () => {
     const result = await startOmniTunnel(50000, { onProgress });
 
     expect(result).toEqual({ ok: true, url: 'https://installed.trycloudflare.com' });
-    expect(phases).toEqual([
-      'checking-cloudflared',
-      'installing-cloudflared',
-      'spawning-tunnel',
-      'waiting-tunnel-url',
-    ]);
+    expect(phases).toEqual(['checking-cloudflared', 'installing-cloudflared', 'spawning-tunnel', 'waiting-tunnel-url']);
     expect(mockEnsure).toHaveBeenCalledOnce();
   });
 });

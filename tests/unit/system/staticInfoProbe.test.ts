@@ -24,7 +24,12 @@ describe('parseGpuInfo', () => {
       auxAttributes: { glRenderer: 'NVIDIA GeForce RTX 4070' },
     });
     expect(devices).toHaveLength(2);
-    expect(devices[0]).toMatchObject({ vendor: 'NVIDIA', model: 'NVIDIA GeForce RTX 4070', driverVersion: '555.1', active: true });
+    expect(devices[0]).toMatchObject({
+      vendor: 'NVIDIA',
+      model: 'NVIDIA GeForce RTX 4070',
+      driverVersion: '555.1',
+      active: true,
+    });
     expect(devices[1].vendor).toBe('Intel');
     expect(devices[1].active).toBe(false);
   });
@@ -39,7 +44,10 @@ describe('parseGpuInfo', () => {
 describe('createStaticProbe', () => {
   it('assembles a static profile from injected reads', async () => {
     const probe = createStaticProbe({
-      getGpuInfo: async () => ({ gpuDevice: [{ active: true, vendorId: 0x106b, deviceId: 0x1 }], auxAttributes: { glRenderer: 'Apple M2' } }),
+      getGpuInfo: async () => ({
+        gpuDevice: [{ active: true, vendorId: 0x106b, deviceId: 0x1 }],
+        auxAttributes: { glRenderer: 'Apple M2' },
+      }),
       getDiskInfo: async () => ({ totalBytes: 500 * 1024 * 1024, freeBytes: 250 * 1024 * 1024 }),
       getAppVersion: () => '9.9.9',
       diskProbePaths: () => ['/home/test'],

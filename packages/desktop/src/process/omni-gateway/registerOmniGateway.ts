@@ -39,15 +39,8 @@ import {
   type OmniToolPermissions,
 } from './auth/authTypes';
 import { ipcBridge } from '@/common';
-import {
-  makeProgressEmitter,
-  type OmniGatewayProgressEvent,
-} from './omniGatewayProgress';
-import {
-  normalizePublicBaseUrl,
-  validatePublicBaseUrl,
-  type RemoteAccessMode,
-} from '@/common/config/remotePublicUrl';
+import { makeProgressEmitter, type OmniGatewayProgressEvent } from './omniGatewayProgress';
+import { normalizePublicBaseUrl, validatePublicBaseUrl, type RemoteAccessMode } from '@/common/config/remotePublicUrl';
 
 /** Config key holding the gateway's user-facing settings (no plaintext token). */
 export const OMNI_GATEWAY_CONFIG_KEY = 'externalMcp.config';

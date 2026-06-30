@@ -7,7 +7,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { enrichSuggestions, inferRelations, recomputeAllRelations } from '@/process/experience/workflow/experienceGraph';
+import {
+  enrichSuggestions,
+  inferRelations,
+  recomputeAllRelations,
+} from '@/process/experience/workflow/experienceGraph';
 import type { ExperienceEntry, ExperienceSuggestion } from '@/process/experience/experienceTypes';
 
 const entry = (overrides: Partial<ExperienceEntry> = {}): ExperienceEntry => ({
@@ -17,7 +21,14 @@ const entry = (overrides: Partial<ExperienceEntry> = {}): ExperienceEntry => ({
   projectId: 'p',
   kind: 'successful_fix',
   symptoms: { summary: 'vitest mock not applied to module under test', errorMessages: [] },
-  context: { repoArea: [], files: ['useThing.ts'], commands: ['bun run test'], frameworks: ['vitest'], packages: ['vitest'], errorCategory: 'test-failure' },
+  context: {
+    repoArea: [],
+    files: ['useThing.ts'],
+    commands: ['bun run test'],
+    frameworks: ['vitest'],
+    packages: ['vitest'],
+    errorCategory: 'test-failure',
+  },
   rootCause: 'mock declared after import hoisting',
   lesson: 'hoist vi.mock above imports',
   verification: { commands: [], confidenceEvidence: [] },
@@ -51,8 +62,16 @@ describe('inferRelations', () => {
   });
 
   it('detects applies_to when files + framework overlap', () => {
-    const a = entry({ id: 'a', symptoms: { summary: 'totally different wording here about layout', errorMessages: [] }, rootCause: 'css' });
-    const b = entry({ id: 'b', symptoms: { summary: 'unrelated phrasing about spacing', errorMessages: [] }, rootCause: 'flex' });
+    const a = entry({
+      id: 'a',
+      symptoms: { summary: 'totally different wording here about layout', errorMessages: [] },
+      rootCause: 'css',
+    });
+    const b = entry({
+      id: 'b',
+      symptoms: { summary: 'unrelated phrasing about spacing', errorMessages: [] },
+      rootCause: 'flex',
+    });
     const relations = inferRelations(a, [b]);
     expect(relations).toEqual(expect.arrayContaining([{ type: 'applies_to', targetId: 'b' }]));
   });
@@ -89,17 +108,43 @@ describe('enrichSuggestions', () => {
 
   it('attaches related lessons and a contradiction caution', () => {
     const sourceById = new Map([
-      ['a', { id: 'a', kind: 'successful_fix' as const, status: 'active' as const, lesson: 'fix lesson', relations: [{ type: 'contradicts' as const, targetId: 'b' }] }],
-      ['b', { id: 'b', kind: 'failed_attempt' as const, status: 'active' as const, lesson: 'do not do X', relations: [] }],
+      [
+        'a',
+        {
+          id: 'a',
+          kind: 'successful_fix' as const,
+          status: 'active' as const,
+          lesson: 'fix lesson',
+          relations: [{ type: 'contradicts' as const, targetId: 'b' }],
+        },
+      ],
+      [
+        'b',
+        { id: 'b', kind: 'failed_attempt' as const, status: 'active' as const, lesson: 'do not do X', relations: [] },
+      ],
     ]);
     const [enriched] = enrichSuggestions([suggestion('a')], sourceById);
-    expect(enriched.related?.[0]).toEqual({ entryId: 'b', relation: 'contradicts', kind: 'failed_attempt', lesson: 'do not do X' });
+    expect(enriched.related?.[0]).toEqual({
+      entryId: 'b',
+      relation: 'contradicts',
+      kind: 'failed_attempt',
+      lesson: 'do not do X',
+    });
     expect(enriched.caution[0]).toMatch(/CONTRADICTS/);
   });
 
   it('drops archived neighbours and leaves suggestions without relations untouched', () => {
     const sourceById = new Map([
-      ['a', { id: 'a', kind: 'successful_fix' as const, status: 'active' as const, lesson: 'l', relations: [{ type: 'same_symptom_as' as const, targetId: 'gone' }] }],
+      [
+        'a',
+        {
+          id: 'a',
+          kind: 'successful_fix' as const,
+          status: 'active' as const,
+          lesson: 'l',
+          relations: [{ type: 'same_symptom_as' as const, targetId: 'gone' }],
+        },
+      ],
       ['gone', { id: 'gone', kind: 'lesson' as const, status: 'archived' as const, lesson: 'x', relations: [] }],
     ]);
     const [enriched] = enrichSuggestions([suggestion('a')], sourceById);

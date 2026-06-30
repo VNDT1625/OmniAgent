@@ -115,7 +115,12 @@ export type IBotEngine = {
   resetPortfolio(): Promise<BotsData>;
   /** Kill switch: halt the trading bot immediately. */
   haltTrading(reason: string): Promise<BotsData>;
-  runBacktest(req: { symbol: string; strategy: StrategyId; params?: StrategyParams; startingCash?: number }): Promise<BacktestResult>;
+  runBacktest(req: {
+    symbol: string;
+    strategy: StrategyId;
+    params?: StrategyParams;
+    startingCash?: number;
+  }): Promise<BacktestResult>;
   onChange(listener: (data: BotsData) => void): () => void;
 };
 
@@ -164,8 +169,16 @@ export const createBotEngine = (deps: BotEngineDeps): IBotEngine => {
         const base = defaultData();
         data = {
           version: DATA_VERSION,
-          trading: { ...base.trading, ...(parsed.trading as TradingBotState), config: { ...base.trading.config, ...((parsed.trading as TradingBotState).config ?? {}) } },
-          news: { ...base.news, ...(parsed.news as NewsBotState), config: { ...base.news.config, ...((parsed.news as NewsBotState).config ?? {}) } },
+          trading: {
+            ...base.trading,
+            ...(parsed.trading as TradingBotState),
+            config: { ...base.trading.config, ...(parsed.trading as TradingBotState).config },
+          },
+          news: {
+            ...base.news,
+            ...(parsed.news as NewsBotState),
+            config: { ...base.news.config, ...(parsed.news as NewsBotState).config },
+          },
         };
       }
     } catch (e) {
@@ -198,7 +211,14 @@ export const createBotEngine = (deps: BotEngineDeps): IBotEngine => {
       })
     );
     const liveExecutor = deps.liveExecutorFactory?.(state.config);
-    const { state: nextState } = tick(state, { prices, closesBySymbol, sentimentBySymbol: sentiment, now: now(), idGen: newId, liveExecutor });
+    const { state: nextState } = tick(state, {
+      prices,
+      closesBySymbol,
+      sentimentBySymbol: sentiment,
+      now: now(),
+      idGen: newId,
+      liveExecutor,
+    });
     await persist({ ...data, trading: nextState });
   };
 
@@ -206,7 +226,11 @@ export const createBotEngine = (deps: BotEngineDeps): IBotEngine => {
   const tickNews = async (): Promise<void> => {
     const state = data.news;
     if (!state.config.enabled) return;
-    const alerts = computeNewsAlerts(deps.getNewsItems(), state.config, (item) => `alert-${item.id}-${newId().slice(0, 6)}`);
+    const alerts = computeNewsAlerts(
+      deps.getNewsItems(),
+      state.config,
+      (item) => `alert-${item.id}-${newId().slice(0, 6)}`
+    );
     await persist({ ...data, news: { ...state, alerts, lastTickAt: now() } });
   };
 
@@ -246,7 +270,14 @@ export const createBotEngine = (deps: BotEngineDeps): IBotEngine => {
       // Guard: arming live requires mode === 'live' explicitly; never auto-arm.
       const config = { ...data.trading.config, ...patch };
       if (config.mode !== 'live') config.liveArmed = false;
-      return persist({ ...data, trading: { ...data.trading, config, haltedReason: patch.enabled === false ? data.trading.haltedReason : data.trading.haltedReason } });
+      return persist({
+        ...data,
+        trading: {
+          ...data.trading,
+          config,
+          haltedReason: patch.enabled === false ? data.trading.haltedReason : data.trading.haltedReason,
+        },
+      });
     },
 
     async updateNewsConfig(patch) {
@@ -259,18 +290,36 @@ export const createBotEngine = (deps: BotEngineDeps): IBotEngine => {
       const startingCash = data.trading.config.startingCash;
       return persist({
         ...data,
-        trading: { ...data.trading, portfolio: emptyPortfolio(startingCash), equity: startingCash, returnPct: 0, drawdownPct: 0, haltedReason: null, lastSignals: {} },
+        trading: {
+          ...data.trading,
+          portfolio: emptyPortfolio(startingCash),
+          equity: startingCash,
+          returnPct: 0,
+          drawdownPct: 0,
+          haltedReason: null,
+          lastSignals: {},
+        },
       });
     },
 
     async haltTrading(reason) {
       await ensureLoaded();
-      return persist({ ...data, trading: { ...data.trading, config: { ...data.trading.config, enabled: false }, haltedReason: reason } });
+      return persist({
+        ...data,
+        trading: { ...data.trading, config: { ...data.trading.config, enabled: false }, haltedReason: reason },
+      });
     },
 
     async runBacktest(req) {
       const bars = await deps.getHistory(req.symbol);
-      const ohlc = bars.map((close, i) => ({ time: i * 86_400_000, open: close, high: close, low: close, close, volume: 0 }));
+      const ohlc = bars.map((close, i) => ({
+        time: i * 86_400_000,
+        open: close,
+        high: close,
+        low: close,
+        close,
+        volume: 0,
+      }));
       return backtest(req.symbol, ohlc, req.strategy, req.params ?? {}, undefined, req.startingCash ?? 10_000);
     },
 

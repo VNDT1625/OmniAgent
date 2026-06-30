@@ -5,7 +5,7 @@
  */
 
 import { ipcBridge } from '@/common';
-import { transformMessage } from '@/common/chat/chatLib';
+import { transformMessage, type IMessageAcpPermission } from '@/common/chat/chatLib';
 import type { AvailableCommand } from '@/common/chat/chatLib';
 import type { SlashCommandItem } from '@/common/chat/slash/types';
 import type { IResponseMessage } from '@/common/adapter/ipcBridge';
@@ -16,6 +16,7 @@ import { warmupConversation } from '@/renderer/pages/conversation/utils/warmupCo
 import type { ThoughtData } from '@/renderer/components/chat/ThoughtDisplay';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { noteAssistantReply } from '@/renderer/services/i18n/responseLanguage';
+import { enforceStrictIdeModeOnPermission } from '../strictIdeModeGuard';
 
 export type UseAcpMessageReturn = {
   thought: ThoughtData;
@@ -382,7 +383,29 @@ export const useAcpMessage = (conversation_id: string, options?: { skipWarmup?: 
             setRunning(true);
             runningRef.current = true;
           }
-          addOrUpdateMessage(transformedMessage);
+          void enforceStrictIdeModeOnPermission(transformedMessage as IMessageAcpPermission)
+            .then((result) => {
+              if (!result.denied) {
+                addOrUpdateMessage(transformedMessage);
+                return;
+              }
+              addOrUpdateMessage({
+                id: `${message.msg_id || message.created_at || Date.now()}-strict-ide-denied`,
+                type: 'tips',
+                msg_id: message.msg_id,
+                position: 'center',
+                conversation_id,
+                created_at: message.created_at ?? Date.now(),
+                content: {
+                  content: result.reason,
+                  type: 'warning',
+                },
+              });
+            })
+            .catch((error: unknown) => {
+              console.error('Strict IDE Mode guard failed:', error);
+              addOrUpdateMessage(transformedMessage);
+            });
           break;
         case 'acp_model_info':
           // Model info updates are handled by AcpModelSelector, no action needed here

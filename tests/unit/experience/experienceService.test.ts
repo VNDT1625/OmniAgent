@@ -22,7 +22,13 @@ const draft = (overrides: Partial<ExperienceEntryDraft> = {}): ExperienceEntryDr
   projectId: 'ignored-overridden-by-service',
   kind: 'successful_fix',
   symptoms: { summary: 'webpack HMR stops after edit', errorMessages: ['[HMR] Cannot apply update'] },
-  context: { files: ['webpack.config.js'], commands: ['bun run dev'], frameworks: ['webpack'], packages: ['webpack'], errorCategory: 'build' },
+  context: {
+    files: ['webpack.config.js'],
+    commands: ['bun run dev'],
+    frameworks: ['webpack'],
+    packages: ['webpack'],
+    errorCategory: 'build',
+  },
   rootCause: 'stale cache directory',
   fix: { summary: 'clear .cache and restart', steps: ['rm -rf node_modules/.cache'], changedFiles: [] },
   lesson: 'clear webpack cache when HMR breaks',
@@ -41,7 +47,12 @@ const makeService = () => {
     projectRoot: ROOT,
     projectId,
     store: createExperienceStore({ rootDir: path.join(ROOT, 'store'), fs: storeFs }),
-    metrics: createExperienceMetrics({ projectId, rootDir: path.join(ROOT, 'metrics'), fs: metricsFs, now: () => '2026-06-09T00:00:00.000Z' }),
+    metrics: createExperienceMetrics({
+      projectId,
+      rootDir: path.join(ROOT, 'metrics'),
+      fs: metricsFs,
+      now: () => '2026-06-09T00:00:00.000Z',
+    }),
     projectionFs,
     now: () => '2026-06-09T00:00:00.000Z',
   });

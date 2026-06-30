@@ -42,7 +42,14 @@ describe('scoreSentiment', () => {
 });
 
 describe('computeNewsAlerts', () => {
-  const cfg: NewsBotConfig = { id: 'n', kind: 'news', enabled: true, watchKeywords: ['nvidia'], alertThreshold: 0.2, maxAlerts: 10 };
+  const cfg: NewsBotConfig = {
+    id: 'n',
+    kind: 'news',
+    enabled: true,
+    watchKeywords: ['nvidia'],
+    alertThreshold: 0.2,
+    maxAlerts: 10,
+  };
 
   it('alerts on keyword + strong sentiment', () => {
     const items = [item({ id: 'a', title: 'Nvidia profit surges to record on strong demand' })];

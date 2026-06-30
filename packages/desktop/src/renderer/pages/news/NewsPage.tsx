@@ -85,11 +85,7 @@ const NewsPage: React.FC = () => {
 
   const ViewSwitch = (
     <div className='flex items-center gap-4px px-20px py-8px shrink-0 border-b border-solid border-border-2 bg-bg-1'>
-      <Radio.Group
-        type='button'
-        value={view}
-        onChange={(val: RealtimeView) => setView(val)}
-      >
+      <Radio.Group type='button' value={view} onChange={(val: RealtimeView) => setView(val)}>
         <Radio value='news'>
           <span className='inline-flex items-center gap-6px'>
             <NewspaperFolding theme='outline' size='14' />

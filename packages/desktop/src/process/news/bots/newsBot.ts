@@ -25,17 +25,90 @@ import type { NewsAlert, NewsBotConfig } from './botTypes';
 // ---------------------------------------------------------------------------
 
 const POSITIVE = new Set([
-  'beat', 'beats', 'surge', 'surges', 'soar', 'soars', 'rally', 'rallies', 'gain', 'gains', 'jump', 'jumps',
-  'record', 'profit', 'profits', 'growth', 'upgrade', 'upgraded', 'bullish', 'outperform', 'breakthrough',
-  'win', 'wins', 'approved', 'boost', 'boosts', 'rise', 'rises', 'strong', 'success', 'partnership', 'expand',
-  'expands', 'optimistic', 'recover', 'recovery', 'milestone', 'demand', 'raises',
+  'beat',
+  'beats',
+  'surge',
+  'surges',
+  'soar',
+  'soars',
+  'rally',
+  'rallies',
+  'gain',
+  'gains',
+  'jump',
+  'jumps',
+  'record',
+  'profit',
+  'profits',
+  'growth',
+  'upgrade',
+  'upgraded',
+  'bullish',
+  'outperform',
+  'breakthrough',
+  'win',
+  'wins',
+  'approved',
+  'boost',
+  'boosts',
+  'rise',
+  'rises',
+  'strong',
+  'success',
+  'partnership',
+  'expand',
+  'expands',
+  'optimistic',
+  'recover',
+  'recovery',
+  'milestone',
+  'demand',
+  'raises',
 ]);
 
 const NEGATIVE = new Set([
-  'miss', 'misses', 'plunge', 'plunges', 'crash', 'crashes', 'slump', 'fall', 'falls', 'drop', 'drops',
-  'loss', 'losses', 'downgrade', 'downgraded', 'bearish', 'underperform', 'lawsuit', 'probe', 'fraud',
-  'recall', 'layoff', 'layoffs', 'ban', 'banned', 'warning', 'weak', 'decline', 'declines', 'cut', 'cuts',
-  'fail', 'fails', 'bankruptcy', 'default', 'sanction', 'sanctions', 'fine', 'fined', 'slowdown', 'risk', 'fears',
+  'miss',
+  'misses',
+  'plunge',
+  'plunges',
+  'crash',
+  'crashes',
+  'slump',
+  'fall',
+  'falls',
+  'drop',
+  'drops',
+  'loss',
+  'losses',
+  'downgrade',
+  'downgraded',
+  'bearish',
+  'underperform',
+  'lawsuit',
+  'probe',
+  'fraud',
+  'recall',
+  'layoff',
+  'layoffs',
+  'ban',
+  'banned',
+  'warning',
+  'weak',
+  'decline',
+  'declines',
+  'cut',
+  'cuts',
+  'fail',
+  'fails',
+  'bankruptcy',
+  'default',
+  'sanction',
+  'sanctions',
+  'fine',
+  'fined',
+  'slowdown',
+  'risk',
+  'fears',
 ]);
 
 const NEGATORS = new Set(['no', 'not', 'never', "n't", 'without', 'fails', 'unable']);
@@ -85,7 +158,11 @@ const matchedKeywordsOf = (text: string, keywords: string[]): string[] => {
 const sourceCountByTitle = (items: NewsItem[]): Map<string, number> => {
   const feedsByKey = new Map<string, Set<string>>();
   for (const it of items) {
-    const key = it.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60);
+    const key = it.title
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+      .slice(0, 60);
     if (!key) continue;
     const set = feedsByKey.get(key) ?? new Set<string>();
     set.add(it.feedId);
@@ -101,9 +178,18 @@ const sourceCountByTitle = (items: NewsItem[]): Map<string, number> => {
  * watch keyword (or no keywords are set) AND either its |sentiment| clears the
  * threshold or it is corroborated by ≥ 2 distinct sources. Newest first, capped.
  */
-export const computeNewsAlerts = (items: NewsItem[], config: NewsBotConfig, idGen: (item: NewsItem) => string): NewsAlert[] => {
+export const computeNewsAlerts = (
+  items: NewsItem[],
+  config: NewsBotConfig,
+  idGen: (item: NewsItem) => string
+): NewsAlert[] => {
   const counts = sourceCountByTitle(items);
-  const keyOf = (t: string) => t.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().slice(0, 60);
+  const keyOf = (t: string) =>
+    t
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim()
+      .slice(0, 60);
   const alerts: NewsAlert[] = [];
   const seen = new Set<string>();
 
@@ -120,7 +206,15 @@ export const computeNewsAlerts = (items: NewsItem[], config: NewsBotConfig, idGe
     const dedupeKey = keyOf(item.title);
     if (seen.has(dedupeKey)) continue;
     seen.add(dedupeKey);
-    alerts.push({ id: idGen(item), time: item.publishedAt ?? item.fetchedAt, title: item.title, link: item.link, sentiment, sourceCount, matchedKeywords: matched });
+    alerts.push({
+      id: idGen(item),
+      time: item.publishedAt ?? item.fetchedAt,
+      title: item.title,
+      link: item.link,
+      sentiment,
+      sourceCount,
+      matchedKeywords: matched,
+    });
     if (alerts.length >= config.maxAlerts) break;
   }
   return alerts;
@@ -135,7 +229,10 @@ export const computeNewsAlerts = (items: NewsItem[], config: NewsBotConfig, idGe
  * the words that identify it in news text (e.g. AAPL → ['apple','aapl']).
  * Returns ticker → mean sentiment in [-1, 1] (only symbols with ≥1 mention).
  */
-export const aggregateSymbolSentiment = (items: NewsItem[], symbolAliases: Record<string, string[]>): Record<string, number> => {
+export const aggregateSymbolSentiment = (
+  items: NewsItem[],
+  symbolAliases: Record<string, string[]>
+): Record<string, number> => {
   const sums: Record<string, { total: number; n: number }> = {};
   for (const item of items) {
     const text = `${item.title} ${item.summary}`.toLowerCase();

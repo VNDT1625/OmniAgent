@@ -119,7 +119,9 @@ export const tick = (state: TradingBotState, ctx: TickContext): { state: Trading
     const price = ctx.prices[symbol];
     const closes = ctx.closesBySymbol[symbol] ?? [];
     if (price == null || closes.length === 0) continue;
-    const sig = runStrategy(config.strategy, [...closes, price], config.params, { newsSentiment: ctx.sentimentBySymbol[symbol] });
+    const sig = runStrategy(config.strategy, [...closes, price], config.params, {
+      newsSentiment: ctx.sentimentBySymbol[symbol],
+    });
     lastSignals[symbol] = sig;
     const pos = positionOf(pf, symbol);
 

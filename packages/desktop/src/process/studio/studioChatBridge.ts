@@ -28,6 +28,7 @@
 import { bridge } from '@office-ai/platform';
 import { httpRequest } from '@/common/adapter/httpBridge';
 import type { IProvider } from '@/common/config/storage';
+import { stripTokenWatermarkNotice } from '@/common/chat/chatLib';
 import { runAgentChatMessages } from '@process/services/agentChat';
 
 /** IPC channel names for the Studio surface (renderer-safe contract). */
@@ -125,11 +126,11 @@ const runProviderChat = async (model: string, messages: StudioChatRequest['messa
   }
 
   const json = (await response.json()) as { choices?: Array<{ message?: { content?: string | null } }> };
-  const content = json.choices?.[0]?.message?.content;
-  if (typeof content !== 'string' || content.length === 0) {
+  const raw = json.choices?.[0]?.message?.content;
+  if (typeof raw !== 'string' || raw.length === 0) {
     throw new Error('The model returned an empty response.');
   }
-  return content;
+  return stripTokenWatermarkNotice(raw);
 };
 
 /**

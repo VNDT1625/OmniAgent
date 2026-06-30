@@ -75,10 +75,14 @@ describe('newsTranslator — translateIngestItems', () => {
   it('honours the isAlreadyTranslated guard', async () => {
     const translate = vi.fn(async (t: string) => `T(${t})`);
     const items = [item({ guid: 'r2', title: 'Привет' })];
-    await translateIngestItems(items, { translate }, {
-      targetLang: 'vi',
-      isAlreadyTranslated: () => true,
-    });
+    await translateIngestItems(
+      items,
+      { translate },
+      {
+        targetLang: 'vi',
+        isAlreadyTranslated: () => true,
+      }
+    );
     expect(translate).not.toHaveBeenCalled();
   });
 });

@@ -50,7 +50,11 @@ const ProcessTable: React.FC<{
   const rows = processes.slice(0, ROW_LIMIT);
 
   return (
-    <SectionCard icon={<Application theme='outline' size='18' />} title={t('system.process.title')} subtitle={t('system.process.subtitle')}>
+    <SectionCard
+      icon={<Application theme='outline' size='18' />}
+      title={t('system.process.title')}
+      subtitle={t('system.process.subtitle')}
+    >
       {rows.length === 0 ? (
         <p className='m-0 text-13px text-t-tertiary'>{t('system.process.none')}</p>
       ) : (
@@ -74,8 +78,12 @@ const ProcessTable: React.FC<{
                       {process.type} · PID {process.pid}
                     </div>
                   </div>
-                  <span className={`w-64px text-right tabular-nums ${TONE_TEXT[tone]}`}>{process.cpuPercent.toFixed(1)}%</span>
-                  <span className='w-80px text-right tabular-nums text-t-secondary'>{formatMemoryMB(process.memoryMB, t('system.units.mb'), t('system.units.gb'))}</span>
+                  <span className={`w-64px text-right tabular-nums ${TONE_TEXT[tone]}`}>
+                    {process.cpuPercent.toFixed(1)}%
+                  </span>
+                  <span className='w-80px text-right tabular-nums text-t-secondary'>
+                    {formatMemoryMB(process.memoryMB, t('system.units.mb'), t('system.units.gb'))}
+                  </span>
                   <div className='w-140px flex justify-end'>
                     <Select
                       size='mini'

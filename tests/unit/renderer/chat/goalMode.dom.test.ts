@@ -5,7 +5,13 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest';
-import { clearGoalMode, getGoalMode, isGoalModeActive, setGoalMode, withGoalSteeringDirective } from '@/renderer/utils/chat/goalMode';
+import {
+  clearGoalMode,
+  getGoalMode,
+  isGoalModeActive,
+  setGoalMode,
+  withGoalSteeringDirective,
+} from '@/renderer/utils/chat/goalMode';
 
 const CID = 'conv-1';
 

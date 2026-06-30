@@ -17,13 +17,13 @@ import type { AgentMetadata } from '@/renderer/utils/model/agentTypes';
 import { buildScriptModelOptions } from '@/renderer/pages/studio/makevideo/scriptModelOptions';
 
 /** Build a minimal provider with the given enabled models. */
-const provider = (id: string, models: string[]): IProvider => ({ id, name: id, models } as unknown as IProvider);
+const provider = (id: string, models: string[]): IProvider => ({ id, name: id, models }) as unknown as IProvider;
 
 /** The capability-filtered accessor that `useModelProviderList` exposes. */
 const getModels = (p: IProvider): string[] => p.models ?? [];
 
 /** Build a minimal CLI agent metadata record. */
-const agent = (over: Partial<AgentMetadata>): AgentMetadata => ({ id: 'a', name: 'Agent', ...over } as AgentMetadata);
+const agent = (over: Partial<AgentMetadata>): AgentMetadata => ({ id: 'a', name: 'Agent', ...over }) as AgentMetadata;
 
 describe('buildScriptModelOptions', () => {
   it('lists provider models first, tagged as provider kind', () => {

@@ -51,9 +51,37 @@ const INTERNAL_ONLY_IDE_TOOLS = ['ide_grep', 'ide_glob'] as const;
 
 /** Common native tool names/titles that Strict IDE Mode must always block (case-insensitive after normalize). */
 const NATIVE_TOOL_MARKERS = [
-  'bash', 'sh', 'shell', 'terminal', 'execute', 'exec', 'run', 'powershell', 'pwsh', 'cmd', 'run_terminal',
-  'read', 'read_file', 'cat', 'write', 'write_file', 'edit', 'edit_file', 'grep', 'rg', 'glob', 'find', 'ls', 'dir', 'list_dir',
-  'sed', 'patch', 'str_replace', 'apply_patch', 'search', 'search_file',
+  'bash',
+  'sh',
+  'shell',
+  'terminal',
+  'execute',
+  'exec',
+  'run',
+  'powershell',
+  'pwsh',
+  'cmd',
+  'run_terminal',
+  'read',
+  'read_file',
+  'cat',
+  'write',
+  'write_file',
+  'edit',
+  'edit_file',
+  'grep',
+  'rg',
+  'glob',
+  'find',
+  'ls',
+  'dir',
+  'list_dir',
+  'sed',
+  'patch',
+  'str_replace',
+  'apply_patch',
+  'search',
+  'search_file',
 ] as const;
 
 const isNativeLikeTool = (rawName: string | undefined): boolean => {
@@ -157,7 +185,10 @@ const normalizeToken = (value: string | undefined): string => (value ?? '').trim
 const stripWrapperPhrases = (s: string): string => {
   let t = (s || '').trim();
   // Remove common descriptive wrappers (case-insensitive, repeated)
-  t = t.replace(/^(exec|execute|bash|shell|run|terminal)\s*(wants to use|wants to execute|wants|to use|to execute)?:?\s*/gi, '');
+  t = t.replace(
+    /^(exec|execute|bash|shell|run|terminal)\s*(wants to use|wants to execute|wants|to use|to execute)?:?\s*/gi,
+    ''
+  );
   t = t.replace(/^(Execute|exec|bash|shell):\s*/gi, '');
   t = t.replace(/\bexec\b/gi, ''); // last resort to kill stray 'exec'
   t = t.replace(/\s+/g, ' ').trim();

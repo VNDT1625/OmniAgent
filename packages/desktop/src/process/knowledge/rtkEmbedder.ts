@@ -79,9 +79,7 @@ const resolveEmbeddingUrl = (provider: IProvider): string => {
 
 const modelHasEmbeddingCapability = (provider: IProvider, model: string): boolean => {
   if (hasSpecificModelCapability(provider, model, 'embedding') === true) return true;
-  return (
-    provider.capabilities?.some((c) => c.type === 'embedding' && c.isUserSelected !== false) ?? false
-  );
+  return provider.capabilities?.some((c) => c.type === 'embedding' && c.isUserSelected !== false) ?? false;
 };
 
 const pickEmbeddingModel = (providers: IProvider[]): { provider: IProvider; model: string } | null => {

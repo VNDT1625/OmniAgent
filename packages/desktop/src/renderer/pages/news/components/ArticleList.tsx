@@ -434,7 +434,9 @@ const ArticleList: React.FC<ArticleListProps> = ({
                 type='text'
                 size='mini'
                 className={`!flex items-center gap-4px !px-10px !py-4px !rd-6px !text-12px !font-500 whitespace-nowrap ${
-                  isActive ? '!bg-primary-1 !text-primary-6' : '!bg-transparent !text-t-secondary hover:!bg-fill-2 hover:!text-t-primary'
+                  isActive
+                    ? '!bg-primary-1 !text-primary-6'
+                    : '!bg-transparent !text-t-secondary hover:!bg-fill-2 hover:!text-t-primary'
                 }`}
                 onClick={() => onCategoryChange(cat)}
               >

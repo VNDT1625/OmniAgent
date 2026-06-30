@@ -6,7 +6,11 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import type { LiveSystemMetrics, StaticSystemInfo } from '@process/system/systemInfoTypes';
-import { createSystemInfoService, SNAPSHOT_INTERVAL_MS, type SystemInfoServiceDeps } from '@process/system/systemInfoService';
+import {
+  createSystemInfoService,
+  SNAPSHOT_INTERVAL_MS,
+  type SystemInfoServiceDeps,
+} from '@process/system/systemInfoService';
 
 const staticInfo = (): StaticSystemInfo => ({
   probedAt: 1,
@@ -68,7 +72,16 @@ const harness = () => {
   };
 
   const service = createSystemInfoService(deps);
-  return { service, tick: () => timerHandler?.(), getInterval: () => intervalMs, getClearCount: () => clearCount, writes, reapplyCalls, setPriorityCalls, setSampledAt: (v: number) => (sampledAt = v) };
+  return {
+    service,
+    tick: () => timerHandler?.(),
+    getInterval: () => intervalMs,
+    getClearCount: () => clearCount,
+    writes,
+    reapplyCalls,
+    setPriorityCalls,
+    setSampledAt: (v: number) => (sampledAt = v),
+  };
 };
 
 describe('createSystemInfoService', () => {

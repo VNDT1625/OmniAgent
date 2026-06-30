@@ -497,7 +497,9 @@ const OpenClawSendBox: React.FC<{ conversation_id: string }> = ({ conversation_i
         const loading_id = uuid();
         const initialDisplayMessage = buildDisplayMessage(input, files, workspacePath);
         const initialGoalExpansion = expandGoalCommand(input);
-        const initialModelInput = initialGoalExpansion ? buildDisplayMessage(initialGoalExpansion, files, workspacePath) : initialDisplayMessage;
+        const initialModelInput = initialGoalExpansion
+          ? buildDisplayMessage(initialGoalExpansion, files, workspacePath)
+          : initialDisplayMessage;
         if (initialGoalExpansion) {
           const parsedGoal = parseGoalCommand(input);
           if (parsedGoal) setGoalMode(conversation_id, parsedGoal.variant, parsedGoal.requirement);

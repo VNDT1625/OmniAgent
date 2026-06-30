@@ -25,13 +25,10 @@ import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { createIdeServer, type IdeServerDeps } from '@process/ide/mcp/ideServer';
 import type { ToolGuard, ToolGuardResult } from '@process/ide/mcp/ideServerToolGuard';
+import { createOmniArtifactStore } from '@process/ide/mcp/omniArtifactStore';
 import { loadProjectRules } from '@process/ide/rulesLoader';
 import { buildOmniBootstrapResult } from './omniBootstrap';
-import {
-  OMNI_IDE_BASE_ALLOWLIST,
-  OMNI_IDE_DANGEROUS_TOOLS,
-  type OmniIdeAllowlistEntry,
-} from './omniIdeAllowlist';
+import { OMNI_IDE_BASE_ALLOWLIST, OMNI_IDE_DANGEROUS_TOOLS, type OmniIdeAllowlistEntry } from './omniIdeAllowlist';
 import type { OmniGatewayState } from './omniGatewayState';
 import type { OmniRequestMode } from './omniGatewayHost';
 import type { OmniToolPermissions } from './auth/authTypes';
@@ -86,6 +83,15 @@ const hasOptionalToolDeps = (toolName: string, ideDeps: Omit<IdeServerDeps, 'too
   if (toolName.startsWith('db_')) return ideDeps.db !== undefined;
   if (toolName.startsWith('ide_memory_')) return ideDeps.memory !== undefined;
   if (toolName === 'ide_quick_test') return ideDeps.quickTest !== undefined;
+  if (
+    toolName === 'import_artifact_text' ||
+    toolName === 'apply_artifact_edit' ||
+    toolName === 'import_media_asset' ||
+    toolName === 'list_artifacts' ||
+    toolName === 'delete_artifact'
+  ) {
+    return ideDeps.artifactStore !== undefined;
+  }
   return true;
 };
 
@@ -102,18 +108,23 @@ export const resolveOmniIdeAllowlist = (ideDeps: Omit<IdeServerDeps, 'toolGuard'
 
 /** Build the IDE-profile {@link McpServer} bound to the supplied deps. */
 export const buildOmniIdeServer = (deps: OmniIdeProfileDeps): McpServer => {
+  const ideDeps: Omit<IdeServerDeps, 'toolGuard'> = {
+    ...deps.ideDeps,
+    artifactStore: deps.ideDeps.artifactStore ?? createOmniArtifactStore({ rootPath: deps.rootPath }),
+  };
+  const effectiveDeps: OmniIdeProfileDeps = { ...deps, ideDeps };
   // The tool-guard is the only thing that makes the underlying ideServer
   // safe to expose externally: it refuses every tool call until the host has
   // bootstrapped + presented a matching sessionId, and refuses dangerous
   // tools when the opt-in flag is off.
-  const toolGuard: ToolGuard = (toolName, args) => evaluateExternalTool(toolName, args, deps);
+  const toolGuard: ToolGuard = (toolName, args) => evaluateExternalTool(toolName, args, effectiveDeps);
 
-  const server = createIdeServer({ ...deps.ideDeps, toolGuard }) as McpServer;
+  const server = createIdeServer({ ...ideDeps, toolGuard }) as McpServer;
   // The McpServer constructor inside createIdeServer omits `instructions`; we
   // can't retrofit a different one onto the same instance, so the host wraps
   // the SDK constructor below and registers the omni_* tools directly on the
   // already-built server (which is supported).
-  registerOmniTools(server, deps);
+  registerOmniTools(server, effectiveDeps);
   return server;
 };
 

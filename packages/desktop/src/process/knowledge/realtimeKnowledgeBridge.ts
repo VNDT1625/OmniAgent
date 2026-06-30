@@ -57,9 +57,7 @@ const errorMessage = (error: unknown): string => (error instanceof Error ? error
  *
  * @param resolveService Injectable service accessor (defaults to the singleton).
  */
-export function registerRealtimeKnowledgeBridge(
-  resolveService: () => Promise<IRtkService> = getRtkService
-): void {
+export function registerRealtimeKnowledgeBridge(resolveService: () => Promise<IRtkService> = getRtkService): void {
   rtkChannels.list.provider(async (): Promise<RtkBridgeResult<KnowledgeFact[]>> => {
     try {
       return { ok: true, data: await (await resolveService()).list() };

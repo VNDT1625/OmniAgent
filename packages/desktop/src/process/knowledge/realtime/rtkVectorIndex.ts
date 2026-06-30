@@ -142,9 +142,7 @@ export const createRtkVectorIndex = (embedder: Embedder, initial?: RtkVectorInde
       const score = Math.max(0, cosine(normalizedQuery, entry.vector));
       if (score > 0) hits.push({ factId: entry.factId, score });
     }
-    return hits
-      .toSorted((a, b) => b.score - a.score || a.factId.localeCompare(b.factId))
-      .slice(0, Math.max(0, topK));
+    return hits.toSorted((a, b) => b.score - a.score || a.factId.localeCompare(b.factId)).slice(0, Math.max(0, topK));
   };
 
   const toData: IRtkVectorIndex['toData'] = () => ({

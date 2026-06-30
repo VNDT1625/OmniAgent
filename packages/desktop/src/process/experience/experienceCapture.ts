@@ -20,7 +20,14 @@ import {
   type ExperienceEntryDraft,
   type ExperienceVerificationCommand,
 } from './experienceTypes';
-import { buildEmbeddingText, clampConfidence, normalizeStringList, redactList, redactSecrets, tokenize } from './experienceText';
+import {
+  buildEmbeddingText,
+  clampConfidence,
+  normalizeStringList,
+  redactList,
+  redactSecrets,
+  tokenize,
+} from './experienceText';
 import type { IExperienceStore } from './experienceStore';
 import { embedOne, type ExperienceEmbedder } from './experienceVectorIndex';
 
@@ -40,7 +47,9 @@ export type ExperienceCaptureDeps = {
 
 const VALID_OUTCOMES = new Set(['passed', 'failed', 'not_run']);
 
-const normalizeVerificationCommands = (commands: ExperienceVerificationCommand[] | undefined): ExperienceVerificationCommand[] =>
+const normalizeVerificationCommands = (
+  commands: ExperienceVerificationCommand[] | undefined
+): ExperienceVerificationCommand[] =>
   (commands ?? [])
     .filter((command) => typeof command?.command === 'string' && command.command.trim().length > 0)
     .map((command) => ({
@@ -84,7 +93,9 @@ export const normalizeDraft = (draft: ExperienceEntryDraft, id: string, nowIso: 
   const symptoms = {
     summary: redactSecrets(draft.symptoms.summary).trim(),
     errorMessages: redactList(draft.symptoms.errorMessages),
-    stackTraceDigest: draft.symptoms.stackTraceDigest ? redactSecrets(draft.symptoms.stackTraceDigest).trim() : undefined,
+    stackTraceDigest: draft.symptoms.stackTraceDigest
+      ? redactSecrets(draft.symptoms.stackTraceDigest).trim()
+      : undefined,
   };
   const context = {
     workspace: draft.context?.workspace?.trim() || undefined,
@@ -110,7 +121,16 @@ export const normalizeDraft = (draft: ExperienceEntryDraft, id: string, nowIso: 
   const lesson = redactSecrets(draft.lesson ?? '').trim();
   const tags = normalizeStringList(draft.tags);
 
-  const core = { kind: draft.kind, symptoms, context, rootCause: draft.rootCause ? redactSecrets(draft.rootCause).trim() : undefined, fix, lesson, verification, tags };
+  const core = {
+    kind: draft.kind,
+    symptoms,
+    context,
+    rootCause: draft.rootCause ? redactSecrets(draft.rootCause).trim() : undefined,
+    fix,
+    lesson,
+    verification,
+    tags,
+  };
 
   return {
     id,
@@ -152,7 +172,10 @@ export const mergeEntries = (existing: ExperienceEntry, incoming: ExperienceEntr
     lesson: existing.lesson.length >= incoming.lesson.length ? existing.lesson : incoming.lesson,
     verification: {
       commands: [...existing.verification.commands, ...incoming.verification.commands],
-      confidenceEvidence: normalizeStringList([...existing.verification.confidenceEvidence, ...incoming.verification.confidenceEvidence]),
+      confidenceEvidence: normalizeStringList([
+        ...existing.verification.confidenceEvidence,
+        ...incoming.verification.confidenceEvidence,
+      ]),
     },
     tags: normalizeStringList([...existing.tags, ...incoming.tags]),
     // Repeated evidence raises confidence, capped at 0.99.

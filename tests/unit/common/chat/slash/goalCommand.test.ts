@@ -5,7 +5,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { expandGoalCommand, isGoalOffCommand, parseGoalCommand, parseGoalVerifyCommand } from '@/common/chat/slash/goalCommand';
+import {
+  expandGoalCommand,
+  isGoalOffCommand,
+  parseGoalCommand,
+  parseGoalVerifyCommand,
+} from '@/common/chat/slash/goalCommand';
 
 describe('parseGoalCommand', () => {
   it('parses /goal with a requirement', () => {
@@ -49,7 +54,10 @@ describe('parseGoalCommand', () => {
 
 describe('parseGoalVerifyCommand', () => {
   it('parses a set command', () => {
-    expect(parseGoalVerifyCommand('/goal verify bunx tsc --noEmit')).toEqual({ kind: 'set', command: 'bunx tsc --noEmit' });
+    expect(parseGoalVerifyCommand('/goal verify bunx tsc --noEmit')).toEqual({
+      kind: 'set',
+      command: 'bunx tsc --noEmit',
+    });
     expect(parseGoalVerifyCommand('/goal-all verify npm test')).toEqual({ kind: 'set', command: 'npm test' });
   });
 

@@ -80,7 +80,7 @@ import { ipcBridge } from '@/common';
 import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { baseName } from '../studioStorage';
-import { useIdeWorkspace, type TreeNode } from './useIdeWorkspace';
+import { collectTreeFilePaths, useIdeWorkspace, type TreeNode } from './useIdeWorkspace';
 import { useRepoWiki } from './useRepoWiki';
 import { useRepoChanges } from './useRepoChanges';
 import WikiPanel from './components/WikiPanel';
@@ -107,7 +107,7 @@ import TeamCollabBar from './teamEdit/TeamCollabBar';
 import { useTeamCollab } from './teamEdit/useTeamCollab';
 import PeerWorkspace from './teamEdit/PeerWorkspace';
 import IdeTerminalPanel from './terminal/IdeTerminalPanel';
-import { ideClient } from './ideClient';
+import { getReadFileText, ideClient } from './ideClient';
 import { lspClient } from './lspClient';
 import { buildQuickCommands, cwdForNode, parseScripts, sepOf, type QuickCommand } from './quickCommands';
 import { relationsFor } from './codeRelations';
@@ -144,9 +144,11 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
   const collab = useTeamCollab(ide.rootPath);
   const [mode, setMode] = useState<IdeMode>('files');
   const [joinCollabOpen, setJoinCollabOpen] = useState(false);
+  const [quickTestCompact, setQuickTestCompact] = useState(false);
 
   const [specMounted, setSpecMounted] = useState(false);
   const [diffOpen, setDiffOpen] = useState(false);
+
   // Command palette (Ctrl/Cmd+P = files, Ctrl/Cmd+Shift+P = commands).
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [paletteCommandMode, setPaletteCommandMode] = useState(false);
@@ -175,9 +177,16 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
     return new Set(ide.graph.nodes.map((n) => n.group)).size;
   }, [ide.graph]);
 
-  // File list for the @-mention picker (relative paths from the import graph).
-  // Falls back to an empty list when the scan has not finished yet.
-  const repoFiles = useMemo<string[]>(() => (ide.graph ? ide.graph.nodes.map((n) => n.id) : []), [ide.graph]);
+  // File list for the @-mention picker. The graph can be empty for doc-only or
+  // tiny folders, so include the loaded file tree that the user can already see.
+  const repoFiles = useMemo<string[]>(() => {
+    const files = new Set<string>();
+    if (ide.graph) {
+      for (const node of ide.graph.nodes) files.add(node.id);
+    }
+    for (const file of collectTreeFilePaths(ide.tree, ide.rootPath)) files.add(file);
+    return [...files].toSorted((a, b) => a.localeCompare(b));
+  }, [ide.graph, ide.rootPath, ide.tree]);
 
   const openFile = (path: string): void => {
     ide.openFile(path);
@@ -258,8 +267,10 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
       const sep = root.includes('\\') && !root.includes('/') ? '\\' : '/';
       const pkgPath = `${root.replace(/[/\\]+$/, '')}${sep}package.json`;
       void (async () => {
-        const pkgRes = await ideClient.readFile(pkgPath).catch((): null => null);
-        const packageJson = pkgRes && pkgRes.ok ? pkgRes.data : null;
+        const pkgRes = await ideClient
+          .readFile({ path: pkgPath, all: true, lineNumbers: false })
+          .catch((): null => null);
+        const packageJson = pkgRes && pkgRes.ok ? getReadFileText(pkgRes.data) || null : null;
         const built = buildTestCommand({
           filePath: payload.filePath,
           content: payload.content,
@@ -444,9 +455,14 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
         rescanning={ide.scanStatus === 'scanning'}
       />
 
-      <div className='flex-1 min-h-0 flex'>
-        {/* Activity bar */}
-        <nav className='w-60px shrink-0 flex flex-col items-center gap-6px py-12px border-r border-b-1'>
+      <div className='flex-1 min-h-0 flex relative'>
+        <nav
+          className={
+            mode === 'quicktest' && quickTestCompact
+              ? 'w-0 overflow-hidden shrink-0 flex flex-col items-center gap-6px py-12px border-r-0 border-b-1'
+              : 'w-60px shrink-0 flex flex-col items-center gap-6px py-12px border-r border-b-1'
+          }
+        >
           <ActivityItem
             icon={<Code theme='outline' size={20} />}
             label={t('ide.mode.files')}
@@ -579,6 +595,7 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
             <div className='absolute inset-0'>
               <QuickTestPanel
                 rootPath={ide.rootPath}
+                onCompactChange={setQuickTestCompact}
                 onFixWithAgent={(pack, errorSummary, hasError) => {
                   const root = ide.rootPath;
                   if (!root) return;
@@ -886,8 +903,8 @@ const FilesPane: React.FC<FilesPaneProps> = React.memo(({ ide, onOpenFile }) => 
             .replace(/^[/\\]/, '')
             .replace(/\\/g, '/')
         : active;
-      const fileRes = await ideClient.readFile(active).catch((): null => null);
-      const content = fileRes && fileRes.ok ? fileRes.data : '';
+      const fileRes = await ideClient.readFile({ path: active, all: true, lineNumbers: false }).catch((): null => null);
+      const content = fileRes && fileRes.ok ? getReadFileText(fileRes.data) : '';
       const res = await ideClient.kgRefreshFile(root, rel, content, { summarize: true }).catch((): null => null);
       if (res && res.ok && res.data) {
         emitter.emit('ide.kg.updated', { rootPath: root });
@@ -1043,9 +1060,12 @@ const FilesPane: React.FC<FilesPaneProps> = React.memo(({ ide, onOpenFile }) => 
     const sep = sepOf(node.key);
     const cwd = cwdForNode(node.key, !node.isLeaf);
     const tryRead = async (dir: string): Promise<boolean> => {
-      const res = await ideClient.readFile(`${dir}${sep}package.json`).catch((): null => null);
+      const res = await ideClient
+        .readFile({ path: `${dir}${sep}package.json`, all: true, lineNumbers: false })
+        .catch((): null => null);
       if (!res || !res.ok) return false;
-      const scripts = parseScripts(res.data);
+      const pkgText = getReadFileText(res.data);
+      const scripts = parseScripts(pkgText);
       if (scripts.length === 0) return false;
       setQuickScripts(scripts);
       setQuickScriptsCwd(dir);

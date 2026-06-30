@@ -5,13 +5,24 @@
     "skipLibCheck": true,
     "paths": {
       "@/*": ["./*"]
-    }
+    },
+    "target": "ESNext",
+    "lib": ["ESNext"],
+    "jsx": "react-native",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true
   },
   "include": [
-    "**/*.ts",
-    "**/*.tsx",
+    "app/**/*",
+    "src/**/*",
     ".expo/types/**/*.ts",
-    "expo-env.d.ts"
+    "app.config.ts"
   ],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "**/__tests__/**"]
 }

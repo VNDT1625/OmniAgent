@@ -7,7 +7,14 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { cosineSimilarity, embedNormalized, embedOne, normalizeVector, rankByVector, type ExperienceEmbedder } from '@/process/experience/experienceVectorIndex';
+import {
+  cosineSimilarity,
+  embedNormalized,
+  embedOne,
+  normalizeVector,
+  rankByVector,
+  type ExperienceEmbedder,
+} from '@/process/experience/experienceVectorIndex';
 
 const fakeEmbedder = (vectors: number[][]): ExperienceEmbedder => ({
   providerId: 'fake',

@@ -372,35 +372,48 @@ const IdeTerminalPanel: React.FC<IdeTerminalPanelProps> = ({ defaultCwd, onOpenP
               {t('ide.terminal.retry')}
             </Button>
           </div>
-        ) : tab === 'terminal' ? (
-          <TerminalTab
-            term={term}
-            activeSession={activeSession}
-            splitMode={splitMode}
-            splitSession={splitSession}
-            splitSessionId={splitSessionId}
-            setSplitSessionId={setSplitSessionId}
-            editingSessionId={editingSessionId}
-            editTitle={editTitle}
-            setEditTitle={setEditTitle}
-            onStartEdit={(id, title) => {
-              setEditingSessionId(id);
-              setEditTitle(title);
-            }}
-            onCommitEdit={commitRename}
-            onCancelEdit={() => {
-              setEditingSessionId(null);
-              setEditTitle('');
-            }}
-            sessionTitle={sessionTitle}
-            displayBuffer={displayBuffer}
-            onNew={() => void openNewTerminal()}
-            onClear={clearSession}
-            onKill={killSession}
-            onOpenPath={onOpenPath}
-          />
         ) : (
-          <ConsoleTab term={term} session={consoleSession} onPick={setConsoleId} displayBuffer={displayBuffer} />
+          <>
+            {/* Keep the interactive terminal mounted (avoid destroy/create xterm on tab switch).
+                We just toggle display. The `visible` prop + internal fit logic will ensure
+                it paints when this area becomes the active tab. */}
+            <div
+              style={{ display: tab === 'terminal' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}
+            >
+              <TerminalTab
+                term={term}
+                activeSession={activeSession}
+                splitMode={splitMode}
+                splitSession={splitSession}
+                splitSessionId={splitSessionId}
+                setSplitSessionId={setSplitSessionId}
+                editingSessionId={editingSessionId}
+                editTitle={editTitle}
+                setEditTitle={setEditTitle}
+                onStartEdit={(id, title) => {
+                  setEditingSessionId(id);
+                  setEditTitle(title);
+                }}
+                onCommitEdit={commitRename}
+                onCancelEdit={() => {
+                  setEditingSessionId(null);
+                  setEditTitle('');
+                }}
+                sessionTitle={sessionTitle}
+                displayBuffer={displayBuffer}
+                onNew={() => void openNewTerminal()}
+                onClear={clearSession}
+                onKill={killSession}
+                onOpenPath={onOpenPath}
+                visible={tab === 'terminal'}
+              />
+            </div>
+            <div
+              style={{ display: tab === 'console' ? 'flex' : 'none', flexDirection: 'column', flex: 1, minHeight: 0 }}
+            >
+              <ConsoleTab term={term} session={consoleSession} onPick={setConsoleId} displayBuffer={displayBuffer} />
+            </div>
+          </>
         )}
       </div>
     </footer>
@@ -451,6 +464,7 @@ const TerminalTab: React.FC<{
   onClear: (id: string) => void;
   onKill: (id: string) => void;
   onOpenPath?: (path: string, line?: number, column?: number) => void;
+  visible?: boolean;
 }> = ({
   term,
   activeSession,
@@ -470,6 +484,7 @@ const TerminalTab: React.FC<{
   onClear,
   onKill,
   onOpenPath,
+  visible = true,
 }) => {
   const { t } = useTranslation();
 
@@ -582,6 +597,7 @@ const TerminalTab: React.FC<{
               onClear={() => activeSession && onClear(activeSession.id)}
               onKill={() => activeSession && onKill(activeSession.id)}
               onOpenPath={onOpenPath}
+              visible={visible}
             />
           </div>
           <div className='w-1px shrink-0 bg-fill-3' />
@@ -594,6 +610,7 @@ const TerminalTab: React.FC<{
               onClear={() => onClear(splitSession.id)}
               onKill={() => onKill(splitSession.id)}
               onOpenPath={onOpenPath}
+              visible={visible}
             />
           </div>
         </div>
@@ -606,6 +623,7 @@ const TerminalTab: React.FC<{
           onClear={() => activeSession && onClear(activeSession.id)}
           onKill={() => activeSession && onKill(activeSession.id)}
           onOpenPath={onOpenPath}
+          visible={visible}
         />
       )}
     </div>

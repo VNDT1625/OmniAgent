@@ -5,8 +5,28 @@
  */
 
 import { ipcBridge } from '@/common';
-import { advanceComplianceState, createInitialComplianceState, decideCompliance, DEFAULT_GOAL_COMPLIANCE_CONFIG, hasVerificationEvidence, parseGoalStatus, type GoalComplianceConfig, type GoalComplianceState } from '@/common/chat/slash/goalCompliance';
-import { armWatchdog, createInitialWatchdogState, disarmWatchdog, enterCooldown, evaluateWatchdog, markResumed, recordActivity, DEFAULT_GOAL_WATCHDOG_CONFIG, type GoalWatchdogConfig, type GoalWatchdogState } from '@/common/chat/slash/goalWatchdog';
+import {
+  advanceComplianceState,
+  createInitialComplianceState,
+  decideCompliance,
+  DEFAULT_GOAL_COMPLIANCE_CONFIG,
+  hasVerificationEvidence,
+  parseGoalStatus,
+  type GoalComplianceConfig,
+  type GoalComplianceState,
+} from '@/common/chat/slash/goalCompliance';
+import {
+  armWatchdog,
+  createInitialWatchdogState,
+  disarmWatchdog,
+  enterCooldown,
+  evaluateWatchdog,
+  markResumed,
+  recordActivity,
+  DEFAULT_GOAL_WATCHDOG_CONFIG,
+  type GoalWatchdogConfig,
+  type GoalWatchdogState,
+} from '@/common/chat/slash/goalWatchdog';
 import { useCallback, useEffect, useRef } from 'react';
 
 export type GoalRunnerPayload = { input: string; files: string[] };
@@ -37,7 +57,10 @@ type UseGoalRunnerOptions = {
   /** Run halted (blocked, or a cap was hit). */
   onHalt: (reason: GoalHaltReason) => void;
   /** Optional notice for auto-driven actions. */
-  onNotice?: (kind: 'resume' | 'continue' | 'correct' | 'reject' | 'verify-fail', detail: { resumeCount: number }) => void;
+  onNotice?: (
+    kind: 'resume' | 'continue' | 'correct' | 'reject' | 'verify-fail',
+    detail: { resumeCount: number }
+  ) => void;
   watchdogConfig?: GoalWatchdogConfig;
   complianceConfig?: GoalComplianceConfig;
 };
@@ -54,7 +77,15 @@ const extractChunk = (data: unknown): string => {
 };
 
 /** Agent-facing message when independent verification of a done claim fails. */
-const buildVerifyFailPrompt = (output: string): string => ['KIỂM CHỨNG ĐỘC LẬP THẤT BẠI: lệnh verify trong workspace trả exit code ≠ 0.', 'KHÔNG được coi là HOÀN THÀNH. Output (đuôi):', '```', output || '(no output)', '```', 'Sửa lỗi (root-cause) rồi tiếp tục. Chỉ next=done khi lệnh verify thực sự pass. Kết thúc lượt bằng [[GOAL ...]].'].join('\n');
+const buildVerifyFailPrompt = (output: string): string =>
+  [
+    'KIỂM CHỨNG ĐỘC LẬP THẤT BẠI: lệnh verify trong workspace trả exit code ≠ 0.',
+    'KHÔNG được coi là HOÀN THÀNH. Output (đuôi):',
+    '```',
+    output || '(no output)',
+    '```',
+    'Sửa lỗi (root-cause) rồi tiếp tục. Chỉ next=done khi lệnh verify thực sự pass. Kết thúc lượt bằng [[GOAL ...]].',
+  ].join('\n');
 
 /**
  * Renderer-driven Goal run orchestrator: combines hang recovery (stall watchdog)
@@ -70,7 +101,20 @@ const buildVerifyFailPrompt = (output: string): string => ['KIỂM CHỨNG ĐỘ
  * All auto-driving is capped so cost stays finite.
  */
 export const useGoalRunner = (options: UseGoalRunnerOptions) => {
-  const { conversation_id, running, goalModeActive, getResumePayload, onStall, send, verify, onAccept, onHalt, onNotice, watchdogConfig = DEFAULT_GOAL_WATCHDOG_CONFIG, complianceConfig = DEFAULT_GOAL_COMPLIANCE_CONFIG } = options;
+  const {
+    conversation_id,
+    running,
+    goalModeActive,
+    getResumePayload,
+    onStall,
+    send,
+    verify,
+    onAccept,
+    onHalt,
+    onNotice,
+    watchdogConfig = DEFAULT_GOAL_WATCHDOG_CONFIG,
+    complianceConfig = DEFAULT_GOAL_COMPLIANCE_CONFIG,
+  } = options;
 
   const watchdogRef = useRef<GoalWatchdogState>(createInitialWatchdogState());
   const complianceRef = useRef<GoalComplianceState>(createInitialComplianceState());
@@ -82,9 +126,29 @@ export const useGoalRunner = (options: UseGoalRunnerOptions) => {
   const runningRef = useRef(running);
   const goalActiveRef = useRef(goalModeActive);
 
-  const latest = useRef({ getResumePayload, onStall, send, verify, onAccept, onHalt, onNotice, watchdogConfig, complianceConfig });
+  const latest = useRef({
+    getResumePayload,
+    onStall,
+    send,
+    verify,
+    onAccept,
+    onHalt,
+    onNotice,
+    watchdogConfig,
+    complianceConfig,
+  });
   useEffect(() => {
-    latest.current = { getResumePayload, onStall, send, verify, onAccept, onHalt, onNotice, watchdogConfig, complianceConfig };
+    latest.current = {
+      getResumePayload,
+      onStall,
+      send,
+      verify,
+      onAccept,
+      onHalt,
+      onNotice,
+      watchdogConfig,
+      complianceConfig,
+    };
   }, [getResumePayload, onStall, send, verify, onAccept, onHalt, onNotice, watchdogConfig, complianceConfig]);
 
   useEffect(() => {

@@ -6,6 +6,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
@@ -53,10 +55,10 @@ const makeTeamEdit = (): TeamEditAgentService => ({
   snapshot: () => ({ participants: [], leases: [] }),
 });
 
-const connectGatewayProfile = async (ideDeps: Omit<IdeServerDeps, 'toolGuard'>) => {
+const connectGatewayProfile = async (ideDeps: Omit<IdeServerDeps, 'toolGuard'>, rootPath = root) => {
   const server = buildOmniIdeServer({
     state: createOmniGatewayState({ now: () => 1_000, newId: () => 'session-1', sessionTtlMs: 60_000 }),
-    rootPath: root,
+    rootPath,
     allowDangerous: true,
     sessionTtlMs: 60_000,
     ideDeps,
@@ -71,6 +73,14 @@ const connectGatewayProfile = async (ideDeps: Omit<IdeServerDeps, 'toolGuard'>) 
 const jsonText = <T>(result: unknown): T => {
   const content = (result as { content?: Array<{ type: string; text?: string }> }).content ?? [];
   return JSON.parse(content.map((part) => part.text ?? '').join('\n')) as T;
+};
+
+type ListedTool = {
+  name: string;
+  inputSchema?: {
+    properties?: Record<string, { type?: string }>;
+  };
+  _meta?: Record<string, unknown>;
 };
 
 describe('Omni MCP sidecar smoke checks', () => {
@@ -103,8 +113,12 @@ describe('Omni MCP sidecar smoke checks', () => {
     expect(registrar).toContain('createOmniGatewayRuntime');
     expect(sidecar).not.toContain('startOmniGatewayHost({');
     expect(sidecar).not.toContain('buildOmniIdeServer({');
-    expect(sidecar).toContain("Required path:       /ide/mcp");
-    expect(sidecar).toContain("Bootstrap tool:      omni_bootstrap_session");
+    expect(sidecar).toContain('fetchGatewayEndpoint');
+    expect(sidecar).toContain('app-compatible external gateway already running');
+    expect(sidecar).toContain('attachToExistingRescue');
+    expect(sidecar).toContain('Keep this terminal open');
+    expect(sidecar).toContain('Required path:       /ide/mcp');
+    expect(sidecar).toContain('Bootstrap tool:      omni_bootstrap_session');
   });
 
   it('reuses the app gateway credential instead of minting a rescue-only token file', () => {
@@ -132,11 +146,17 @@ describe('Omni MCP sidecar smoke checks', () => {
   it('keeps rescue team tools in bootstrap and the callable MCP registry', async () => {
     const teamEdit = makeTeamEdit();
     const client = await connectGatewayProfile({ ide: makeIdeService(), teamEdit });
-    const registryNames = new Set((await client.listTools()).tools.map((tool) => tool.name));
+    const listedTools = (await client.listTools()).tools as ListedTool[];
+    const registryNames = new Set(listedTools.map((tool) => tool.name));
     const bootstrap = jsonText<{ sessionId: string; tools: Array<{ name: string }> }>(
       await client.callTool({ name: 'omni_bootstrap_session', arguments: {} })
     );
+    const omniList = jsonText<{
+      baseAllowlist: Array<{ name: string }>;
+      dangerousTools: Array<{ name: string }>;
+    }>(await client.callTool({ name: 'omni_list_tools', arguments: {} }));
     const advertisedNames = bootstrap.tools.map((tool) => tool.name);
+    const listedNames = [...omniList.baseAllowlist, ...omniList.dangerousTools].map((tool) => tool.name);
 
     for (const name of [
       'team_claim_file',
@@ -149,9 +169,22 @@ describe('Omni MCP sidecar smoke checks', () => {
       'ide_grep',
       'ide_glob',
       'ide_list_dir',
+      'import_artifact_text',
+      'apply_artifact_edit',
+      'import_media_asset',
+      'list_artifacts',
+      'delete_artifact',
     ]) {
       expect(advertisedNames).toContain(name);
+      expect(listedNames).toContain(name);
       expect(registryNames.has(name)).toBe(true);
+    }
+
+    for (const name of ['import_artifact_text', 'import_media_asset']) {
+      const tool = listedTools.find((item) => item.name === name);
+      expect(tool?.inputSchema?.properties?.file).toBeTruthy();
+      expect(tool?.inputSchema?.properties?.file?.type).toBe('string');
+      expect(tool?._meta?.['openai/fileParams']).toEqual(['file']);
     }
 
     const edited = await client.callTool({
@@ -166,6 +199,58 @@ describe('Omni MCP sidecar smoke checks', () => {
       },
     });
     expect(JSON.stringify(edited)).toContain('Edited package.json');
+  });
+
+  it('calls artifact tools through the real MCP registry', async () => {
+    const workspace = await mkdtemp(path.join(os.tmpdir(), 'omni-mcp-artifact-workspace-'));
+    const uploads = await mkdtemp(path.join(os.tmpdir(), 'omni-mcp-artifact-upload-'));
+    try {
+      await writeFile(path.join(workspace, 'target.ts'), 'const value = "old";\n', 'utf-8');
+      const artifactPath = path.join(uploads, 'replacement.txt');
+      await writeFile(artifactPath, '"new"', 'utf-8');
+      const client = await connectGatewayProfile({ ide: makeIdeService(), teamEdit: makeTeamEdit() }, workspace);
+      const bootstrap = jsonText<{ sessionId: string }>(
+        await client.callTool({ name: 'omni_bootstrap_session', arguments: {} })
+      );
+
+      const imported = jsonText<{ artifactId: string; preview: string }>(
+        await client.callTool({
+          name: 'import_artifact_text',
+          arguments: {
+            sessionId: bootstrap.sessionId,
+            file: artifactPath,
+            purpose: 'snippet',
+          },
+        })
+      );
+      expect(imported.artifactId).toBeTruthy();
+      expect(imported.preview).toBe('"new"');
+
+      const listed = jsonText<{ artifacts: Array<{ artifactId: string }> }>(
+        await client.callTool({ name: 'list_artifacts', arguments: { sessionId: bootstrap.sessionId } })
+      );
+      expect(listed.artifacts.map((artifact) => artifact.artifactId)).toContain(imported.artifactId);
+
+      const dryRun = jsonText<{ ok: boolean; changed: boolean; diffPreview: string }>(
+        await client.callTool({
+          name: 'apply_artifact_edit',
+          arguments: {
+            sessionId: bootstrap.sessionId,
+            artifactId: imported.artifactId,
+            targetPath: 'target.ts',
+            mode: 'replace_anchor',
+            anchor: '"old"',
+            dryRun: true,
+          },
+        })
+      );
+      expect(dryRun.ok).toBe(true);
+      expect(dryRun.changed).toBe(true);
+      expect(dryRun.diffPreview).toContain('"new"');
+    } finally {
+      await rm(workspace, { recursive: true, force: true });
+      await rm(uploads, { recursive: true, force: true });
+    }
   });
 
   it('documents the rescue workflow and stop command', () => {

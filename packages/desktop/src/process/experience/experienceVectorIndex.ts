@@ -20,7 +20,8 @@ import type { Embedder } from '@process/ide/vectorIndex';
 /** Re-exported for callers that wire a real embedding provider. */
 export type ExperienceEmbedder = Embedder;
 
-const magnitude = (vector: readonly number[]): number => Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
+const magnitude = (vector: readonly number[]): number =>
+  Math.sqrt(vector.reduce((sum, value) => sum + value * value, 0));
 
 /** Return a unit-length copy of `vector` (or all-zeros when the input is zero). */
 export const normalizeVector = (vector: readonly number[]): number[] => {

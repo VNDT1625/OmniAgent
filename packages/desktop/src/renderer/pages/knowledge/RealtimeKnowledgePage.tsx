@@ -61,7 +61,9 @@ const RealtimeKnowledgePage: React.FC = () => {
       <header className='flex items-start justify-between gap-12px shrink-0'>
         <div className='flex flex-col gap-4px'>
           <h2 className='m-0 text-18px font-700 text-t-primary'>{t('realtimeKnowledge.title')}</h2>
-          <p className='m-0 max-w-560px text-13px text-t-secondary leading-relaxed'>{t('realtimeKnowledge.subtitle')}</p>
+          <p className='m-0 max-w-560px text-13px text-t-secondary leading-relaxed'>
+            {t('realtimeKnowledge.subtitle')}
+          </p>
         </div>
         <Button
           type='secondary'

@@ -42,7 +42,9 @@ const fakeFact = (over: Partial<KnowledgeFact> = {}): KnowledgeFact => ({
 
 const makeDeps = (overrides: Partial<RealtimeKnowledgeServerDeps['service']> = {}): RealtimeKnowledgeServerDeps => ({
   service: {
-    lookup: vi.fn().mockResolvedValue({ facts: [{ fact: fakeFact(), score: 0.9, freshness: 'fresh', whyRelevant: [] }] }),
+    lookup: vi
+      .fn()
+      .mockResolvedValue({ facts: [{ fact: fakeFact(), score: 0.9, freshness: 'fresh', whyRelevant: [] }] }),
     record: vi.fn().mockResolvedValue(fakeFact()),
     refresh: vi.fn().mockResolvedValue(fakeFact()),
     ...overrides,

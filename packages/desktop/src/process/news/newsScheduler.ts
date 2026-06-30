@@ -151,10 +151,7 @@ export const createNewsScheduler = (deps: NewsSchedulerDeps): INewsScheduler => 
     const { feeds, settings } = deps.store.getData();
     const intervalMs = settings.refreshIntervalMinutes * 60_000;
     return feeds.filter(
-      (f) =>
-        (f.kind ?? 'rss') === 'rss' &&
-        f.enabled &&
-        (f.lastFetchedAt == null || at - f.lastFetchedAt >= intervalMs)
+      (f) => (f.kind ?? 'rss') === 'rss' && f.enabled && (f.lastFetchedAt == null || at - f.lastFetchedAt >= intervalMs)
     );
   };
 

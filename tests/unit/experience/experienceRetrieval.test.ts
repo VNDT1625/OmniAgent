@@ -7,7 +7,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { buildQueryText, computeContextMatch, createExperienceRetrieval, rankExperiences } from '@/process/experience/experienceRetrieval';
+import {
+  buildQueryText,
+  computeContextMatch,
+  createExperienceRetrieval,
+  rankExperiences,
+} from '@/process/experience/experienceRetrieval';
 import type { ExperienceEmbedder } from '@/process/experience/experienceVectorIndex';
 import type { ExperienceProjectionEntry, ExperienceQuery } from '@/process/experience/experienceTypes';
 
@@ -28,7 +33,8 @@ const entry = (overrides: Partial<ExperienceProjectionEntry> = {}): ExperiencePr
   confidence: 0.8,
   verificationStrength: 0.8,
   updatedAt: '2026-06-08T00:00:00.000Z',
-  lexicalText: 'vitest mock not applied to module hoist vi.mock above imports vitest mock vitest usething.ts bun run test test-failure',
+  lexicalText:
+    'vitest mock not applied to module hoist vi.mock above imports vitest mock vitest usething.ts bun run test test-failure',
   caution: ['Confirm the current framework/version and context match before applying.'],
   suggestedChecks: ['Run: bun run test'],
   relations: [],
@@ -105,7 +111,11 @@ describe('rankExperiences', () => {
 
 describe('createExperienceRetrieval', () => {
   it('uses vector similarity when an embedder is provided', async () => {
-    const embedder: ExperienceEmbedder = { providerId: 'f', model: 'm', embed: async (texts) => texts.map(() => [1, 0, 0]) };
+    const embedder: ExperienceEmbedder = {
+      providerId: 'f',
+      model: 'm',
+      embed: async (texts) => texts.map(() => [1, 0, 0]),
+    };
     const retrieval = createExperienceRetrieval({ embedder, now: () => NOW });
     const withVector = entry({ id: 'v', vector: [1, 0, 0] });
     const [suggestion] = await retrieval.retrieve(query, [withVector]);
@@ -114,7 +124,13 @@ describe('createExperienceRetrieval', () => {
   });
 
   it('falls back to lexical when embedding fails', async () => {
-    const embedder: ExperienceEmbedder = { providerId: 'f', model: 'm', embed: async () => { throw new Error('offline'); } };
+    const embedder: ExperienceEmbedder = {
+      providerId: 'f',
+      model: 'm',
+      embed: async () => {
+        throw new Error('offline');
+      },
+    };
     const retrieval = createExperienceRetrieval({ embedder, now: () => NOW });
     const suggestions = await retrieval.retrieve(query, [entry()]);
     expect(suggestions.length).toBe(1);

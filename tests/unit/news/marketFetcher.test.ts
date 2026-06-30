@@ -8,7 +8,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchMarketQuotes, clearMarketCache } from '@process/news/marketFetcher';
 
 const yahooResponse = (price: number, prevClose: number) =>
-  new Response(JSON.stringify({ chart: { result: [{ meta: { regularMarketPrice: price, previousClose: prevClose, currency: 'USD' } }] } }), { status: 200 });
+  new Response(
+    JSON.stringify({
+      chart: { result: [{ meta: { regularMarketPrice: price, previousClose: prevClose, currency: 'USD' } }] },
+    }),
+    { status: 200 }
+  );
 
 const STOOQ_CSV = [
   'Symbol,Date,Time,Open,High,Low,Close,Volume',
@@ -16,7 +21,11 @@ const STOOQ_CSV = [
   '^ndq,2026-06-09,22:00:00,N/D,N/D,N/D,N/D,N/D',
 ].join('\n');
 
-const CRYPTO_JSON = { bitcoin: { usd: 65000, usd_24h_change: 2.5 }, ethereum: { usd: 3200, usd_24h_change: -1.2 }, solana: { usd: 150, usd_24h_change: 0 } };
+const CRYPTO_JSON = {
+  bitcoin: { usd: 65000, usd_24h_change: 2.5 },
+  ethereum: { usd: 3200, usd_24h_change: -1.2 },
+  solana: { usd: 150, usd_24h_change: 0 },
+};
 
 describe('marketFetcher', () => {
   beforeEach(() => clearMarketCache());
@@ -84,7 +93,7 @@ describe('marketFetcher', () => {
     );
     expect(res.ok).toBe(true);
     if (!res.ok) return;
-    expect(res.quotes.map((q) => q.symbol).sort()).toEqual(['BTC', '^FTSE', 'NFLX'].sort());
+    expect(res.quotes.map((q) => q.symbol).toSorted()).toEqual(['BTC', '^FTSE', 'NFLX'].toSorted());
     expect(res.quotes.find((q) => q.symbol === '^FTSE')?.kind).toBe('index');
     expect(res.quotes.find((q) => q.symbol === 'BTC')?.kind).toBe('crypto');
     expect(res.quotes.find((q) => q.symbol === 'NFLX')?.kind).toBe('stock');

@@ -28,7 +28,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ipcBridge } from '@/common';
-import { ideClient, type IdeDirEntry, type RepoGraph } from './ideClient';
+import { getReadFileText, ideClient, type IdeDirEntry, type RepoGraph } from './ideClient';
 import { teamEditClient } from './teamEdit/teamEditClient';
 import type { EditorFsOverride } from '@renderer/pages/editor/UniversalEditor';
 
@@ -176,6 +176,28 @@ const treeHasDir = (nodes: TreeNode[], dir: string): boolean => {
   });
 };
 
+/** Collect loaded file-tree leaves as repo-relative, forward-slash paths. */
+export const collectTreeFilePaths = (nodes: TreeNode[], rootPath: string | null): string[] => {
+  if (!rootPath) return [];
+  const root = rootPath.replace(/\\/g, '/').replace(/\/+$/, '');
+  const files: string[] = [];
+
+  const visit = (items: TreeNode[]): void => {
+    for (const item of items) {
+      if (item.isLeaf) {
+        const normalized = item.key.replace(/\\/g, '/');
+        const rel = normalized.startsWith(`${root}/`) ? normalized.slice(root.length + 1) : normalized;
+        if (rel && rel !== normalized) files.push(rel);
+        continue;
+      }
+      if (item.children?.length) visit(item.children);
+    }
+  };
+
+  visit(nodes);
+  return files;
+};
+
 export const useIdeWorkspace = (): UseIdeWorkspace => {
   const [rootPath, setRootPath] = useState<string | null>(null);
   const [tree, setTree] = useState<TreeNode[]>([]);
@@ -200,8 +222,9 @@ export const useIdeWorkspace = (): UseIdeWorkspace => {
   const editorFs = useMemo<EditorFsOverride>(
     () => ({
       readText: async (p): Promise<string | null> => {
-        const r = await ideClient.readFile(p).catch((): null => null);
-        return r && r.ok ? r.data : null;
+        const r = await ideClient.readFile({ path: p, all: true, lineNumbers: false }).catch((): null => null);
+        if (!r || !r.ok) return null;
+        return getReadFileText(r.data);
       },
       readBase64: async (p): Promise<string | null> => {
         const r = await ideClient.readFileBase64(p).catch((): null => null);

@@ -5,12 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  computeExpiresAt,
-  computeFreshness,
-  needsRefresh,
-  resolveTtlMs,
-} from '@/process/knowledge/realtime/freshness';
+import { computeExpiresAt, computeFreshness, needsRefresh, resolveTtlMs } from '@/process/knowledge/realtime/freshness';
 import { DEFAULT_TTL_BY_CLASS } from '@/process/knowledge/realtime/rtkTypes';
 
 const DAY = 24 * 60 * 60 * 1000;

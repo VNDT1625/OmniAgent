@@ -72,7 +72,9 @@ export const ensureSystemInfoMcpRegistered = async (): Promise<boolean> => {
   try {
     const transport = buildTransport();
     const original_json = JSON.stringify(
-      { mcpServers: { [BUILTIN_SYSTEM_NAME]: { command: transport.command, args: transport.args, env: transport.env } } },
+      {
+        mcpServers: { [BUILTIN_SYSTEM_NAME]: { command: transport.command, args: transport.args, env: transport.env } },
+      },
       null,
       2
     );

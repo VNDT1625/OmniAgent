@@ -268,9 +268,7 @@ const TextCodeAdapter: React.FC<EditorAdapterProps> = ({
           const prefix = full.slice(0, offset);
           const suffix = full.slice(offset);
           if (prefix.trim().length === 0) return { items: [] };
-          const res = await ideClient
-            .inlineComplete({ prefix, suffix, language, filePath })
-            .catch((): null => null);
+          const res = await ideClient.inlineComplete({ prefix, suffix, language, filePath }).catch((): null => null);
           if (!res || !res.ok || res.data.length === 0 || token.isCancellationRequested) return { items: [] };
           return {
             items: [
@@ -462,7 +460,14 @@ const TextCodeAdapter: React.FC<EditorAdapterProps> = ({
           language={language}
           theme={theme}
           value={content}
-          options={{ readOnly, minimap: { enabled: false }, fontSize: 13, wordWrap: 'on', scrollBeyondLastLine: false, inlineSuggest: { enabled: true } }}
+          options={{
+            readOnly,
+            minimap: { enabled: false },
+            fontSize: 13,
+            wordWrap: 'on',
+            scrollBeyondLastLine: false,
+            inlineSuggest: { enabled: true },
+          }}
           onChange={(value) => {
             onChange(value ?? '');
             scheduleLint();

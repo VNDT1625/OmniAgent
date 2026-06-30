@@ -74,17 +74,28 @@ export const useTerminalState = (): TerminalState => {
 
   /** Track which session ids we have already cold-loaded scrollback for. */
   const hydrated = useRef<Set<string>>(new Set());
+  const hydrating = useRef<Set<string>>(new Set());
 
   // Initial load + live subscriptions.
   useEffect(() => {
     let cancelled = false;
 
     const hydrateScrollback = async (id: string): Promise<void> => {
-      if (hydrated.current.has(id)) return;
-      hydrated.current.add(id);
+      if (hydrated.current.has(id) || hydrating.current.has(id)) return;
+      hydrating.current.add(id);
       const res = await terminalClient.scrollback({ id }).catch((): null => null);
+      hydrating.current.delete(id);
       if (cancelled || !res || !res.ok || !res.data) return;
-      setBuffers((prev) => ({ ...prev, [id]: res.data }));
+      setBuffers((prev) => {
+        const current = prev[id] ?? '';
+        if (current.length >= res.data.length) return prev;
+        return { ...prev, [id]: res.data };
+      });
+      hydrated.current.add(id);
+    };
+
+    const hydrateSessions = (next: TerminalSession[]): void => {
+      for (const session of next) void hydrateScrollback(session.id);
     };
 
     const load = async (): Promise<void> => {
@@ -98,12 +109,10 @@ export const useTerminalState = (): TerminalState => {
         setSessions(listRes.data.sessions);
         setRunningCount(listRes.data.runningCount);
         setStatus('ready');
+        hydrateSessions(listRes.data.sessions);
         // Pick a sensible default active session (first running one).
         const firstRunning = listRes.data.sessions.find((s) => s.status === 'running') ?? listRes.data.sessions[0];
-        if (firstRunning) {
-          setActiveId((curr) => curr ?? firstRunning.id);
-          void hydrateScrollback(firstRunning.id);
-        }
+        if (firstRunning) setActiveId((curr) => curr ?? firstRunning.id);
         // Schedules + system processes are non-critical; load best-effort.
         const [schedRes, sysRes, shellsRes] = await Promise.all([
           terminalClient.listSchedules().catch((): null => null),
@@ -127,6 +136,7 @@ export const useTerminalState = (): TerminalState => {
     const offSessions = terminalClient.onSessionsChanged((next) => {
       setSessions(next);
       setRunningCount(next.filter((s) => s.status === 'running').length);
+      hydrateSessions(next);
     });
     const offSchedules = terminalClient.onSchedulesChanged((next) => {
       setSchedules(next);
@@ -166,6 +176,7 @@ export const useTerminalState = (): TerminalState => {
       return rest;
     });
     hydrated.current.delete(id);
+    hydrating.current.delete(id);
     setActiveId((curr) => (curr === id ? null : curr));
   }, []);
 
@@ -190,6 +201,7 @@ export const useTerminalState = (): TerminalState => {
   const retry = useCallback((): void => {
     setStatus('loading');
     hydrated.current.clear();
+    hydrating.current.clear();
     setReloadToken((t) => t + 1);
   }, []);
 

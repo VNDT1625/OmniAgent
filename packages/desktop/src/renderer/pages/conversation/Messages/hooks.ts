@@ -12,6 +12,7 @@ import {
   mergeTextMessageContent,
   normalizeAgentStreamError,
   preferTextMessageVersion,
+  stripTokenWatermarkNotice,
 } from '@/common/chat/chatLib';
 import { useCallback, useEffect, useRef } from 'react';
 import { createContext } from '@renderer/utils/ui/createContext';
@@ -547,14 +548,19 @@ export function normalizeDbMessage(msg: TMessage): TMessage {
   if (msg.type === 'tips') return normalizeDbTipsMessage(msg);
   if (msg.type !== 'text') return msg;
   const raw = msg.content as unknown;
-  if (typeof raw !== 'string') return msg;
+  if (typeof raw !== 'string') {
+    const content = stripTokenWatermarkNotice(msg.content.content);
+    return content.length > 0 ? { ...msg, content: { ...msg.content, content } } : { ...msg, hidden: true };
+  }
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (typeof parsed.content !== 'string') return msg;
+    const content = stripTokenWatermarkNotice(parsed.content);
+    if (content.length === 0) return { ...msg, hidden: true };
     return {
       ...msg,
       content: {
-        content: parsed.content as string,
+        content,
         ...(parsed.teammate_message ? { teammateMessage: true } : {}),
         ...(parsed.sender_name ? { senderName: parsed.sender_name as string } : {}),
         ...(parsed.sender_backend ? { senderAgentType: parsed.sender_backend as string } : {}),
@@ -562,7 +568,8 @@ export function normalizeDbMessage(msg: TMessage): TMessage {
       },
     };
   } catch {
-    return msg;
+    const content = stripTokenWatermarkNotice(raw);
+    return content.length > 0 ? { ...msg, content: { content } } : { ...msg, hidden: true };
   }
 }
 

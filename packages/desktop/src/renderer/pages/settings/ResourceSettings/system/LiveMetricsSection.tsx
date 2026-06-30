@@ -45,7 +45,11 @@ const LiveMetricsSection: React.FC<{ live: LiveSystemMetrics; history: MetricSam
   const hasLoadAvg = live.loadAvg.some((value) => value > 0);
 
   return (
-    <SectionCard icon={<DashboardOne theme='outline' size='18' />} title={t('system.live.title')} subtitle={t('system.live.subtitle')}>
+    <SectionCard
+      icon={<DashboardOne theme='outline' size='18' />}
+      title={t('system.live.title')}
+      subtitle={t('system.live.subtitle')}
+    >
       <div className='flex flex-col gap-20px'>
         {/* Gauges + sparklines */}
         <div className='grid grid-cols-1 lg:grid-cols-2 gap-16px'>
@@ -60,7 +64,11 @@ const LiveMetricsSection: React.FC<{ live: LiveSystemMetrics; history: MetricSam
             </div>
           </div>
           <div className='flex items-center gap-16px bg-fill-1 rd-12px p-16px'>
-            <Gauge percent={live.memory.usedPercent} label={t('system.live.memory')} caption={`${formatMemoryMB(live.memory.usedMB, mb, gb)} / ${formatMemoryMB(live.memory.totalMB, mb, gb)}`} />
+            <Gauge
+              percent={live.memory.usedPercent}
+              label={t('system.live.memory')}
+              caption={`${formatMemoryMB(live.memory.usedMB, mb, gb)} / ${formatMemoryMB(live.memory.totalMB, mb, gb)}`}
+            />
             <div className='flex-1 min-w-0'>
               <div className='text-12px text-t-tertiary mb-4px flex items-center gap-6px'>
                 <ChartHistogram theme='outline' size='13' />
@@ -86,7 +94,10 @@ const LiveMetricsSection: React.FC<{ live: LiveSystemMetrics; history: MetricSam
                       <span className='tabular-nums'>{value}%</span>
                     </div>
                     <div className='h-4px rd-full bg-fill-3 overflow-hidden'>
-                      <div className={`h-full rd-full ${TONE_BAR[tone]}`} style={{ width: `${value}%`, transition: 'width 400ms ease' }} />
+                      <div
+                        className={`h-full rd-full ${TONE_BAR[tone]}`}
+                        style={{ width: `${value}%`, transition: 'width 400ms ease' }}
+                      />
                     </div>
                   </div>
                 );
@@ -97,9 +108,27 @@ const LiveMetricsSection: React.FC<{ live: LiveSystemMetrics; history: MetricSam
 
         {/* Secondary chips */}
         <div className='grid grid-cols-2 lg:grid-cols-3 gap-10px'>
-          <Chip icon={<Time theme='outline' size='15' />} label={t('system.live.uptime')} value={formatDuration(live.uptimeSec, { day: t('system.units.day'), hour: t('system.units.hour'), min: t('system.units.min') })} />
-          {hasLoadAvg && <Chip icon={<DashboardOne theme='outline' size='15' />} label={t('system.live.loadAvg')} value={live.loadAvg.map((value) => value.toFixed(2)).join('  ')} />}
-          <Chip icon={<Lightning theme='outline' size='15' />} label={t('system.live.battery')} value={live.power.onBattery ? t('system.live.onBattery') : t('system.live.plugged')} />
+          <Chip
+            icon={<Time theme='outline' size='15' />}
+            label={t('system.live.uptime')}
+            value={formatDuration(live.uptimeSec, {
+              day: t('system.units.day'),
+              hour: t('system.units.hour'),
+              min: t('system.units.min'),
+            })}
+          />
+          {hasLoadAvg && (
+            <Chip
+              icon={<DashboardOne theme='outline' size='15' />}
+              label={t('system.live.loadAvg')}
+              value={live.loadAvg.map((value) => value.toFixed(2)).join('  ')}
+            />
+          )}
+          <Chip
+            icon={<Lightning theme='outline' size='15' />}
+            label={t('system.live.battery')}
+            value={live.power.onBattery ? t('system.live.onBattery') : t('system.live.plugged')}
+          />
         </div>
       </div>
     </SectionCard>

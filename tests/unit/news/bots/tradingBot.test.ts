@@ -6,7 +6,13 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { tick, type TickContext } from '@process/news/bots/tradingBot';
-import { defaultRiskLimits, emptyPortfolio, type Position, type TradingBotConfig, type TradingBotState } from '@process/news/bots/botTypes';
+import {
+  defaultRiskLimits,
+  emptyPortfolio,
+  type Position,
+  type TradingBotConfig,
+  type TradingBotState,
+} from '@process/news/bots/botTypes';
 
 const cfg = (over: Partial<TradingBotConfig> = {}): TradingBotConfig => ({
   id: 'bot1',
@@ -68,7 +74,10 @@ describe('tradingBot.tick', () => {
   it('halts new entries when the daily loss limit is breached', () => {
     // Position deep underwater → equity well below the 5% limit.
     const pf = { ...emptyPortfolio(10_000), cash: 0, positions: withPosition(100, 100) };
-    const res = tick(state({ portfolio: pf }, { risk: { ...defaultRiskLimits(), stopLossPct: 0, dailyLossLimitPct: 0.05 } }), ctx({ prices: { AAPL: 50 } }));
+    const res = tick(
+      state({ portfolio: pf }, { risk: { ...defaultRiskLimits(), stopLossPct: 0, dailyLossLimitPct: 0.05 } }),
+      ctx({ prices: { AAPL: 50 } })
+    );
     expect(res.state.haltedReason).toContain('daily loss limit');
     expect(res.trades.some((t) => t.side === 'buy')).toBe(false);
   });
@@ -90,7 +99,17 @@ describe('tradingBot.tick', () => {
     const today = Date.parse('2026-06-09T09:00:00Z');
     const pf = {
       ...emptyPortfolio(10_000),
-      trades: Array.from({ length: 3 }, (_, i) => ({ id: `x${i}`, symbol: 'AAPL', side: 'buy' as const, qty: 1, price: 100, time: today, realizedPnl: 0, reason: 'r', mode: 'paper' as const })),
+      trades: Array.from({ length: 3 }, (_, i) => ({
+        id: `x${i}`,
+        symbol: 'AAPL',
+        side: 'buy' as const,
+        qty: 1,
+        price: 100,
+        time: today,
+        realizedPnl: 0,
+        reason: 'r',
+        mode: 'paper' as const,
+      })),
     };
     const res = tick(state({ portfolio: pf }, { risk: { ...defaultRiskLimits(), maxTradesPerDay: 3 } }), ctx());
     expect(res.trades.some((t) => t.side === 'buy')).toBe(false);

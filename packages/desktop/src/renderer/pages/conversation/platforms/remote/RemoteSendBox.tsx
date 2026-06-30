@@ -267,7 +267,9 @@ const RemoteSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id 
 
         void checkAndUpdateTitle(conversation_id, input);
         const initialGoalExpansion = expandGoalCommand(input);
-        const initialModelInput = initialGoalExpansion ? buildDisplayMessage(initialGoalExpansion, files, workspacePath) : initialDisplayMessage;
+        const initialModelInput = initialGoalExpansion
+          ? buildDisplayMessage(initialGoalExpansion, files, workspacePath)
+          : initialDisplayMessage;
         if (initialGoalExpansion) {
           const parsedGoal = parseGoalCommand(input);
           if (parsedGoal) setGoalMode(conversation_id, parsedGoal.variant, parsedGoal.requirement);
@@ -435,7 +437,18 @@ const RemoteSendBox: React.FC<{ conversation_id: string }> = ({ conversation_id 
 
       await executeCommand({ input: message, files: file_paths });
     },
-    [aiProcessing, atPath, conversation_id, enqueue, executeCommand, hasPendingCommands, setAtPath, setUploadFile, t, uploadFile]
+    [
+      aiProcessing,
+      atPath,
+      conversation_id,
+      enqueue,
+      executeCommand,
+      hasPendingCommands,
+      setAtPath,
+      setUploadFile,
+      t,
+      uploadFile,
+    ]
   );
 
   const handleEditQueuedCommand = useCallback(

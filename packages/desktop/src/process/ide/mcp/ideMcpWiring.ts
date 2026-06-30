@@ -38,6 +38,7 @@ import { runMtuiInRoot } from '@process/terminal/mtuiBridge';
 import { runCommand } from '../command/commandRunner';
 import type { CdpWebContents } from '../quickTestTracer';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { ToolGuard } from './ideServerToolGuard';
 
 const DEFAULT_SCAN_FILES = 4000;
 const DEFAULT_SEARCH_RESULTS = 200;
@@ -469,6 +470,27 @@ export const getQuickTestRunner = (): QuickTestRunner => {
 // ---------------------------------------------------------------------------
 // Build the server
 // ---------------------------------------------------------------------------
+const NATIVE_TOOL_DENYLIST = new Set([
+  'read', 'read0', 'grep', 'grep0', 'rg', 'glob', 'glob0', 'bash', 'bash0', 'sh', 'shell',
+  'write', 'write0', 'edit', 'edit0', 'notebookedit', 'notebookedit0', 'applypatch',
+  'strreplace', 'sed', 'awk', 'cat', 'ls', 'find', 'execute', 'runterminalcmd',
+  'terminal_run', 'run_terminal_cmd',
+]);
+
+const nativeToolGuard: ToolGuard = (toolName) => {
+  const normalized = toolName.trim().toLowerCase().replace(/[_\s]/g, '');
+  if (NATIVE_TOOL_DENYLIST.has(normalized)) {
+    return {
+      allow: false,
+      reason:
+        'Native tool "' +
+        toolName +
+        '" is blocked in IDE workspaces. Use ide_* / team_* / db_* tools instead.',
+    };
+  }
+  return { allow: true };
+};
+
 export const buildIdeServer = (): McpServer =>
   createIdeServer({
     ide: getIdeMcpService(),
@@ -476,4 +498,5 @@ export const buildIdeServer = (): McpServer =>
     db: getDbService() as DbAgentService,
     memory: getSessionMemoryStore(),
     teamEdit: getTeamEditService(),
+    toolGuard: nativeToolGuard,
   });

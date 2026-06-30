@@ -5,7 +5,13 @@
  */
 
 import { systemInfo } from '@/common/adapter/ipcBridge';
-import type { LiveSystemMetrics, MetricSample, ProcessPriorityLevel, SetPriorityResult, StaticSystemInfo } from '@process/system/systemInfoTypes';
+import type {
+  LiveSystemMetrics,
+  MetricSample,
+  ProcessPriorityLevel,
+  SetPriorityResult,
+  StaticSystemInfo,
+} from '@process/system/systemInfoTypes';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** Status of the initial System Insight load. */
@@ -44,7 +50,10 @@ export function useSystemMetrics(): UseSystemMetrics {
 
     const load = async () => {
       try {
-        const [profile, snapshot] = await Promise.all([systemInfo.getStaticInfo.invoke(), systemInfo.getSnapshot.invoke()]);
+        const [profile, snapshot] = await Promise.all([
+          systemInfo.getStaticInfo.invoke(),
+          systemInfo.getSnapshot.invoke(),
+        ]);
         if (!aliveRef.current) return;
         if (profile) setStaticInfo(profile);
         else if (snapshot) setStaticInfo(snapshot.static);

@@ -119,11 +119,11 @@ export function PendingChatScreen({ agent }: PendingChatScreenProps) {
 
   const handleModePress = useCallback(() => {
     // iOS: use ActionSheet
-    const handled = showModeActionSheet(modes, selectedMode, setSelectedMode);
+    const handled = showModeActionSheet(modes, selectedMode, setSelectedMode, t('common.cancel'));
     if (!handled) {
       setShowModePicker(true);
     }
-  }, [modes, selectedMode]);
+  }, [modes, selectedMode, t]);
 
   const handleSend = async (text: string) => {
     if (isSending) return;

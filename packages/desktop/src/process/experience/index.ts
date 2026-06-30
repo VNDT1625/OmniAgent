@@ -57,10 +57,29 @@ export {
 import { clampConfidence } from './experienceText';
 import { createExperienceCapture } from './experienceCapture';
 import { createExperienceRetrieval } from './experienceRetrieval';
-import { buildProjection, clearFeedback, clearForget, clearInbox, readFeedback, readForget, readInbox, readProjection, writeProjection, type ProjectionFs } from './experienceProjection';
+import {
+  buildProjection,
+  clearFeedback,
+  clearForget,
+  clearInbox,
+  readFeedback,
+  readForget,
+  readInbox,
+  readProjection,
+  writeProjection,
+  type ProjectionFs,
+} from './experienceProjection';
 import { createExperienceStore, type IExperienceStore } from './experienceStore';
 import type { ExperienceEmbedder } from './experienceVectorIndex';
-import type { CaptureResult, ExperienceEntry, ExperienceFilter, ExperienceMetrics, ExperienceQuery, ExperienceEntryDraft, ExperienceSuggestion } from './experienceTypes';
+import type {
+  CaptureResult,
+  ExperienceEntry,
+  ExperienceFilter,
+  ExperienceMetrics,
+  ExperienceQuery,
+  ExperienceEntryDraft,
+  ExperienceSuggestion,
+} from './experienceTypes';
 import { recomputeAllRelations, enrichSuggestions } from './workflow/experienceGraph';
 import { createExperienceMetrics, type IExperienceMetrics } from './workflow/experienceMetrics';
 import { createExperienceTrigger, type ExperienceTrigger } from './workflow/experienceTrigger';
@@ -167,7 +186,10 @@ export const createExperienceService = (options: ExperienceServiceOptions): Expe
       });
       await Promise.all(changed.map((entry) => store.update(entry.id, { relations: entry.relations })));
     }
-    const projection = buildProjection(entries, { providerId: options.embedder?.providerId, model: options.embedder?.model });
+    const projection = buildProjection(entries, {
+      providerId: options.embedder?.providerId,
+      model: options.embedder?.model,
+    });
     await writeProjection(options.projectRoot, projection, options.projectionFs);
   };
 
@@ -182,10 +204,28 @@ export const createExperienceService = (options: ExperienceServiceOptions): Expe
 
   const search: ExperienceService['search'] = async (query, searchOptions = {}) => {
     const projection = await readProjection(options.projectRoot, options.projectionFs);
-    const entries = projection ? projection.entries : buildProjection(await store.searchMetadata({ projectId })).entries;
-    const ranked = await retrieval.retrieve({ ...query, projectId: query.projectId ?? projectId }, entries, searchOptions);
+    const entries = projection
+      ? projection.entries
+      : buildProjection(await store.searchMetadata({ projectId })).entries;
+    const ranked = await retrieval.retrieve(
+      { ...query, projectId: query.projectId ?? projectId },
+      entries,
+      searchOptions
+    );
     const sourceById = new Map(
-      entries.map((entry) => [entry.id, { id: entry.id, kind: entry.kind, status: entry.status, lesson: entry.lesson, relations: entry.relations ?? [] }] as const)
+      entries.map(
+        (entry) =>
+          [
+            entry.id,
+            {
+              id: entry.id,
+              kind: entry.kind,
+              status: entry.status,
+              lesson: entry.lesson,
+              relations: entry.relations ?? [],
+            },
+          ] as const
+      )
     );
     const enriched = enrichSuggestions(ranked, sourceById);
     await safeMetric(() => metrics.recordRetrieval(enriched.length));
@@ -232,7 +272,10 @@ export const createExperienceService = (options: ExperienceServiceOptions): Expe
         const existing = await store.get(item.id);
         if (existing) {
           const delta = item.helped ? FEEDBACK_DELTA_HELPED : FEEDBACK_DELTA_FALSE;
-          await store.update(item.id, { confidence: clampConfidence(existing.confidence + delta, existing.confidence), updatedAt: now() });
+          await store.update(item.id, {
+            confidence: clampConfidence(existing.confidence + delta, existing.confidence),
+            updatedAt: now(),
+          });
           await safeMetric(() => metrics.recordFeedback(item.helped));
           feedbackApplied += 1;
         }
@@ -263,7 +306,10 @@ export const createExperienceService = (options: ExperienceServiceOptions): Expe
     if (!entry) {
       return false;
     }
-    await store.update(entryId, { confidence: clampConfidence(entry.confidence + delta, entry.confidence), updatedAt: now() });
+    await store.update(entryId, {
+      confidence: clampConfidence(entry.confidence + delta, entry.confidence),
+      updatedAt: now(),
+    });
     await rebuildProjection(false);
     return true;
   };
@@ -290,5 +336,8 @@ export const createExperienceService = (options: ExperienceServiceOptions): Expe
 };
 
 /** Build the agent-workflow orchestrator bound to a service. */
-export const createWorkflowForService = (service: ExperienceService, trigger?: ExperienceTrigger): ReturnType<typeof createExperienceWorkflow> =>
+export const createWorkflowForService = (
+  service: ExperienceService,
+  trigger?: ExperienceTrigger
+): ReturnType<typeof createExperienceWorkflow> =>
   createExperienceWorkflow({ service, trigger: trigger ?? createExperienceTrigger() });

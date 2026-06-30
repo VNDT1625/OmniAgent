@@ -78,9 +78,14 @@ describe('createExperienceStore', () => {
     await store.create(makeEntry({ id: 'exp_2', projectId: 'proj_a', kind: 'agent_mistake', status: 'archived' }));
     await store.create(makeEntry({ id: 'exp_3', projectId: 'proj_b' }));
 
-    expect((await store.searchMetadata({ projectId: 'proj_a' })).map((entry) => entry.id).sort()).toEqual(['exp_1', 'exp_2']);
+    expect((await store.searchMetadata({ projectId: 'proj_a' })).map((entry) => entry.id).toSorted()).toEqual([
+      'exp_1',
+      'exp_2',
+    ]);
     expect((await store.searchMetadata({ kind: 'agent_mistake' })).map((entry) => entry.id)).toEqual(['exp_2']);
-    expect((await store.searchMetadata({ status: 'active', projectId: 'proj_a' })).map((entry) => entry.id)).toEqual(['exp_1']);
+    expect((await store.searchMetadata({ status: 'active', projectId: 'proj_a' })).map((entry) => entry.id)).toEqual([
+      'exp_1',
+    ]);
     expect((await store.searchMetadata({ tags: ['vitest'] })).map((entry) => entry.id)).toEqual(['exp_1']);
   });
 

@@ -140,10 +140,25 @@ const EN_PRESETS: FeedPreset[] = [
   { name: 'The Hill — US Politics', url: 'https://thehill.com/feed/', category: 'politics', lang: 'en' },
   { name: 'China Daily', url: 'http://www.chinadaily.com.cn/rss/china_rss.xml', category: 'world', lang: 'en' },
   { name: 'SCMP — China', url: 'https://www.scmp.com/rss/91/feed', category: 'world', lang: 'en' },
-  { name: 'The Hindu — National', url: 'https://www.thehindu.com/news/national/feeder/default.rss', category: 'world', lang: 'en' },
-  { name: 'Times of India — Top', url: 'https://timesofindia.indiatimes.com/rssfeedstopstories.cms', category: 'world', lang: 'en' },
+  {
+    name: 'The Hindu — National',
+    url: 'https://www.thehindu.com/news/national/feeder/default.rss',
+    category: 'world',
+    lang: 'en',
+  },
+  {
+    name: 'Times of India — Top',
+    url: 'https://timesofindia.indiatimes.com/rssfeedstopstories.cms',
+    category: 'world',
+    lang: 'en',
+  },
   { name: 'Yonhap — Korea (EN)', url: 'https://en.yna.co.kr/RSS/news.xml', category: 'world', lang: 'en' },
-  { name: 'NHK World — Japan (EN)', url: 'https://www3.nhk.or.jp/nhkworld/en/news/rss/', category: 'world', lang: 'en' },
+  {
+    name: 'NHK World — Japan (EN)',
+    url: 'https://www3.nhk.or.jp/nhkworld/en/news/rss/',
+    category: 'world',
+    lang: 'en',
+  },
   { name: 'The Japan Times', url: 'https://www.japantimes.co.jp/feed/', category: 'world', lang: 'en' },
   { name: 'The Moscow Times', url: 'https://www.themoscowtimes.com/rss/news', category: 'world', lang: 'en' },
 ];

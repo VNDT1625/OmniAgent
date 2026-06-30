@@ -26,7 +26,15 @@ import { buildReport } from './reportBuilder';
 import type { IAppDetector } from './appDetector';
 import type { IScenarioGenerator } from './scenarioGenerator';
 import type { ITestOrchestrator } from './testOrchestrator';
-import type { AppUnderTest, DetectProgress, GenerateProgress, TestPlatform, TestScenario, TestStep, Viewport } from './testingTypes';
+import type {
+  AppUnderTest,
+  DetectProgress,
+  GenerateProgress,
+  TestPlatform,
+  TestScenario,
+  TestStep,
+  Viewport,
+} from './testingTypes';
 
 /** IPC channel names for the testing surface. Safe to import from the renderer. */
 export const TESTING_CHANNELS = {

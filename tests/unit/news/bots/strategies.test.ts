@@ -5,7 +5,16 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { sma, rsi, smaCrossover, rsiReversion, breakout, newsSentiment, ensemble, runStrategy } from '@process/news/bots/strategies';
+import {
+  sma,
+  rsi,
+  smaCrossover,
+  rsiReversion,
+  breakout,
+  newsSentiment,
+  ensemble,
+  runStrategy,
+} from '@process/news/bots/strategies';
 
 describe('indicators', () => {
   it('sma averages the last N', () => {

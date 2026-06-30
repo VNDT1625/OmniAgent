@@ -56,9 +56,7 @@ const FactCard: React.FC<{
         <span className={`text-12px font-600 ${STATUS_TONE[fact.status] ?? 'text-t-tertiary'}`}>
           {t(`realtimeKnowledge.status.${fact.status}`)}
         </span>
-        <span className='text-12px text-t-tertiary'>
-          {t('realtimeKnowledge.card.validAsOf', { date: validAsOf })}
-        </span>
+        <span className='text-12px text-t-tertiary'>{t('realtimeKnowledge.card.validAsOf', { date: validAsOf })}</span>
         <span className='text-12px text-t-tertiary'>
           {t('realtimeKnowledge.card.confidence', { percent: Math.round(fact.confidence * 100) })}
         </span>

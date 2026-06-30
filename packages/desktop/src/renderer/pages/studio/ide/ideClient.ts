@@ -40,6 +40,7 @@ import type {
   IdeFileWatchStartRequest,
   IdeFileWatchStopRequest,
   ListDirRequest,
+  ReadFileData,
   ReadFileRequest,
   WriteFileBase64Request,
   WriteFileRequest,
@@ -68,6 +69,10 @@ import type {
 import type { QtStartRequest, QtStopResponse, QtEventEnvelope } from '@process/ide/quickTestBridge';
 import type { InspectPickRequest, InspectScreenshotResult } from '@process/ide/elementInspectorBridge';
 import type { LocatedElement } from '@process/ide/elementInspectorLocator';
+
+/** Extract plain text content from a `ide.read-file` result (supports both legacy string and the current ReadFileData shape). */
+export const getReadFileText = (data: ReadFileData | string | null | undefined): string =>
+  typeof data === 'string' ? data : (data?.text ?? '');
 import type { TracePlatform as QtTracePlatform } from '@process/ide/quickTestTracer';
 import type {
   RunPlanRequest,
@@ -230,7 +235,7 @@ const channels = {
   wikiLoad: bridge.buildProvider<IdeWikiResult<PersistedWiki | null>, WikiLoadRequest>(IDE_CHANNELS.wikiLoad),
   wikiProgress: bridge.buildEmitter<WikiBuildProgress>(IDE_CHANNELS.wikiProgress),
   listDir: bridge.buildProvider<IdeFileResult<IdeDirEntry[]>, ListDirRequest>(IDE_CHANNELS.listDir),
-  readFile: bridge.buildProvider<IdeFileResult<string>, ReadFileRequest>(IDE_CHANNELS.readFile),
+  readFile: bridge.buildProvider<IdeFileResult<ReadFileData>, ReadFileRequest>(IDE_CHANNELS.readFile),
   readFileBase64: bridge.buildProvider<IdeFileResult<string>, ReadFileRequest>(IDE_CHANNELS.readFileBase64),
   writeFile: bridge.buildProvider<IdeFileResult<boolean>, WriteFileRequest>(IDE_CHANNELS.writeFile),
   writeFileBase64: bridge.buildProvider<IdeFileResult<boolean>, WriteFileBase64Request>(IDE_CHANNELS.writeFileBase64),
@@ -367,13 +372,11 @@ export const ideClient = {
     dir: string,
     opts?: { glob?: string; recursive?: boolean; maxResults?: number }
   ): Promise<IdeFileResult<IdeDirEntry[]>> =>
-    invokeWithTimeout(
-      IDE_CHANNELS.listDir,
-      () => channels.listDir.invoke({ dir, ...opts }),
-      FILE_OP_TIMEOUT_MS
-    ),
-  readFile: (filePath: string): Promise<IdeFileResult<string>> =>
-    invokeWithTimeout(IDE_CHANNELS.readFile, () => channels.readFile.invoke({ path: filePath }), FILE_OP_TIMEOUT_MS),
+    invokeWithTimeout(IDE_CHANNELS.listDir, () => channels.listDir.invoke({ dir, ...opts }), FILE_OP_TIMEOUT_MS),
+  readFile: (filePathOrReq: string | ReadFileRequest): Promise<IdeFileResult<ReadFileData>> => {
+    const req: ReadFileRequest = typeof filePathOrReq === 'string' ? { path: filePathOrReq } : filePathOrReq;
+    return invokeWithTimeout(IDE_CHANNELS.readFile, () => channels.readFile.invoke(req), FILE_OP_TIMEOUT_MS);
+  },
   readFileBase64: (filePath: string): Promise<IdeFileResult<string>> =>
     invokeWithTimeout(
       IDE_CHANNELS.readFileBase64,

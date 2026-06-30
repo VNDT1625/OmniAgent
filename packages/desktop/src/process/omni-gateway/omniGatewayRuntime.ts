@@ -30,11 +30,7 @@ import { createOmniDebugBridge } from './omniGatewayDebugBridge';
 import { startOmniTunnel, stopOmniTunnel, type StartOmniTunnelResult } from './omniGatewayTunnel';
 import { createOmniOAuthHandler, type OmniOAuthHandler } from './auth/omniGatewayOAuth';
 import type { OmniOAuthStore } from './auth/omniGatewayOAuthStore';
-import {
-  OMNI_DEFAULT_AUTH_MODE,
-  type OmniAuthMode,
-  type OmniToolPermissions,
-} from './auth/authTypes';
+import { OMNI_DEFAULT_AUTH_MODE, type OmniAuthMode, type OmniToolPermissions } from './auth/authTypes';
 import type { OmniSecurityState } from './auth/omniGatewaySecurityStore';
 import type { OmniGatewayProgressPhase } from './omniGatewayProgress';
 
@@ -72,7 +68,10 @@ export type OmniGatewayRuntimeDeps = {
   loadSecurityState: () => Promise<OmniSecurityState>;
   oauth: () => OmniOAuthStore;
   buildIdeDeps: () => Omit<IdeServerDeps, 'toolGuard'>;
-  emitProgress?: (phase: OmniGatewayProgressPhase, detail?: { message?: string; tunnelUrl?: string; error?: string }) => void;
+  emitProgress?: (
+    phase: OmniGatewayProgressPhase,
+    detail?: { message?: string; tunnelUrl?: string; error?: string }
+  ) => void;
   now?: () => number;
   newToken?: () => string;
   newId?: () => string;
@@ -226,7 +225,13 @@ export const createOmniGatewayRuntime = (deps: OmniGatewayRuntimeDeps): OmniGate
     stop,
     startExternalAccess,
     disableExternalAccess,
-    snapshot: () => ({ live, liveExternal, lastError, authMode: currentAuthMode, toolPermissions: currentToolPermissions }),
+    snapshot: () => ({
+      live,
+      liveExternal,
+      lastError,
+      authMode: currentAuthMode,
+      toolPermissions: currentToolPermissions,
+    }),
     setAuthMode: (mode) => {
       currentAuthMode = mode;
     },
