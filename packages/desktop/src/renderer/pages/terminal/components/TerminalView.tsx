@@ -41,7 +41,7 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import type { TerminalSession } from '@process/terminal/terminalTypes';
 import { buildXtermTheme } from './xtermTheme';
 import { tokenizeShellIntegration } from '../shellIntegrationParser';
-import { findMtuiStaleConfirmation } from '../constants';
+import { findMtuiStaleConfirmation, stripAnsi } from '../constants';
 import { registerFileLinks } from './terminalFileLinks';
 import type { PendingRemap } from '../useTerminalIntelligence';
 import { buildAckLine, buildConfirmPrompt, interpretConfirmKey } from '@process/terminal/smartFix/smartFixPrompt';
@@ -171,11 +171,13 @@ const TerminalView: React.FC<TerminalViewProps> = ({
   const [cmdMenu, setCmdMenu] = useState<{ x: number; y: number; commandLine: string } | null>(null);
   /** Set when xterm fails to initialize, so we show a notice instead of a blank pane. */
   const [initError, setInitError] = useState<string | null>(null);
+  const [mirrorVisible, setMirrorVisible] = useState(false);
   /** Bumped once xterm is actually open, so the buffer-stream effect re-runs. */
   const [booted, setBooted] = useState(0);
 
   const isRunning = session?.status === 'running';
   const staleNotice = useMemo(() => findMtuiStaleConfirmation(buffer), [buffer]);
+  const mirrorText = useMemo(() => stripAnsi(buffer), [buffer]);
 
   const forceRepaint = useCallback((): void => {
     const term = termRef.current;
@@ -640,6 +642,23 @@ const TerminalView: React.FC<TerminalViewProps> = ({
     };
   }, [visible, session?.id, fitAndRepaint, writeWithMarkers]);
 
+  useEffect(() => {
+    if (!buffer || mirrorText.trim().length === 0) {
+      setMirrorVisible(false);
+      return;
+    }
+    const updateMirrorVisibility = (): void => {
+      const rowsText = hostRef.current?.querySelector('.xterm-rows')?.textContent ?? '';
+      setMirrorVisible(rowsText.trim().length === 0);
+    };
+    const raf = requestAnimationFrame(updateMirrorVisibility);
+    const timeout = setTimeout(updateMirrorVisibility, 120);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timeout);
+    };
+  }, [buffer, booted, mirrorText, session?.id]);
+
   // Focus the search box when the search bar opens.
   useEffect(() => {
     if (searchOpen) setTimeout(() => searchInputRef.current?.focus(), 50);
@@ -796,7 +815,17 @@ const TerminalView: React.FC<TerminalViewProps> = ({
       ) : null}
 
       {/* xterm.js mount point. The emulator owns everything below this node. */}
-      <div ref={hostRef} className='terminal-xterm-host flex-1 min-h-0 min-w-0 px-8px py-6px' />
+      <div className='relative flex-1 min-h-0 min-w-0 overflow-hidden'>
+        {mirrorVisible ? (
+          <pre
+            aria-hidden
+            className='absolute inset-0 z-0 m-0 overflow-hidden px-8px py-6px whitespace-pre-wrap break-words text-t-primary font-mono text-13px leading-13px'
+          >
+            {mirrorText}
+          </pre>
+        ) : null}
+        <div ref={hostRef} className='terminal-xterm-host relative z-10 h-full w-full px-8px py-6px' />
+      </div>
 
       {/* docTerminal ghost-text: faded completion anchored at the cursor + Tab hint. */}
       {ghost ? (
