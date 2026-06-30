@@ -21,7 +21,10 @@ const RENDERS_DIR = 'renders';
 const PROJECT_EXT = '.daw';
 
 function sanitizeName(name: string): string {
-  const cleaned = name.replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_').trim();
+  const cleaned = name
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/\p{Cc}/gu, '_')
+    .trim();
   return cleaned.length > 0 ? cleaned : 'Untitled';
 }
 

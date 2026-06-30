@@ -86,7 +86,7 @@ const fakeCoordinator = () => {
 const fakeEmbedder = (): Embedder => ({
   embed: async (texts) =>
     texts.map((text) => {
-      const v = new Array<number>(26).fill(0);
+      const v = Array.from({ length: 26 }, () => 0);
       for (const ch of text.toLowerCase()) {
         const i = ch.charCodeAt(0) - 97;
         if (i >= 0 && i < 26) v[i] += 1;

@@ -41,7 +41,7 @@ const makeMemFs = () => {
       rm: async (dir: string) => {
         // Remove every file whose path is inside `dir` (recursive delete double).
         const prefix = dir.endsWith(path.sep) ? dir : dir + path.sep;
-        for (const key of [...files.keys()]) {
+        for (const key of files.keys()) {
           if (key === dir || key.startsWith(prefix)) files.delete(key);
         }
       },

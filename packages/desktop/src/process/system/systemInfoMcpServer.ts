@@ -84,15 +84,13 @@ function summarize(snapshot: SystemSnapshot) {
       loadAvg: live.loadAvg,
       uptimeSec: live.uptimeSec,
       onBattery: live.power.onBattery,
-      topProcesses: live.processes
-        .slice(0, TOP_PROCESS_LIMIT)
-        .map((process) => ({
-          pid: process.pid,
-          name: process.name,
-          type: process.type,
-          cpuPercent: process.cpuPercent,
-          memoryMB: process.memoryMB,
-        })),
+      topProcesses: live.processes.slice(0, TOP_PROCESS_LIMIT).map((process) => ({
+        pid: process.pid,
+        name: process.name,
+        type: process.type,
+        cpuPercent: process.cpuPercent,
+        memoryMB: process.memoryMB,
+      })),
     },
   };
 }

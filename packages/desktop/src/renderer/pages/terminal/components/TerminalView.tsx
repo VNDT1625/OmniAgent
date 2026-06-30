@@ -435,7 +435,6 @@ const TerminalView: React.FC<TerminalViewProps> = ({
       } catch {
         /* The scheduled fits below will retry after layout settles. */
       }
-
     } catch (error) {
       console.error('[TerminalView] xterm init failed:', error);
       setInitError(error instanceof Error ? error.message : String(error));

@@ -36,7 +36,8 @@ export type ProjectSummary = {
 
 const sanitizeName = (name: string): string =>
   name
-    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '_')
+    .replace(/[<>:"/\\|?*]/g, '_')
+    .replace(/\p{Cc}/gu, '_')
     .replace(/\.+$/, '')
     .trim() || 'Untitled';
 

@@ -106,8 +106,8 @@ export function analyzeAudio(samples: Float32Array, sampleRate: number, options:
 }
 
 function averageFrames(frames: number[][]): number[] {
-  if (frames.length === 0) return new Array<number>(12).fill(0);
-  const sum = new Array<number>(12).fill(0);
+  if (frames.length === 0) return Array.from({ length: 12 }, () => 0);
+  const sum = Array.from({ length: 12 }, () => 0);
   for (const f of frames) {
     for (let i = 0; i < 12; i++) sum[i] += f[i];
   }

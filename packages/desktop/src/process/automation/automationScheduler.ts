@@ -141,7 +141,7 @@ export const createAutomationScheduler = (deps: AutomationSchedulerDeps): IAutom
         unsubscribe();
         unsubscribe = null;
       }
-      for (const id of [...armed.keys()]) disarm(id);
+      for (const id of armed.keys()) disarm(id);
     },
   };
 };

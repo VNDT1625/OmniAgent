@@ -25,7 +25,7 @@ export const levenshtein = (a: string, b: string): number => {
 
   // Single-row rolling DP — O(min) memory.
   let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
-  let curr = new Array<number>(b.length + 1);
+  let curr = Array.from({ length: b.length + 1 }, () => 0);
 
   for (let i = 1; i <= a.length; i++) {
     curr[0] = i;

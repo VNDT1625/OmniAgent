@@ -48,7 +48,7 @@ export const createHashingEmbedder = (dimensions: number = HASHING_DIMENSIONS): 
   embed: (texts) =>
     Promise.resolve(
       texts.map((text) => {
-        const vector = new Array<number>(dimensions).fill(0);
+        const vector = Array.from({ length: dimensions }, () => 0);
         for (const token of tokenize(text)) {
           vector[bucket(token, dimensions)] += 1;
         }

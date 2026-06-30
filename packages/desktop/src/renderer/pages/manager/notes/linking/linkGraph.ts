@@ -123,8 +123,8 @@ export const simulateLayout = (graph: LinkGraph, options?: LayoutOptions): LinkG
   for (let iter = 0; iter < iterations; iter += 1) {
     // Cooling factor: larger moves early, finer adjustments later.
     const cooling = 1 - iter / iterations;
-    const dx = new Array<number>(n).fill(0);
-    const dy = new Array<number>(n).fill(0);
+    const dx = Array.from({ length: n }, () => 0);
+    const dy = Array.from({ length: n }, () => 0);
 
     // Pairwise repulsion.
     for (let i = 0; i < n; i += 1) {

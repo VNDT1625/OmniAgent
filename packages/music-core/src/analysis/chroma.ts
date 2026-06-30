@@ -55,7 +55,7 @@ export function computeChroma(samples: Float32Array, sampleRate: number): number
   const freqCappedBins = Math.ceil((MAX_FREQ_HZ * samples.length) / sampleRate) + 1;
   const bins = Math.min(nyquistBins, freqCappedBins);
   const spectrum = magnitudeSpectrum(samples, bins);
-  const chroma = new Array<number>(12).fill(0);
+  const chroma = Array.from({ length: 12 }, () => 0);
 
   for (let k = 1; k < bins; k++) {
     const hz = (k * sampleRate) / samples.length;
@@ -68,8 +68,8 @@ export function computeChroma(samples: Float32Array, sampleRate: number): number
 
 /** Average several per-frame chroma vectors into one, then normalize. */
 export function averageChroma(frames: number[][]): number[] {
-  if (frames.length === 0) return new Array<number>(12).fill(0);
-  const sum = new Array<number>(12).fill(0);
+  if (frames.length === 0) return Array.from({ length: 12 }, () => 0);
+  const sum = Array.from({ length: 12 }, () => 0);
   for (const frame of frames) {
     for (let i = 0; i < 12; i++) sum[i] += frame[i];
   }

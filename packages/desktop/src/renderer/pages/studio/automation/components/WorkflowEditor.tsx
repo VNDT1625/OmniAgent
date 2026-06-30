@@ -43,6 +43,7 @@ type WorkflowEditorProps = {
 const defaultBranches = (kind: WorkflowNodeKind): Record<string, WorkflowNode[]> | undefined => {
   switch (kind) {
     case 'control.if':
+      // oxlint-disable-next-line unicorn/no-thenable -- Workflow branch names are persisted as "then"/"else".
       return { then: [], else: [] };
     case 'control.loop':
       return { body: [] };

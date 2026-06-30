@@ -195,6 +195,7 @@ describe('control.if', () => {
           'control.if',
           { left: '{{input}}', operator: 'eq', right: 'yes' },
           {
+            // oxlint-disable-next-line unicorn/no-thenable -- Workflow branch names are part of the public schema.
             then: [node('t', 'action.log')],
             else: [node('e', 'action.log')],
           }
@@ -215,6 +216,7 @@ describe('control.if', () => {
           'control.if',
           { left: '{{input}}', operator: 'eq', right: 'yes' },
           {
+            // oxlint-disable-next-line unicorn/no-thenable -- Workflow branch names are part of the public schema.
             then: [node('t', 'action.log')],
             else: [node('e', 'action.log')],
           }

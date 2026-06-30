@@ -471,10 +471,34 @@ export const getQuickTestRunner = (): QuickTestRunner => {
 // Build the server
 // ---------------------------------------------------------------------------
 const NATIVE_TOOL_DENYLIST = new Set([
-  'read', 'read0', 'grep', 'grep0', 'rg', 'glob', 'glob0', 'bash', 'bash0', 'sh', 'shell',
-  'write', 'write0', 'edit', 'edit0', 'notebookedit', 'notebookedit0', 'applypatch',
-  'strreplace', 'sed', 'awk', 'cat', 'ls', 'find', 'execute', 'runterminalcmd',
-  'terminal_run', 'run_terminal_cmd',
+  'read',
+  'read0',
+  'grep',
+  'grep0',
+  'rg',
+  'glob',
+  'glob0',
+  'bash',
+  'bash0',
+  'sh',
+  'shell',
+  'write',
+  'write0',
+  'edit',
+  'edit0',
+  'notebookedit',
+  'notebookedit0',
+  'applypatch',
+  'strreplace',
+  'sed',
+  'awk',
+  'cat',
+  'ls',
+  'find',
+  'execute',
+  'runterminalcmd',
+  'terminal_run',
+  'run_terminal_cmd',
 ]);
 
 const nativeToolGuard: ToolGuard = (toolName) => {
@@ -482,10 +506,7 @@ const nativeToolGuard: ToolGuard = (toolName) => {
   if (NATIVE_TOOL_DENYLIST.has(normalized)) {
     return {
       allow: false,
-      reason:
-        'Native tool "' +
-        toolName +
-        '" is blocked in IDE workspaces. Use ide_* / team_* / db_* tools instead.',
+      reason: 'Native tool "' + toolName + '" is blocked in IDE workspaces. Use ide_* / team_* / db_* tools instead.',
     };
   }
   return { allow: true };

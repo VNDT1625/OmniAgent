@@ -29,9 +29,7 @@ const MINOR_PROFILE = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69
 
 function rotate(profile: number[], steps: number): number[] {
   const n = profile.length;
-  const out = new Array<number>(n);
-  for (let i = 0; i < n; i++) out[i] = profile[(i - steps + n) % n];
-  return out;
+  return Array.from({ length: n }, (_, i) => profile[(i - steps + n) % n]);
 }
 
 function pearson(a: number[], b: number[]): number {
