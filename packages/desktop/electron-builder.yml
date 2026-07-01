@@ -223,7 +223,7 @@ electronDownload:
 
 publish:
   provider: github
-  owner: iOfficeAI
-  repo: AionUi
+  owner: VNDT1625
+  repo: OmniAgent
   publishAutoUpdate: true
   releaseType: release
