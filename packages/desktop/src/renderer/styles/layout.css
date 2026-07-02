@@ -270,9 +270,7 @@
   position: relative;
   overflow: hidden;
 }
-.terminal-xterm-host .xterm,
-.terminal-xterm-host .xterm-viewport,
-.terminal-xterm-host .xterm-screen {
+.terminal-xterm-host .xterm {
   height: 100%;
   width: 100%;
 }
