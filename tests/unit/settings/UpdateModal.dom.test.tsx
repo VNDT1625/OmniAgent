@@ -92,9 +92,9 @@ const latestRelease = {
   draft: false,
   assets: [],
   recommendedAsset: {
-    name: 'AionUi-2.1.12-win-x64.exe',
-    url: 'https://download.example/AionUi-2.1.12-win-x64.exe',
-    fallbackUrl: 'https://github.example/AionUi-2.1.12-win-x64.exe',
+    name: 'OmniAgentic-2.1.12-win-x64.exe',
+    url: 'https://download.example/OmniAgentic-2.1.12-win-x64.exe',
+    fallbackUrl: 'https://github.example/OmniAgentic-2.1.12-win-x64.exe',
     size: 1,
   },
 };

@@ -100,6 +100,27 @@ const makeGitHubReleaseResponse = () => [
   },
 ];
 
+const makeOmniAgentReleaseResponse = () => [
+  {
+    tag_name: 'v2.1.15',
+    name: 'v2.1.15',
+    body: 'release notes',
+    html_url: 'https://github.com/VNDT1625/OmniAgent/releases/tag/v2.1.15',
+    published_at: '2026-07-02T00:00:00Z',
+    prerelease: false,
+    draft: false,
+    assets: [
+      {
+        name: 'OmniAgentic-2.1.15-win-x64.exe',
+        browser_download_url:
+          'https://github.com/VNDT1625/OmniAgent/releases/download/v2.1.15/OmniAgentic-2.1.15-win-x64.exe',
+        size: 456,
+        content_type: 'application/vnd.microsoft.portable-executable',
+      },
+    ],
+  },
+];
+
 const getCheckHandler = async () => {
   vi.resetModules();
   const { initUpdateBridge } = await import('@process/bridge/updateBridge');
@@ -168,7 +189,7 @@ describe('updateBridge CDN URL rewriting', () => {
   it('does not rewrite fork release assets to the official AionUi CDN', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => makeGitHubReleaseResponse(),
+      json: async () => makeOmniAgentReleaseResponse(),
     });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -178,10 +199,10 @@ describe('updateBridge CDN URL rewriting', () => {
 
       expect(result.success).toBe(true);
       const asset = result.data?.latest?.assets?.find(
-        (item: { name: string }) => item.name === 'AionUi-1.9.22-win-x64.exe'
+        (item: { name: string }) => item.name === 'OmniAgentic-2.1.15-win-x64.exe'
       );
       expect(asset?.url).toBe(
-        'https://github.com/iOfficeAI/AionUi/releases/download/v1.9.22/AionUi-1.9.22-win-x64.exe'
+        'https://github.com/VNDT1625/OmniAgent/releases/download/v2.1.15/OmniAgentic-2.1.15-win-x64.exe'
       );
       expect(asset?.fallbackUrl).toBeUndefined();
     } finally {

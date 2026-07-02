@@ -1,6 +1,6 @@
 appId: com.aionui.app
-productName: AionUi
-executableName: AionUi
+productName: OmniAgentic
+executableName: OmniAgentic
 copyright: Copyright © 2024 AionUi
 
 protocols:
@@ -178,7 +178,7 @@ linux:
   description: ${description}
   desktop:
     entry:
-      Name: AionUi
+      Name: OmniAgentic
       Comment: ${description}
       Icon: aionui
       Categories: Office;Utility;
