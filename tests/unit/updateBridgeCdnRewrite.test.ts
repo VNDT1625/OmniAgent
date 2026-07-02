@@ -164,6 +164,30 @@ describe('updateBridge CDN URL rewriting', () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it('does not rewrite fork release assets to the official AionUi CDN', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => makeGitHubReleaseResponse(),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    try {
+      const handler = await getCheckHandler();
+      const result = await handler({ repo: 'VNDT1625/OmniAgent' });
+
+      expect(result.success).toBe(true);
+      const asset = result.data?.latest?.assets?.find(
+        (item: { name: string }) => item.name === 'AionUi-1.9.22-win-x64.exe'
+      );
+      expect(asset?.url).toBe(
+        'https://github.com/iOfficeAI/AionUi/releases/download/v1.9.22/AionUi-1.9.22-win-x64.exe'
+      );
+      expect(asset?.fallbackUrl).toBeUndefined();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
 
 describe('updateBridge allowlist includes CDN host', () => {

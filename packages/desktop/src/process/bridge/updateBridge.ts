@@ -55,6 +55,7 @@ interface AutoUpdateCheckParams {
 }
 
 const DEFAULT_REPO = 'VNDT1625/OmniAgent';
+const OFFICIAL_AIONUI_REPO = 'iOfficeAI/AionUi';
 const DEFAULT_USER_AGENT = 'AionUi';
 const ALLOWED_ASSET_EXTS = new Set(['.exe', '.msi', '.dmg', '.zip', '.deb', '.rpm']);
 const CDN_HOST = 'static.aionui.com';
@@ -90,13 +91,18 @@ const rewriteAssetUrlToCDN = (assetName: string, version: string): string => {
   return `${CDN_BASE_URL}/${version}/${assetName}`;
 };
 
-const mapAsset = (asset: GitHubReleaseApiAsset, version: string): GitHubReleaseAsset => ({
-  name: asset.name,
-  url: rewriteAssetUrlToCDN(asset.name, version),
-  fallbackUrl: asset.browser_download_url,
-  size: asset.size,
-  contentType: asset.content_type,
-});
+const shouldUseOfficialCdn = (repo: string): boolean => repo.toLowerCase() === OFFICIAL_AIONUI_REPO.toLowerCase();
+
+const mapAsset = (asset: GitHubReleaseApiAsset, version: string, repo: string): GitHubReleaseAsset => {
+  const useCdn = shouldUseOfficialCdn(repo);
+  return {
+    name: asset.name,
+    url: useCdn ? rewriteAssetUrlToCDN(asset.name, version) : asset.browser_download_url,
+    fallbackUrl: useCdn ? asset.browser_download_url : undefined,
+    size: asset.size,
+    contentType: asset.content_type,
+  };
+};
 
 type RuntimePlatformInfo = {
   platform: NodeJS.Platform;
@@ -278,14 +284,14 @@ const fetchGitHubReleases = async (repo: string): Promise<GitHubReleaseApi[]> =>
   }
 };
 
-const mapRelease = (rel: GitHubReleaseApi): UpdateReleaseInfo | null => {
+const mapRelease = (rel: GitHubReleaseApi, repo: string): UpdateReleaseInfo | null => {
   const version = normalizeTagToSemver(rel.tag_name);
   if (!version) return null;
 
   const assets = (rel.assets || [])
     .filter((asset) => asset && asset.name && asset.browser_download_url)
     .filter((asset) => isAllowedAssetName(asset.name))
-    .map((asset) => mapAsset(asset, version));
+    .map((asset) => mapAsset(asset, version, repo));
 
   return {
     tagName: rel.tag_name,
@@ -542,7 +548,7 @@ export function initUpdateBridge(): void {
         const candidates = releases
           .filter((r) => r && !r.draft)
           .filter((r) => (includePrerelease ? true : !r.prerelease))
-          .map(mapRelease)
+          .map((release) => mapRelease(release, repo))
           .filter((r): r is UpdateReleaseInfo => Boolean(r));
 
         const currentSemver = semver.valid(currentVersion) || semver.coerce(currentVersion)?.version;

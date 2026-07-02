@@ -399,10 +399,10 @@ const createWindow = ({ showOnReady = true }: { showOnReady?: boolean } = {}): v
         // Create status broadcast callback that emits via ipcBridge (pure emitter, no window binding)
         const statusBroadcast = createAutoUpdateStatusBroadcast();
         autoUpdaterService.initialize(statusBroadcast);
-        // Check for updates after 3 seconds delay
-        // 3秒后检查更新
+        // Check for updates after 3 seconds, but do not auto-download on startup.
+        // The renderer will surface the update and the user decides when to download/install.
         setTimeout(() => {
-          void autoUpdaterService.checkForUpdatesAndNotify();
+          void autoUpdaterService.checkForUpdates();
         }, 3000);
       })
       .catch((error) => {
