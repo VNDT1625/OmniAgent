@@ -882,6 +882,36 @@
     "yourName": "Tên của bạn",
     "namePlaceholder": "Cách đồng đội nhìn thấy bạn",
     "peerPresence": "Đang ở trên host",
-    "peerReadOnly": "Bạn đang sửa thông qua host. Giữ file trước khi ghi để agent không ghi đè."
+    "peerReadOnly": "Bạn đang sửa thông qua host. Giữ file trước khi ghi để agent không ghi đè.",
+    "remoteChatTitle": "Chat AI từ xa",
+    "remoteChatSubtitle": "Dùng dữ liệu host qua hàng đợi team",
+    "newAiChat": "Chat AI mới",
+    "remoteChatEmptyTitle": "Bắt đầu chat AI cho repo từ xa này",
+    "remoteChatNoAgents": "Không có agent AI khả dụng",
+    "claimFailed": "Không claim được lease. Có thể peer khác đang giữ.",
+    "writeFailed": "Không ghi được file qua host.",
+    "saved": "Đã lưu vào máy host.",
+    "noPeerSession": "Chưa có phiên peer nào đang hoạt động.",
+    "pickFile": "Chọn một tệp ở cây bên trái để xem nội dung từ host.",
+    "lockedByPeer": "Đang bị peer khác giữ"
+  },
+  "cloudWorkspace": {
+    "connect": "Kết nối cloud",
+    "connectTitle": "Kết nối cloud workspace",
+    "connectedTitle": "Cloud workspace {{workspace}}",
+    "disconnect": "Ngắt kết nối",
+    "relayUrl": "Relay URL",
+    "relayUrlPlaceholder": "https://relay-cua-ban.example.com",
+    "workspaceId": "Workspace ID",
+    "workspaceIdPlaceholder": "project-hoac-room-id",
+    "token": "Access token",
+    "tokenPlaceholder": "Token dùng chung của workspace",
+    "displayName": "Tên hiển thị",
+    "displayNamePlaceholder": "Tên máy khác nhìn thấy",
+    "noSession": "Chưa kết nối cloud workspace.",
+    "pickFile": "Chọn một file từ cloud workspace.",
+    "saved": "Đã lưu lên cloud workspace.",
+    "seqLabel": "seq {{seq}}",
+    "participantsLabel": "{{count}} online"
   }
 }

@@ -28,12 +28,30 @@
  * inline Vietnamese fallbacks (new keys haven't shipped in locales yet).
  */
 
-import { Button, Empty, Input, Message, Spin, Tooltip } from '@arco-design/web-react';
-import { Edit, FileText, FolderOpen, Left, Lock, Logout, Refresh, Save } from '@icon-park/react';
+import { Button, Dropdown, Empty, Input, Menu, Message, Spin, Tooltip } from '@arco-design/web-react';
+import {
+  CloseSmall,
+  Edit,
+  FileText,
+  FolderOpen,
+  Left,
+  Lock,
+  Logout,
+  Plus,
+  Refresh,
+  Robot,
+  Save,
+} from '@icon-park/react';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import useSWR from 'swr';
+import type { TChatConversation } from '@/common/config/storage';
+import ChatConversation from '@/renderer/pages/conversation/components/ChatConversation';
+import { useConversationAgents } from '@/renderer/pages/conversation/hooks/useConversationAgents';
+import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
 import { useTranslation } from 'react-i18next';
 import { teamCollabClient, type TeamTreeEntry } from './teamCollabClient';
 import type { PeerConnection, UseTeamCollab } from './useTeamCollab';
+import { useRemoteIdeChat, type RemoteIdeChatLauncher, type RemoteIdeChatTab } from './useRemoteIdeChat';
 
 type PeerWorkspaceProps = {
   /** The active team-collab controller (must be in `peer` role). */
@@ -330,8 +348,198 @@ const PeerWorkspace: React.FC<PeerWorkspaceProps> = ({ collab, onBack }) => {
             </>
           )}
         </main>
+
+        <RemotePeerChatPanel peer={peer} />
       </div>
     </div>
+  );
+};
+
+export const RemotePeerChatPanel: React.FC<{ peer: PeerConnection }> = ({ peer }) => {
+  const { t, i18n } = useTranslation();
+  const chat = useRemoteIdeChat(peer);
+  const { cliAgents, presetAssistants, isLoading } = useConversationAgents();
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  return (
+    <aside className='w-420px max-w-42vw shrink-0 border-l border-b-1 flex flex-col min-h-0 bg-1'>
+      <div className='shrink-0 flex items-center gap-8px px-12px py-8px border-b border-b-1'>
+        <Robot theme='outline' size={15} className='text-primary' />
+        <div className='min-w-0 flex-1'>
+          <div className='text-12px font-[600] text-t-primary truncate'>{t('ide.teamCollab.remoteChatTitle')}</div>
+          <div className='text-11px text-t-tertiary truncate'>{t('ide.teamCollab.remoteChatSubtitle')}</div>
+        </div>
+        <Dropdown
+          position='br'
+          popupVisible={pickerOpen}
+          onVisibleChange={setPickerOpen}
+          trigger='click'
+          droplist={
+            <RemoteAgentMenu
+              cliAgents={cliAgents}
+              presetAssistants={presetAssistants}
+              language={i18n.language}
+              loading={isLoading}
+              disabled={chat.creating}
+              onPick={async (launcher) => {
+                setPickerOpen(false);
+                await chat.open(launcher);
+              }}
+            />
+          }
+        >
+          <Tooltip content={t('ide.teamCollab.newAiChat')} mini>
+            <Button type='primary' size='mini' loading={chat.creating} icon={<Plus theme='outline' size={12} />} />
+          </Tooltip>
+        </Dropdown>
+      </div>
+
+      {chat.tabs.length > 0 ? (
+        <div className='shrink-0 flex items-center gap-4px overflow-x-auto px-8px py-6px border-b border-b-1'>
+          {chat.tabs.map((tab) => (
+            <div
+              key={tab.id}
+              className={`flex items-center gap-4px max-w-160px px-8px py-4px rd-6px ${chat.activeId === tab.id ? 'bg-primary-light-1 text-primary' : 'bg-fill-1 text-t-secondary'}`}
+            >
+              <Button size='mini' type='text' className='!px-0 min-w-0 flex-1' onClick={() => chat.setActive(tab.id)}>
+                <span className='truncate text-11px'>{tab.title}</span>
+              </Button>
+              <Button
+                size='mini'
+                type='text'
+                icon={<CloseSmall theme='outline' size={11} />}
+                onClick={() => void chat.close(tab.id)}
+              />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      <div className='flex-1 min-h-0 relative'>
+        {chat.tabs.length === 0 ? (
+          <div className='size-full flex-center px-16px'>
+            <Empty
+              description={
+                <div className='flex flex-col items-center gap-8px'>
+                  <span>{t('ide.teamCollab.remoteChatEmptyTitle')}</span>
+                  <Button
+                    type='primary'
+                    size='small'
+                    icon={<Plus theme='outline' size={13} />}
+                    onClick={() => setPickerOpen(true)}
+                  >
+                    {t('ide.teamCollab.newAiChat')}
+                  </Button>
+                </div>
+              }
+            />
+          </div>
+        ) : (
+          chat.tabs.map((tab) => (
+            <RemoteChatTabBody
+              key={tab.id}
+              tab={tab}
+              active={chat.activeId === tab.id}
+              onResolveTitle={(title) => chat.rename(tab.id, title)}
+            />
+          ))
+        )}
+      </div>
+    </aside>
+  );
+};
+
+const RemoteChatTabBody: React.FC<{
+  tab: RemoteIdeChatTab;
+  active: boolean;
+  onResolveTitle: (title: string) => void;
+}> = ({ tab, active, onResolveTitle }) => {
+  const { data, isLoading } = useSWR<TChatConversation | null>(`conversation/${tab.id}`, () =>
+    getConversationOrNull(tab.id)
+  );
+
+  useEffect(() => {
+    if (data?.name && data.name !== tab.title) onResolveTitle(data.name);
+  }, [data?.name, onResolveTitle, tab.title]);
+
+  return (
+    <div className='absolute inset-0' style={{ display: active ? 'block' : 'none' }} aria-hidden={!active}>
+      {isLoading || !data ? (
+        <div className='size-full flex-center'>
+          <Spin />
+        </div>
+      ) : (
+        <ChatConversation conversation={data} />
+      )}
+    </div>
+  );
+};
+
+const RemoteAgentMenu: React.FC<{
+  cliAgents: ReturnType<typeof useConversationAgents>['cliAgents'];
+  presetAssistants: ReturnType<typeof useConversationAgents>['presetAssistants'];
+  language: string;
+  loading: boolean;
+  disabled: boolean;
+  onPick: (launcher: RemoteIdeChatLauncher) => void | Promise<void>;
+}> = ({ cliAgents, presetAssistants, language, loading, disabled, onPick }) => {
+  const { t } = useTranslation();
+  const cliItems = useMemo(() => cliAgents.filter((agent) => agent.available !== false), [cliAgents]);
+  const presetItems = useMemo(
+    () => presetAssistants.filter((assistant) => assistant.enabled !== false),
+    [presetAssistants]
+  );
+  const menuStyle: React.CSSProperties = { maxHeight: 360, overflowY: 'auto', minWidth: 220, maxWidth: 280 };
+
+  if (loading) {
+    return (
+      <Menu style={menuStyle}>
+        <Menu.Item key='loading' disabled>
+          <Spin size={12} /> <span className='ml-6px'>{t('ide.chat.loading')}</span>
+        </Menu.Item>
+      </Menu>
+    );
+  }
+
+  if (cliItems.length === 0 && presetItems.length === 0) {
+    return (
+      <Menu style={menuStyle}>
+        <Menu.Item key='noAgents' disabled>
+          {t('ide.teamCollab.remoteChatNoAgents')}
+        </Menu.Item>
+      </Menu>
+    );
+  }
+
+  return (
+    <Menu style={menuStyle}>
+      {cliItems.length > 0 ? (
+        <Menu.ItemGroup title={t('ide.chat.cliGroup')}>
+          {cliItems.map((agent) => (
+            <Menu.Item key={`cli:${agent.id}`} disabled={disabled} onClick={() => void onPick({ kind: 'cli', agent })}>
+              <span className='block truncate' title={agent.name}>
+                {agent.name}
+              </span>
+            </Menu.Item>
+          ))}
+        </Menu.ItemGroup>
+      ) : null}
+      {presetItems.length > 0 ? (
+        <Menu.ItemGroup title={t('ide.chat.presetGroup')}>
+          {presetItems.map((assistant) => (
+            <Menu.Item
+              key={`preset:${assistant.id}`}
+              disabled={disabled}
+              onClick={() => void onPick({ kind: 'preset', assistant, language })}
+            >
+              <span className='block truncate' title={assistant.name}>
+                {assistant.name}
+              </span>
+            </Menu.Item>
+          ))}
+        </Menu.ItemGroup>
+      ) : null}
+    </Menu>
   );
 };
 
@@ -401,15 +609,16 @@ const TreeNode: React.FC<TreeNodeProps> = ({
           const isOpen = expanded.has(rel);
           return (
             <div key={rel}>
-              <button
-                type='button'
+              <Button
+                type='text'
+                size='mini'
                 onClick={() => onToggleDir(rel)}
-                className='w-full text-left flex items-center gap-4px px-6px py-2px rd-4px hover:bg-fill-2 border-none bg-transparent cursor-pointer'
+                className='!w-full !justify-start !px-6px !py-2px'
               >
                 <span className='text-11px text-t-tertiary w-12px'>{isOpen ? '▾' : '▸'}</span>
                 <FolderOpen theme='outline' size={12} className='text-warning' />
                 <span className='text-12px text-t-primary truncate'>{e.name}</span>
-              </button>
+              </Button>
               {isOpen ? (
                 <div className='pl-14px'>
                   <TreeNode
@@ -430,17 +639,18 @@ const TreeNode: React.FC<TreeNodeProps> = ({
         const isOpen = openFile === rel;
         const isLocked = lockedSet.has(rel);
         return (
-          <button
+          <Button
             key={rel}
-            type='button'
+            type='text'
+            size='mini'
             onClick={() => onOpenFile(rel)}
-            className={`w-full text-left flex items-center gap-4px px-6px py-2px rd-4px hover:bg-fill-2 border-none cursor-pointer ${isOpen ? 'bg-primary-light-1' : 'bg-transparent'}`}
+            className={`!w-full !justify-start !px-6px !py-2px ${isOpen ? '!bg-primary-light-1' : ''}`}
           >
             <span className='w-12px' />
             <FileText theme='outline' size={12} className='text-t-tertiary' />
-            <span className='text-12px text-t-primary truncate flex-1'>{e.name}</span>
+            <span className='text-12px text-t-primary truncate flex-1 text-left'>{e.name}</span>
             {isLocked ? <Lock theme='outline' size={11} className='text-warning shrink-0' /> : null}
-          </button>
+          </Button>
         );
       })}
     </div>

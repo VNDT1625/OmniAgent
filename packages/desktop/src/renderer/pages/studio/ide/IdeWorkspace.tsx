@@ -53,6 +53,7 @@ import {
   Branch,
   Bug,
   Close,
+  Cloudy,
   Code,
   Copy,
   DataSheet,
@@ -106,6 +107,8 @@ import TeamEditPanel from './teamEdit/TeamEditPanel';
 import TeamCollabBar from './teamEdit/TeamCollabBar';
 import { useTeamCollab } from './teamEdit/useTeamCollab';
 import PeerWorkspace from './teamEdit/PeerWorkspace';
+import CloudWorkspace from './teamEdit/cloud/CloudWorkspace';
+import { useCloudWorkspace } from './teamEdit/cloud/useCloudWorkspace';
 import IdeTerminalPanel from './terminal/IdeTerminalPanel';
 import { getReadFileText, ideClient } from './ideClient';
 import { lspClient } from './lspClient';
@@ -142,8 +145,10 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
   const wiki = useRepoWiki();
   const changes = useRepoChanges(ide.rootPath);
   const collab = useTeamCollab(ide.rootPath);
+  const cloud = useCloudWorkspace();
   const [mode, setMode] = useState<IdeMode>('files');
   const [joinCollabOpen, setJoinCollabOpen] = useState(false);
+  const [connectCloudOpen, setConnectCloudOpen] = useState(false);
   const [quickTestCompact, setQuickTestCompact] = useState(false);
 
   const [specMounted, setSpecMounted] = useState(false);
@@ -396,6 +401,10 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
     return <PeerWorkspace collab={collab} onBack={onBack} />;
   }
 
+  if (!ide.rootPath && cloud.connected && cloud.session) {
+    return <CloudWorkspace cloud={cloud} onBack={onBack} />;
+  }
+
   // No folder yet: an open-folder CTA plus a Join-collab fallback for peers
   // arriving without their own repo (they live entirely off the host's disk).
   if (!ide.rootPath) {
@@ -420,6 +429,13 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
           >
             {t('ide.teamCollab.join')}
           </Button>
+          <Button
+            icon={<Cloudy theme='outline' size={15} />}
+            loading={cloud.busy}
+            onClick={() => setConnectCloudOpen(true)}
+          >
+            {t('ide.cloudWorkspace.connect')}
+          </Button>
           <span className='text-11px text-t-tertiary max-w-440px text-center'>
             {t(
               'ide.teamCollab.joinHint',
@@ -428,6 +444,7 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
           </span>
         </div>
         <JoinCollabModal visible={joinCollabOpen} onClose={() => setJoinCollabOpen(false)} collab={collab} />
+        <CloudConnectModal visible={connectCloudOpen} onClose={() => setConnectCloudOpen(false)} cloud={cloud} />
       </div>
     );
   }
@@ -566,9 +583,13 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
 
           {mode === 'team' ? (
             <div className='absolute inset-0 flex flex-col min-h-0'>
-              <TeamCollabBar hasFolder={!!ide.rootPath} collab={collab} />
+              <TeamCollabBar hasFolder={!!ide.rootPath} collab={collab} cloud={cloud} />
               <div className='flex-1 min-h-0'>
-                <TeamEditPanel rootPath={ide.rootPath} activeFile={ide.activeFile} collab={collab} />
+                {cloud.connected ? (
+                  <CloudWorkspace cloud={cloud} onBack={onBack} />
+                ) : (
+                  <TeamEditPanel rootPath={ide.rootPath} activeFile={ide.activeFile} collab={collab} />
+                )}
               </div>
             </div>
           ) : null}
@@ -1645,6 +1666,76 @@ const JoinCollabModal: React.FC<{
           <Input value={name} onChange={setName} placeholder={t('ide.teamCollab.namePlaceholder')} />
         </label>
         {collab.error ? <span className='text-12px text-danger'>{collab.error}</span> : null}
+      </div>
+    </Modal>
+  );
+};
+
+const CloudConnectModal: React.FC<{
+  visible: boolean;
+  cloud: ReturnType<typeof useCloudWorkspace>;
+  onClose: () => void;
+}> = ({ visible, cloud, onClose }) => {
+  const { t } = useTranslation();
+  const [relayBaseUrl, setRelayBaseUrl] = useState('');
+  const [workspaceId, setWorkspaceId] = useState('');
+  const [token, setToken] = useState('');
+  const [displayName, setDisplayName] = useState('');
+
+  useEffect(() => {
+    if (visible) {
+      setRelayBaseUrl('');
+      setWorkspaceId('');
+      setToken('');
+      setDisplayName('');
+    }
+  }, [visible]);
+
+  const doConnect = async (): Promise<void> => {
+    const ok = await cloud.connect(relayBaseUrl, workspaceId, token, displayName || t('ide.team.you'));
+    if (ok) onClose();
+  };
+
+  return (
+    <Modal
+      title={t('ide.cloudWorkspace.connectTitle')}
+      visible={visible}
+      onCancel={onClose}
+      onOk={() => void doConnect()}
+      confirmLoading={cloud.busy}
+      okText={t('ide.cloudWorkspace.connect')}
+      autoFocus={false}
+    >
+      <div className='flex flex-col gap-12px'>
+        <label className='flex flex-col gap-4px'>
+          <span className='text-12px text-t-secondary'>{t('ide.cloudWorkspace.relayUrl')}</span>
+          <Input
+            value={relayBaseUrl}
+            onChange={setRelayBaseUrl}
+            placeholder={t('ide.cloudWorkspace.relayUrlPlaceholder')}
+          />
+        </label>
+        <label className='flex flex-col gap-4px'>
+          <span className='text-12px text-t-secondary'>{t('ide.cloudWorkspace.workspaceId')}</span>
+          <Input
+            value={workspaceId}
+            onChange={setWorkspaceId}
+            placeholder={t('ide.cloudWorkspace.workspaceIdPlaceholder')}
+          />
+        </label>
+        <label className='flex flex-col gap-4px'>
+          <span className='text-12px text-t-secondary'>{t('ide.cloudWorkspace.token')}</span>
+          <Input.Password value={token} onChange={setToken} placeholder={t('ide.cloudWorkspace.tokenPlaceholder')} />
+        </label>
+        <label className='flex flex-col gap-4px'>
+          <span className='text-12px text-t-secondary'>{t('ide.cloudWorkspace.displayName')}</span>
+          <Input
+            value={displayName}
+            onChange={setDisplayName}
+            placeholder={t('ide.cloudWorkspace.displayNamePlaceholder')}
+          />
+        </label>
+        {cloud.error ? <span className='text-12px text-danger'>{cloud.error}</span> : null}
       </div>
     </Modal>
   );

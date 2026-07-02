@@ -23,12 +23,19 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { teamCollabClient, type RemoteTeamSnapshot, type TeamPublishData } from './teamCollabClient';
+import type { ISessionMcpServer } from '@/common/config/storage';
 
 /** Local role within a team session. */
 export type TeamRole = 'none' | 'host' | 'peer';
 
 /** Peer connection coordinates (kept so every later call can reach the host). */
-export type PeerConnection = { baseUrl: string; token: string; repoName: string };
+export type PeerConnection = {
+  baseUrl: string;
+  token: string;
+  repoName: string;
+  workspacePath: string;
+  remoteMcpServer: ISessionMcpServer;
+};
 
 /** Public shape returned by {@link useTeamCollab}. */
 export type UseTeamCollab = {
@@ -159,7 +166,13 @@ export const useTeamCollab = (rootPath: string | null): UseTeamCollab => {
           return false;
         }
         setRole('peer');
-        setPeer({ baseUrl: res.data.baseUrl, token: res.data.peerToken, repoName: res.data.repoName });
+        setPeer({
+          baseUrl: res.data.baseUrl,
+          token: res.data.peerToken,
+          repoName: res.data.repoName,
+          workspacePath: res.data.workspacePath,
+          remoteMcpServer: res.data.remoteMcpServer,
+        });
         return true;
       } catch (e) {
         if (aliveRef.current) setError(e instanceof Error ? e.message : String(e));

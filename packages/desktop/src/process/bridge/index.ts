@@ -68,6 +68,7 @@ import { registerDbBridge } from '@process/ide/db/dbBridge';
 import { getDbService } from '@process/ide/db/dbWiring';
 import { registerTeamEditBridge } from '@process/ide/teamEdit/teamEditBridge';
 import { registerTeamCollabBridge } from '@process/ide/teamEdit/teamCollabBridge';
+import { registerCloudWorkspaceBridge } from '@process/ide/teamEdit/cloud/cloudWorkspaceBridge';
 import { loadGraph } from '@process/ide/quickTestBridgeHelpers';
 import { registerMakeVideoBridge } from '@process/makevideo/makeVideoBridge';
 import { registerMusicBridge } from '@process/music/musicBridge';
@@ -420,6 +421,7 @@ export function initAllBridges(_deps: BridgeDependencies = {}): void {
     register('IDE database bridge', () => registerDbBridge({ service: getDbService() }));
     register('IDE team-edit bridge', registerTeamEditBridge);
     register('IDE team-collab bridge', registerTeamCollabBridge);
+    register('IDE cloud-workspace bridge', registerCloudWorkspaceBridge);
     // Quick-Run: mechanically derive how to run the repo (from the wiki/KG
     // runbook) + remember a recipe that succeeded, so later runs need no AI.
     register('IDE quick-run bridge', () => registerRunTargetBridge());

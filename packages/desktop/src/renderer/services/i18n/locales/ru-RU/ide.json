@@ -882,6 +882,36 @@
     "yourName": "Ваше имя",
     "namePlaceholder": "Как вас видят коллеги",
     "peerPresence": "Активен на хосте",
-    "peerReadOnly": "Вы редактируете через хост. Займите файл перед записью, чтобы агенты его не перезаписали."
+    "peerReadOnly": "Вы редактируете через хост. Займите файл перед записью, чтобы агенты его не перезаписали.",
+    "remoteChatTitle": "Remote AI Chat",
+    "remoteChatSubtitle": "Uses host data through the team queue",
+    "newAiChat": "New AI chat",
+    "remoteChatEmptyTitle": "Start an AI chat for this remote repo",
+    "remoteChatNoAgents": "No available AI agents",
+    "claimFailed": "Не удалось получить lease. Возможно, его держит другой peer.",
+    "writeFailed": "Не удалось записать файл через host.",
+    "saved": "Сохранено на host.",
+    "noPeerSession": "Активной peer-сессии нет.",
+    "pickFile": "Выберите файл в дереве слева, чтобы прочитать его с host.",
+    "lockedByPeer": "Удерживается другим peer"
+  },
+  "cloudWorkspace": {
+    "connect": "Подключить cloud",
+    "connectTitle": "Подключить cloud workspace",
+    "connectedTitle": "Cloud workspace {{workspace}}",
+    "disconnect": "Отключить",
+    "relayUrl": "Relay URL",
+    "relayUrlPlaceholder": "https://your-relay.example.com",
+    "workspaceId": "Workspace ID",
+    "workspaceIdPlaceholder": "project-or-room-id",
+    "token": "Токен доступа",
+    "tokenPlaceholder": "Общий токен workspace",
+    "displayName": "Отображаемое имя",
+    "displayNamePlaceholder": "Как вас видят участники",
+    "noSession": "Cloud workspace не подключен.",
+    "pickFile": "Выберите файл из cloud workspace.",
+    "saved": "Сохранено в cloud workspace.",
+    "seqLabel": "seq {{seq}}",
+    "participantsLabel": "{{count}} online"
   }
 }

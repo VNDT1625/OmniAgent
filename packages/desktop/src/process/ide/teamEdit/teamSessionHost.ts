@@ -27,6 +27,7 @@
 import * as path from 'node:path';
 import { promises as fsp } from 'node:fs';
 import type { TeamEditService, TeamEditSnapshot, GuardedWriteResult, GuardedEditResult } from './teamEditService';
+import { createTeamRequestQueue, type TeamRequestQueue, type TeamRequestQueueStatus } from './teamRequestQueue';
 import type { FileLease } from './teamEditCoordinator';
 
 /** One entry when listing a repo directory for a peer. */
@@ -62,6 +63,8 @@ export type TeamSessionHostDeps = {
   readDir?: (absDir: string) => Promise<TeamTreeEntry[]>;
   /** Read a file's text; injected for testability. */
   readFileText?: (absPath: string) => Promise<string>;
+  /** Optional per-workspace back-pressure queue for remote peer work. */
+  queue?: TeamRequestQueue;
 };
 
 /** Signature of the deterministic graph-refresh hook. */
@@ -105,7 +108,9 @@ export type TeamSessionHost = {
   /** Database connections for the repo (no secrets). */
   dbConnections: (rootPath: string) => Promise<TeamDbConnection[]>;
   /** Proxy a database query on the host. */
-  dbQuery: (id: string, sql: string) => Promise<TeamDbQueryResult>;
+  dbQuery: (rootPath: string, id: string, sql: string) => Promise<TeamDbQueryResult>;
+  /** Current queue pressure for a workspace. */
+  queueStatus: (rootPath: string) => TeamRequestQueueStatus;
 };
 
 /** Default Node fs directory listing. */
@@ -139,6 +144,7 @@ export const resolveWithinRepo = (rootPath: string, relPath: string): string => 
 export const createTeamSessionHost = (deps: TeamSessionHostDeps): TeamSessionHost => {
   const readDir = deps.readDir ?? defaultReadDir;
   const readFileText = deps.readFileText ?? defaultReadFileText;
+  const queue = deps.queue ?? createTeamRequestQueue();
 
   const joinPeer = (rootPath: string, token: string, name: string): void => {
     deps.team.join(rootPath, token, name, true);
@@ -148,41 +154,45 @@ export const createTeamSessionHost = (deps: TeamSessionHostDeps): TeamSessionHos
     deps.team.releaseAll(rootPath, token);
   };
 
-  const listDir = async (rootPath: string, relDir: string): Promise<TeamTreeEntry[]> => {
-    const abs = resolveWithinRepo(rootPath, relDir || '.');
-    const entries = await readDir(abs);
-    // Hide noisy dot-dirs the IDE also hides; keep it light.
-    return entries
-      .filter((e) => !(e.isDir && (e.name === 'node_modules' || e.name === '.git')))
-      .toSorted((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1));
-  };
+  const listDir = (rootPath: string, relDir: string): Promise<TeamTreeEntry[]> =>
+    queue.enqueue(rootPath, `tree:${relDir || '.'}`, async () => {
+      const abs = resolveWithinRepo(rootPath, relDir || '.');
+      const entries = await readDir(abs);
+      // Hide noisy dot-dirs the IDE also hides; keep it light.
+      return entries
+        .filter((e) => !(e.isDir && (e.name === 'node_modules' || e.name === '.git')))
+        .toSorted((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1));
+    });
 
-  const readFile = async (rootPath: string, relPath: string): Promise<TeamFileRead> => {
-    const abs = resolveWithinRepo(rootPath, relPath);
-    const content = await readFileText(abs);
-    return { content };
-  };
+  const readFile = (rootPath: string, relPath: string): Promise<TeamFileRead> =>
+    queue.enqueue(rootPath, `file:${relPath}`, async () => {
+      const abs = resolveWithinRepo(rootPath, relPath);
+      const content = await readFileText(abs);
+      return { content };
+    });
 
-  const write = async (rootPath: string, token: string, relPath: string, data: string): Promise<GuardedWriteResult> => {
-    // Guard against path escape BEFORE touching the service/MTUI.
-    const abs = resolveWithinRepo(rootPath, relPath);
-    const result = await deps.team.write(rootPath, token, relPath, data);
-    if (result.ok) await safeRefresh(deps.refreshGraph, rootPath, relPath, abs);
-    return result;
-  };
+  const write = (rootPath: string, token: string, relPath: string, data: string): Promise<GuardedWriteResult> =>
+    queue.enqueue(rootPath, `write:${relPath}`, async () => {
+      // Guard against path escape BEFORE touching the service/MTUI.
+      const abs = resolveWithinRepo(rootPath, relPath);
+      const result = await deps.team.write(rootPath, token, relPath, data);
+      if (result.ok) await safeRefresh(deps.refreshGraph, rootPath, relPath, abs);
+      return result;
+    });
 
-  const edit = async (
+  const edit = (
     rootPath: string,
     token: string,
     relPath: string,
     oldText: string,
     newText: string
-  ): Promise<GuardedEditResult> => {
-    const abs = resolveWithinRepo(rootPath, relPath);
-    const result = await deps.team.editReplace(rootPath, token, relPath, oldText, newText);
-    if (result.ok) await safeRefresh(deps.refreshGraph, rootPath, relPath, abs);
-    return result;
-  };
+  ): Promise<GuardedEditResult> =>
+    queue.enqueue(rootPath, `edit:${relPath}`, async () => {
+      const abs = resolveWithinRepo(rootPath, relPath);
+      const result = await deps.team.editReplace(rootPath, token, relPath, oldText, newText);
+      if (result.ok) await safeRefresh(deps.refreshGraph, rootPath, relPath, abs);
+      return result;
+    });
 
   return {
     joinPeer,
@@ -194,10 +204,11 @@ export const createTeamSessionHost = (deps: TeamSessionHostDeps): TeamSessionHos
     readFile,
     write,
     edit,
-    understand: (rootPath) => deps.loadGraph(rootPath),
-    wiki: (rootPath) => deps.loadWiki(rootPath),
-    dbConnections: (rootPath) => deps.listDbConnections(rootPath),
-    dbQuery: (id, sql) => deps.runDbQuery(id, sql),
+    understand: (rootPath) => queue.enqueue(rootPath, 'understand', () => deps.loadGraph(rootPath)),
+    wiki: (rootPath) => queue.enqueue(rootPath, 'wiki', () => deps.loadWiki(rootPath)),
+    dbConnections: (rootPath) => queue.enqueue(rootPath, 'db-connections', () => deps.listDbConnections(rootPath)),
+    dbQuery: (rootPath, id, sql) => queue.enqueue(rootPath, `db-query:${id}`, () => deps.runDbQuery(id, sql)),
+    queueStatus: (rootPath) => queue.status(rootPath),
   };
 };
 

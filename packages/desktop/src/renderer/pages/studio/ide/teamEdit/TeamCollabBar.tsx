@@ -20,16 +20,19 @@
  */
 
 import { Button, Input, Message, Modal, Switch, Tag, Tooltip } from '@arco-design/web-react';
-import { Copy, Earth, Local, Logout, Share } from '@icon-park/react';
+import { Cloudy, Copy, Earth, Local, Logout, Share } from '@icon-park/react';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TeamRole, UseTeamCollab } from './useTeamCollab';
+import type { UseCloudWorkspace } from './cloud/useCloudWorkspace';
 
 type TeamCollabBarProps = {
   /** Whether a folder is open (publishing needs one). */
   hasFolder: boolean;
   /** The team-collab controller from {@link useTeamCollab}. */
   collab: UseTeamCollab;
+  /** Cloud-authoritative workspace controller. */
+  cloud: UseCloudWorkspace;
 };
 
 /** Copy text to the clipboard with a toast. */
@@ -41,10 +44,10 @@ const useCopy = (): ((text: string, toast: string) => void) => {
     );
 };
 
-const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab }) => {
+const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab, cloud }) => {
   const { t } = useTranslation();
   const copy = useCopy();
-  const [modal, setModal] = useState<null | 'publish' | 'join'>(null);
+  const [modal, setModal] = useState<null | 'publish' | 'join' | 'cloud'>(null);
 
   // Publish form.
   const [password, setPassword] = useState('123456');
@@ -53,6 +56,11 @@ const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab }) => {
   const [joinUrl, setJoinUrl] = useState('');
   const [joinPassword, setJoinPassword] = useState('123456');
   const [joinName, setJoinName] = useState('');
+  // Cloud form.
+  const [relayBaseUrl, setRelayBaseUrl] = useState('');
+  const [workspaceId, setWorkspaceId] = useState('');
+  const [cloudToken, setCloudToken] = useState('');
+  const [displayName, setDisplayName] = useState('');
 
   const doPublish = async (): Promise<void> => {
     if (online && (password.trim().length < 6 || password === '123456')) {
@@ -72,6 +80,11 @@ const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab }) => {
     if (ok) setModal(null);
   };
 
+  const doCloudConnect = async (): Promise<void> => {
+    const ok = await cloud.connect(relayBaseUrl, workspaceId, cloudToken, displayName || t('ide.team.you'));
+    if (ok) setModal(null);
+  };
+
   return (
     <div className='shrink-0 flex items-center gap-8px px-16px py-8px border-b border-b-1 bg-2'>
       <RoleTag role={collab.role} />
@@ -86,12 +99,21 @@ const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab }) => {
           <span className='text-12px text-t-secondary truncate'>
             {t('ide.teamCollab.joinedRepo', { repo: collab.peer.repoName })} · {t('ide.teamCollab.readOnlyNote')}
           </span>
+        ) : cloud.connected && cloud.session ? (
+          <span className='text-12px text-t-secondary truncate'>
+            {t('ide.cloudWorkspace.connectedTitle', { workspace: cloud.session.workspaceId })} ·{' '}
+            {cloud.state?.state ?? 'idle'}
+          </span>
         ) : (
           <span className='text-12px text-t-tertiary'>{t('ide.teamCollab.idleHint')}</span>
         )}
       </div>
 
-      {collab.role === 'none' ? (
+      {cloud.connected ? (
+        <Button size='mini' status='danger' onClick={() => void cloud.disconnect()}>
+          {t('ide.cloudWorkspace.disconnect')}
+        </Button>
+      ) : collab.role === 'none' ? (
         <>
           <Tooltip content={hasFolder ? '' : t('ide.teamCollab.needFolder')} disabled={hasFolder} mini>
             <Button
@@ -107,6 +129,14 @@ const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab }) => {
           </Tooltip>
           <Button size='mini' icon={<Local theme='outline' size={13} />} onClick={() => setModal('join')}>
             {t('ide.teamCollab.join')}
+          </Button>
+          <Button
+            size='mini'
+            icon={<Cloudy theme='outline' size={13} />}
+            loading={cloud.busy}
+            onClick={() => setModal('cloud')}
+          >
+            {t('ide.cloudWorkspace.connect')}
           </Button>
         </>
       ) : collab.role === 'host' ? (
@@ -150,6 +180,53 @@ const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab }) => {
             <Switch checked={online} onChange={setOnline} />
           </div>
           {collab.error ? <span className='text-12px text-danger'>{collab.error}</span> : null}
+        </div>
+      </Modal>
+
+      {/* Cloud modal */}
+      <Modal
+        title={t('ide.cloudWorkspace.connectTitle')}
+        visible={modal === 'cloud'}
+        onCancel={() => setModal(null)}
+        onOk={() => void doCloudConnect()}
+        confirmLoading={cloud.busy}
+        okText={t('ide.cloudWorkspace.connect')}
+        autoFocus={false}
+      >
+        <div className='flex flex-col gap-12px'>
+          <label className='flex flex-col gap-4px'>
+            <span className='text-12px text-t-secondary'>{t('ide.cloudWorkspace.relayUrl')}</span>
+            <Input
+              value={relayBaseUrl}
+              onChange={setRelayBaseUrl}
+              placeholder={t('ide.cloudWorkspace.relayUrlPlaceholder')}
+            />
+          </label>
+          <label className='flex flex-col gap-4px'>
+            <span className='text-12px text-t-secondary'>{t('ide.cloudWorkspace.workspaceId')}</span>
+            <Input
+              value={workspaceId}
+              onChange={setWorkspaceId}
+              placeholder={t('ide.cloudWorkspace.workspaceIdPlaceholder')}
+            />
+          </label>
+          <label className='flex flex-col gap-4px'>
+            <span className='text-12px text-t-secondary'>{t('ide.cloudWorkspace.token')}</span>
+            <Input.Password
+              value={cloudToken}
+              onChange={setCloudToken}
+              placeholder={t('ide.cloudWorkspace.tokenPlaceholder')}
+            />
+          </label>
+          <label className='flex flex-col gap-4px'>
+            <span className='text-12px text-t-secondary'>{t('ide.cloudWorkspace.displayName')}</span>
+            <Input
+              value={displayName}
+              onChange={setDisplayName}
+              placeholder={t('ide.cloudWorkspace.displayNamePlaceholder')}
+            />
+          </label>
+          {cloud.error ? <span className='text-12px text-danger'>{cloud.error}</span> : null}
         </div>
       </Modal>
 

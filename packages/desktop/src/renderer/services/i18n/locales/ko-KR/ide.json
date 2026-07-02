@@ -882,6 +882,36 @@
     "yourName": "이름",
     "namePlaceholder": "팀원에게 표시되는 이름",
     "peerPresence": "호스트에 연결됨",
-    "peerReadOnly": "호스트를 통해 편집 중입니다. 에이전트가 덮어쓰지 않도록 쓰기 전에 파일을 점유하세요."
+    "peerReadOnly": "호스트를 통해 편집 중입니다. 에이전트가 덮어쓰지 않도록 쓰기 전에 파일을 점유하세요.",
+    "remoteChatTitle": "Remote AI Chat",
+    "remoteChatSubtitle": "Uses host data through the team queue",
+    "newAiChat": "New AI chat",
+    "remoteChatEmptyTitle": "Start an AI chat for this remote repo",
+    "remoteChatNoAgents": "No available AI agents",
+    "claimFailed": "lease를 확보하지 못했습니다. 다른 peer가 보유 중일 수 있습니다.",
+    "writeFailed": "host를 통해 파일을 쓸 수 없습니다.",
+    "saved": "host에 저장했습니다.",
+    "noPeerSession": "활성 peer 세션이 없습니다.",
+    "pickFile": "왼쪽 트리에서 파일을 선택해 host에서 읽어옵니다.",
+    "lockedByPeer": "다른 peer가 보유 중"
+  },
+  "cloudWorkspace": {
+    "connect": "클라우드 연결",
+    "connectTitle": "클라우드 워크스페이스 연결",
+    "connectedTitle": "클라우드 워크스페이스 {{workspace}}",
+    "disconnect": "연결 해제",
+    "relayUrl": "Relay URL",
+    "relayUrlPlaceholder": "https://your-relay.example.com",
+    "workspaceId": "워크스페이스 ID",
+    "workspaceIdPlaceholder": "project-or-room-id",
+    "token": "액세스 토큰",
+    "tokenPlaceholder": "공유 워크스페이스 토큰",
+    "displayName": "표시 이름",
+    "displayNamePlaceholder": "협업자에게 보이는 이름",
+    "noSession": "연결된 클라우드 워크스페이스가 없습니다.",
+    "pickFile": "클라우드 워크스페이스에서 파일을 선택하세요.",
+    "saved": "클라우드 워크스페이스에 저장했습니다.",
+    "seqLabel": "seq {{seq}}",
+    "participantsLabel": "{{count}} online"
   }
 }

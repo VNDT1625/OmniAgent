@@ -41,6 +41,16 @@ export function getUpdateChannel(): string | undefined {
   return undefined;
 }
 
+const normalizeUpdateFeedUrl = (raw: string | undefined): string | undefined => {
+  const value = raw?.trim();
+  if (!value) return undefined;
+  const parsed = new URL(value);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('AIONUI_UPDATE_FEED_URL must start with http:// or https://.');
+  }
+  return `${parsed.toString().replace(/\/+$/, '')}/`;
+};
+
 export interface AutoUpdateStatus {
   status: 'checking' | 'available' | 'not-available' | 'downloading' | 'downloaded' | 'error' | 'cancelled';
   version?: string;
@@ -87,6 +97,16 @@ class AutoUpdaterService extends EventEmitter {
     if (channel !== undefined) {
       autoUpdater.channel = channel;
       log.info(`Update channel set to: ${channel}`);
+    }
+
+    try {
+      const feedUrl = normalizeUpdateFeedUrl(process.env.AIONUI_UPDATE_FEED_URL);
+      if (feedUrl) {
+        autoUpdater.setFeedURL({ provider: 'generic', url: feedUrl });
+        log.info(`Update feed override set to: ${feedUrl}`);
+      }
+    } catch (error) {
+      log.error('Invalid AIONUI_UPDATE_FEED_URL:', error);
     }
   }
 

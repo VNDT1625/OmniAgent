@@ -21,9 +21,13 @@
 
 import type { GuardedEditResult, GuardedWriteResult, TeamEditSnapshot } from './teamEditService';
 import type { TeamTreeEntry, TeamFileRead, TeamDbConnection, TeamDbQueryResult } from './teamSessionHost';
+import type { TeamRequestQueueStatus } from './teamRequestQueue';
 
 /** A snapshot fetched from a remote host (same shape the host serves). */
 export type RemoteTeamSnapshot = TeamEditSnapshot;
+
+/** Host queue pressure fetched by a peer. */
+export type RemoteTeamQueueStatus = TeamRequestQueueStatus;
 
 /** Default per-request timeout (ms). Repo IO over a tunnel can be slow-ish. */
 const REQUEST_TIMEOUT_MS = 15000;
@@ -194,5 +198,15 @@ export const teamRemoteClient = {
     const res = await postJson<{ result: TeamDbQueryResult }>(teamUrl(baseUrl, 'db-query'), { token, id, sql });
     if (res.ok === false) return res;
     return { ok: true, result: res.data.result };
+  },
+
+  /** Inspect host queue pressure so a peer UI/agent can avoid piling on. */
+  queue: async (
+    baseUrl: string,
+    token: string
+  ): Promise<{ ok: true; status: RemoteTeamQueueStatus } | { ok: false; error: string }> => {
+    const res = await fetchJson<{ status: RemoteTeamQueueStatus }>(teamUrl(baseUrl, 'queue', { token }));
+    if (res.ok === false) return res;
+    return { ok: true, status: res.data.status };
   },
 };

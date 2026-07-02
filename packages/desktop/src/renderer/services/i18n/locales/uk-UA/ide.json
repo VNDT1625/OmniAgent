@@ -882,6 +882,36 @@
     "yourName": "Ваше ім'я",
     "namePlaceholder": "Як вас бачать колеги",
     "peerPresence": "Активний на хості",
-    "peerReadOnly": "Ви редагуєте через хост. Займіть файл перед записом, щоб агенти його не перезаписали."
+    "peerReadOnly": "Ви редагуєте через хост. Займіть файл перед записом, щоб агенти його не перезаписали.",
+    "remoteChatTitle": "Remote AI Chat",
+    "remoteChatSubtitle": "Uses host data through the team queue",
+    "newAiChat": "New AI chat",
+    "remoteChatEmptyTitle": "Start an AI chat for this remote repo",
+    "remoteChatNoAgents": "No available AI agents",
+    "claimFailed": "Не вдалося отримати lease. Можливо, його утримує інший peer.",
+    "writeFailed": "Не вдалося записати файл через host.",
+    "saved": "Збережено на host.",
+    "noPeerSession": "Активної peer-сесії немає.",
+    "pickFile": "Виберіть файл у дереві зліва, щоб прочитати його з host.",
+    "lockedByPeer": "Утримується іншим peer"
+  },
+  "cloudWorkspace": {
+    "connect": "Підключити cloud",
+    "connectTitle": "Підключити cloud workspace",
+    "connectedTitle": "Cloud workspace {{workspace}}",
+    "disconnect": "Відключити",
+    "relayUrl": "Relay URL",
+    "relayUrlPlaceholder": "https://your-relay.example.com",
+    "workspaceId": "Workspace ID",
+    "workspaceIdPlaceholder": "project-or-room-id",
+    "token": "Токен доступу",
+    "tokenPlaceholder": "Спільний токен workspace",
+    "displayName": "Відображуване ім’я",
+    "displayNamePlaceholder": "Як вас бачать учасники",
+    "noSession": "Cloud workspace не підключено.",
+    "pickFile": "Виберіть файл із cloud workspace.",
+    "saved": "Збережено в cloud workspace.",
+    "seqLabel": "seq {{seq}}",
+    "participantsLabel": "{{count}} online"
   }
 }

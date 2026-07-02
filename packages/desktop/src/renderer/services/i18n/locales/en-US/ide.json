@@ -882,6 +882,36 @@
     "yourName": "Your name",
     "namePlaceholder": "How teammates see you",
     "peerPresence": "Live on the host",
-    "peerReadOnly": "You are editing through the host. Claim a file before writing so agents don't clobber it."
+    "peerReadOnly": "You are editing through the host. Claim a file before writing so agents don't clobber it.",
+    "remoteChatTitle": "Remote AI Chat",
+    "remoteChatSubtitle": "Uses host data through the team queue",
+    "newAiChat": "New AI chat",
+    "remoteChatEmptyTitle": "Start an AI chat for this remote repo",
+    "remoteChatNoAgents": "No available AI agents",
+    "claimFailed": "Could not claim the lease. Another peer may be holding it.",
+    "writeFailed": "Could not write the file through the host.",
+    "saved": "Saved to the host.",
+    "noPeerSession": "No peer session is active.",
+    "pickFile": "Choose a file from the left tree to read it from the host.",
+    "lockedByPeer": "Held by another peer"
+  },
+  "cloudWorkspace": {
+    "connect": "Connect cloud",
+    "connectTitle": "Connect cloud workspace",
+    "connectedTitle": "Cloud workspace {{workspace}}",
+    "disconnect": "Disconnect",
+    "relayUrl": "Relay URL",
+    "relayUrlPlaceholder": "https://your-relay.example.com",
+    "workspaceId": "Workspace ID",
+    "workspaceIdPlaceholder": "project-or-room-id",
+    "token": "Access token",
+    "tokenPlaceholder": "Shared workspace token",
+    "displayName": "Display name",
+    "displayNamePlaceholder": "How collaborators see you",
+    "noSession": "No cloud workspace is connected.",
+    "pickFile": "Choose a file from the cloud workspace.",
+    "saved": "Saved to cloud workspace.",
+    "seqLabel": "seq {{seq}}",
+    "participantsLabel": "{{count}} online"
   }
 }

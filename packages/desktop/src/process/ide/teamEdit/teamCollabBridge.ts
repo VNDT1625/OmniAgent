@@ -53,9 +53,11 @@ import { loadWikiForRoot } from '@process/ide/wiki/wikiBuildBridge';
 import { getTeamEditService } from './teamEditService';
 import { createTeamSessionHost, type TeamSessionHost, type TeamDbConnection } from './teamSessionHost';
 import { handleTeamRequest } from './teamHttpRoutes';
+import { ensureRemoteIdeMcpRegistered, clearRemoteIdeMcpSession } from './remoteIdeMcp';
 import { teamRemoteClient, type RemoteTeamSnapshot } from './teamRemoteClient';
 import type { TeamTreeEntry, TeamFileRead } from './teamSessionHost';
 import type { GuardedWriteResult } from './teamEditService';
+import type { ISessionMcpServer } from '@/common/config/storage';
 
 /** IPC channel names for the team-collab surface. */
 export const TEAM_COLLAB_CHANNELS = {
@@ -85,7 +87,13 @@ export type TeamStatusData = { publishing: boolean; info?: TeamPublishData };
 /** Peer join request (base URL is LAN `http://ip:port` or a tunnel URL). */
 export type TeamJoinRequest = { baseUrl: string; password: string; name: string };
 /** Peer join data. */
-export type TeamJoinData = { peerToken: string; repoName: string; baseUrl: string };
+export type TeamJoinData = {
+  peerToken: string;
+  repoName: string;
+  baseUrl: string;
+  workspacePath: string;
+  remoteMcpServer: ISessionMcpServer;
+};
 
 /** Auth+target tuple every peer browse/read/write request carries. */
 export type PeerCtx = { baseUrl: string; token: string };
@@ -277,7 +285,21 @@ export function registerTeamCollabBridge(): void {
     try {
       const joined = await teamRemoteClient.join(req.baseUrl, req.password, req.name);
       if (joined.ok === false) return { ok: false, error: joined.error };
-      return { ok: true, data: { peerToken: joined.peerToken, repoName: joined.repoName, baseUrl: joined.baseUrl } };
+      const remoteIde = await ensureRemoteIdeMcpRegistered({
+        baseUrl: joined.baseUrl,
+        token: joined.peerToken,
+        repoName: joined.repoName,
+      });
+      return {
+        ok: true,
+        data: {
+          peerToken: joined.peerToken,
+          repoName: joined.repoName,
+          baseUrl: joined.baseUrl,
+          workspacePath: remoteIde.workspacePath,
+          remoteMcpServer: remoteIde.server,
+        },
+      };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }
@@ -286,6 +308,7 @@ export function registerTeamCollabBridge(): void {
   teamCollabChannels.leave.provider(async (req): Promise<TeamCollabResult<boolean>> => {
     try {
       await teamRemoteClient.leave(req.baseUrl, req.token);
+      clearRemoteIdeMcpSession(req.baseUrl, req.token);
       return { ok: true, data: true };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };

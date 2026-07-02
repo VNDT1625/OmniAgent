@@ -25,6 +25,7 @@
  *   GET  /team/wiki?token=…                  → { ok, wiki|null }
  *   GET  /team/db?token=…                    → { ok, connections }
  *   POST /team/db-query  {token,id,sql}      → { ok, result }
+ *   GET  /team/queue?token=…                 → { ok, status }
  *   POST /team/leave     {token}             → { ok }
  *
  * The `peerToken` doubles as the team-edit coordinator `agentId`, so presence +
@@ -252,11 +253,19 @@ export const handleTeamRequest = async (
     const auth = authPeer(payload.token);
     if (!auth) return unauthorized(res);
     try {
-      const result = await host.dbQuery(payload.id ?? '', payload.sql ?? '');
+      const result = await host.dbQuery(auth.root, payload.id ?? '', payload.sql ?? '');
       sendJson(res, 200, { ok: true, result });
     } catch (error) {
       sendJson(res, 400, { ok: false, error: errMsg(error) });
     }
+    return true;
+  }
+
+  // GET /team/queue — expose host pressure so peers can back off politely.
+  if (req.method === 'GET' && sub === 'queue') {
+    const auth = authPeer(token);
+    if (!auth) return unauthorized(res);
+    sendJson(res, 200, { ok: true, status: host.queueStatus(auth.root) });
     return true;
   }
 

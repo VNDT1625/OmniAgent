@@ -866,6 +866,36 @@
     "yourName": "你的名字",
     "namePlaceholder": "队友看到的名称",
     "peerPresence": "已连接主机",
-    "peerReadOnly": "你正通过主机编辑。写入前请先占用文件，避免被 Agent 覆盖。"
+    "peerReadOnly": "你正通过主机编辑。写入前请先占用文件，避免被 Agent 覆盖。",
+    "remoteChatTitle": "Remote AI Chat",
+    "remoteChatSubtitle": "Uses host data through the team queue",
+    "newAiChat": "New AI chat",
+    "remoteChatEmptyTitle": "Start an AI chat for this remote repo",
+    "remoteChatNoAgents": "No available AI agents",
+    "claimFailed": "无法获取 lease，可能有其他 peer 正在持有。",
+    "writeFailed": "无法通过 host 写入文件。",
+    "saved": "已保存到 host。",
+    "noPeerSession": "当前没有活动的 peer 会话。",
+    "pickFile": "从左侧文件树选择一个文件，从 host 读取内容。",
+    "lockedByPeer": "被其他 peer 持有"
+  },
+  "cloudWorkspace": {
+    "connect": "连接云端",
+    "connectTitle": "连接云端工作区",
+    "connectedTitle": "云端工作区 {{workspace}}",
+    "disconnect": "断开连接",
+    "relayUrl": "Relay URL",
+    "relayUrlPlaceholder": "https://your-relay.example.com",
+    "workspaceId": "工作区 ID",
+    "workspaceIdPlaceholder": "project-or-room-id",
+    "token": "访问令牌",
+    "tokenPlaceholder": "共享工作区令牌",
+    "displayName": "显示名称",
+    "displayNamePlaceholder": "协作者看到的名称",
+    "noSession": "尚未连接云端工作区。",
+    "pickFile": "从云端工作区选择一个文件。",
+    "saved": "已保存到云端工作区。",
+    "seqLabel": "seq {{seq}}",
+    "participantsLabel": "{{count}} 人在线"
   }
 }

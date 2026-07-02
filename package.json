@@ -1,6 +1,6 @@
 {
   "name": "omni-agentic",
-  "version": "2.1.10",
+  "version": "2.1.11",
   "description": "Tomni Agentic desktop AI agent interface.",
   "keywords": [],
   "license": "Apache-2.0",
@@ -28,6 +28,7 @@
     "dist:mac": "node scripts/build-with-builder.js auto --mac",
     "dist:win": "node scripts/build-with-builder.js auto --win",
     "dist:linux": "node scripts/build-with-builder.js auto --linux",
+    "update:serve": "node scripts/serve-update-feed.js",
     "build-mac": "node scripts/build-with-builder.js auto --mac --arm64 --x64",
     "build-win": "node scripts/build-with-builder.js auto --win",
     "build-deb": "node scripts/build-with-builder.js auto --linux",
