@@ -119,11 +119,17 @@ const UpdateModal: React.FC = () => {
     if (!updateInfo && !autoUpdateAvailable) return;
     setStatus('downloading');
     try {
-      // Prefer the manual path so the URL is the CDN-rewritten asset.url.
-      // Fall back to electron-updater (GitHub) only when the GitHub API manual check failed
-      // but the yml-based auto-update check succeeded — a rare edge case.
-      // 优先走手动路径（URL 是重写后的 CDN 地址）。仅当 GitHub API 失败但 electron-updater 检查成功时，
-      // 回退到 electron-updater 的下载（走 GitHub），保证用户能升级。
+      if (autoUpdateAvailable) {
+        setDownloadId(null);
+        const res = await ipcBridge.autoUpdate.download.invoke();
+        if (!res?.success) {
+          throw new Error(res?.msg || t('update.downloadStartFailed'));
+        }
+        return;
+      }
+
+      // Manual installer download is the fallback for environments where
+      // electron-updater cannot use the platform-specific update metadata.
       if (updateInfo?.recommendedAsset) {
         const asset = updateInfo.recommendedAsset;
         const res = await ipcBridge.update.download.invoke({
@@ -136,14 +142,6 @@ const UpdateModal: React.FC = () => {
         }
         setDownloadId(res.data.downloadId);
         setDownloadPath(res.data.file_path);
-        return;
-      }
-
-      if (autoUpdateAvailable) {
-        const res = await ipcBridge.autoUpdate.download.invoke();
-        if (!res?.success) {
-          throw new Error(res?.msg || t('update.downloadStartFailed'));
-        }
         return;
       }
 
