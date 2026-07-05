@@ -248,7 +248,7 @@ export const useFileCreator = (): UseFileCreator => {
       }
 
       setStatus('writing');
-      const clean = stripTokenWatermarkNotice(result.data);
+      const clean = stripTokenWatermarkNotice(result.data).trim();
       await writeContent(fullPath, kind, stripOuterFence(clean));
       return fullPath;
     } catch {

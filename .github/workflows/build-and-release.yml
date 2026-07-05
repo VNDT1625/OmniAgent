@@ -299,6 +299,7 @@ jobs:
           name: ${{ steps.version.outputs.is_dev == 'true' && format('Development Build {0}', steps.version.outputs.tag_name) || steps.version.outputs.tag_name }}
           files: |
             release-assets/**/*.exe
+            release-assets/**/*.blockmap
             release-assets/**/*.msi
             release-assets/**/*.dmg
             release-assets/**/*.deb

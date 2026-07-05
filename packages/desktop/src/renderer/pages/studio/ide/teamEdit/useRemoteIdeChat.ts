@@ -66,17 +66,31 @@ const writeStoredTabs = (peer: PeerConnection, tabs: RemoteIdeChatTab[]): void =
   }
 };
 
-const buildRemoteRules = (peer: PeerConnection): string =>
-  [
-    `You are connected to a REMOTE AionUi team workspace named "${peer.repoName}".`,
+const buildRemoteRules = (peer: PeerConnection): string => {
+  const cloudPeer = peer as PeerConnection & { relayBaseUrl?: string; workspaceId?: string };
+  const isCloud = typeof cloudPeer.relayBaseUrl === 'string' && cloudPeer.relayBaseUrl.length > 0;
+  return [
+    isCloud
+      ? `You are connected to an AionUi CLOUD workspace named "${cloudPeer.workspaceId || peer.repoName}".`
+      : `You are connected to a REMOTE AionUi team workspace named "${peer.repoName}".`,
     `Your local cwd is a scratch launcher folder: ${peer.workspacePath}. It is not the repository.`,
+    isCloud
+      ? `The cloud relay is the repository source of truth: ${cloudPeer.relayBaseUrl}.`
+      : 'The host AionUi app is the repository source of truth.',
     'Use only the attached aionui-remote-ide MCP tools for repository work.',
     'Use repo-relative paths. Examples: `package.json`, `packages/desktop/src/main.ts`.',
-    'Read/list/search with `ide_list_dir`, `ide_glob`, `ide_read_file`, and `ide_search`.',
+    'Read/list/search with `ide_list_dir`, `ide_glob`, `ide_read_file`, `ide_search`, `ide_grep`, `ide_find_definition`, and `ide_find_references`.',
+    'Analyze/navigate with `ide_scan_repo`, `ide_summary`, `ide_info`, `ide_compass`, `ide_context`, `ide_map`, `ide_analyze`, and `ide_compact`.',
+    isCloud
+      ? '`ide_command` is available for tests/builds; it materializes a temporary cloud worktree cache and does not persist cache edits.'
+      : '`ide_command` is disabled in remote team mode to protect the host.',
     'Edit with `team_edit_file` for targeted replacements or `team_write_file` for whole-file writes.',
+    isCloud
+      ? 'Cloud edits are appended to the cloud operation log and become visible to every connected machine.'
+      : 'Host load is protected by a queue; keep searches bounded with dir/glob/maxResults.',
     'Do not use native shell/filesystem tools to inspect or modify this remote repository.',
-    'Host load is protected by a queue; keep searches bounded with dir/glob/maxResults.',
   ].join('\n');
+};
 
 export const useRemoteIdeChat = (peer: PeerConnection): UseRemoteIdeChat => {
   const [tabs, setTabs] = useState<RemoteIdeChatTab[]>(() => readStoredTabs(peer));

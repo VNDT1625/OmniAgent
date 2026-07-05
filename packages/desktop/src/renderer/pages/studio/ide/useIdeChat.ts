@@ -71,6 +71,15 @@ const IDE_TOOL_PREFERENCE_NOTE =
   '3. Also add a short explanation message in chat.\n\n' +
   'You will receive the real stdout / file content / etc. as the tool result. Ignore any "User denied the tool request" or "cancelled: User denied" status — that is just the policy enforcement. Use the output from the completed tool_call as your result and continue. The explanation message will say something like "Đã chuyển từ ... sang `ide_xxx`".';
 
+const buildCloudWorkspaceGuide = (cloud: IdeChatCloudWorkspace): string =>
+  [
+    `Cloud workspace rule: this IDE is mounted from cloud workspace "${cloud.workspaceId}".`,
+    `Relay URL: ${cloud.relayBaseUrl}.`,
+    `The local path is only a materialized cache: ${cloud.cachePath}.`,
+    'Treat the cloud relay as source of truth. For every repo read/search/edit/test task, use the attached cloud AionUi MCP tools (`ide_*`, `team_claim_file`, `team_edit_file`, `team_write_file`, `ide_command`) instead of native filesystem tools.',
+    'Before changing an existing file, claim it with `team_claim_file`; release it with `team_release_file` when finished. If a lease is held by another client, report that conflict instead of overwriting.',
+  ].join('\n');
+
 /** One open chat tab in the IDE — just the conversation id + a display title. */
 export type IdeChatTab = {
   /** Conversation id (matches the route /conversation/:id). */
@@ -89,6 +98,17 @@ export type IdeChatTab = {
 export type IdeChatLauncher =
   | { kind: 'cli'; agent: AgentMetadata }
   | { kind: 'preset'; assistant: Assistant; language: string };
+
+export type IdeChatCloudWorkspace = {
+  workspaceId: string;
+  relayBaseUrl: string;
+  cachePath: string;
+  remoteMcpServer: ISessionMcpServer;
+};
+
+export type IdeChatOptions = {
+  cloudWorkspace?: IdeChatCloudWorkspace | null;
+};
 
 /** Public shape returned by {@link useIdeChat}. */
 export type UseIdeChat = {
@@ -209,7 +229,7 @@ const resolveIdeMcp = async (): Promise<ISessionMcpServer | null> => {
  * @param rootPath - Absolute folder the IDE has open, or null when no folder
  *                   is selected (every action becomes a no-op).
  */
-export const useIdeChat = (rootPath: string | null): UseIdeChat => {
+export const useIdeChat = (rootPath: string | null, options: IdeChatOptions = {}): UseIdeChat => {
   const [tabs, setTabs] = useState<IdeChatTab[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [planningEnabled, setPlanningEnabledState] = useState(false);
@@ -322,7 +342,9 @@ export const useIdeChat = (rootPath: string | null): UseIdeChat => {
         try {
           const rulesResult = await ideClient.rulesLoad(rootPath).catch((): null => null);
           const rules = rulesResult?.ok ? rulesResult.data : [];
-          const injection = buildWorkspacePrimer(rootPath, rules, planningEnabled, memId);
+          const primer = buildWorkspacePrimer(rootPath, rules, planningEnabled, memId);
+          const cloudGuide = options.cloudWorkspace ? buildCloudWorkspaceGuide(options.cloudWorkspace) : '';
+          const injection = cloudGuide ? `${cloudGuide}\n\n${primer}` : primer;
           const existing = typeof params.extra?.preset_context === 'string' ? params.extra.preset_context : '';
           if (!params.extra) (params as unknown as Record<string, unknown>).extra = {};
           params.extra.preset_context = existing.length > 0 ? `${injection}\n\n${existing}` : injection;
@@ -336,12 +358,21 @@ export const useIdeChat = (rootPath: string | null): UseIdeChat => {
         // creation; per-turn reminders are intentionally avoided.
         try {
           const ideServer = await resolveIdeMcp();
-          if (ideServer) {
+          const cloudServer = options.cloudWorkspace?.remoteMcpServer ?? null;
+          if (ideServer || cloudServer) {
             if (!params.extra) (params as unknown as Record<string, unknown>).extra = {};
             const existing = Array.isArray(params.extra.selected_session_mcp_servers)
               ? params.extra.selected_session_mcp_servers
               : [];
-            params.extra.selected_session_mcp_servers = [...existing.filter((s) => s.name !== IDE_MCP_NAME), ideServer];
+            const withoutManagedServers = existing.filter(
+              (server) =>
+                (!ideServer || server.name !== IDE_MCP_NAME) && (!cloudServer || server.name !== cloudServer.name)
+            );
+            params.extra.selected_session_mcp_servers = [
+              ...withoutManagedServers,
+              ...(ideServer ? [ideServer] : []),
+              ...(cloudServer ? [cloudServer] : []),
+            ];
             // Bind the session-memory rules (with this tab's memId) onto the
             // INVISIBLE rules layer, alongside the IDE tool rules. `preset_rules`
             // is delivered to the agent as a system/standing instruction — the
@@ -350,10 +381,12 @@ export const useIdeChat = (rootPath: string | null): UseIdeChat => {
             // turn. (The verbose guidance is also in `preset_context` for
             // preset-aware backends; this covers CLI/ACP backends that read
             // `preset_rules`.)
-            params.extra.preset_rules = withIdeMemoryRules(
+            const baseRules = withIdeMemoryRules(
               memId,
               withIdeToolRules(typeof params.extra.preset_rules === 'string' ? params.extra.preset_rules : '')
             );
+            const cloudRules = options.cloudWorkspace ? buildCloudWorkspaceGuide(options.cloudWorkspace) : '';
+            params.extra.preset_rules = cloudRules ? `${cloudRules}\n\n${baseRules}` : baseRules;
           }
         } catch {
           // Server attach is best-effort — never block tab creation.
@@ -387,7 +420,7 @@ export const useIdeChat = (rootPath: string | null): UseIdeChat => {
         if (aliveRef.current) setCreating(false);
       }
     },
-    [creating, persist, planningEnabled, rootPath, tabs]
+    [creating, options.cloudWorkspace, persist, planningEnabled, rootPath, tabs]
   );
 
   const setActive = useCallback((id: string): void => {

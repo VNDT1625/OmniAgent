@@ -4,7 +4,7 @@ import { readMessageContent } from '@/renderer/utils/chat/conversationExport';
 import { hasThinkTags, stripThinkTags } from '@/renderer/utils/chat/thinkTagFilter';
 
 export const buildAutoTitleFromContent = (content: string): string | null => {
-  let cleaned = stripTokenWatermarkNotice(content);
+  let cleaned = stripTokenWatermarkNotice(content).trim();
   cleaned = hasThinkTags(cleaned) ? stripThinkTags(cleaned) : cleaned;
   const lines = cleaned
     .replace(/\r/g, '')

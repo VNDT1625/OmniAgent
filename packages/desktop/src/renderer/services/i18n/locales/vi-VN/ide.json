@@ -912,6 +912,27 @@
     "pickFile": "Chọn một file từ cloud workspace.",
     "saved": "Đã lưu lên cloud workspace.",
     "seqLabel": "seq {{seq}}",
-    "participantsLabel": "{{count}} online"
+    "participantsLabel": "{{count}} online",
+    "filesLabel": "{{count}} tệp",
+    "publishLocal": "Push repo lên cloud",
+    "pullCloud": "Pull từ cloud",
+    "pullSuccess": "Đã pull cloud workspace về thư mục local.",
+    "publishSuccess": "Đã push thư mục local lên cloud.",
+    "emptyTitle": "Cloud workspace đang trống",
+    "emptyHint": "Cloud đang trống. Hãy push repo local hiện tại để các máy cùng thấy dữ liệu.",
+    "pickLocalFolder": "Mở thư mục local",
+    "openLocalFirst": "Mở một thư mục local trước khi push lên cloud.",
+    "openLocalBeforePull": "Mở thư mục local trước khi pull từ cloud.",
+    "publishProgress": "Đã upload {{uploaded}}/{{total}}",
+    "pullProgress": "Đã pull {{pulled}}/{{total}}",
+    "publishStarting": "Đang bắt đầu publish...",
+    "pullStarting": "Đang bắt đầu pull...",
+    "mounting": "Đang mount cloud workspace...",
+    "publishPartial": "Push cloud hoàn tất nhưng có {{failed}} tệp lỗi.",
+    "pullPartial": "Pull cloud hoàn tất nhưng có {{failed}} tệp lỗi.",
+    "claimFailed": "Không thể claim file này. Có thể session khác đang sửa nó.",
+    "publishNoFiles": "Không có tệp nào được upload. Thư mục có thể chỉ chứa file bị bỏ qua, file nhị phân hoặc file quá lớn.",
+    "publishUpToDate": "Cloud đã đồng bộ, không có thay đổi mới.",
+    "publishCloudOnly": "Có {{count}} tệp trên cloud không còn trong local. Các tệp đó được giữ nguyên."
   }
 }

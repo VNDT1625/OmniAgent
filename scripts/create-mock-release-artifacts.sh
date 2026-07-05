@@ -13,6 +13,7 @@ mkdir -p "$ARTIFACTS_DIR/linux-build-x64"
 mkdir -p "$ARTIFACTS_DIR/linux-build-arm64"
 
 # Windows x64
+touch "$ARTIFACTS_DIR/windows-build-x64/AionUi-1.0.0-win-x64.exe.blockmap"
 touch "$ARTIFACTS_DIR/windows-build-x64/AionUi-1.0.0-win-x64.exe"
 cat > "$ARTIFACTS_DIR/windows-build-x64/latest.yml" <<'EOF'
 version: 1.0.0
@@ -26,6 +27,7 @@ releaseDate: '2025-01-01'
 EOF
 
 # Windows arm64
+touch "$ARTIFACTS_DIR/windows-build-arm64/AionUi-1.0.0-win-arm64.exe.blockmap"
 touch "$ARTIFACTS_DIR/windows-build-arm64/AionUi-1.0.0-win-arm64.exe"
 cat > "$ARTIFACTS_DIR/windows-build-arm64/latest.yml" <<'EOF'
 version: 1.0.0

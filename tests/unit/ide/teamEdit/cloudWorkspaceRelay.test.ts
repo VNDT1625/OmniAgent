@@ -5,11 +5,19 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import type { CloudWorkspaceManifest, CloudWorkspaceOperation } from '@/common/adapter/cloudWorkspaceMapper';
+import {
+  collectCloudWorkspacePublishFiles,
+  isCloudWorkspaceBinaryBuffer,
+} from '@process/ide/teamEdit/cloud/cloudWorkspaceBridge';
 import {
   createCloudWorkspaceFileAdapter,
   createCloudWorkspaceRelayClient,
 } from '@process/ide/teamEdit/cloud/cloudWorkspaceRelay';
+import { createRemoteIdeWorkspaceGuide } from '@process/ide/teamEdit/remoteIdeMcp';
 
 const baseManifest = (): CloudWorkspaceManifest => ({
   workspaceId: 'ws-1',
@@ -43,6 +51,34 @@ const makeFetch = (manifest: CloudWorkspaceManifest, records: RecordedRequest[])
   return async (url: string, init?: RequestInit): Promise<Response> => {
     records.push({ url, init });
     if (url.endsWith('/manifest')) return jsonResponse(manifest);
+    if (url.endsWith('/status'))
+      return jsonResponse({
+        manifest,
+        participants: [],
+        leases: [],
+      });
+    if (url.endsWith('/leases') && init?.method === 'POST') {
+      const body = JSON.parse(String(init.body)) as {
+        relPath: string;
+        clientId: string;
+        name?: string;
+        intent?: string;
+      };
+      return jsonResponse({
+        ok: true,
+        renewed: false,
+        lease: {
+          relPath: body.relPath,
+          clientId: body.clientId,
+          name: body.name,
+          intent: body.intent,
+          acquiredAt: 100,
+          renewedAt: 100,
+          expiresAt: 1000,
+        },
+      });
+    }
+    if (url.endsWith('/leases') && init?.method === 'DELETE') return jsonResponse({ ok: true });
     if (url.includes('/ops?since=')) return jsonResponse([]);
     if (url.endsWith('/ops') && init?.method === 'POST') {
       const body = JSON.parse(String(init.body)) as CloudWorkspaceOperation;
@@ -73,6 +109,40 @@ describe('cloudWorkspaceRelay', () => {
     expect(relay.getManifest()?.files['src/index.ts']?.revision).toBe(1);
     expect(records.some((record) => record.url.includes('/blobs/') && record.init?.method === 'PUT')).toBe(true);
     expect(records.some((record) => record.url.endsWith('/ops') && record.init?.method === 'POST')).toBe(true);
+    expect(records.some((record) => record.url.endsWith('/leases') && record.init?.method === 'POST')).toBe(true);
+    expect(records.some((record) => record.url.endsWith('/leases') && record.init?.method === 'DELETE')).toBe(true);
+  });
+
+  it('surfaces cloud lease conflicts before writing a file', async () => {
+    const records: RecordedRequest[] = [];
+    const fetchImpl = async (url: string, init?: RequestInit): Promise<Response> => {
+      records.push({ url, init });
+      if (url.endsWith('/manifest')) return jsonResponse(baseManifest());
+      if (url.endsWith('/leases') && init?.method === 'POST')
+        return jsonResponse({
+          ok: false,
+          reason: 'held',
+          lease: {
+            relPath: 'src/index.ts',
+            clientId: 'client-b',
+            name: 'Bob',
+            acquiredAt: 100,
+            renewedAt: 100,
+            expiresAt: 1000,
+          },
+        });
+      return jsonResponse({});
+    };
+    const relay = createCloudWorkspaceRelayClient(
+      { relayBaseUrl: 'https://relay.example.com', workspaceId: 'ws-1', token: 'token', clientId: 'client-a' },
+      { fetchImpl, WebSocketImpl: undefined }
+    );
+    await relay.fetchManifest();
+    const adapter = createCloudWorkspaceFileAdapter(relay);
+
+    await expect(adapter.writeFile('src/index.ts', 'hello')).rejects.toThrow('held by Bob');
+    expect(records.some((record) => record.url.includes('/blobs/'))).toBe(false);
+    expect(records.some((record) => record.url.endsWith('/ops'))).toBe(false);
   });
 
   it('rejects targeted edits when the old text is stale', async () => {
@@ -143,5 +213,55 @@ describe('cloudWorkspaceRelay', () => {
     expect(RecordingWebSocket.urls[0]).toContain('token=secret-token');
     expect(RecordingWebSocket.urls[0]).toContain('clientId=client-a');
     expect(RecordingWebSocket.urls[0]).toContain('name=Alice');
+  });
+
+  it('collects publishable local files while excluding heavy workspace noise and binary content', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'aionui-cloud-publish-'));
+    try {
+      await mkdir(path.join(root, 'src'), { recursive: true });
+      await mkdir(path.join(root, 'node_modules', 'pkg'), { recursive: true });
+      await writeFile(path.join(root, 'README.md'), 'hello');
+      await writeFile(path.join(root, '.env.local'), 'TOKEN=secret');
+      await writeFile(path.join(root, 'src', 'index.ts'), 'export const ok = true;');
+      await writeFile(path.join(root, 'node_modules', 'pkg', 'index.js'), 'ignored');
+
+      const files = (await collectCloudWorkspacePublishFiles(root)).map((file) =>
+        path.relative(root, file).replace(/\\/g, '/')
+      );
+
+      expect(files).toEqual(['README.md', 'src/index.ts']);
+      expect(isCloudWorkspaceBinaryBuffer(Buffer.from([65, 0, 66]))).toBe(true);
+      expect(isCloudWorkspaceBinaryBuffer(Buffer.from('text'))).toBe(false);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  it('guides cloud agents toward cloud-aware IDE tools instead of the scratch folder', () => {
+    const guide = createRemoteIdeWorkspaceGuide({
+      kind: 'cloud',
+      baseUrl: 'https://relay.example.com',
+      token: 'token',
+      repoName: 'Security',
+      workspacePath: 'C:/Users/MyPC/AppData/Roaming/AionUi-Dev/remote-ide/hash',
+      backend: {
+        listDir: async () => [],
+        readFile: async () => '',
+        writeFile: async () => '',
+        editFile: async () => '',
+        status: async () => '',
+      },
+    });
+
+    expect(guide).toContain('ide_grep');
+    expect(guide).toContain('ide_find_definition');
+    expect(guide).toContain('ide_find_references');
+    expect(guide).toContain('ide_scan_repo');
+    expect(guide).toContain('ide_context');
+    expect(guide).toContain('ide_command');
+    expect(guide).toContain('temporary cloud worktree cache');
+    expect(guide).toContain('cloud operation log');
+    expect(guide).toContain('lease-guarded by the cloud relay');
+    expect(guide).toContain('scratch directory');
   });
 });

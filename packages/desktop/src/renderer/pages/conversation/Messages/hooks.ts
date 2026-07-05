@@ -549,13 +549,13 @@ export function normalizeDbMessage(msg: TMessage): TMessage {
   if (msg.type !== 'text') return msg;
   const raw = msg.content as unknown;
   if (typeof raw !== 'string') {
-    const content = stripTokenWatermarkNotice(msg.content.content);
+    const content = stripTokenWatermarkNotice(msg.content.content).trim();
     return content.length > 0 ? { ...msg, content: { ...msg.content, content } } : { ...msg, hidden: true };
   }
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     if (typeof parsed.content !== 'string') return msg;
-    const content = stripTokenWatermarkNotice(parsed.content);
+    const content = stripTokenWatermarkNotice(parsed.content).trim();
     if (content.length === 0) return { ...msg, hidden: true };
     return {
       ...msg,
@@ -568,7 +568,7 @@ export function normalizeDbMessage(msg: TMessage): TMessage {
       },
     };
   } catch {
-    const content = stripTokenWatermarkNotice(raw);
+    const content = stripTokenWatermarkNotice(raw).trim();
     return content.length > 0 ? { ...msg, content: { content } } : { ...msg, hidden: true };
   }
 }

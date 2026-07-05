@@ -13,9 +13,12 @@ import {
   listCloudWorkspaceDir,
   normalizeCloudPath,
   type CloudWorkspaceEnvelope,
+  type CloudWorkspaceFileLease,
+  type CloudWorkspaceLeaseClaimResult,
   type CloudWorkspaceManifest,
   type CloudWorkspaceOperation,
   type CloudWorkspaceRelayConfig,
+  type CloudWorkspaceRelayStatus,
   type CloudWorkspaceSyncState,
 } from '@/common/adapter/cloudWorkspaceMapper';
 
@@ -79,6 +82,7 @@ const initialSyncState = (config: CloudWorkspaceRelayConfig): CloudWorkspaceSync
   lastAppliedSeq: 0,
   pendingOps: 0,
   participants: [],
+  leases: [],
 });
 
 export const createCloudWorkspaceRelayClient = (
@@ -134,6 +138,17 @@ export const createCloudWorkspaceRelayClient = (
   const fetchOpsSince = async (seq: number): Promise<CloudWorkspaceOperation[]> =>
     requestJson<CloudWorkspaceOperation[]>(fetchImpl, urls.opsSince(seq), config.token, requestTimeoutMs);
 
+  const fetchStatus = async (): Promise<CloudWorkspaceRelayStatus> => {
+    const status = await requestJson<CloudWorkspaceRelayStatus>(fetchImpl, urls.status, config.token, requestTimeoutMs);
+    manifest = status.manifest;
+    setState({
+      lastAppliedSeq: status.manifest.seq,
+      participants: status.participants,
+      leases: status.leases,
+    });
+    return status;
+  };
+
   const catchUp = async (): Promise<void> => {
     if (!manifest) await fetchManifest();
     const ops = await fetchOpsSince(manifest?.seq ?? 0);
@@ -153,7 +168,12 @@ export const createCloudWorkspaceRelayClient = (
 
   const handleEnvelope = (envelope: CloudWorkspaceEnvelope): void => {
     if (envelope.kind === 'hello') {
-      setState({ state: 'connected', lastAppliedSeq: envelope.seq, participants: envelope.participants ?? [] });
+      setState({
+        state: 'connected',
+        lastAppliedSeq: envelope.seq,
+        participants: envelope.participants ?? [],
+        leases: envelope.leases ?? syncState.leases,
+      });
       reconnectAttempt = 0;
       if (manifest && envelope.seq > manifest.seq) void catchUp().catch(handleError);
       return;
@@ -164,6 +184,10 @@ export const createCloudWorkspaceRelayClient = (
     }
     if (envelope.kind === 'presence') {
       setState({ participants: envelope.participants });
+      return;
+    }
+    if (envelope.kind === 'leases') {
+      setState({ leases: envelope.leases });
       return;
     }
     if (envelope.kind === 'error') {
@@ -267,6 +291,27 @@ export const createCloudWorkspaceRelayClient = (
     return hash;
   };
 
+  const claimLease = async (relPath: string, intent?: string): Promise<CloudWorkspaceLeaseClaimResult> =>
+    requestJson<CloudWorkspaceLeaseClaimResult>(fetchImpl, urls.leases, config.token, requestTimeoutMs, {
+      method: 'POST',
+      body: JSON.stringify({
+        relPath: normalizeCloudPath(relPath),
+        clientId: config.clientId,
+        name: config.displayName,
+        intent,
+      }),
+      headers: { 'x-aion-client-id': config.clientId },
+    });
+
+  const releaseLease = async (relPath: string): Promise<boolean> => {
+    const res = await requestJson<{ ok: boolean }>(fetchImpl, urls.leases, config.token, requestTimeoutMs, {
+      method: 'DELETE',
+      body: JSON.stringify({ relPath: normalizeCloudPath(relPath), clientId: config.clientId }),
+      headers: { 'x-aion-client-id': config.clientId },
+    });
+    return res.ok;
+  };
+
   const on = <K extends keyof CloudWorkspaceRelayEvents>(
     kind: K,
     listener: CloudWorkspaceRelayEvents[K]
@@ -281,14 +326,33 @@ export const createCloudWorkspaceRelayClient = (
     connect,
     close,
     fetchManifest,
+    fetchStatus,
     fetchOpsSince,
     catchUp,
     appendOperation,
     fetchBlob,
     uploadBlob,
+    claimLease,
+    releaseLease,
     getManifest: (): CloudWorkspaceManifest | null => manifest,
     getState: (): CloudWorkspaceSyncState => syncState,
   };
+};
+
+const withCloudLease = async <T>(
+  relay: CloudWorkspaceRelayClient,
+  relPath: string,
+  intent: string,
+  fn: () => Promise<T>
+): Promise<T> => {
+  const claim = await relay.claimLease(relPath, intent);
+  if (!claim.ok)
+    throw new Error(`Cloud file is currently held by ${claim.lease.name || claim.lease.clientId}: ${relPath}`);
+  try {
+    return await fn();
+  } finally {
+    await relay.releaseLease(relPath).catch((): false => false);
+  }
 };
 
 export const createCloudWorkspaceFileAdapter = (relay: CloudWorkspaceRelayClient) => ({
@@ -307,26 +371,34 @@ export const createCloudWorkspaceFileAdapter = (relay: CloudWorkspaceRelayClient
   },
   writeFile: async (path: string, content: string): Promise<CloudWorkspaceOperation> => {
     const relPath = normalizeCloudPath(path);
-    const hash = await relay.uploadBlob(content);
-    return relay.appendOperation({ id: randomUUID(), type: 'file.write', path: relPath, hash, size: content.length });
+    return withCloudLease(relay, relPath, `${content.length} bytes`, async () => {
+      const hash = await relay.uploadBlob(content);
+      return relay.appendOperation({ id: randomUUID(), type: 'file.write', path: relPath, hash, size: content.length });
+    });
   },
   editFile: async (path: string, oldText: string, newText: string): Promise<CloudWorkspaceOperation> => {
     const relPath = normalizeCloudPath(path);
-    const current = await createCloudWorkspaceFileAdapter(relay).readFile(relPath);
-    const first = current.indexOf(oldText);
-    if (first < 0) throw new Error('STALE: oldText was not found in the current cloud file.');
-    if (current.indexOf(oldText, first + oldText.length) >= 0)
-      throw new Error('AMBIGUOUS: oldText matches more than once.');
-    const next = `${current.slice(0, first)}${newText}${current.slice(first + oldText.length)}`;
-    const hash = await relay.uploadBlob(next);
-    return relay.appendOperation({
-      id: randomUUID(),
-      type: 'file.patch',
-      path: relPath,
-      oldText,
-      newText,
-      hash,
-      size: next.length,
+    return withCloudLease(relay, relPath, 'edit', async () => {
+      const current = await createCloudWorkspaceFileAdapter(relay).readFile(relPath);
+      const first = current.indexOf(oldText);
+      if (first < 0) throw new Error('STALE: oldText was not found in the current cloud file.');
+      if (current.indexOf(oldText, first + oldText.length) >= 0)
+        throw new Error('AMBIGUOUS: oldText matches more than once.');
+      const next = `${current.slice(0, first)}${newText}${current.slice(first + oldText.length)}`;
+      const hash = await relay.uploadBlob(next);
+      return relay.appendOperation({
+        id: randomUUID(),
+        type: 'file.patch',
+        path: relPath,
+        oldText,
+        newText,
+        hash,
+        size: next.length,
+      });
     });
   },
+  claimFile: (path: string, intent?: string): Promise<CloudWorkspaceLeaseClaimResult> =>
+    relay.claimLease(normalizeCloudPath(path), intent),
+  releaseFile: (path: string): Promise<boolean> => relay.releaseLease(normalizeCloudPath(path)),
+  listLeases: (): CloudWorkspaceFileLease[] => relay.getState().leases,
 });

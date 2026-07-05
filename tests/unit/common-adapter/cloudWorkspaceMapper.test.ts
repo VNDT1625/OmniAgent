@@ -44,6 +44,8 @@ describe('cloudWorkspaceMapper', () => {
     const urls = buildCloudWorkspaceUrls({ relayBaseUrl: 'https://relay.example.com/', workspaceId: 'ws 1' });
 
     expect(urls.manifest).toBe('https://relay.example.com/v1/workspaces/ws%201/manifest');
+    expect(urls.status).toBe('https://relay.example.com/v1/workspaces/ws%201/status');
+    expect(urls.leases).toBe('https://relay.example.com/v1/workspaces/ws%201/leases');
     expect(urls.connect).toBe('wss://relay.example.com/v1/workspaces/ws%201/connect');
     expect(urls.mcpSse).toBe('https://relay.example.com/v1/workspaces/ws%201/mcp/sse');
   });

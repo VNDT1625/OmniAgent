@@ -11,7 +11,7 @@ const stripSkillSuggestPreserveWhitespace = (content: string): string => {
 };
 
 const sanitizeAssistantText = (content: string): string => {
-  return stripTokenWatermarkNotice(stripSkillSuggestPreserveWhitespace(stripThinkTags(content)));
+  return stripTokenWatermarkNotice(stripSkillSuggestPreserveWhitespace(stripThinkTags(content))).trim();
 };
 
 export const getLastAssistantText = (messageList: TMessage[], loading: boolean): string | null => {

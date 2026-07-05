@@ -355,14 +355,16 @@ const PeerWorkspace: React.FC<PeerWorkspaceProps> = ({ collab, onBack }) => {
   );
 };
 
-export const RemotePeerChatPanel: React.FC<{ peer: PeerConnection }> = ({ peer }) => {
+export const RemotePeerChatPanel: React.FC<{ peer: PeerConnection; fullWidth?: boolean }> = ({ peer, fullWidth }) => {
   const { t, i18n } = useTranslation();
   const chat = useRemoteIdeChat(peer);
   const { cliAgents, presetAssistants, isLoading } = useConversationAgents();
   const [pickerOpen, setPickerOpen] = useState(false);
 
   return (
-    <aside className='w-420px max-w-42vw shrink-0 border-l border-b-1 flex flex-col min-h-0 bg-1'>
+    <aside
+      className={`${fullWidth ? 'flex-1 min-w-0' : 'w-420px max-w-42vw shrink-0 border-l'} border-b-1 flex flex-col min-h-0 bg-1`}
+    >
       <div className='shrink-0 flex items-center gap-8px px-12px py-8px border-b border-b-1'>
         <Robot theme='outline' size={15} className='text-primary' />
         <div className='min-w-0 flex-1'>
@@ -469,7 +471,7 @@ const RemoteChatTabBody: React.FC<{
           <Spin />
         </div>
       ) : (
-        <ChatConversation conversation={data} />
+        <ChatConversation conversation={data} embedded />
       )}
     </div>
   );

@@ -10,14 +10,22 @@ import { bridge } from '@office-ai/platform';
 import type {
   CloudWorkspaceConnectRequest,
   CloudWorkspaceEditRequest,
+  CloudWorkspaceEventEnvelope,
   CloudWorkspaceFileRequest,
+  CloudWorkspaceClaimRequest,
+  CloudWorkspacePublishProgress,
+  CloudWorkspacePullProgress,
+  CloudWorkspacePullRequest,
+  CloudWorkspacePublishRequest,
+  CloudWorkspaceReleaseRequest,
   CloudWorkspaceResult,
   CloudWorkspaceSessionData,
+  CloudWorkspaceStatusRequest,
   CloudWorkspaceStatusData,
   CloudWorkspaceTreeRequest,
   CloudWorkspaceWriteRequest,
 } from '@process/ide/teamEdit/cloud/cloudWorkspaceBridge';
-import type { CloudWorkspaceOperation } from '@/common/adapter/cloudWorkspaceMapper';
+import type { CloudWorkspaceLeaseClaimResult, CloudWorkspaceOperation } from '@/common/adapter/cloudWorkspaceMapper';
 import type { TeamTreeEntry } from '@process/ide/teamEdit/teamSessionHost';
 
 const CLOUD_WORKSPACE_CHANNELS = {
@@ -28,9 +36,18 @@ const CLOUD_WORKSPACE_CHANNELS = {
   file: 'ide.cloud-workspace-file',
   write: 'ide.cloud-workspace-write',
   edit: 'ide.cloud-workspace-edit',
+  claim: 'ide.cloud-workspace-claim',
+  release: 'ide.cloud-workspace-release',
+  publish: 'ide.cloud-workspace-publish',
+  publishStatus: 'ide.cloud-workspace-publish-status',
+  pull: 'ide.cloud-workspace-pull',
+  pullStatus: 'ide.cloud-workspace-pull-status',
+  event: 'ide.cloud-workspace-event',
 } as const;
 
 const OP_TIMEOUT_MS = 60000;
+const PUBLISH_START_TIMEOUT_MS = 60000;
+const PUBLISH_STATUS_TIMEOUT_MS = 15000;
 
 const channels = {
   connect: bridge.buildProvider<CloudWorkspaceResult<CloudWorkspaceSessionData>, CloudWorkspaceConnectRequest>(
@@ -39,7 +56,7 @@ const channels = {
   disconnect: bridge.buildProvider<CloudWorkspaceResult<boolean>, { workspaceId: string }>(
     CLOUD_WORKSPACE_CHANNELS.disconnect
   ),
-  status: bridge.buildProvider<CloudWorkspaceResult<CloudWorkspaceStatusData>, { workspaceId?: string }>(
+  status: bridge.buildProvider<CloudWorkspaceResult<CloudWorkspaceStatusData>, CloudWorkspaceStatusRequest>(
     CLOUD_WORKSPACE_CHANNELS.status
   ),
   tree: bridge.buildProvider<CloudWorkspaceResult<TeamTreeEntry[]>, CloudWorkspaceTreeRequest>(
@@ -54,6 +71,25 @@ const channels = {
   edit: bridge.buildProvider<CloudWorkspaceResult<CloudWorkspaceOperation>, CloudWorkspaceEditRequest>(
     CLOUD_WORKSPACE_CHANNELS.edit
   ),
+  claim: bridge.buildProvider<CloudWorkspaceResult<CloudWorkspaceLeaseClaimResult>, CloudWorkspaceClaimRequest>(
+    CLOUD_WORKSPACE_CHANNELS.claim
+  ),
+  release: bridge.buildProvider<CloudWorkspaceResult<boolean>, CloudWorkspaceReleaseRequest>(
+    CLOUD_WORKSPACE_CHANNELS.release
+  ),
+  publish: bridge.buildProvider<CloudWorkspaceResult<CloudWorkspacePublishProgress>, CloudWorkspacePublishRequest>(
+    CLOUD_WORKSPACE_CHANNELS.publish
+  ),
+  publishStatus: bridge.buildProvider<CloudWorkspaceResult<CloudWorkspacePublishProgress>, { workspaceId: string }>(
+    CLOUD_WORKSPACE_CHANNELS.publishStatus
+  ),
+  pull: bridge.buildProvider<CloudWorkspaceResult<CloudWorkspacePullProgress>, CloudWorkspacePullRequest>(
+    CLOUD_WORKSPACE_CHANNELS.pull
+  ),
+  pullStatus: bridge.buildProvider<CloudWorkspaceResult<CloudWorkspacePullProgress>, { workspaceId: string }>(
+    CLOUD_WORKSPACE_CHANNELS.pullStatus
+  ),
+  event: bridge.buildEmitter<CloudWorkspaceEventEnvelope>(CLOUD_WORKSPACE_CHANNELS.event),
 };
 
 class CloudWorkspaceTimeoutError extends Error {
@@ -111,9 +147,53 @@ export const cloudWorkspaceClient = {
       () => channels.edit.invoke({ workspaceId, relPath, oldText, newText }),
       20000
     ),
+  claim: (
+    workspaceId: string,
+    relPath: string,
+    intent?: string
+  ): Promise<CloudWorkspaceResult<CloudWorkspaceLeaseClaimResult>> =>
+    withTimeout(CLOUD_WORKSPACE_CHANNELS.claim, () => channels.claim.invoke({ workspaceId, relPath, intent }), 10000),
+  release: (workspaceId: string, relPath: string): Promise<CloudWorkspaceResult<boolean>> =>
+    withTimeout(CLOUD_WORKSPACE_CHANNELS.release, () => channels.release.invoke({ workspaceId, relPath }), 10000),
+  publish: (workspaceId: string, rootPath: string): Promise<CloudWorkspaceResult<CloudWorkspacePublishProgress>> =>
+    withTimeout(
+      CLOUD_WORKSPACE_CHANNELS.status,
+      async () => {
+        const res = await channels.status.invoke({ workspaceId, publishRootPath: rootPath });
+        if (res.ok === false) return res;
+        return {
+          ok: true,
+          data: res.data.publishProgress ?? {
+            uploaded: 0,
+            skipped: 0,
+            failed: 1,
+            totalBytes: 0,
+            errors: [{ path: '.', error: 'Publish did not start.' }],
+            running: false,
+            done: true,
+            totalDiscovered: 0,
+          },
+        };
+      },
+      PUBLISH_START_TIMEOUT_MS
+    ),
+  publishStatus: (workspaceId: string): Promise<CloudWorkspaceResult<CloudWorkspacePublishProgress>> =>
+    withTimeout(
+      CLOUD_WORKSPACE_CHANNELS.publishStatus,
+      () => channels.publishStatus.invoke({ workspaceId }),
+      PUBLISH_STATUS_TIMEOUT_MS
+    ),
+  pull: (workspaceId: string, rootPath: string): Promise<CloudWorkspaceResult<CloudWorkspacePullProgress>> =>
+    withTimeout(CLOUD_WORKSPACE_CHANNELS.pull, () => channels.pull.invoke({ workspaceId, rootPath }), 20000),
+  pullStatus: (workspaceId: string): Promise<CloudWorkspaceResult<CloudWorkspacePullProgress>> =>
+    withTimeout(CLOUD_WORKSPACE_CHANNELS.pullStatus, () => channels.pullStatus.invoke({ workspaceId }), 15000),
+  onEvent: (listener: (event: CloudWorkspaceEventEnvelope['event']) => void): (() => void) =>
+    channels.event.on((envelope) => listener(envelope.event)),
 };
 
 export type {
+  CloudWorkspacePublishProgress,
+  CloudWorkspacePullProgress,
   CloudWorkspaceSessionData,
   CloudWorkspaceStatusData,
 } from '@process/ide/teamEdit/cloud/cloudWorkspaceBridge';

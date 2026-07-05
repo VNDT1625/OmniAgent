@@ -109,6 +109,13 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
       if (hasSkillSuggest(content)) {
         content = stripSkillSuggest(content);
       }
+      // Cosmetic normalize for display of the *final* assembled text only.
+      // Never run this on live streaming deltas (they are appended in hooks/compose
+      // before they reach the component).
+      content = content
+        .replace(/[ \t]{2,}/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
       return content;
     }
     return content;

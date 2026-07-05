@@ -43,6 +43,7 @@ import {
   Modal,
   Popconfirm,
   Spin,
+  Tag,
   Tooltip,
   Tree,
 } from '@arco-design/web-react';
@@ -107,7 +108,7 @@ import TeamEditPanel from './teamEdit/TeamEditPanel';
 import TeamCollabBar from './teamEdit/TeamCollabBar';
 import { useTeamCollab } from './teamEdit/useTeamCollab';
 import PeerWorkspace from './teamEdit/PeerWorkspace';
-import CloudWorkspace from './teamEdit/cloud/CloudWorkspace';
+import { cloudWorkspaceClient, type CloudWorkspacePublishProgress } from './teamEdit/cloud/cloudWorkspaceClient';
 import { useCloudWorkspace } from './teamEdit/cloud/useCloudWorkspace';
 import IdeTerminalPanel from './terminal/IdeTerminalPanel';
 import { getReadFileText, ideClient } from './ideClient';
@@ -116,8 +117,34 @@ import { buildQuickCommands, cwdForNode, parseScripts, sepOf, type QuickCommand 
 import { relationsFor } from './codeRelations';
 import type { RepoGraph } from './ideClient';
 import { emitEditorGoto } from '@renderer/pages/editor/editorGoto';
+import type { EditorFsOverride } from '@renderer/pages/editor/UniversalEditor';
 
 const UniversalEditor = React.lazy(() => import('@renderer/pages/editor/UniversalEditor'));
+
+const CLOUD_BOOTSTRAP_EXCLUDED_DIRS = new Set([
+  '.git',
+  '.hg',
+  '.svn',
+  'node_modules',
+  'dist',
+  'out',
+  'build',
+  '.next',
+  '.nuxt',
+  'coverage',
+  '.cache',
+  '.turbo',
+  '.vite',
+  'target',
+]);
+const CLOUD_BOOTSTRAP_MAX_FILES = 2000;
+const CLOUD_BOOTSTRAP_MAX_BYTES = 1024 * 1024;
+
+const hashTextSha256 = async (content: string): Promise<string> => {
+  const bytes = new TextEncoder().encode(content);
+  const digest = await crypto.subtle.digest('SHA-256', bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+};
 
 type IdeWorkspaceProps = {
   onBack: () => void;
@@ -150,6 +177,29 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
   const [joinCollabOpen, setJoinCollabOpen] = useState(false);
   const [connectCloudOpen, setConnectCloudOpen] = useState(false);
   const [quickTestCompact, setQuickTestCompact] = useState(false);
+  const [cloudBootstrapPublishing, setCloudBootstrapPublishing] = useState(false);
+  const [cloudBootstrapProgress, setCloudBootstrapProgress] = useState<CloudWorkspacePublishProgress | null>(null);
+  const cloudMountingPathRef = useRef<string | null>(null);
+  const cloudFileCount = useMemo(
+    () => Object.values(cloud.manifest?.files ?? {}).filter((file) => !file.deleted).length,
+    [cloud.manifest]
+  );
+
+  useEffect(() => {
+    const cachePath = cloud.session?.cachePath;
+    if (cloudFileCount <= 0) return;
+    if (!cloud.connected || !cachePath || ide.rootPath === cachePath) return;
+    if (cloudMountingPathRef.current === cachePath) return;
+    cloudMountingPathRef.current = cachePath;
+    void ide
+      .openFolderPath(cachePath, { persist: false })
+      .catch((error: unknown) => {
+        Message.error(error instanceof Error ? error.message : String(error));
+      })
+      .finally(() => {
+        if (cloudMountingPathRef.current === cachePath) cloudMountingPathRef.current = null;
+      });
+  }, [cloud.connected, cloud.session?.cachePath, cloudFileCount, ide.openFolderPath, ide.rootPath]);
 
   const [specMounted, setSpecMounted] = useState(false);
   const [diffOpen, setDiffOpen] = useState(false);
@@ -192,6 +242,170 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
     for (const file of collectTreeFilePaths(ide.tree, ide.rootPath)) files.add(file);
     return [...files].toSorted((a, b) => a.localeCompare(b));
   }, [ide.graph, ide.rootPath, ide.tree]);
+
+  const editorFs = useMemo(() => {
+    const cachePath = cloud.session?.cachePath;
+    if (!cloud.connected || !cloud.session || !cachePath || ide.rootPath !== cachePath) return ide.editorFs;
+    const cloudSession = cloud.session;
+    const toCloudRel = (filePath: string): string => relWithinRoot(filePath, cachePath);
+    return {
+      readText: async (filePath: string): Promise<string | null> => {
+        const res = await cloudWorkspaceClient
+          .file(cloudSession.workspaceId, toCloudRel(filePath))
+          .catch((): null => null);
+        if (!res || res.ok === false) return null;
+        return res.data.content;
+      },
+      readBase64: (filePath: string): Promise<string | null> => ide.editorFs.readBase64(filePath),
+      writeText: async (filePath: string, data: string): Promise<boolean> => {
+        const relPath = toCloudRel(filePath);
+        const res = await cloudWorkspaceClient.write(cloudSession.workspaceId, relPath, data).catch((): null => null);
+        if (!res || res.ok === false) return false;
+        await ide.editorFs.writeText(filePath, data).catch((): false => false);
+        await cloud.refreshStatus().catch((): undefined => undefined);
+        return true;
+      },
+      writeBase64: async (): Promise<boolean> => false,
+    };
+  }, [cloud.connected, cloud.session, cloud.refreshStatus, ide.editorFs, ide.rootPath]);
+
+  const publishLocalFolderToCloud = async (rootPath: string): Promise<boolean> => {
+    const session = cloud.session;
+    if (!session || cloudBootstrapPublishing) return false;
+    const root = rootPath.replace(/[\\/]+$/, '');
+    const toRel = (absPath: string): string => {
+      const normalizedRoot = root.replace(/\\/g, '/');
+      const normalizedAbs = absPath.replace(/\\/g, '/');
+      return normalizedAbs.startsWith(`${normalizedRoot}/`)
+        ? normalizedAbs.slice(normalizedRoot.length + 1)
+        : normalizedAbs;
+    };
+    const joinPath = (dir: string, name: string): string => {
+      const sep = dir.includes('\\') && !dir.includes('/') ? '\\' : '/';
+      return `${dir.replace(/[\\/]+$/, '')}${sep}${name}`;
+    };
+    const progress: CloudWorkspacePublishProgress = {
+      uploaded: 0,
+      skipped: 0,
+      failed: 0,
+      totalBytes: 0,
+      errors: [],
+      running: true,
+      done: false,
+      totalDiscovered: 0,
+      startedAt: Date.now(),
+    };
+    setCloudBootstrapPublishing(true);
+    setCloudBootstrapProgress(progress);
+    try {
+      const localPaths = new Set<string>();
+      const cloudFiles = cloud.manifest?.files ?? {};
+      const visit = async (dir: string): Promise<void> => {
+        if (progress.totalDiscovered >= CLOUD_BOOTSTRAP_MAX_FILES) return;
+        const listed = await ideClient.listDir(dir).catch((error): null => {
+          progress.failed += 1;
+          if (progress.errors.length < 20) progress.errors.push({ path: toRel(dir) || '.', error: String(error) });
+          return null;
+        });
+        if (!listed || listed.ok === false) {
+          if (listed && progress.errors.length < 20)
+            progress.errors.push({
+              path: toRel(dir) || '.',
+              error: 'error' in listed ? listed.error : 'Could not list directory.',
+            });
+          if (listed) progress.failed += 1;
+          return;
+        }
+        for (const entry of listed.data) {
+          if (progress.totalDiscovered >= CLOUD_BOOTSTRAP_MAX_FILES) return;
+          if (entry.isDir) {
+            if (CLOUD_BOOTSTRAP_EXCLUDED_DIRS.has(entry.name)) continue;
+            await visit(entry.fullPath || joinPath(dir, entry.name));
+            continue;
+          }
+          const absPath = entry.fullPath || joinPath(dir, entry.name);
+          const relPath = toRel(absPath);
+          localPaths.add(relPath);
+          progress.currentPath = relPath;
+          progress.totalDiscovered += 1;
+          const read = await ideClient
+            .readFile({ path: absPath, maxBytes: CLOUD_BOOTSTRAP_MAX_BYTES + 1 })
+            .catch((error): null => {
+              progress.failed += 1;
+              if (progress.errors.length < 20) progress.errors.push({ path: relPath, error: String(error) });
+              return null;
+            });
+          if (!read || read.ok === false) {
+            if (read && progress.errors.length < 20)
+              progress.errors.push({ path: relPath, error: 'error' in read ? read.error : 'Could not read file.' });
+            if (read) progress.failed += 1;
+            setCloudBootstrapProgress({ ...progress });
+            continue;
+          }
+          if (read.data.binary || read.data.truncated || read.data.sizeBytes > CLOUD_BOOTSTRAP_MAX_BYTES) {
+            progress.skipped += 1;
+            setCloudBootstrapProgress({ ...progress });
+            continue;
+          }
+          const content = getReadFileText(read.data);
+          const localHash = await hashTextSha256(content);
+          const remoteMeta = cloudFiles[relPath];
+          if (remoteMeta && !remoteMeta.deleted && remoteMeta.hash === localHash) {
+            progress.skipped += 1;
+            setCloudBootstrapProgress({ ...progress });
+            continue;
+          }
+          const written = await cloudWorkspaceClient
+            .write(session.workspaceId, relPath, content)
+            .catch((error): null => {
+              progress.failed += 1;
+              if (progress.errors.length < 20) progress.errors.push({ path: relPath, error: String(error) });
+              return null;
+            });
+          if (!written || written.ok === false) {
+            if (written && progress.errors.length < 20)
+              progress.errors.push({
+                path: relPath,
+                error: 'error' in written ? written.error : 'Could not write file.',
+              });
+            if (written) progress.failed += 1;
+          } else {
+            progress.uploaded += 1;
+            progress.totalBytes += read.data.sizeBytes;
+          }
+          setCloudBootstrapProgress({ ...progress });
+        }
+      };
+      await visit(root);
+      const cloudOnlyCount = Object.values(cloudFiles).filter(
+        (file) => !file.deleted && !localPaths.has(file.path.replace(/\\/g, '/'))
+      ).length;
+      progress.running = false;
+      progress.done = true;
+      progress.currentPath = undefined;
+      progress.finishedAt = Date.now();
+      setCloudBootstrapProgress({ ...progress });
+      await cloud.refreshStatus();
+      if (progress.failed > 0) {
+        const first = progress.errors[0];
+        Message.error(
+          first
+            ? `${t('ide.cloudWorkspace.publishPartial', { failed: progress.failed })}: ${first.path} - ${first.error}`
+            : t('ide.cloudWorkspace.publishPartial', { failed: progress.failed })
+        );
+      } else if (progress.uploaded > 0) {
+        Message.success(t('ide.cloudWorkspace.publishSuccess'));
+      } else if (progress.totalDiscovered > 0) {
+        Message.info(t('ide.cloudWorkspace.publishUpToDate'));
+      } else {
+        Message.warning(t('ide.cloudWorkspace.publishNoFiles'));
+      }
+      if (cloudOnlyCount > 0) Message.warning(t('ide.cloudWorkspace.publishCloudOnly', { count: cloudOnlyCount }));
+      return progress.uploaded > 0 && progress.failed === 0;
+    } finally {
+      setCloudBootstrapPublishing(false);
+    }
+  };
 
   const openFile = (path: string): void => {
     ide.openFile(path);
@@ -402,7 +616,33 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
   }
 
   if (!ide.rootPath && cloud.connected && cloud.session) {
-    return <CloudWorkspace cloud={cloud} onBack={onBack} />;
+    return (
+      <div className='size-full flex flex-col min-h-0 bg-1'>
+        <Header
+          rootName={cloud.session.workspaceId}
+          onBack={onBack}
+          statsLine={null}
+          onPickFolder={requestPickFolder}
+          onRescan={null}
+        />
+        <CloudMountedBar
+          cloud={cloud}
+          fileCount={cloudFileCount}
+          localRootPath={null}
+          onPickFolder={requestPickFolder}
+          publishing={cloudBootstrapPublishing}
+          progress={cloudBootstrapProgress}
+          onPublishLocal={publishLocalFolderToCloud}
+        />
+        <div className='flex-1 flex-center'>
+          {cloudFileCount > 0 ? (
+            <Spin tip={t('ide.cloudWorkspace.mounting')} />
+          ) : (
+            <Empty description={t('ide.cloudWorkspace.emptyTitle')} />
+          )}
+        </div>
+      </div>
+    );
   }
 
   // No folder yet: an open-folder CTA plus a Join-collab fallback for peers
@@ -471,6 +711,17 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
         onRescan={() => void ide.rescan()}
         rescanning={ide.scanStatus === 'scanning'}
       />
+      {cloud.connected && cloud.session ? (
+        <CloudMountedBar
+          cloud={cloud}
+          fileCount={cloudFileCount}
+          localRootPath={ide.rootPath}
+          onPickFolder={requestPickFolder}
+          publishing={cloudBootstrapPublishing}
+          progress={cloudBootstrapProgress}
+          onPublishLocal={publishLocalFolderToCloud}
+        />
+      ) : null}
 
       <div className='flex-1 min-h-0 flex relative'>
         <nav
@@ -566,7 +817,7 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
         {/* Mode body. Files keeps editors mounted; others render on demand. */}
         <div className='flex-1 min-w-0 min-h-0 relative'>
           <div className='absolute inset-0 flex' style={{ display: mode === 'files' ? 'flex' : 'none' }}>
-            <FilesPane ide={ide} onOpenFile={openFile} />
+            <FilesPane ide={ide} editorFs={editorFs} onOpenFile={openFile} />
           </div>
 
           {mode === 'understand' ? (
@@ -577,7 +828,12 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
 
           {mode === 'chat' ? (
             <div className='absolute inset-0'>
-              <IdeChatPanel rootPath={ide.rootPath} activeFile={ide.activeFile} repoFiles={repoFiles} />
+              <IdeChatPanel
+                rootPath={ide.rootPath}
+                activeFile={ide.activeFile}
+                repoFiles={repoFiles}
+                cloudWorkspace={cloud.connected ? cloud.session : null}
+              />
             </div>
           ) : null}
 
@@ -585,11 +841,7 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
             <div className='absolute inset-0 flex flex-col min-h-0'>
               <TeamCollabBar hasFolder={!!ide.rootPath} collab={collab} cloud={cloud} />
               <div className='flex-1 min-h-0'>
-                {cloud.connected ? (
-                  <CloudWorkspace cloud={cloud} onBack={onBack} />
-                ) : (
-                  <TeamEditPanel rootPath={ide.rootPath} activeFile={ide.activeFile} collab={collab} />
-                )}
+                <TeamEditPanel rootPath={ide.rootPath} activeFile={ide.activeFile} collab={collab} />
               </div>
             </div>
           ) : null}
@@ -746,6 +998,71 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
   );
 };
 
+const CloudMountedBar: React.FC<{
+  cloud: ReturnType<typeof useCloudWorkspace>;
+  fileCount: number;
+  localRootPath: string | null;
+  onPickFolder: () => void;
+  publishing: boolean;
+  progress: CloudWorkspacePublishProgress | null;
+  onPublishLocal: (rootPath: string) => Promise<boolean>;
+}> = ({ cloud, fileCount, localRootPath, onPickFolder, publishing, progress, onPublishLocal }) => {
+  const { t } = useTranslation();
+  const session = cloud.session;
+  if (!session) return null;
+  const canPublishLocal = Boolean(localRootPath && localRootPath !== session.cachePath);
+  const publishLabel =
+    publishing && progress
+      ? t('ide.cloudWorkspace.publishProgress', {
+          uploaded: progress.uploaded,
+          total: progress.totalDiscovered,
+        })
+      : t('ide.cloudWorkspace.publishLocal');
+  const handlePublish = async (): Promise<void> => {
+    if (!localRootPath) {
+      onPickFolder();
+      return;
+    }
+    await onPublishLocal(localRootPath);
+  };
+  return (
+    <div className='shrink-0 flex items-center gap-8px px-16px py-6px border-b border-b-1 bg-fill-1'>
+      <Cloudy theme='outline' size={14} className='text-primary' />
+      <span className='text-12px font-[500] text-t-primary truncate'>
+        {t('ide.cloudWorkspace.connectedTitle', { workspace: session.workspaceId })}
+      </span>
+      <code className='text-11px text-t-tertiary truncate max-w-360px'>{session.relayBaseUrl}</code>
+      <Tag size='small' color={cloud.state?.state === 'connected' ? 'green' : 'orange'}>
+        {cloud.state?.state ?? 'idle'}
+      </Tag>
+      <Tag size='small'>{t('ide.cloudWorkspace.seqLabel', { seq: cloud.manifest?.seq ?? 0 })}</Tag>
+      <Tag size='small'>{t('ide.cloudWorkspace.filesLabel', { count: fileCount })}</Tag>
+      <Tag size='small'>
+        {t('ide.cloudWorkspace.participantsLabel', { count: cloud.state?.participants.length ?? 0 })}
+      </Tag>
+      {fileCount === 0 ? <span className='text-12px text-warning'>{t('ide.cloudWorkspace.emptyHint')}</span> : null}
+      <span className='flex-1' />
+      {fileCount === 0 || canPublishLocal ? (
+        <Button
+          size='mini'
+          type={fileCount === 0 ? 'primary' : 'secondary'}
+          loading={publishing}
+          disabled={publishing}
+          onClick={() => void handlePublish()}
+        >
+          {canPublishLocal ? publishLabel : t('ide.cloudWorkspace.pickLocalFolder')}
+        </Button>
+      ) : null}
+      <Button size='mini' icon={<Refresh theme='outline' size={12} />} onClick={() => void cloud.refreshStatus()}>
+        {t('common.refresh')}
+      </Button>
+      <Button size='mini' status='danger' onClick={() => void cloud.disconnect()}>
+        {t('ide.cloudWorkspace.disconnect')}
+      </Button>
+    </div>
+  );
+};
+
 /** Shared header: back, repo name, scan stats, open-folder + rescan. */
 const Header: React.FC<{
   rootName: string | null;
@@ -857,6 +1174,7 @@ const ActivityItem: React.FC<{ icon: React.ReactNode; label: string; active: boo
 
 type FilesPaneProps = {
   ide: ReturnType<typeof useIdeWorkspace>;
+  editorFs: EditorFsOverride;
   onOpenFile: (path: string) => void;
 };
 
@@ -868,7 +1186,7 @@ const filesPanePropsEqual = (previous: FilesPaneProps, next: FilesPaneProps): bo
   previous.ide.activeFile === next.ide.activeFile &&
   previous.ide.openFiles === next.ide.openFiles &&
   previous.ide.dirtyFiles === next.ide.dirtyFiles &&
-  previous.ide.editorFs === next.ide.editorFs &&
+  previous.editorFs === next.editorFs &&
   previous.ide.graph === next.ide.graph &&
   previous.ide.loadDir === next.ide.loadDir &&
   previous.ide.closeFile === next.ide.closeFile &&
@@ -876,7 +1194,7 @@ const filesPanePropsEqual = (previous: FilesPaneProps, next: FilesPaneProps): bo
   previous.ide.refreshTree === next.ide.refreshTree;
 
 /** Files mode: tree + kept-alive editors. */
-const FilesPane: React.FC<FilesPaneProps> = React.memo(({ ide, onOpenFile }) => {
+const FilesPane: React.FC<FilesPaneProps> = React.memo(({ ide, editorFs, onOpenFile }) => {
   const { t } = useTranslation();
 
   // Context menu state: which node was right-clicked
@@ -1407,7 +1725,7 @@ const FilesPane: React.FC<FilesPaneProps> = React.memo(({ ide, onOpenFile }) => 
                     <UniversalEditor
                       filePath={filePath}
                       workspace={ide.rootPath ?? undefined}
-                      fsOverride={ide.editorFs}
+                      fsOverride={editorFs}
                       autoSaveDelayMs={1000}
                       onSaved={(savedPath) => void ide.refreshAfterSave(savedPath)}
                       onDirtyChange={(dirty) => ide.markDirty(filePath, dirty)}

@@ -79,6 +79,8 @@ export type UseIdeWorkspace = {
   restoring: boolean;
   /** Prompt for a folder and switch to it, discarding the current session. */
   pickFolder: () => Promise<void>;
+  /** Open a known folder path without showing the picker. Used by cloud mounts. */
+  openFolderPath: (root: string, options?: { persist?: boolean }) => Promise<void>;
   /** Close the current folder: reset to the welcome screen + clear the session. */
   closeFolder: () => void;
   refreshTree: () => Promise<void>;
@@ -209,6 +211,7 @@ export const useIdeWorkspace = (): UseIdeWorkspace => {
   const [scanStatus, setScanStatus] = useState<ScanStatus>('idle');
   const [scanError, setScanError] = useState<string | null>(null);
   const [restoring, setRestoring] = useState(true);
+  const persistSessionRef = useRef(true);
   const treeRef = useRef<TreeNode[]>([]);
   const mtuiRefreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suppressMtuiRefreshUntilRef = useRef(0);
@@ -310,6 +313,7 @@ export const useIdeWorkspace = (): UseIdeWorkspace => {
   // and when no folder is open.
   useEffect(() => {
     if (restoring) return;
+    if (!persistSessionRef.current) return;
     if (rootPath) writeSession({ rootPath, openFiles, activeFile });
     else writeSession(null);
   }, [restoring, rootPath, openFiles, activeFile]);
@@ -358,8 +362,20 @@ export const useIdeWorkspace = (): UseIdeWorkspace => {
     setOpenFiles([]);
     setDirtyFiles(new Set());
     setActiveFile(null);
+    persistSessionRef.current = true;
     await openRoot(root);
   }, [openRoot]);
+
+  const openFolderPath = useCallback(
+    async (root: string, options?: { persist?: boolean }): Promise<void> => {
+      persistSessionRef.current = options?.persist ?? true;
+      setOpenFiles([]);
+      setDirtyFiles(new Set());
+      setActiveFile(null);
+      await openRoot(root);
+    },
+    [openRoot]
+  );
 
   const closeFolder = useCallback((): void => {
     // Drop the whole session: editors, tabs, tree, graph — back to welcome.
@@ -368,6 +384,7 @@ export const useIdeWorkspace = (): UseIdeWorkspace => {
     // activity) in Main so a re-open / next project never sees stale state.
     // Best-effort: a failed reset must never block closing the folder.
     if (rootPath) void teamEditClient.reset(rootPath).catch((): undefined => undefined);
+    persistSessionRef.current = true;
     setOpenFiles([]);
     setDirtyFiles(new Set());
     setActiveFile(null);
@@ -505,6 +522,7 @@ export const useIdeWorkspace = (): UseIdeWorkspace => {
     scanError,
     restoring,
     pickFolder,
+    openFolderPath,
     closeFolder,
     refreshTree,
     rescan,

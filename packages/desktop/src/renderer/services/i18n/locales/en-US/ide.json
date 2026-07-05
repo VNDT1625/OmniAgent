@@ -912,6 +912,27 @@
     "pickFile": "Choose a file from the cloud workspace.",
     "saved": "Saved to cloud workspace.",
     "seqLabel": "seq {{seq}}",
-    "participantsLabel": "{{count}} online"
+    "participantsLabel": "{{count}} online",
+    "filesLabel": "{{count}} files",
+    "publishLocal": "Publish local folder",
+    "pullCloud": "Pull from cloud",
+    "pullSuccess": "Cloud workspace pulled to local folder.",
+    "publishSuccess": "Local folder published to cloud.",
+    "emptyTitle": "Cloud workspace is empty",
+    "emptyHint": "Publish the current local folder first so every machine sees the same files.",
+    "pickLocalFolder": "Open local folder",
+    "openLocalFirst": "Open a local folder before publishing to cloud.",
+    "openLocalBeforePull": "Open a local folder before pulling from cloud.",
+    "publishProgress": "{{uploaded}}/{{total}} uploaded",
+    "pullProgress": "{{pulled}}/{{total}} pulled",
+    "publishStarting": "Starting publish...",
+    "pullStarting": "Starting pull...",
+    "mounting": "Mounting cloud workspace...",
+    "publishPartial": "Cloud publish finished with {{failed}} failed file(s).",
+    "pullPartial": "Cloud pull finished with {{failed}} failed file(s).",
+    "claimFailed": "Could not claim this file. Another session may be editing it.",
+    "publishNoFiles": "No files were uploaded. The folder may only contain ignored, binary, or oversized files.",
+    "publishUpToDate": "Cloud is already up to date.",
+    "publishCloudOnly": "{{count}} cloud file(s) are not present locally. They were left untouched."
   }
 }

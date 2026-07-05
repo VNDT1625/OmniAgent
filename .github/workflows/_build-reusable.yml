@@ -590,6 +590,7 @@ jobs:
           name: ${{ inputs.append_commit_hash && format('{0}-{1}', matrix.artifact-name, steps.commit.outputs.short) || matrix.artifact-name }}
           path: |
             out/*.exe
+            out/*.blockmap
             out/*.msi
             out/*.dmg
             out/*.deb

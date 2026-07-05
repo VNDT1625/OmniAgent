@@ -311,6 +311,11 @@ const TOKEN_WATERMARK_ANY = /Token watermark override:\s*provider=\d+,\s*local_e
  * Remove internal "Token watermark override" diagnostic lines emitted by some
  * model/agent runtimes. These must never be shown to the user (and must not
  * cause a real assistant reply to become empty and get hidden).
+ *
+ * NOTE: This function no longer trims or collapses internal whitespace. That
+ * would corrupt streaming deltas (each chunk carries its own leading ws used
+ * as separator when appended). Callers that need a display-cleaned full string
+ * should .trim() themselves after stripping.
  */
 export const stripTokenWatermarkNotice = (content: string): string => {
   // Line-based removal first (preserves original join behavior for tests/mixed content)
@@ -322,10 +327,7 @@ export const stripTokenWatermarkNotice = (content: string): string => {
   // Substring removal for cases where diagnostic is stuck inline (no \n boundaries)
   cleaned = cleaned.replace(TOKEN_WATERMARK_ANY, '');
 
-  return cleaned
-    .replace(/[ \t]{2,}/g, ' ')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return cleaned.replace(/[ \t]{2,}/g, ' ').replace(/\n{3,}/g, '\n\n');
 };
 
 export const isTextContentReplacement = (content: IMessageText['content'] | undefined): boolean =>
@@ -541,7 +543,8 @@ export const transformMessage = (message: IResponseMessage): TMessage | undefine
       };
       const tipType = data.type ?? 'warning';
       const rawTip = typeof data.content === 'string' ? data.content : '';
-      const tipContent = stripTokenWatermarkNotice(rawTip);
+      const tipRaw = stripTokenWatermarkNotice(rawTip);
+      const tipContent = tipRaw.trim();
       if (tipContent.length === 0) return undefined;
       const structuredError =
         tipType === 'error'
@@ -568,8 +571,12 @@ export const transformMessage = (message: IResponseMessage): TMessage | undefine
       const isRichData = isResponseTextData(data);
       const shouldReplace = message.replace === true || (isRichData && data.replace === true);
       const rawContent = isRichData ? data.content : typeof data === 'string' ? data : String(data ?? '');
-      const content = stripTokenWatermarkNotice(rawContent);
-      if (content.length === 0) return undefined;
+      const stripped = stripTokenWatermarkNotice(rawContent);
+      // Use trimmed length for "empty?" decision, but keep original leading ws from
+      // this fragment (critical for streaming deltas where each chunk may carry the
+      // separating whitespace before the next token/word).
+      const content = stripped;
+      if (stripped.trim().length === 0) return undefined;
       return {
         id: uuid(),
         type: 'text',

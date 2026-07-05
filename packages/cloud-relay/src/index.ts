@@ -24,6 +24,20 @@ type Manifest = {
   files: Record<string, FileMeta>;
 };
 
+type FileLease = {
+  relPath: string;
+  clientId: string;
+  name?: string;
+  intent?: string;
+  acquiredAt: number;
+  renewedAt: number;
+  expiresAt: number;
+};
+
+type LeaseClaimResult =
+  | { ok: true; lease: FileLease; renewed: boolean }
+  | { ok: false; reason: 'held'; lease: FileLease };
+
 type OperationBase = {
   id: string;
   workspaceId: string;
@@ -50,6 +64,9 @@ type SessionAttachment = {
   clientId: string;
   name: string;
 };
+
+const DEFAULT_LEASE_TTL_MS = 120_000;
+const MAX_LEASE_TTL_MS = 300_000;
 
 const json = (value: unknown, init: ResponseInit = {}): Response =>
   new Response(JSON.stringify(value), {
@@ -127,6 +144,11 @@ const applyOperation = (manifest: Manifest, op: Operation): Manifest => {
   return next;
 };
 
+const touchedPaths = (op: Operation): string[] => {
+  if (op.type === 'file.rename') return [normalizePath(op.fromPath), normalizePath(op.toPath)];
+  return [normalizePath(op.path)];
+};
+
 export class WorkspaceRoom {
   private sessions = new Map<WebSocket, Presence>();
 
@@ -143,6 +165,17 @@ export class WorkspaceRoom {
       if (url.pathname.endsWith('/connect')) return this.handleConnect(request, workspaceId);
       if (url.pathname.endsWith('/manifest') && request.method === 'GET')
         return json(await this.getManifest(workspaceId));
+      if (url.pathname.endsWith('/status') && request.method === 'GET')
+        return json({
+          manifest: await this.getManifest(workspaceId),
+          participants: this.participants(),
+          leases: await this.listLeases(),
+        });
+      if (url.pathname.endsWith('/leases') && request.method === 'GET') return json(await this.listLeases());
+      if (url.pathname.endsWith('/leases') && request.method === 'POST')
+        return json(await this.claimLease(workspaceId, request));
+      if (url.pathname.endsWith('/leases') && request.method === 'DELETE')
+        return json({ ok: await this.releaseLease(request) });
       if (url.pathname.endsWith('/ops') && request.method === 'GET')
         return json(await this.getOpsSince(Number(url.searchParams.get('since') ?? 0)));
       if (url.pathname.endsWith('/ops') && request.method === 'POST')
@@ -186,11 +219,90 @@ export class WorkspaceRoom {
       .toSorted((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
   }
 
+  private async getLease(relPath: string): Promise<FileLease | undefined> {
+    const lease = await this.state.storage.get<FileLease>(`lease:${relPath}`);
+    if (!lease) return undefined;
+    if (lease.expiresAt > Date.now()) return lease;
+    await this.state.storage.delete(`lease:${relPath}`);
+    return undefined;
+  }
+
+  private async listLeases(): Promise<FileLease[]> {
+    const leases = await this.state.storage.list<FileLease>({ prefix: 'lease:' });
+    const live: FileLease[] = [];
+    const expired: string[] = [];
+    const now = Date.now();
+    for (const [key, lease] of leases.entries()) {
+      if (lease.expiresAt > now) live.push(lease);
+      else expired.push(key);
+    }
+    if (expired.length > 0) await this.state.storage.delete(expired);
+    return live.toSorted((a, b) => a.relPath.localeCompare(b.relPath));
+  }
+
+  private async putLease(lease: FileLease): Promise<void> {
+    await this.state.storage.put(`lease:${lease.relPath}`, lease);
+    this.broadcast({ kind: 'leases', leases: await this.listLeases() });
+  }
+
+  private async claimLease(workspaceId: string, request: Request): Promise<LeaseClaimResult> {
+    const body = (await request.json()) as {
+      relPath?: string;
+      path?: string;
+      clientId?: string;
+      name?: string;
+      intent?: string;
+      ttlMs?: number;
+    };
+    const relPath = normalizePath(body.relPath ?? body.path ?? '');
+    if (!relPath) throw new Error('lease path is required');
+    const clientId = body.clientId?.trim() || request.headers.get('x-aion-client-id') || 'http-client';
+    const held = await this.getLease(relPath);
+    if (held && held.clientId !== clientId) return { ok: false, reason: 'held', lease: held };
+    const now = Date.now();
+    const ttl = Math.max(1, Math.min(body.ttlMs ?? DEFAULT_LEASE_TTL_MS, MAX_LEASE_TTL_MS));
+    const lease: FileLease = {
+      relPath,
+      clientId,
+      name: body.name?.trim() || clientId,
+      intent: body.intent?.trim(),
+      acquiredAt: held?.acquiredAt ?? now,
+      renewedAt: now,
+      expiresAt: now + ttl,
+    };
+    await this.putLease(lease);
+    void workspaceId;
+    return { ok: true, lease, renewed: Boolean(held) };
+  }
+
+  private async releaseLease(request: Request): Promise<boolean> {
+    const body = (await request.json().catch(() => ({}))) as { relPath?: string; path?: string; clientId?: string };
+    const relPath = normalizePath(body.relPath ?? body.path ?? '');
+    if (!relPath) throw new Error('lease path is required');
+    const clientId = body.clientId?.trim() || request.headers.get('x-aion-client-id') || 'http-client';
+    const held = await this.getLease(relPath);
+    if (!held || held.clientId !== clientId) return false;
+    await this.state.storage.delete(`lease:${relPath}`);
+    this.broadcast({ kind: 'leases', leases: await this.listLeases() });
+    return true;
+  }
+
+  private async assertOperationLeases(op: Operation): Promise<void> {
+    for (const relPath of touchedPaths(op)) {
+      // Durable Object requests are serialized, so this check is the cloud-side write gate.
+      // eslint-disable-next-line no-await-in-loop
+      const held = await this.getLease(relPath);
+      if (held && held.clientId !== op.clientId)
+        throw new Error(`file lease held by ${held.name || held.clientId}: ${relPath}`);
+    }
+  }
+
   private async acceptOperation(workspaceId: string, request: Request): Promise<Operation> {
     const incoming = (await request.json()) as Operation;
     const manifest = await this.getManifest(workspaceId);
     if (incoming.workspaceId !== workspaceId) throw new Error('workspace mismatch');
     if (incoming.baseSeq !== manifest.seq) throw new Error(`base sequence mismatch: expected ${manifest.seq}`);
+    await this.assertOperationLeases(incoming);
     const accepted = { ...incoming, seq: manifest.seq + 1, createdAt: incoming.createdAt || Date.now() } as Operation;
     const next = applyOperation(manifest, accepted);
     await this.state.storage.put(`op:${String(accepted.seq).padStart(16, '0')}`, accepted);
@@ -215,14 +327,26 @@ export class WorkspaceRoom {
     server.addEventListener('error', () => this.dropSession(server));
     void this.getManifest(workspaceId).then((manifest) => {
       server.send(JSON.stringify({ kind: 'hello', workspaceId, seq: manifest.seq, participants: this.participants() }));
+      void this.listLeases().then((leases) => server.send(JSON.stringify({ kind: 'leases', leases })));
       this.broadcast({ kind: 'presence', participants: this.participants() });
     });
     return new Response(null, { status: 101, webSocket: client });
   }
 
   private dropSession(socket: WebSocket): void {
+    const presence = this.sessions.get(socket);
     this.sessions.delete(socket);
+    if (presence?.clientId) void this.releaseClientLeases(presence.clientId);
     this.broadcast({ kind: 'presence', participants: this.participants() });
+  }
+
+  private async releaseClientLeases(clientId: string): Promise<void> {
+    const leases = await this.state.storage.list<FileLease>({ prefix: 'lease:' });
+    const owned = [...leases.entries()].filter(([, lease]) => lease.clientId === clientId).map(([key]) => key);
+    if (owned.length > 0) {
+      await this.state.storage.delete(owned);
+      this.broadcast({ kind: 'leases', leases: await this.listLeases() });
+    }
   }
 
   private participants(): Presence[] {

@@ -41,6 +41,26 @@ export type CloudWorkspacePresence = {
   lastSeenAt: number;
 };
 
+export type CloudWorkspaceFileLease = {
+  relPath: string;
+  clientId: string;
+  name?: string;
+  intent?: string;
+  acquiredAt: number;
+  renewedAt: number;
+  expiresAt: number;
+};
+
+export type CloudWorkspaceLeaseClaimResult =
+  | { ok: true; lease: CloudWorkspaceFileLease; renewed: boolean }
+  | { ok: false; reason: 'held'; lease: CloudWorkspaceFileLease };
+
+export type CloudWorkspaceRelayStatus = {
+  manifest: CloudWorkspaceManifest;
+  participants: CloudWorkspacePresence[];
+  leases: CloudWorkspaceFileLease[];
+};
+
 export type CloudWorkspaceSyncState = {
   workspaceId: string;
   clientId: string;
@@ -48,6 +68,7 @@ export type CloudWorkspaceSyncState = {
   lastAppliedSeq: number;
   pendingOps: number;
   participants: CloudWorkspacePresence[];
+  leases: CloudWorkspaceFileLease[];
   error?: string;
 };
 
@@ -94,9 +115,17 @@ export type CloudWorkspaceOperation =
   | CloudWorkspaceDeleteOperation;
 
 export type CloudWorkspaceEnvelope =
-  | { kind: 'hello'; workspaceId: string; seq: number; manifestHash?: string; participants?: CloudWorkspacePresence[] }
+  | {
+      kind: 'hello';
+      workspaceId: string;
+      seq: number;
+      manifestHash?: string;
+      participants?: CloudWorkspacePresence[];
+      leases?: CloudWorkspaceFileLease[];
+    }
   | { kind: 'op'; op: CloudWorkspaceOperation }
   | { kind: 'presence'; participants: CloudWorkspacePresence[] }
+  | { kind: 'leases'; leases: CloudWorkspaceFileLease[] }
   | { kind: 'ack'; opId: string; seq: number }
   | { kind: 'error'; message: string; retryable?: boolean };
 
@@ -134,6 +163,8 @@ export const buildCloudWorkspaceUrls = (config: Pick<CloudWorkspaceRelayConfig, 
   return {
     workspace: httpBase,
     manifest: `${httpBase}/manifest`,
+    status: `${httpBase}/status`,
+    leases: `${httpBase}/leases`,
     opsSince: (seq: number): string => `${httpBase}/ops?since=${encodeURIComponent(String(seq))}`,
     appendOp: `${httpBase}/ops`,
     blob: (hash: string): string => `${httpBase}/blobs/${encodeURIComponent(hash)}`,

@@ -58,6 +58,7 @@ import {
   type SpecTaskRunbook,
 } from '../ideClient';
 import { useIdeChat, type IdeChatTab } from '../useIdeChat';
+import type { CloudWorkspaceConnection } from '../teamEdit/cloud/useCloudWorkspace';
 import MemorySessionDrawer from '../memory/MemorySessionDrawer';
 import {
   enforceStrictIdeSessionMode,
@@ -71,11 +72,25 @@ type IdeChatPanelProps = {
   activeFile: string | null;
   /** Relative file paths in the repo (from the import graph), for @-mention. */
   repoFiles: string[];
+  /** Cloud session when the IDE is mounted from a cloud-authoritative workspace. */
+  cloudWorkspace?: CloudWorkspaceConnection | null;
 };
 
-const IdeChatPanel: React.FC<IdeChatPanelProps> = ({ rootPath, activeFile, repoFiles }) => {
+const IdeChatPanel: React.FC<IdeChatPanelProps> = ({ rootPath, activeFile, repoFiles, cloudWorkspace }) => {
   const { t, i18n } = useTranslation();
-  const chat = useIdeChat(rootPath);
+  const cloudChatWorkspace = useMemo(
+    () =>
+      cloudWorkspace?.cachePath && cloudWorkspace.remoteMcpServer
+        ? {
+            workspaceId: cloudWorkspace.workspaceId,
+            relayBaseUrl: cloudWorkspace.relayBaseUrl,
+            cachePath: cloudWorkspace.cachePath,
+            remoteMcpServer: cloudWorkspace.remoteMcpServer,
+          }
+        : null,
+    [cloudWorkspace]
+  );
+  const chat = useIdeChat(rootPath, { cloudWorkspace: cloudChatWorkspace });
   const { cliAgents, presetAssistants, isLoading: loadingAgents } = useConversationAgents();
   const { addToSendBox, activeTab } = usePreviewContext();
 
@@ -89,6 +104,11 @@ const IdeChatPanel: React.FC<IdeChatPanelProps> = ({ rootPath, activeFile, repoF
   useEffect(() => {
     setStrictMode(isStrictIdeModeEnabled(rootPath ?? undefined));
   }, [rootPath]);
+  useEffect(() => {
+    if (!rootPath || !cloudWorkspace) return;
+    setStrictIdeModeEnabled(rootPath, true);
+    setStrictMode(true);
+  }, [cloudWorkspace, rootPath]);
   const toggleStrictMode = (enabled: boolean): void => {
     if (!rootPath) return;
     setStrictIdeModeEnabled(rootPath, enabled);

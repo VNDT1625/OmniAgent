@@ -130,7 +130,7 @@ const runProviderChat = async (model: string, messages: StudioChatRequest['messa
   if (typeof raw !== 'string' || raw.length === 0) {
     throw new Error('The model returned an empty response.');
   }
-  return stripTokenWatermarkNotice(raw);
+  return stripTokenWatermarkNotice(raw).trim();
 };
 
 /**
