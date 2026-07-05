@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.1.16](https://github.com/iOfficeAI/AionUi/compare/v2.1.15...v2.1.16) (2026-07-05)
+
+### Desktop
+
+#### Features
+
+- **desktop:** add cloud workspace leases and differential updates
+
+---
+
 ## [2.1.7](https://github.com/iOfficeAI/AionUi/compare/v2.1.6...v2.1.7) (2026-05-29)
 
 ### Desktop
