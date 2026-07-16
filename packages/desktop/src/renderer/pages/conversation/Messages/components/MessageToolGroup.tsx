@@ -251,8 +251,8 @@ const ImageDisplay: React.FC<{
           setImageUrl(base64);
           setLoading(false);
         })
-        .catch((error) => {
-          console.error('Failed to load image:', error);
+        .catch((loadError) => {
+          console.error('Failed to load image:', loadError);
           setError(true);
           setLoading(false);
         });
@@ -320,8 +320,8 @@ const ImageDisplay: React.FC<{
           messageApi.error(t('messages.copyFailed', { defaultValue: 'Failed to copy' }));
         }
       }, 'image/png');
-    } catch (error) {
-      console.error('Failed to copy image:', error);
+    } catch (copyError) {
+      console.error('Failed to copy image:', copyError);
       messageApi.error(t('messages.copyFailed', { defaultValue: 'Failed to copy' }));
     }
   }, [getImageBlob, imageUrl, t, messageApi]);
@@ -342,8 +342,8 @@ const ImageDisplay: React.FC<{
       URL.revokeObjectURL(url);
 
       messageApi.success(t('messages.downloadSuccess', { defaultValue: 'Download successful' }));
-    } catch (error) {
-      console.error('Failed to download image:', error);
+    } catch (downloadError) {
+      console.error('Failed to download image:', downloadError);
       messageApi.error(t('messages.downloadFailed', { defaultValue: 'Failed to download' }));
     }
   }, [getImageBlob, relativePath, t, messageApi]);
