@@ -62,7 +62,9 @@ const AionrsContextPanel: React.FC<AionrsContextPanelProps> = ({ conversationId,
   };
 
   const updateBranch = (index: number, patch: Partial<AionrsContextBranch>): void => {
-    setBranchDrafts((current) => current.map((branch, itemIndex) => (itemIndex === index ? { ...branch, ...patch } : branch)));
+    setBranchDrafts((current) =>
+      current.map((branch, itemIndex) => (itemIndex === index ? { ...branch, ...patch } : branch))
+    );
     setBranchesDirty(true);
   };
 
