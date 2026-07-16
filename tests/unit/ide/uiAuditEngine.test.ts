@@ -33,6 +33,8 @@ describe('runUiAudit', () => {
     expect(script).toContain('contrast.minimum');
     expect(script).toContain('interaction.target-size');
     expect(script).toContain('accessibility.form-label');
+    expect(script).toContain('allElements.slice(0, 6000)');
+    expect(script).toContain('findings.length >= MAX_FINDINGS');
   });
 
   it('rejects an invalid page-side result', async () => {

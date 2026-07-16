@@ -95,7 +95,7 @@ const UI_AUDIT_SCRIPT = `
   });
   document.querySelectorAll('img').forEach(el => { if (!el.hasAttribute('alt')) add(el,'accessibility.image-alt','accessibility','serious','Image is missing an alt attribute.','','alt attribute'); });
   document.querySelectorAll('input,select,textarea').forEach(el => {
-    const id=el.id; const labelled=el.hasAttribute('aria-label')||el.hasAttribute('aria-labelledby')||(id && document.querySelector('label[for="'+String(id)+'"]'))||el.closest('label');
+    const id=el.id; const labelled=el.hasAttribute('aria-label')||el.hasAttribute('aria-labelledby')||(id && Array.from(document.querySelectorAll('label')).some(label => label.htmlFor === id))||el.closest('label');
     if (!labelled) add(el,'accessibility.form-label','accessibility','serious','Form control has no programmatic label.','','label/aria-label');
   });
   const ids = new Map(); all.forEach(el => { if (el.id) { if (ids.has(el.id)) add(el,'accessibility.duplicate-id','accessibility','serious','Duplicate id breaks label and accessibility references.',el.id,'Unique id'); else ids.set(el.id,el); } });

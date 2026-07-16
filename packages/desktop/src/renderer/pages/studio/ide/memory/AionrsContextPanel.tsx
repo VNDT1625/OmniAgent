@@ -1,8 +1,9 @@
 /** Exact AionRS context inspector. Internal request state is read-only; custom context is editable. */
 import { Alert, Button, Collapse, Empty, Input, Message, Spin, Tag, Typography } from '@arco-design/web-react';
-import { Data, Refresh, Save } from '@icon-park/react';
+import { AddOne, Data, Delete, Refresh, Save } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { AionrsContextBranch } from '@/common';
 import { useAionrsContext } from './useAionrsContext';
 
 type AionrsContextPanelProps = {
@@ -20,12 +21,15 @@ const AionrsContextPanel: React.FC<AionrsContextPanelProps> = ({ conversationId,
   const { t } = useTranslation();
   const { snapshot, loading, saving, error, refresh, save } = useAionrsContext(conversationId, active);
   const [draft, setDraft] = useState('');
-  const [dirty, setDirty] = useState(false);
+  const [customDirty, setCustomDirty] = useState(false);
+  const [branchDrafts, setBranchDrafts] = useState<AionrsContextBranch[]>([]);
+  const [branchesDirty, setBranchesDirty] = useState(false);
   const assistantReplyCount = snapshot?.messages.filter((message) => message.role === 'assistant').length ?? 0;
 
   useEffect(() => {
-    if (!dirty && snapshot) setDraft(snapshot.custom_context);
-  }, [dirty, snapshot]);
+    if (!customDirty && snapshot) setDraft(snapshot.custom_context);
+    if (!branchesDirty && snapshot) setBranchDrafts(snapshot.context_branches);
+  }, [branchesDirty, customDirty, snapshot]);
 
   const messageItems = useMemo(
     () =>
@@ -40,13 +44,31 @@ const AionrsContextPanel: React.FC<AionrsContextPanelProps> = ({ conversationId,
   );
 
   const submit = async (): Promise<void> => {
-    const saveError = await save(draft, snapshot?.context_branches ?? []);
+    const saveError = await save(draft, branchDrafts);
     if (saveError) {
       Message.error(t('ide.memory.context.saveFailed'));
       return;
     }
-    setDirty(false);
+    setCustomDirty(false);
+    setBranchesDirty(false);
     Message.success(t('ide.memory.context.saved'));
+  };
+
+  const addBranch = (): void => {
+    if (branchDrafts.length >= 12) return;
+    const id = `context-${Date.now().toString(36)}`;
+    setBranchDrafts((current) => [...current, { id, title: '', summary: '', content: '' }]);
+    setBranchesDirty(true);
+  };
+
+  const updateBranch = (index: number, patch: Partial<AionrsContextBranch>): void => {
+    setBranchDrafts((current) => current.map((branch, itemIndex) => (itemIndex === index ? { ...branch, ...patch } : branch)));
+    setBranchesDirty(true);
+  };
+
+  const removeBranch = (index: number): void => {
+    setBranchDrafts((current) => current.filter((_, itemIndex) => itemIndex !== index));
+    setBranchesDirty(true);
   };
 
   if (!snapshot && loading) {
@@ -113,7 +135,7 @@ const AionrsContextPanel: React.FC<AionrsContextPanelProps> = ({ conversationId,
           value={draft}
           onChange={(value) => {
             setDraft(value);
-            setDirty(value !== snapshot.custom_context);
+            setCustomDirty(value !== snapshot.custom_context);
           }}
           placeholder={t('ide.memory.context.customPlaceholder')}
           autoSize={{ minRows: 4, maxRows: 8 }}
@@ -124,7 +146,7 @@ const AionrsContextPanel: React.FC<AionrsContextPanelProps> = ({ conversationId,
             size='small'
             icon={<Save theme='outline' size={14} />}
             loading={saving}
-            disabled={!dirty}
+            disabled={!customDirty && !branchesDirty}
             onClick={() => void submit()}
           >
             {t('ide.memory.context.save')}
@@ -134,11 +156,84 @@ const AionrsContextPanel: React.FC<AionrsContextPanelProps> = ({ conversationId,
 
       <div className='flex-1 min-h-0 overflow-y-auto pr-2px'>
         <Collapse defaultActiveKey={['system']} destroyOnHide>
+          <Collapse.Item
+            name='context-branches'
+            header={t('ide.memory.context.branchesTitle', { count: branchDrafts.length })}
+          >
+            <div className='flex flex-col gap-10px'>
+              <div className='flex items-start justify-between gap-12px'>
+                <div className='text-11px leading-relaxed text-t-tertiary'>{t('ide.memory.context.branchesHint')}</div>
+                <Button
+                  size='mini'
+                  type='outline'
+                  icon={<AddOne theme='outline' size={13} />}
+                  disabled={branchDrafts.length >= 12}
+                  onClick={addBranch}
+                >
+                  {t('ide.memory.context.branchAdd')}
+                </Button>
+              </div>
+              {branchDrafts.length === 0 ? (
+                <Empty description={t('ide.memory.context.branchesEmpty')} />
+              ) : (
+                branchDrafts.map((branch, index) => {
+                  const isActive = snapshot.active_context_branch_ids.includes(branch.id);
+                  const tokenEstimate = Math.ceil(branch.content.length / 4);
+                  return (
+                    <div key={`${branch.id}-${index}`} className='p-10px rd-10px border border-border-2 bg-fill-1'>
+                      <div className='mb-8px flex items-center justify-between gap-8px'>
+                        <div className='flex flex-wrap items-center gap-6px'>
+                          <Tag size='small' color={isActive ? 'green' : 'gray'}>
+                            {isActive ? t('ide.memory.context.branchActive') : t('ide.memory.context.branchDormant')}
+                          </Tag>
+                          <Tag size='small'>{t('ide.memory.context.branchTokens', { count: tokenEstimate })}</Tag>
+                        </div>
+                        <Button
+                          size='mini'
+                          type='text'
+                          status='danger'
+                          icon={<Delete theme='outline' size={13} />}
+                          onClick={() => removeBranch(index)}
+                        />
+                      </div>
+                      <div className='grid grid-cols-2 gap-8px'>
+                        <Input
+                          value={branch.id}
+                          maxLength={64}
+                          placeholder={t('ide.memory.context.branchId')}
+                          onChange={(value) => updateBranch(index, { id: value })}
+                        />
+                        <Input
+                          value={branch.title}
+                          maxLength={160}
+                          placeholder={t('ide.memory.context.branchName')}
+                          onChange={(value) => updateBranch(index, { title: value })}
+                        />
+                      </div>
+                      <Input
+                        className='mt-8px'
+                        value={branch.summary}
+                        maxLength={500}
+                        placeholder={t('ide.memory.context.branchSummary')}
+                        onChange={(value) => updateBranch(index, { summary: value })}
+                      />
+                      <Input.TextArea
+                        className='mt-8px'
+                        value={branch.content}
+                        maxLength={8000}
+                        showWordLimit
+                        autoSize={{ minRows: 3, maxRows: 8 }}
+                        placeholder={t('ide.memory.context.branchContent')}
+                        onChange={(value) => updateBranch(index, { content: value })}
+                      />
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </Collapse.Item>
           <Collapse.Item name='working-memory' header={t('ide.memory.context.workingMemory')}>
             <JsonBlock value={snapshot.working_memory} />
-          </Collapse.Item>
-          <Collapse.Item name='context-branches' header={t('ide.memory.context.toolCache')}>
-            <JsonBlock value={snapshot.context_branches} />
           </Collapse.Item>
           <Collapse.Item name='tool-cache' header={t('ide.memory.context.toolCache')}>
             <JsonBlock value={snapshot.tool_cache} />

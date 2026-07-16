@@ -55,6 +55,7 @@ import {
   Record,
   Right,
   Robot,
+  Up,
   VideoTwo,
 } from '@icon-park/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
@@ -1508,7 +1509,7 @@ const QuickRunInlineEnd: React.FC<{
         <Button
           size='mini'
           type='text'
-          icon={railVisible ? <Right theme='outline' size={14} /> : <Left theme='outline' size={14} />}
+          icon={railVisible ? <Down theme='outline' size={14} /> : <Up theme='outline' size={14} />}
           onClick={onToggleRail}
           className='!text-t-secondary'
         />
