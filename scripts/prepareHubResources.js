@@ -34,6 +34,25 @@ function ensureDir(dir) {
   }
 }
 
+function writeEmptyHubFallback(tag, reason) {
+  ensureDir(HUB_DIR);
+  fs.writeFileSync(path.join(HUB_DIR, 'index.json'), JSON.stringify({ extensions: {} }, null, 2) + '\n');
+  fs.writeFileSync(
+    path.join(HUB_DIR, 'manifest.json'),
+    JSON.stringify(
+      {
+        tag,
+        generatedAt: new Date().toISOString(),
+        indexUrl: null,
+        extensions: [],
+        fallbackReason: reason,
+      },
+      null,
+      2
+    ) + '\n'
+  );
+}
+
 /**
  * Download a URL to a local file path. Tries each base URL in order.
  * Returns the base URL that succeeded.
@@ -94,12 +113,13 @@ function downloadUrl(url, destPath) {
 // ---------------------------------------------------------------------------
 
 async function prepareHubResources() {
+  const tag = process.env.AIONUI_HUB_TAG || DEFAULT_TAG;
   if (process.env.AIONUI_HUB_SKIP === '1') {
     console.log('[hub] Skipping hub resource preparation (AIONUI_HUB_SKIP=1)');
-    return { skipped: true };
+    writeEmptyHubFallback(tag, 'Hub resource preparation was skipped.');
+    return { skipped: true, fallback: true };
   }
 
-  const tag = process.env.AIONUI_HUB_TAG || DEFAULT_TAG;
   console.log(`[hub] Preparing hub resources from tag: ${tag}`);
 
   // Clean and create target directory
@@ -111,7 +131,15 @@ async function prepareHubResources() {
   // Step 1: Download index.json
   const indexPath = path.join(HUB_DIR, 'index.json');
   console.log('[hub] Downloading index.json...');
-  const indexUrl = await downloadFile('index.json', indexPath);
+  let indexUrl;
+  try {
+    indexUrl = await downloadFile('index.json', indexPath);
+  } catch (error) {
+    const reason = `Hub index download failed: ${error.message}`;
+    console.warn(`[hub] ${reason}. Packaging with an empty local fallback.`);
+    writeEmptyHubFallback(tag, reason);
+    return { skipped: false, fallback: true, count: 0, total: 0 };
+  }
   console.log(`[hub] index.json downloaded from ${indexUrl}`);
 
   // Step 2: Parse index and download all extension zips
