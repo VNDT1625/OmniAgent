@@ -601,7 +601,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          MTUI_BINARY=$(find out -type f \( -path '*/resources/binaries/mtui' -o -path '*/resources/binaries/mtui.exe' \) -size +0c | head -n 1 || true)
+          MTUI_BINARY=$(find out -type f \( -path '*/binaries/mtui' -o -path '*/binaries/mtui.exe' \) -size +0c | head -n 1 || true)
           if [ -z "$MTUI_BINARY" ]; then
             echo "::error::Packaged app is missing the MTUI runtime for ${{ matrix.platform }}"
             exit 1
