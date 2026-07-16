@@ -1,9 +1,9 @@
 /**
  * Build and stage the Tomny CLI runtime for desktop packaging.
  *
- * Tomny starts from the Apache-2.0 aionrs codebase at a pinned upstream commit.
+ * Tomny CLI is compiled from its pinned Apache-2.0 source branch.
  * The source is compiled locally after applying the Tomny product namespace;
- * the desktop runtime never launches or calls AionCore.
+ * the desktop runtime launches only Tomny-branded binaries.
  */
 
 const { execFileSync } = require('child_process');
@@ -11,7 +11,7 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
-const UPSTREAM_REPOSITORY = 'https://github.com/VNDT1625/aionrs.git';
+const UPSTREAM_REPOSITORY = 'https://github.com/VNDT1625/OmniAgent.git';
 
 const targetTriple = (platform, arch) => {
   const targets = {
