@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -242,7 +242,7 @@ export function useCompanyState(): UseCompanyState {
     // it does not re-open the previous (now stale) president/employee chats.
     if (typeof window !== 'undefined') {
       try {
-        const raw = window.localStorage.getItem('aionui.company.roleConversations');
+        const raw = window.localStorage.getItem('github.com/VNDT1625/OmniAgentpany.roleConversations');
         if (raw) {
           const parsed: unknown = JSON.parse(raw);
           if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
@@ -250,7 +250,7 @@ export function useCompanyState(): UseCompanyState {
             for (const [key, value] of Object.entries(parsed as Record<string, unknown>)) {
               if (!key.startsWith(`${companyId}::`)) next[key] = value;
             }
-            window.localStorage.setItem('aionui.company.roleConversations', JSON.stringify(next));
+            window.localStorage.setItem('github.com/VNDT1625/OmniAgentpany.roleConversations', JSON.stringify(next));
           }
         }
       } catch {

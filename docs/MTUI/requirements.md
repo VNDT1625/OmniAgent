@@ -846,6 +846,34 @@ mtui edit hello.txt replace "hello" "hi" --json
 mtui suggest "b" --json
 ```
 
+### Requirement 19 - Agent Terminal Replacement Surface
+
+For repository work, an agent must be able to use MTUI as its only terminal-facing interface. MTUI may delegate to deterministic system programs internally, but callers must not need shell pipelines or shell-specific state.
+
+Required coverage:
+
+```text
+- bounded Unicode-safe file reads
+- literal and regex search with include/exclude globs, context, files-only, and counts
+- file-tree statistics (direct children, files, directories, lines, bytes, extensions, largest files)
+- verification and generic program execution with an explicit working directory
+- compact pass/fail output with retrievable full logs
+- safe file creation/edit/delete/apply-patch with history, diff, and undo
+- fresh filesystem fallback/overlay when Understand data is missing or stale
+- a deterministic `run` fallback for programs not yet represented by a native primitive
+```
+
+Efficiency and reliability gates:
+
+```text
+- JSON mode emits compact machine-readable output by default
+- empty optional collections are omitted
+- no command may panic on valid UTF-8 input or Unicode paths
+- paths in repository results are repo-relative when possible
+- limited/truncated results must say so accurately and must not claim an unknown total
+- a representative IDE audit must complete without a normal-shell fallback
+```
+
 ## Non-Functional Requirements
 
 ### Performance

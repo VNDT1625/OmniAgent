@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -100,6 +100,7 @@ import DiffReviewPanel from './components/DiffReviewPanel';
 import SearchPanel from './components/SearchPanel';
 import GitPage from '@renderer/pages/git/GitPage';
 import QuickTestPanel from './components/QuickTestPanel';
+import { useQuickRun } from './components/useQuickRun';
 import DatabasePanel from './db/DatabasePanel';
 import SpecManagerPanel from './components/SpecManagerPanel';
 import LspServersPanel from './components/LspServersPanel';
@@ -169,6 +170,9 @@ type IdeMode =
 const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
   const { t } = useTranslation();
   const ide = useIdeWorkspace();
+  // Keep Quick Test services alive across IDE mode switches. The embedded
+  // browser remains panel-owned and is destroyed while the tab is hidden.
+  const quickRun = useQuickRun(ide.rootPath);
   const wiki = useRepoWiki();
   const changes = useRepoChanges(ide.rootPath);
   const collab = useTeamCollab(ide.rootPath);
@@ -839,7 +843,7 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
 
           {mode === 'team' ? (
             <div className='absolute inset-0 flex flex-col min-h-0'>
-              <TeamCollabBar hasFolder={!!ide.rootPath} collab={collab} cloud={cloud} />
+              <TeamCollabBar rootPath={ide.rootPath} collab={collab} cloud={cloud} />
               <div className='flex-1 min-h-0'>
                 <TeamEditPanel rootPath={ide.rootPath} activeFile={ide.activeFile} collab={collab} />
               </div>
@@ -868,6 +872,7 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
             <div className='absolute inset-0'>
               <QuickTestPanel
                 rootPath={ide.rootPath}
+                quickRun={quickRun}
                 onCompactChange={setQuickTestCompact}
                 onFixWithAgent={(pack, errorSummary, hasError) => {
                   const root = ide.rootPath;

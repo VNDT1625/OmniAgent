@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -36,7 +36,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { emitter } from '@renderer/utils/emitter';
 import { terminalClient } from '@renderer/pages/terminal/terminalBridgeClient';
 import { ideClient } from '../ideClient';
-import type { RunCandidate, RunPlan, RunPlanSource, RunPlatform, SavedRunConfig } from '../ideClient';
+import type { RunCandidate, RunPlan, RunPlanSource, RunPlatform, RunService, SavedRunConfig } from '../ideClient';
 
 /** Phase of the Quick-Run flow. */
 export type QuickRunPhase =
@@ -75,6 +75,8 @@ export type ResolvedRecipe = {
   cwd: string;
   /** Dev URL to open + attach the tracer to (web only). */
   url?: string;
+  /** Human-readable terminal title for a stack service. */
+  title?: string;
   /** Whether this came from a hand-typed recipe (vs the wiki runbook / saved). */
   manual: boolean;
 };
@@ -92,6 +94,15 @@ export type ManualRecipeInput = {
   cwd?: string;
 };
 
+/** How much of a web stack the split Run button should launch. */
+export type QuickRunMode = 'interface' | 'full' | 'custom';
+
+/** Optional service selection supplied by the Run dropdown. */
+export type QuickRunSelection = {
+  mode: QuickRunMode;
+  serviceIds?: string[];
+};
+
 /** Public surface of the hook (consumed by `QuickRunBar`). */
 export type QuickRunState = {
   /** Current flow phase. */
@@ -104,6 +115,8 @@ export type QuickRunState = {
   select: (platform: RunPlatform) => void;
   /** The recipe that will run for the selected platform (null when none). */
   recipe: ResolvedRecipe | null;
+  /** Independently launchable services detected for the web stack. */
+  services: RunService[];
   /** Whether the active recipe came from a saved (no-AI) config. */
   fromSaved: boolean;
   /** Source of the currently-available setup, used to show whether wiki runbook was loaded. */
@@ -113,7 +126,7 @@ export type QuickRunState = {
   /** Human-readable error when phase is `error`. */
   error: string | null;
   /** Launch the selected recipe in the IDE terminal + wait for readiness. */
-  run: () => Promise<void>;
+  run: (selection?: QuickRunSelection) => Promise<void>;
   /** Launch a hand-typed recipe (manual plane / override). */
   runManual: (input: ManualRecipeInput) => Promise<void>;
   /**
@@ -230,9 +243,11 @@ export const useQuickRun = (rootPath: string | null, options: QuickRunOptions = 
   const mountedRef = useRef(true);
   /** Guards an in-flight probe loop so it can be cancelled on reset/unmount. */
   const launchTokenRef = useRef(0);
-  /** The terminal session the current launch spawned (so we can read its output). */
-  const sessionIdRef = useRef<string | null>(null);
-  /** Accumulated output of the launch session (scanned for the real dev URL). */
+  /** All terminal sessions spawned for the active frontend/backend/AI stack. */
+  const sessionIdsRef = useRef<string[]>([]);
+  /** Session whose output is scanned for the browser-facing dev URL. */
+  const outputSessionIdRef = useRef<string | null>(null);
+  /** Accumulated output of the frontend/orchestrator session. */
   const outputRef = useRef('');
   /** Unsubscribe from the launch session's output stream. */
   const offDataRef = useRef<(() => void) | null>(null);
@@ -245,13 +260,14 @@ export const useQuickRun = (rootPath: string | null, options: QuickRunOptions = 
   const detachOutput = useCallback((kill = false): void => {
     offDataRef.current?.();
     offDataRef.current = null;
-    const id = sessionIdRef.current;
-    if (kill && id) {
-      // Kill the process tree, then remove the session from the dock.
-      void terminalClient.kill({ id }).catch(() => {});
-      void terminalClient.remove({ id }).catch(() => {});
+    if (kill) {
+      for (const id of sessionIdsRef.current) {
+        void terminalClient.kill({ id }).catch(() => {});
+        void terminalClient.remove({ id }).catch(() => {});
+      }
     }
-    sessionIdRef.current = null;
+    sessionIdsRef.current = [];
+    outputSessionIdRef.current = null;
     outputRef.current = '';
   }, []);
 
@@ -260,11 +276,28 @@ export const useQuickRun = (rootPath: string | null, options: QuickRunOptions = 
     return () => {
       mountedRef.current = false;
       launchTokenRef.current += 1;
-      // Kill the spawned dev server on unmount too, so leaving Quick Test never
-      // leaves an orphan process holding the port.
+      // The controller is owned by IdeWorkspace, so this only runs when the
+      // workspace itself closes — switching away from Quick Test keeps services.
       detachOutput(true);
     };
   }, [detachOutput]);
+
+  // A terminal can also be closed manually from the terminal dock (or exit after
+  // a crash). Treat the launched stack as one unit: tear down any sibling
+  // services and return the Run control to its clean Start state.
+  useEffect(
+    () =>
+      terminalClient.onExit((event) => {
+        if (!sessionIdsRef.current.includes(event.id)) return;
+        launchTokenRef.current += 1;
+        detachOutput(true);
+        if (!mountedRef.current) return;
+        setReadyUrl(null);
+        setError(null);
+        setPhase((prev) => (prev === 'needs-input' ? 'needs-input' : 'ready'));
+      }),
+    [detachOutput]
+  );
 
   // Load the mechanical plan + saved recipes for the repo.
   useEffect(() => {
@@ -291,10 +324,14 @@ export const useQuickRun = (rootPath: string | null, options: QuickRunOptions = 
         setPlanSource(res.data.source);
         setSaved(res.data.saved);
         const support = res.data.plan.support;
-        const anySupported = support.web || support.android || support.desktop;
-        setSelected((prev) => (support[prev] ? prev : firstSupported(res.data.plan)));
+        const savedPlatforms = new Set(res.data.saved.map((config) => config.platform));
+        const isAvailable = (candidate: RunPlatform): boolean => support[candidate] || savedPlatforms.has(candidate);
+        const anyAvailable = PREFERENCE.some(isAvailable);
+        setSelected((prev) =>
+          isAvailable(prev) ? prev : (PREFERENCE.find(isAvailable) ?? firstSupported(res.data.plan))
+        );
         const hasRecipe = res.data.plan.hasRunData || res.data.saved.length > 0;
-        setPhase(anySupported && hasRecipe ? 'ready' : 'needs-input');
+        setPhase(anyAvailable && hasRecipe ? 'ready' : 'needs-input');
       })
       .catch(() => {
         if (!cancelled && mountedRef.current) setPhase('needs-input');
@@ -309,11 +346,29 @@ export const useQuickRun = (rootPath: string | null, options: QuickRunOptions = 
     () =>
       ALL_PLATFORMS.map((platform) => ({
         platform,
-        supported: plan ? plan.support[platform] : false,
+        supported: (plan?.support[platform] ?? false) || saved.some((config) => config.platform === platform),
         saved: saved.some((s) => s.platform === platform),
       })),
     [plan, saved]
   );
+
+  const services = useMemo<RunService[]>(() => {
+    const detected = plan?.services ?? [];
+    if (detected.length > 0) return detected;
+    const fallback =
+      saved.find((config) => config.platform === 'web' && Boolean(config.command)) ?? candidateFor(plan, 'web');
+    if (!fallback?.command) return [];
+    return [
+      {
+        id: 'fallback:web',
+        name: fallback.cwd.match(/[^\\/]+$/)?.[0] ?? fallback.command,
+        kind: 'frontend',
+        command: fallback.command,
+        cwd: fallback.cwd,
+        url: fallback.url,
+      },
+    ];
+  }, [plan, saved]);
 
   // Resolve the recipe for the selected platform: a manual override wins, then a
   // saved recipe (no-AI replay), then the plan candidate.
@@ -403,51 +458,50 @@ export const useQuickRun = (rootPath: string | null, options: QuickRunOptions = 
     [probeTimeoutMs, probeIntervalMs, fallbackGraceMs]
   );
 
-  /** Shared launch path for a resolved recipe (wiki/saved or manual). */
+  /** Shared launch path for one or more resolved recipes. */
   const launch = useCallback(
-    async (toRun: ResolvedRecipe): Promise<void> => {
+    async (
+      toRun: ResolvedRecipe,
+      companions: ResolvedRecipe[] = [],
+      browserFacing = toRun.platform === 'web'
+    ): Promise<void> => {
       if (!rootPath) return;
       const token = (launchTokenRef.current += 1);
       setError(null);
       setReadyUrl(null);
       setPhase('launching');
-
-      // Spawn the command in a REAL terminal session at the recipe's cwd. The
-      // hook owns this session only to (a) read its output for the real dev URL
-      // and (b) hand it to the dock to display — the OS process still lives in
-      // the Main-process terminal manager, exactly as requested. The dock shows
-      // it via the `ide.terminal.focus` event below.
-      const cwd = toRun.cwd ? joinPath(rootPath, toRun.cwd) : rootPath;
       detachOutput();
-      if (toRun.command.trim()) {
-        const created = await terminalClient.create({ options: { cwd } }).catch((): null => null);
+      outputRef.current = '';
+      offDataRef.current = terminalClient.onData((event) => {
+        if (event.id === outputSessionIdRef.current) outputRef.current += event.data;
+      });
+
+      const recipes = [toRun, ...companions];
+      for (const [index, current] of recipes.entries()) {
+        if (!current.command.trim()) continue;
+        const cwd = current.cwd ? joinPath(rootPath, current.cwd) : rootPath;
+        const terminalOptions = { cwd, ...(current.title ? { title: current.title } : {}) };
+        // eslint-disable-next-line no-await-in-loop -- services need distinct terminal sessions and deterministic ownership.
+        const created = await terminalClient.create({ options: terminalOptions }).catch((): null => null);
         if (token !== launchTokenRef.current || !mountedRef.current) return;
         if (!created || !created.ok) {
+          detachOutput(true);
           setError('terminal');
           setPhase('error');
           return;
         }
         const sessionId = created.data.id;
-        sessionIdRef.current = sessionId;
-        outputRef.current = '';
-        offDataRef.current = terminalClient.onData((event) => {
-          if (event.id === sessionId) outputRef.current += event.data;
-        });
-        // Surface the session in the IDE dock (open + focus it) so the user
-        // sees the live output without hunting for the tab.
+        sessionIdsRef.current.push(sessionId);
+        if (index === 0 && browserFacing) outputSessionIdRef.current = sessionId;
         emitter.emit('ide.terminal.focus', { id: sessionId });
-        // Give the freshly-spawned shell a beat, then run the command.
+        // eslint-disable-next-line no-await-in-loop -- let each fresh shell initialize before writing its command.
         await sleep(150);
         if (token !== launchTokenRef.current || !mountedRef.current) return;
-        void terminalClient.write({ id: sessionId, data: `${toRun.command}\r` }).catch(() => {});
+        void terminalClient.write({ id: sessionId, data: `${current.command}\r` }).catch(() => {});
       }
 
-      // Web: wait for the dev server to answer (real printed URL preferred), then
-      // hand that URL to the embedded browser. If the user only supplied an
-      // already-running URL (no command), probe it directly; otherwise watch the
-      // terminal output first so manual setup does not require choosing a port.
       let liveUrl = toRun.url;
-      if (toRun.platform === 'web') {
+      if (browserFacing && toRun.platform === 'web') {
         setPhase('waiting');
         let resolved: string | null;
         if (toRun.command.trim()) {
@@ -470,8 +524,6 @@ export const useQuickRun = (rootPath: string | null, options: QuickRunOptions = 
       if (token !== launchTokenRef.current || !mountedRef.current) return;
       setPhase('running');
 
-      // A run that reached `running` is worth replaying with no AI next time.
-      // Persist the URL that actually worked (printed port), not the guess.
       void ideClient
         .qrSave(rootPath, {
           platform: toRun.platform,
@@ -488,13 +540,63 @@ export const useQuickRun = (rootPath: string | null, options: QuickRunOptions = 
     [rootPath, waitForLiveUrl, detachOutput]
   );
 
-  const run = useCallback(async (): Promise<void> => {
-    if (!recipe) {
-      setPhase('needs-input');
-      return;
-    }
-    await launch(recipe);
-  }, [recipe, launch]);
+  const run = useCallback(
+    async (selection: QuickRunSelection = { mode: 'interface' }): Promise<void> => {
+      if (!recipe) {
+        setPhase('needs-input');
+        return;
+      }
+      if (selected !== 'web' || services.length === 0) {
+        await launch(recipe);
+        return;
+      }
+
+      let chosen: RunService[];
+      if (selection.mode === 'interface') {
+        chosen = services.filter((service) => service.kind === 'frontend' && !service.orchestrator).slice(0, 1);
+        if (chosen.length === 0) {
+          await launch(recipe);
+          return;
+        }
+      } else if (selection.mode === 'full') {
+        const localServices = services.filter((service) => !service.orchestrator && !service.id.startsWith('compose:'));
+        const orchestrator = services.find((service) => service.orchestrator);
+        const groupPrefix = orchestrator?.id.endsWith(':full') ? orchestrator.id.slice(0, -'full'.length) : null;
+        const containerServices = groupPrefix
+          ? services.filter((service) => !service.orchestrator && service.id.startsWith(groupPrefix))
+          : [];
+        const containerFallbacks = containerServices.filter(
+          (container) => !localServices.some((local) => local.kind === container.kind)
+        );
+        chosen = [...localServices, ...containerFallbacks];
+        if (chosen.length === 0) chosen = services.filter((service) => !service.orchestrator);
+      } else {
+        const selectedIds = new Set(selection.serviceIds ?? []);
+        chosen = services.filter((service) => selectedIds.has(service.id) && !service.orchestrator);
+      }
+      if (chosen.length === 0) {
+        setPhase('needs-input');
+        return;
+      }
+
+      const primaryIndex = Math.max(
+        0,
+        chosen.findIndex((service) => service.kind === 'frontend' || service.orchestrator)
+      );
+      const ordered = [chosen[primaryIndex], ...chosen.filter((_, index) => index !== primaryIndex)];
+      const recipes = ordered.map<ResolvedRecipe>((service) => ({
+        platform: 'web',
+        command: service.command,
+        cwd: service.cwd,
+        url: service.url,
+        title: service.name,
+        manual: false,
+      }));
+      const browserFacing = ordered[0].kind === 'frontend' || Boolean(ordered[0].orchestrator);
+      await launch(recipes[0], recipes.slice(1), browserFacing);
+    },
+    [recipe, selected, services, launch]
+  );
 
   const runManual = useCallback(
     async (input: ManualRecipeInput): Promise<void> => {
@@ -546,6 +648,7 @@ export const useQuickRun = (rootPath: string | null, options: QuickRunOptions = 
     selected,
     select,
     recipe,
+    services,
     fromSaved,
     setupSource,
     readyUrl,

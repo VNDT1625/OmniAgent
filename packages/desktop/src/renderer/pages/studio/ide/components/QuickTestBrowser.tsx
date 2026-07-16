@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -26,7 +26,7 @@
  */
 
 import { Button, Input, Tooltip } from '@arco-design/web-react';
-import { Left, Redo, Refresh, Right } from '@icon-park/react';
+import { Left, Refresh, Right } from '@icon-park/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { browserClient } from '@renderer/pages/browser/browserBridgeClient';
@@ -46,8 +46,10 @@ export type QuickTestBrowserProps = {
   navigateUrl?: string | null;
   /** Optional controls rendered inside the address toolbar before navigation. */
   toolbarLeading?: React.ReactNode;
-  /** Optional controls rendered inside the address toolbar before the Go button. */
+  /** Optional controls rendered inside the address toolbar after the address field. */
   toolbarTrailing?: React.ReactNode;
+  /** Hide the native view while a DOM popup overlaps its reserved region. */
+  nativeOverlayBlocked?: boolean;
 };
 
 /** Debounce window (ms) for pushing the frame's bounds. Higher = calmer, less pulsing. */
@@ -83,6 +85,7 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({
   navigateUrl,
   toolbarLeading,
   toolbarTrailing,
+  nativeOverlayBlocked = false,
 }) => {
   const { t } = useTranslation();
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -99,6 +102,8 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({
   const lastRectRef = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
   /** Force next push to re-apply zoom=1 after navigations that may reset Chromium zoom. */
   const forceZoomRef = useRef(false);
+  const nativeOverlayBlockedRef = useRef(nativeOverlayBlocked);
+  nativeOverlayBlockedRef.current = nativeOverlayBlocked;
 
   // Reposition the native view to cover the reserved region (or hide it when
   // the region is off-screen / collapsed). Mirrors LiveBrowserFrame.
@@ -106,6 +111,11 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({
     const id = tabIdRef.current;
     const el = hostRef.current;
     if (!id || !el) return;
+    if (nativeOverlayBlockedRef.current) {
+      lastRectRef.current = null;
+      void browserClient.setVisible({ id, visible: false }).catch(() => {});
+      return;
+    }
     const rect = el.getBoundingClientRect();
     const offscreen = rect.width <= 1 || rect.height <= 1 || rect.bottom <= 0 || rect.top >= window.innerHeight;
     if (offscreen) {
@@ -228,6 +238,19 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({
     };
   }, [tabId, pushBounds, schedulePush]);
 
+  // Native WebContentsViews sit above renderer DOM and otherwise intercept
+  // pointer events meant for dropdowns/modals that extend into the browser body.
+  useEffect(() => {
+    const id = tabIdRef.current;
+    if (!id) return;
+    if (nativeOverlayBlocked) {
+      lastRectRef.current = null;
+      void browserClient.setVisible({ id, visible: false }).catch(() => {});
+      return;
+    }
+    pushBounds();
+  }, [nativeOverlayBlocked, pushBounds]);
+
   // Mirror live URL/title changes (including in-page SPA navigation) into the
   // address bar so it stays in sync as the user clicks around their app.
   useEffect(() => {
@@ -322,9 +345,6 @@ const QuickTestBrowser: React.FC<QuickTestBrowserProps> = ({
           className='flex-1'
         />
         {toolbarTrailing}
-        <Button size='mini' type='primary' icon={<Redo theme='outline' size={12} />} onClick={navigate}>
-          {t('browser.address.go')}
-        </Button>
       </div>
       {/* The native WebContentsView paints over this region. */}
       <div ref={hostRef} className='flex-1 min-h-0 w-full bg-fill-2' aria-hidden='true' />

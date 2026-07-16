@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  *
  * Unit tests for the newly-wired monitor pipeline pieces (Yêu cầu 6):
@@ -445,9 +445,9 @@ describe('releasePublisher (branch + commit + guarded push)', () => {
     expect(git.calls.some((c) => c[0] === 'push')).toBe(false);
   });
 
-  it('REFUSES to push to the protected upstream remote (iOfficeAI/AionUi)', async () => {
+  it('REFUSES to push to the protected upstream remote (VNDT1625/OmniAgent)', async () => {
     const { createReleasePublisher } = await import('@/process/monitor/releasePublisher');
-    const git = fakeGit('https://github.com/iOfficeAI/AionUi.git');
+    const git = fakeGit('https://github.com/VNDT1625/OmniAgent.git');
     const publisher = createReleasePublisher({
       git: git.runner,
       prOpener: { open: async () => ({}) },

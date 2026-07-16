@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -33,10 +33,11 @@
  * gate reuses {@link passwordMatches} (constant-time SHA-256) exactly like the
  * single-doc `/collab/*` surface.
  *
- * SECURITY TODO (tracked): `/team/db` exposes connection metadata and
- * `/team/write|edit` allow remote disk writes on the host, gated only by the
- * session password. A production pass needs per-peer scoped tokens, RO/RW
- * permissions, rate limiting, and an audit trail.
+ * Security: peer tokens carry server-side write/database capabilities selected
+ * by the host, expire when idle, and are protected by bounded bodies, peer caps,
+ * and join rate limiting. File mutations remain lease-guarded and MTUI-backed.
+ * A durable audit export remains tracked separately; the live coordinator feed
+ * already records claim/write/release/conflict activity for the active session.
  *
  * Process boundary: Main-process (Node.js) module. No DOM APIs.
  */
@@ -47,27 +48,127 @@ import {
   getPrimaryTeamSession,
   passwordMatches,
   removeTeamPeer,
+  teamPeerCan,
   touchTeamPeer,
+  type TeamPeer,
   type TeamSession,
 } from '@process/studio/collabServer';
 import type { TeamSessionHost } from './teamSessionHost';
 
-/** Read a request body fully as a Buffer. */
-const readBody = (req: IncomingMessage): Promise<Buffer> =>
+const MAX_REQUEST_BODY_BYTES = 1024 * 1024;
+const JOIN_WINDOW_MS = 60_000;
+const MAX_FAILED_JOINS_PER_WINDOW = 5;
+const MAX_TRACKED_FAILED_JOIN_KEYS = 1024;
+
+type JoinFailureRateLimiterOptions = {
+  maxFailures?: number;
+  maxTrackedKeys?: number;
+  windowMs?: number;
+};
+
+type JoinFailureAttempt = {
+  startedAt: number;
+  failures: number;
+};
+
+/**
+ * Fixed-window join limiter with bounded cardinality.
+ *
+ * Once full, unknown clients are rejected until the oldest active window
+ * expires. This preserves existing per-client bans without allowing a
+ * distributed scan to grow Main-process memory without bound.
+ */
+export class JoinFailureRateLimiter {
+  private readonly attempts = new Map<string, JoinFailureAttempt>();
+  private readonly maxFailures: number;
+  private readonly maxTrackedKeys: number;
+  private readonly windowMs: number;
+
+  constructor(options: JoinFailureRateLimiterOptions = {}) {
+    this.maxFailures = Math.max(1, Math.floor(options.maxFailures ?? MAX_FAILED_JOINS_PER_WINDOW));
+    this.maxTrackedKeys = Math.max(1, Math.floor(options.maxTrackedKeys ?? MAX_TRACKED_FAILED_JOIN_KEYS));
+    this.windowMs = Math.max(1, Math.floor(options.windowMs ?? JOIN_WINDOW_MS));
+  }
+
+  get trackedKeys(): number {
+    return this.attempts.size;
+  }
+
+  retryAfterMs(key: string, now = Date.now()): number {
+    const attempt = this.attempts.get(key);
+    if (attempt) {
+      const elapsed = now - attempt.startedAt;
+      if (elapsed >= this.windowMs) {
+        this.attempts.delete(key);
+        return 0;
+      }
+      return attempt.failures >= this.maxFailures ? this.windowMs - elapsed : 0;
+    }
+
+    this.pruneExpired(now);
+    if (this.attempts.size < this.maxTrackedKeys) return 0;
+
+    let retryAfterMs = this.windowMs;
+    for (const tracked of this.attempts.values()) {
+      retryAfterMs = Math.min(retryAfterMs, this.windowMs - (now - tracked.startedAt));
+    }
+    return Math.max(1, retryAfterMs);
+  }
+
+  recordFailure(key: string, now = Date.now()): void {
+    const current = this.attempts.get(key);
+    if (current && now - current.startedAt < this.windowMs) {
+      current.failures += 1;
+      return;
+    }
+    if (current) this.attempts.delete(key);
+
+    this.pruneExpired(now);
+    if (this.attempts.size >= this.maxTrackedKeys) return;
+    this.attempts.set(key, { startedAt: now, failures: 1 });
+  }
+
+  clear(key: string): void {
+    this.attempts.delete(key);
+  }
+
+  private pruneExpired(now: number): void {
+    if (this.attempts.size < this.maxTrackedKeys) return;
+    for (const [key, attempt] of this.attempts) {
+      if (now - attempt.startedAt >= this.windowMs) this.attempts.delete(key);
+    }
+  }
+}
+
+const failedJoins = new JoinFailureRateLimiter();
+
+const joinRateKey = (req: IncomingMessage, session: TeamSession): string =>
+  `${session.shareId}:${req.socket.remoteAddress ?? 'unknown'}`;
+
+/** Read a request body without retaining more than the production payload limit. */
+const readBody = (req: IncomingMessage): Promise<Buffer | null> =>
   new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (c: Buffer) => chunks.push(c));
-    req.on('end', () => resolve(Buffer.concat(chunks)));
+    let bytes = 0;
+    req.on('data', (c: Buffer) => {
+      bytes += c.length;
+      if (bytes <= MAX_REQUEST_BODY_BYTES) chunks.push(c);
+    });
+    req.on('end', () => resolve(bytes > MAX_REQUEST_BODY_BYTES ? null : Buffer.concat(chunks)));
     req.on('error', reject);
   });
 
-/** Parse a JSON body, tolerant of empty/garbage (returns {}). */
-const readJson = async <T extends Record<string, unknown>>(req: IncomingMessage): Promise<T> => {
+/** Parse a JSON object, preserving `null` as the oversized-body signal. */
+const readJson = async <T extends Record<string, unknown>>(req: IncomingMessage): Promise<T | null> => {
   try {
-    return JSON.parse((await readBody(req)).toString('utf-8') || '{}') as T;
+    const body = await readBody(req);
+    if (body === null) return null;
+    const parsed: unknown = JSON.parse(body.toString('utf-8') || '{}');
+    if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) return parsed as T;
   } catch {
-    return {} as T;
+    // Preserve the existing tolerant behavior for empty, malformed, or aborted requests.
   }
+  return {} as T;
 };
 
 /** Send a JSON response with a status code. */
@@ -77,14 +178,31 @@ const sendJson = (res: ServerResponse, status: number, body: unknown): void => {
   res.end(text);
 };
 
+/** Finish a request rejected by either declared or streamed body size checks. */
+const payloadTooLarge = (res: ServerResponse): boolean => {
+  sendJson(res, 413, { ok: false, error: 'payload-too-large' });
+  return true;
+};
+
 /** Resolve the active team session + authenticate the peer token. */
-const authPeer = (token: string | undefined): { session: TeamSession; root: string } | null => {
+const authPeer = (token: string | undefined): { session: TeamSession; root: string; peer: TeamPeer } | null => {
   if (!token) return null;
   const session = getPrimaryTeamSession();
   if (!session) return null;
   const peer = touchTeamPeer(session, token);
   if (!peer) return null;
-  return { session, root: session.repoRoot };
+  return { session, root: session.repoRoot, peer };
+};
+
+/** Require a capability already bound to the authenticated peer token. */
+const requireCapability = (
+  res: ServerResponse,
+  auth: { peer: TeamPeer },
+  capability: 'write' | 'database'
+): boolean => {
+  if (teamPeerCan(auth.peer, capability)) return true;
+  sendJson(res, 403, { ok: false, error: `permission-denied:${capability}` });
+  return false;
 };
 
 /**
@@ -101,6 +219,11 @@ export const handleTeamRequest = async (
   const sub = parts[1];
   const url = new URL(req.url ?? '/', 'http://team.local');
   const q = url.searchParams;
+  const declaredLength = Number(req.headers['content-length'] ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_REQUEST_BODY_BYTES) {
+    req.resume();
+    return payloadTooLarge(res);
+  }
 
   // GET /team/info — advertise whether a repo is published (no secrets).
   if (req.method === 'GET' && sub === 'info') {
@@ -116,11 +239,21 @@ export const handleTeamRequest = async (
       sendJson(res, 404, { ok: false, error: 'no-session' });
       return true;
     }
+    const rateKey = joinRateKey(req, session);
+    const retryAfterMs = failedJoins.retryAfterMs(rateKey);
+    if (retryAfterMs > 0) {
+      res.setHeader('Retry-After', Math.max(1, Math.ceil(retryAfterMs / 1000)));
+      sendJson(res, 429, { ok: false, error: 'too-many-join-attempts' });
+      return true;
+    }
     const payload = await readJson<{ password?: string; name?: string }>(req);
+    if (!payload) return payloadTooLarge(res);
     if (!passwordMatches(session.passwordHash, payload.password ?? '')) {
+      failedJoins.recordFailure(rateKey);
       sendJson(res, 401, { ok: false, error: 'bad-password' });
       return true;
     }
+    failedJoins.clear(rateKey);
     const peer = admitTeamPeer(session, payload.name ?? '');
     host.joinPeer(session.repoRoot, peer.token, peer.name);
     sendJson(res, 200, {
@@ -128,6 +261,7 @@ export const handleTeamRequest = async (
       peerToken: peer.token,
       participant: { agentId: peer.token, label: peer.name, color: peer.color },
       repoName: session.repoName,
+      peerCapabilities: peer.capabilities,
     });
     return true;
   }
@@ -172,8 +306,10 @@ export const handleTeamRequest = async (
   // POST /team/claim
   if (req.method === 'POST' && sub === 'claim') {
     const payload = await readJson<{ token?: string; relPath?: string; intent?: string }>(req);
+    if (!payload) return payloadTooLarge(res);
     const auth = authPeer(payload.token);
     if (!auth) return unauthorized(res);
+    if (!requireCapability(res, auth, 'write')) return true;
     const claim = host.claim(auth.root, payload.token!, payload.relPath ?? '', payload.intent);
     sendJson(res, 200, { ok: true, claim });
     return true;
@@ -182,8 +318,10 @@ export const handleTeamRequest = async (
   // POST /team/release
   if (req.method === 'POST' && sub === 'release') {
     const payload = await readJson<{ token?: string; relPath?: string }>(req);
+    if (!payload) return payloadTooLarge(res);
     const auth = authPeer(payload.token);
     if (!auth) return unauthorized(res);
+    if (!requireCapability(res, auth, 'write')) return true;
     const released = host.release(auth.root, payload.token!, payload.relPath ?? '');
     sendJson(res, 200, { ok: true, released });
     return true;
@@ -192,8 +330,10 @@ export const handleTeamRequest = async (
   // POST /team/write
   if (req.method === 'POST' && sub === 'write') {
     const payload = await readJson<{ token?: string; relPath?: string; data?: string }>(req);
+    if (!payload) return payloadTooLarge(res);
     const auth = authPeer(payload.token);
     if (!auth) return unauthorized(res);
+    if (!requireCapability(res, auth, 'write')) return true;
     try {
       const result = await host.write(auth.root, payload.token!, payload.relPath ?? '', payload.data ?? '');
       sendJson(res, 200, { ok: true, result });
@@ -206,8 +346,10 @@ export const handleTeamRequest = async (
   // POST /team/edit
   if (req.method === 'POST' && sub === 'edit') {
     const payload = await readJson<{ token?: string; relPath?: string; oldText?: string; newText?: string }>(req);
+    if (!payload) return payloadTooLarge(res);
     const auth = authPeer(payload.token);
     if (!auth) return unauthorized(res);
+    if (!requireCapability(res, auth, 'write')) return true;
     try {
       const result = await host.edit(
         auth.root,
@@ -243,6 +385,7 @@ export const handleTeamRequest = async (
   if (req.method === 'GET' && sub === 'db') {
     const auth = authPeer(token);
     if (!auth) return unauthorized(res);
+    if (!requireCapability(res, auth, 'database')) return true;
     sendJson(res, 200, { ok: true, connections: await host.dbConnections(auth.root) });
     return true;
   }
@@ -250,8 +393,10 @@ export const handleTeamRequest = async (
   // POST /team/db-query — proxy a SQL query on the host (credentials stay home).
   if (req.method === 'POST' && sub === 'db-query') {
     const payload = await readJson<{ token?: string; id?: string; sql?: string }>(req);
+    if (!payload) return payloadTooLarge(res);
     const auth = authPeer(payload.token);
     if (!auth) return unauthorized(res);
+    if (!requireCapability(res, auth, 'database')) return true;
     try {
       const result = await host.dbQuery(auth.root, payload.id ?? '', payload.sql ?? '');
       sendJson(res, 200, { ok: true, result });
@@ -272,6 +417,7 @@ export const handleTeamRequest = async (
   // POST /team/leave
   if (req.method === 'POST' && sub === 'leave') {
     const payload = await readJson<{ token?: string }>(req);
+    if (!payload) return payloadTooLarge(res);
     const session = getPrimaryTeamSession();
     if (session && payload.token) {
       host.leavePeer(session.repoRoot, payload.token);

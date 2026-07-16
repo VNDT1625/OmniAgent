@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -318,6 +318,10 @@ const TOKEN_WATERMARK_ANY = /Token watermark override:\s*provider=\d+,\s*local_e
  * should .trim() themselves after stripping.
  */
 export const stripTokenWatermarkNotice = (content: string): string => {
+  // Most chunks contain no diagnostic. Return them byte-for-byte so whitespace-only
+  // streaming deltas and Markdown indentation are not normalized accidentally.
+  if (!/Token watermark override:/i.test(content)) return content;
+
   // Line-based removal first (preserves original join behavior for tests/mixed content)
   let cleaned = content
     .split(/\r?\n/)
@@ -576,7 +580,9 @@ export const transformMessage = (message: IResponseMessage): TMessage | undefine
       // this fragment (critical for streaming deltas where each chunk may carry the
       // separating whitespace before the next token/word).
       const content = stripped;
-      if (stripped.trim().length === 0) return undefined;
+      const isWhitespaceOnlyDelta =
+        message.type !== 'user_content' && !shouldReplace && rawContent.length > 0 && rawContent.trim().length === 0;
+      if (stripped.trim().length === 0 && !isWhitespaceOnlyDelta) return undefined;
       return {
         id: uuid(),
         type: 'text',

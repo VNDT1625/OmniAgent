@@ -1,6 +1,6 @@
+mod analyze;
 mod backup;
 mod cli;
-mod analyze;
 mod compact;
 mod config;
 mod diff;
@@ -340,11 +340,20 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
         }
 
         Commands::Search(args) => {
-            let result = ops::search(
+            let result = ops::search_with_options(
                 &project_root,
                 std::path::Path::new(&args.path),
                 &args.query,
-                args.limit,
+                ops::SearchOptions {
+                    limit: args.limit,
+                    regex: args.regex,
+                    ignore_case: args.ignore_case,
+                    include_globs: args.globs,
+                    exclude_globs: args.excludes,
+                    context: args.context,
+                    files_with_matches: args.files_with_matches,
+                    count: args.count,
+                },
                 &cfg,
             )?;
 
@@ -353,9 +362,25 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                     output::print_json(&output::SuccessResponse::new(&result));
                 }
                 OutputMode::Human => {
-                    for m in &result.matches {
-                        println!("{}:{}:{}", m.file, m.line, m.column);
-                        println!("  {}", m.preview);
+                    if result.counts.is_empty() && result.files.is_empty() {
+                        for m in &result.matches {
+                            println!("{}:{}:{}", m.file, m.line, m.column);
+                            for line in &m.before {
+                                println!("  - {}", line);
+                            }
+                            println!("  > {}", m.preview);
+                            for line in &m.after {
+                                println!("  + {}", line);
+                            }
+                        }
+                    } else if !result.counts.is_empty() {
+                        for item in &result.counts {
+                            println!("{}:{}", item.file, item.matching_lines);
+                        }
+                    } else {
+                        for file in &result.files {
+                            println!("{}", file);
+                        }
                     }
                     println!("Found {} matches", result.match_count);
                 }
@@ -715,12 +740,20 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                     )?;
                     let mut command_args = vec![script.display().to_string()];
                     command_args.extend(python_args.args);
+                    let cwd = python_args
+                        .cwd
+                        .as_deref()
+                        .map(|value| {
+                            safety::validate_path(std::path::Path::new(value), &project_root, &cfg)
+                        })
+                        .transpose()?;
                     ops::run_verification(
                         &project_root,
                         ops::VerifyOptions {
                             mode: "python".to_string(),
                             program: python_args.python_bin,
                             args: command_args,
+                            cwd,
                             spec: python_args.spec,
                             all: python_args.all,
                             profile: python_args.profile.or_else(|| Some("python".to_string())),
@@ -729,19 +762,29 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                         },
                     )?
                 }
-                VerifyCommand::Run(run_args) => ops::run_verification(
-                    &project_root,
-                    ops::VerifyOptions {
-                        mode: "run".to_string(),
-                        program: run_args.program,
-                        args: run_args.args,
-                        spec: run_args.spec,
-                        all: run_args.all,
-                        profile: run_args.profile,
-                        max_lines: run_args.max_lines,
-                        max_chars: run_args.max_chars,
-                    },
-                )?,
+                VerifyCommand::Run(run_args) => {
+                    let cwd = run_args
+                        .cwd
+                        .as_deref()
+                        .map(|value| {
+                            safety::validate_path(std::path::Path::new(value), &project_root, &cfg)
+                        })
+                        .transpose()?;
+                    ops::run_verification(
+                        &project_root,
+                        ops::VerifyOptions {
+                            mode: "run".to_string(),
+                            program: run_args.program,
+                            args: run_args.args,
+                            cwd,
+                            spec: run_args.spec,
+                            all: run_args.all,
+                            profile: run_args.profile,
+                            max_lines: run_args.max_lines,
+                            max_chars: run_args.max_chars,
+                        },
+                    )?
+                }
             };
 
             match output_mode {
@@ -759,12 +802,20 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
         }
 
         Commands::Run(run_args) => {
+            let cwd = run_args
+                .cwd
+                .as_deref()
+                .map(|value| {
+                    safety::validate_path(std::path::Path::new(value), &project_root, &cfg)
+                })
+                .transpose()?;
             let result = ops::run_verification(
                 &project_root,
                 ops::VerifyOptions {
                     mode: "fallback".to_string(),
                     program: run_args.program,
                     args: run_args.args,
+                    cwd,
                     spec: run_args.spec,
                     all: run_args.all,
                     profile: run_args.profile,
@@ -822,10 +873,12 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                     history::open_db(&project_root).map_err(|e| error::MtuiError::Internal {
                         message: format!("Database error: {}", e),
                     })?;
-                let operations = history::list_operations(&conn, status_args.limit.unwrap_or(100))
-                    .map_err(|e| error::MtuiError::Internal {
-                        message: format!("Database error: {}", e),
-                    })?;
+                let operations =
+                    history::list_operations(&conn, status_args.limit.unwrap_or(10_000)).map_err(
+                        |e| error::MtuiError::Internal {
+                            message: format!("Database error: {}", e),
+                        },
+                    )?;
                 let auto_session = status_args
                     .auto_session
                     .then_some(policy::PolicyAutoSession {
@@ -1057,6 +1110,26 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
             }
         }
 
+        Commands::Wiki(args) => {
+            let result = understand::wiki::query_wiki(&project_root, &args.query, args.limit)?;
+            match output_mode {
+                OutputMode::Json => {
+                    output::print_json(&output::SuccessResponse::new(&result));
+                }
+                OutputMode::Human => {
+                    println!("Wiki query: {}", result.query);
+                    println!("Built at: {}", result.built_at);
+                    if result.matches.is_empty() {
+                        println!("No matching Wiki sections.");
+                    }
+                    for item in &result.matches {
+                        println!("\n## {} (score {})", item.title, item.score);
+                        println!("{}", item.content);
+                    }
+                }
+            }
+        }
+
         Commands::Map(args) => {
             let result = match args.query {
                 MapQuery::Repo(repo_args) => understand::map_repo(&project_root, repo_args.limit)?,
@@ -1125,13 +1198,17 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                     }
                 }
             } else {
-                let result = analyze::run_check(&project_root, args.target.as_deref(), args.max_files)?;
+                let result =
+                    analyze::run_check(&project_root, args.target.as_deref(), args.max_files)?;
                 match output_mode {
                     OutputMode::Json => {
                         output::print_json(&output::SuccessResponse::new(&result));
                     }
                     OutputMode::Human => {
-                        println!("Error-check {}: {} issue(s)", result.target, result.total_issues);
+                        println!(
+                            "Error-check {}: {} issue(s)",
+                            result.target, result.total_issues
+                        );
                         for check in &result.checks {
                             match check.status.as_str() {
                                 "ran" => {
@@ -1159,6 +1236,33 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                                 }
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        Commands::Stats(args) => {
+            let target =
+                safety::validate_path(std::path::Path::new(&args.path), &project_root, &cfg)?;
+            let result = analyze::run_stats(&project_root, &target, args.max_files, args.largest)?;
+            match output_mode {
+                OutputMode::Json => output::print_json(&output::SuccessResponse::new(&result)),
+                OutputMode::Human => {
+                    println!(
+                        "{}: {} direct children, {} files, {} directories, {} lines, {} bytes{}",
+                        result.target,
+                        result.direct_children,
+                        result.total_files,
+                        result.total_directories,
+                        result.total_lines,
+                        result.total_bytes,
+                        if result.truncated { " (truncated)" } else { "" }
+                    );
+                    for file in &result.largest_files {
+                        println!(
+                            "{:>7} lines {:>10} bytes  {}",
+                            file.lines, file.bytes, file.path
+                        );
                     }
                 }
             }
@@ -1293,13 +1397,18 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                         suggestions,
                     };
                     match output_mode {
-                        OutputMode::Json => output::print_json(&output::SuccessResponse::new(&result)),
+                        OutputMode::Json => {
+                            output::print_json(&output::SuccessResponse::new(&result))
+                        }
                         OutputMode::Human => {
                             if result.suggestions.is_empty() {
                                 println!("No ExpBase suggestions found.");
                             }
                             for suggestion in &result.suggestions {
-                                println!("[{:.2}] {} ({})", suggestion.score, suggestion.symptom, suggestion.kind);
+                                println!(
+                                    "[{:.2}] {} ({})",
+                                    suggestion.score, suggestion.symptom, suggestion.kind
+                                );
                                 println!("  lesson: {}", suggestion.lesson);
                                 if !suggestion.why_relevant.is_empty() {
                                     println!("  why: {}", suggestion.why_relevant.join(", "));
@@ -1318,7 +1427,9 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                         entry,
                     };
                     match output_mode {
-                        OutputMode::Json => output::print_json(&output::SuccessResponse::new(&result)),
+                        OutputMode::Json => {
+                            output::print_json(&output::SuccessResponse::new(&result))
+                        }
                         OutputMode::Human => match &result.entry {
                             Some(entry) => {
                                 println!("{} [{}] {}", entry.id, entry.kind, entry.symptom);
@@ -1341,7 +1452,9 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                         entries,
                     };
                     match output_mode {
-                        OutputMode::Json => output::print_json(&output::SuccessResponse::new(&result)),
+                        OutputMode::Json => {
+                            output::print_json(&output::SuccessResponse::new(&result))
+                        }
                         OutputMode::Human => {
                             for entry in &result.entries {
                                 println!("{} [{}] {}", entry.id, entry.kind, entry.symptom);
@@ -1355,29 +1468,47 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                         std::io::stdin().read_to_string(&mut buf).map_err(|e| {
                             error::MtuiError::InvalidArgument {
                                 message: format!("Failed to read stdin: {}", e),
-                                suggestion: "Pipe a JSON draft object into `mtui exp add --stdin`".to_string(),
+                                suggestion: "Pipe a JSON draft object into `mtui exp add --stdin`"
+                                    .to_string(),
                             }
                         })?;
-                        serde_json::from_str(&buf).map_err(|e| error::MtuiError::InvalidArgument {
-                            message: format!("Invalid draft JSON: {}", e),
-                            suggestion: "Provide a JSON object matching ExperienceEntryDraft".to_string(),
+                        serde_json::from_str(&buf).map_err(|e| {
+                            error::MtuiError::InvalidArgument {
+                                message: format!("Invalid draft JSON: {}", e),
+                                suggestion: "Provide a JSON object matching ExperienceEntryDraft"
+                                    .to_string(),
+                            }
                         })?
                     } else {
-                        let symptom = add_args.symptom.ok_or_else(|| error::MtuiError::InvalidArgument {
-                            message: "Missing --symptom".to_string(),
-                            suggestion: "Pass --symptom \"...\" or use --stdin with a JSON draft".to_string(),
-                        })?;
+                        let symptom =
+                            add_args
+                                .symptom
+                                .ok_or_else(|| error::MtuiError::InvalidArgument {
+                                    message: "Missing --symptom".to_string(),
+                                    suggestion:
+                                        "Pass --symptom \"...\" or use --stdin with a JSON draft"
+                                            .to_string(),
+                                })?;
                         let mut context = serde_json::Map::new();
-                        context.insert("frameworks".to_string(), serde_json::json!(add_args.framework));
+                        context.insert(
+                            "frameworks".to_string(),
+                            serde_json::json!(add_args.framework),
+                        );
                         context.insert("packages".to_string(), serde_json::json!(add_args.package));
                         context.insert("files".to_string(), serde_json::json!(add_args.file));
                         context.insert("commands".to_string(), serde_json::json!(add_args.command));
                         if let Some(error_category) = add_args.error {
-                            context.insert("errorCategory".to_string(), serde_json::json!(error_category));
+                            context.insert(
+                                "errorCategory".to_string(),
+                                serde_json::json!(error_category),
+                            );
                         }
                         let mut draft = serde_json::Map::new();
                         draft.insert("kind".to_string(), serde_json::json!(add_args.kind));
-                        draft.insert("symptoms".to_string(), serde_json::json!({ "summary": symptom }));
+                        draft.insert(
+                            "symptoms".to_string(),
+                            serde_json::json!({ "summary": symptom }),
+                        );
                         draft.insert("context".to_string(), serde_json::Value::Object(context));
                         draft.insert("tags".to_string(), serde_json::json!(add_args.tag));
                         if let Some(lesson) = add_args.lesson {
@@ -1399,10 +1530,13 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                         command: "exp.add",
                         queued: true,
                         file: path.display().to_string(),
-                        note: "Draft queued; the engine embeds and dedupes it on the next drain.".to_string(),
+                        note: "Draft queued; the engine embeds and dedupes it on the next drain."
+                            .to_string(),
                     };
                     match output_mode {
-                        OutputMode::Json => output::print_json(&output::SuccessResponse::new(&result)),
+                        OutputMode::Json => {
+                            output::print_json(&output::SuccessResponse::new(&result))
+                        }
                         OutputMode::Human => println!("Queued experience draft to {}", result.file),
                     }
                 }
@@ -1412,10 +1546,14 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                         command: "exp.forget",
                         queued: true,
                         file: path.display().to_string(),
-                        note: "Id queued for archival; hidden from search until the engine rebuilds.".to_string(),
+                        note:
+                            "Id queued for archival; hidden from search until the engine rebuilds."
+                                .to_string(),
                     };
                     match output_mode {
-                        OutputMode::Json => output::print_json(&output::SuccessResponse::new(&result)),
+                        OutputMode::Json => {
+                            output::print_json(&output::SuccessResponse::new(&result))
+                        }
                         OutputMode::Human => println!("Queued forget for {}", forget_args.id),
                     }
                 }
@@ -1427,7 +1565,8 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                     } else {
                         return Err(error::MtuiError::InvalidArgument {
                             message: "Specify --helpful or --unhelpful".to_string(),
-                            suggestion: "mtui exp feedback <id> --helpful  (or --unhelpful)".to_string(),
+                            suggestion: "mtui exp feedback <id> --helpful  (or --unhelpful)"
+                                .to_string(),
                         });
                     };
                     let path = exp::queue_feedback(&project_root, &feedback_args.id, helped)?;
@@ -1435,11 +1574,18 @@ fn run(cli: cli::Cli, output_mode: OutputMode) -> Result<(), error::MtuiError> {
                         command: "exp.feedback",
                         queued: true,
                         file: path.display().to_string(),
-                        note: "Feedback queued; the engine adjusts confidence on the next drain.".to_string(),
+                        note: "Feedback queued; the engine adjusts confidence on the next drain."
+                            .to_string(),
                     };
                     match output_mode {
-                        OutputMode::Json => output::print_json(&output::SuccessResponse::new(&result)),
-                        OutputMode::Human => println!("Queued {} feedback for {}", if helped { "helpful" } else { "unhelpful" }, feedback_args.id),
+                        OutputMode::Json => {
+                            output::print_json(&output::SuccessResponse::new(&result))
+                        }
+                        OutputMode::Human => println!(
+                            "Queued {} feedback for {}",
+                            if helped { "helpful" } else { "unhelpful" },
+                            feedback_args.id
+                        ),
                     }
                 }
             }

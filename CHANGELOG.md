@@ -1,6 +1,17 @@
 # Changelog
 
-## [2.1.16](https://github.com/iOfficeAI/AionUi/compare/v2.1.15...v2.1.16) (2026-07-05)
+## [0.0.0](https://github.com/VNDT1625/OmniAgent/releases/tag/v0.0.0) (2026-07-16)
+
+### Desktop
+
+#### Features
+
+- **release:** establish the clean Tomni Agentic updater baseline
+- **update:** use only `VNDT1625/OmniAgent` for releases and update metadata
+
+---
+
+## [2.1.16](https://github.com/VNDT1625/OmniAgent/compare/v2.1.15...v2.1.16) (2026-07-05)
 
 ### Desktop
 
@@ -10,7 +21,7 @@
 
 ---
 
-## [2.1.7](https://github.com/iOfficeAI/AionUi/compare/v2.1.6...v2.1.7) (2026-05-29)
+## [2.1.7](https://github.com/VNDT1625/OmniAgent/compare/v2.1.6...v2.1.7) (2026-05-29)
 
 ### Desktop
 
@@ -30,21 +41,21 @@
 - **web-host:** add health timeout diagnostics (#3102)
 - **settings:** avoid blue switch during image generation loading (#3091)
 
-### Core ([v0.1.16](https://github.com/iOfficeAI/AionCore/releases/tag/v0.1.16))
+### Core ([v0.1.16](https://github.com/VNDT1625/OmniAgent/releases/tag/v0.1.16))
 
 #### Features
 
-- **agent:** classify structured agent send errors ([#356](https://github.com/iOfficeAI/AionCore/issues/356))
-- **mcp:** support session scoped MCP injection ([#363](https://github.com/iOfficeAI/AionCore/issues/363))
+- **agent:** classify structured agent send errors ([#356](https://github.com/VNDT1625/OmniAgent/issues/356))
+- **mcp:** support session scoped MCP injection ([#363](https://github.com/VNDT1625/OmniAgent/issues/363))
 
 #### Bug Fixes
 
-- channel reply stream cold start ([#366](https://github.com/iOfficeAI/AionCore/issues/366))
-- **mcp:** clean up stdio test process trees ([#368](https://github.com/iOfficeAI/AionCore/issues/368))
+- channel reply stream cold start ([#366](https://github.com/VNDT1625/OmniAgent/issues/366))
+- **mcp:** clean up stdio test process trees ([#368](https://github.com/VNDT1625/OmniAgent/issues/368))
 
 ---
 
-## [2.1.6](https://github.com/iOfficeAI/AionUi/compare/v2.1.5...v2.1.6) (2026-05-28)
+## [2.1.6](https://github.com/VNDT1625/OmniAgent/compare/v2.1.5...v2.1.6) (2026-05-28)
 
 ### Desktop
 
@@ -61,15 +72,15 @@
 - lazy-load full tool message content (#3086)
 - improve message startup latency (#3082)
 
-### Core ([v0.1.15](https://github.com/iOfficeAI/AionCore/releases/tag/v0.1.15))
+### Core ([v0.1.15](https://github.com/VNDT1625/OmniAgent/releases/tag/v0.1.15))
 
 #### Bug Fixes
 
-- **agent:** add provider health check probe ([#358](https://github.com/iOfficeAI/AionCore/issues/358))
+- **agent:** add provider health check probe ([#358](https://github.com/VNDT1625/OmniAgent/issues/358))
 
 ---
 
-## [2.1.5](https://github.com/iOfficeAI/AionUi/compare/v2.1.4...v2.1.5) (2026-05-27)
+## [2.1.5](https://github.com/VNDT1625/OmniAgent/compare/v2.1.4...v2.1.5) (2026-05-27)
 
 ### Desktop
 
@@ -100,20 +111,20 @@
 - recover pending permission prompts (#3059)
 - preserve timezone for scheduled tasks (#3056)
 
-### Core ([v0.1.14](https://github.com/iOfficeAI/AionCore/releases/tag/v0.1.14))
+### Core ([v0.1.14](https://github.com/VNDT1625/OmniAgent/releases/tag/v0.1.14))
 
 #### Bug Fixes
 
-- preserve cron timezone on legacy schedule updates ([#344](https://github.com/iOfficeAI/AionCore/issues/344))
-- **startup:** add backend readiness diagnostics ([#346](https://github.com/iOfficeAI/AionCore/issues/346))
+- preserve cron timezone on legacy schedule updates ([#344](https://github.com/VNDT1625/OmniAgent/issues/344))
+- **startup:** add backend readiness diagnostics ([#346](https://github.com/VNDT1625/OmniAgent/issues/346))
 
 #### Refactoring
 
-- four-layer architecture (connect / conv / biz) ([#349](https://github.com/iOfficeAI/AionCore/issues/349))
+- four-layer architecture (connect / conv / biz) ([#349](https://github.com/VNDT1625/OmniAgent/issues/349))
 
 ---
 
-## [2.1.4](https://github.com/iOfficeAI/AionUi/compare/v2.1.3...v2.1.4) (2026-05-27)
+## [2.1.4](https://github.com/VNDT1625/OmniAgent/compare/v2.1.3...v2.1.4) (2026-05-27)
 
 ### Desktop
 

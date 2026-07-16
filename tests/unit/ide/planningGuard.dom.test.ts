@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -76,17 +76,12 @@ describe('buildPlanningGuard', () => {
     });
   });
 
-  it('bypasses planning and MTUI preflight for ordinary chat and sends the message untouched', async () => {
+  it('runs MTUI preflight for ordinary chat and sends a clean message untouched', async () => {
     const message = await buildPlanningGuard('/repo', 'fix login');
     expect(message).toBe('fix login');
-    // The tool-preference rule is seeded into session memory once on tab open,
-    // NOT appended to every message anymore.
-    expect(message).not.toContain('prefer the provided mtui/IDE tools');
-    expect(message).not.toContain('## Tool Guard');
-    expect(message).not.toContain('## Plan Guard');
     expect(mockedSpecStatus).not.toHaveBeenCalled();
     expect(mockedSpecTaskList).not.toHaveBeenCalled();
-    expect(mockedGitStatus).not.toHaveBeenCalled();
+    expect(mockedGitStatus).toHaveBeenCalledWith('/repo');
     expect(mockedMtuiPolicyCheck).not.toHaveBeenCalled();
   });
 

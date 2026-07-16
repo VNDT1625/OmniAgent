@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -22,7 +22,7 @@ describe('build-with-builder', () => {
       args: ['auto', '--mac', '--x64'],
       expectedArch: 'x64',
     },
-  ])('prepares bundled AionCore for $expectedArch with args $args', ({ args, expectedArch }) => {
+  ])('builds bundled Tomny Core for $expectedArch with args $args', ({ args, expectedArch }) => {
     const tempDir = mkdtempSync(join(tmpdir(), 'aionui-build-test-'));
     const hookPath = join(tempDir, 'hook.cjs');
     const callsPath = join(tempDir, 'prepare-calls.json');
@@ -42,21 +42,23 @@ function recordPrepareCall(options) {
   const calls = fs.existsSync(callsPath) ? JSON.parse(fs.readFileSync(callsPath, 'utf8')) : [];
   calls.push(options ?? null);
   fs.writeFileSync(callsPath, JSON.stringify(calls));
-  return { prepared: true, dir: 'mock-bundled-aioncore', sourceType: 'mock' };
+  return { prepared: true, dir: 'mock-bundled-tomny-core', sourceType: 'source-build' };
 }
 
 Module._load = function patchedLoad(request, parent, isMain) {
-  if (request === './prepareAioncore' || request.endsWith('/prepareAioncore')) {
+  if (request === './prepareTomnyCore' || request.endsWith('/prepareTomnyCore')) {
     return recordPrepareCall;
   }
 
-  if (request.endsWith('packages/shared-scripts/src/prepare-aioncore.js')) {
-    return { prepareAioncore: recordPrepareCall };
+  if (request.endsWith('packages/shared-scripts/src/prepare-tomny-core.js')) {
+    return { prepareTomnyCore: recordPrepareCall };
   }
 
-  if (request === './resolveAioncoreVersion.js' || request.endsWith('/resolveAioncoreVersion.js')) {
-    return { resolveAioncoreVersion: () => 'v-test' };
+
+  if (request.endsWith('packages/shared-scripts/src/prepare-tomny-cli.js')) {
+    return { prepareTomnyCli: () => ({ prepared: true, cached: true }) };
   }
+
 
   return originalLoad.call(this, request, parent, isMain);
 };
@@ -66,8 +68,8 @@ childProcess.execSync = function mockedExecSync(command) {
   if (commandText.includes('electron-vite build')) {
     fs.mkdirSync(path.join(process.cwd(), 'out/main'), { recursive: true });
     fs.mkdirSync(path.join(process.cwd(), 'out/renderer'), { recursive: true });
-    fs.writeFileSync(path.join(process.cwd(), 'out/main/index.js'), '');
-    fs.writeFileSync(path.join(process.cwd(), 'out/renderer/index.html'), '');
+    fs.writeFileSync(path.join(process.cwd(), 'out/main/index.js'), 'console.log("main bundle");\\n');
+    fs.writeFileSync(path.join(process.cwd(), 'out/renderer/index.html'), '<div id="root"></div>\\n');
   }
   return Buffer.from('');
 };
@@ -82,6 +84,7 @@ childProcess.execSync = function mockedExecSync(command) {
         env: {
           ...process.env,
           AIONUI_PREPARE_CALLS_FILE: callsPath,
+          AIONUI_SKIP_PACK_CLEANUP: '1',
           NODE_OPTIONS: [process.env.NODE_OPTIONS, `--require=${hookPath}`].filter(Boolean).join(' '),
         },
       });

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -21,6 +21,7 @@ export type CloudWorkspaceFileMeta = {
   revision: number;
   updatedAt: number;
   deleted?: boolean;
+  encoding?: 'utf8' | 'base64';
 };
 
 export type CloudWorkspaceManifest = {
@@ -79,6 +80,7 @@ export type CloudWorkspaceOperationBase = {
   seq?: number;
   baseSeq: number;
   createdAt: number;
+  protocolVersion?: 2;
 };
 
 export type CloudWorkspaceWriteOperation = CloudWorkspaceOperationBase & {
@@ -86,6 +88,8 @@ export type CloudWorkspaceWriteOperation = CloudWorkspaceOperationBase & {
   path: string;
   hash: string;
   size: number;
+  baseHash?: string | null;
+  encoding?: 'utf8' | 'base64';
 };
 
 export type CloudWorkspacePatchOperation = CloudWorkspaceOperationBase & {
@@ -95,17 +99,21 @@ export type CloudWorkspacePatchOperation = CloudWorkspaceOperationBase & {
   newText: string;
   hash: string;
   size: number;
+  baseHash?: string | null;
+  encoding?: 'utf8' | 'base64';
 };
 
 export type CloudWorkspaceRenameOperation = CloudWorkspaceOperationBase & {
   type: 'file.rename';
   fromPath: string;
   toPath: string;
+  baseHash?: string | null;
 };
 
 export type CloudWorkspaceDeleteOperation = CloudWorkspaceOperationBase & {
   type: 'file.delete';
   path: string;
+  baseHash?: string | null;
 };
 
 export type CloudWorkspaceOperation =
@@ -165,6 +173,7 @@ export const buildCloudWorkspaceUrls = (config: Pick<CloudWorkspaceRelayConfig, 
     manifest: `${httpBase}/manifest`,
     status: `${httpBase}/status`,
     leases: `${httpBase}/leases`,
+    tickets: `${httpBase}/tickets`,
     opsSince: (seq: number): string => `${httpBase}/ops?since=${encodeURIComponent(String(seq))}`,
     appendOp: `${httpBase}/ops`,
     blob: (hash: string): string => `${httpBase}/blobs/${encodeURIComponent(hash)}`,
@@ -215,6 +224,7 @@ export const applyCloudWorkspaceOperation = (
       size: op.size,
       revision: (previous?.revision ?? 0) + 1,
       updatedAt,
+      encoding: op.encoding ?? previous?.encoding ?? 'utf8',
     };
   } else if (op.type === 'file.rename') {
     const fromPath = normalizeCloudPath(op.fromPath);

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -14,7 +14,7 @@
  * SAFETY (this is a high-blast-radius operation, so the policy is conservative):
  * - The push TARGET REMOTE is configurable and defaults to `origin`, but the
  *   publisher REFUSES to push to a remote whose URL matches the upstream project
- *   (`iOfficeAI/AionUi`) unless `allowUpstreamPush` is explicitly set — a fork
+ *   (`VNDT1625/OmniAgent`) unless `allowUpstreamPush` is explicitly set — a fork
  *   must not accidentally push to the shared upstream repo.
  * - It NEVER pushes to `main`/`master`; it always works on a new `fix/monitor-*`
  *   branch.
@@ -59,7 +59,7 @@ export type PublisherConfig = {
   push?: boolean;
   /** Allow pushing even when the remote looks like the shared upstream. Defaults to `false`. */
   allowUpstreamPush?: boolean;
-  /** Pattern identifying the protected upstream remote. Defaults to the AionUi upstream. */
+  /** Pattern identifying the protected upstream remote. Defaults to the Tomni Agentic upstream. */
   upstreamPattern?: RegExp;
 };
 
@@ -98,7 +98,7 @@ export type IReleasePublisher = {
 };
 
 /** Default upstream remote pattern the publisher refuses to push to. */
-const DEFAULT_UPSTREAM_PATTERN = /iOfficeAI\/AionUi(\.git)?$/i;
+const DEFAULT_UPSTREAM_PATTERN = /VNDT1625\/OmniAgent(\.git)?$/i;
 
 /** Build a safe, short branch name for a proposal. */
 const branchName = (prefix: string, proposal: PatchProposal, shortId: () => string): string => {

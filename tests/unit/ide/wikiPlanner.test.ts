@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  *
  * Unit tests for the pure DeepWiki-style planning helpers (`selectKeyFiles` +
@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { planWikiSections, selectKeyFiles } from '@/process/ide/wikiPlanner';
+import { buildRuntimeInventory, planWikiSections, selectKeyFiles } from '@/process/ide/wikiPlanner';
 
 import { runWikiBootstrap } from '@/process/ide/wiki/wikiBootstrap';
 import type { RepoGraph } from '@/process/ide/repoGraph';
@@ -179,6 +179,51 @@ describe('planWikiSections', () => {
       'docs/api.md',
     ]);
     expect(sections.map((s) => s.id)).toContain('api');
+  });
+
+  it('requires the build/run section to enumerate the complete runtime topology', () => {
+    const sections = planWikiSections(
+      makeGraph(
+        [
+          { id: 'apps/web/src/main.ts', label: 'main.ts', group: 'apps/web' },
+          { id: 'services/api/src/server.ts', label: 'server.ts', group: 'services/api' },
+          { id: 'services/worker/src/index.ts', label: 'index.ts', group: 'services/worker' },
+        ],
+        []
+      ),
+      ['apps/web/package.json', 'services/api/package.json', 'services/worker/package.json']
+    );
+
+    const buildRun = sections.find((section) => section.id === 'buildRun');
+    expect(buildRun?.brief).toMatch(/every independently required runtime process/i);
+    expect(buildRun?.brief).toMatch(/startup order/i);
+    expect(buildRun?.brief).toMatch(/single root orchestrator/i);
+  });
+
+  it('summarizes every workspace runtime manifest for Wiki grounding', () => {
+    const inventory = buildRuntimeInventory([
+      {
+        relPath: 'apps/web/package.json',
+        content: JSON.stringify({ name: 'web', scripts: { dev: 'vite' } }),
+      },
+      {
+        relPath: 'services/api/package.json',
+        content: JSON.stringify({ name: 'api', scripts: { dev: 'tsx src/server.ts' } }),
+      },
+      {
+        relPath: 'services/worker/package.json',
+        content: JSON.stringify({ name: 'worker', scripts: { start: 'node dist/worker.js' } }),
+      },
+      {
+        relPath: 'compose.yaml',
+        content: 'services:\n  postgres:\n    image: postgres:16',
+      },
+    ]);
+
+    expect(inventory).toContain('apps/web/package.json');
+    expect(inventory).toContain('services/api/package.json');
+    expect(inventory).toContain('services/worker/package.json');
+    expect(inventory).toContain('compose.yaml');
   });
 
   it('omits data-model and api sections for a plain repo', () => {

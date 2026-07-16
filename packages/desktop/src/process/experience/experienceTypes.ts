@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -101,12 +101,17 @@ export type ExperienceFix = {
   changedFiles: string[];
 };
 
+/** Where a compact lesson may be reused: one repository or every workspace. */
+export type ExperienceScope = 'repo' | 'app';
+
 /** A fully normalized experience record persisted in the store. */
 export type ExperienceEntry = {
   id: string;
   createdAt: string;
   updatedAt: string;
   projectId: string;
+  /** `repo` lessons are projected into `.mtui/exp`; `app` lessons are global. */
+  scope?: ExperienceScope;
   sourceSessionId?: string;
   kind: ExperienceKind;
   symptoms: ExperienceSymptoms;
@@ -135,6 +140,7 @@ export type ExperienceEntry = {
  */
 export type ExperienceEntryDraft = {
   projectId?: string;
+  scope?: ExperienceScope;
   sourceSessionId?: string;
   kind: ExperienceKind;
   symptoms: Partial<ExperienceSymptoms> & { summary: string };
@@ -154,6 +160,7 @@ export type ExperienceEntryPatch = Partial<Omit<ExperienceEntry, 'id' | 'created
 /** Filter for metadata-only lookups in the store. */
 export type ExperienceFilter = {
   projectId?: string;
+  scope?: ExperienceScope;
   kind?: ExperienceKind;
   status?: ExperienceStatus;
   tags?: string[];
@@ -220,6 +227,7 @@ export const EXPERIENCE_PROJECTION_VERSION = 1;
  */
 export type ExperienceProjectionEntry = {
   id: string;
+  scope: ExperienceScope;
   kind: ExperienceKind;
   status: ExperienceStatus;
   symptom: string;

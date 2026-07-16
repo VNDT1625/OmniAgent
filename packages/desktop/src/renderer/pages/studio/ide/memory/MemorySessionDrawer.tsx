@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -31,18 +31,25 @@ import {
   Select,
   Spin,
   Switch,
+  Tabs,
   Tag,
   Tooltip,
 } from '@arco-design/web-react';
 import { Brain, Delete, Lock, Pin, Plus, Refresh } from '@icon-park/react';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { IdeMemoryRecordableKind, SuperMemoryItem, SuperMemoryKind } from '../ideClient';
+import AionrsContextPanel from './AionrsContextPanel';
+
 import { useIdeMemory, type UseIdeMemory } from './useIdeMemory';
 
 type MemorySessionDrawerProps = {
   /** Session-memory id of the active chat tab, or null when no tab is active. */
   memId: string | null;
+  /** Active real conversation id. */
+  conversationId?: string | null;
+  /** Runtime type; Context is exposed only for AionRS. */
+  conversationType?: string | null;
   /** Whether the drawer is open (also gates polling). */
   visible: boolean;
   /** Close handler. */
@@ -94,9 +101,21 @@ const NoteRow: React.FC<{ item: SuperMemoryItem; kindLabel: string; pinnedLabel:
  * The session-memory drawer. Polls a snapshot while open and renders it as a
  * gauge + stats + grouped note list + secret-key tags.
  */
-const MemorySessionDrawer: React.FC<MemorySessionDrawerProps> = ({ memId, visible, onClose }) => {
+const MemorySessionDrawer: React.FC<MemorySessionDrawerProps> = ({
+  memId,
+  conversationId,
+  conversationType,
+  visible,
+  onClose,
+}) => {
   const { t } = useTranslation();
   const { snapshot, loading, refresh, clear, remember } = useIdeMemory(memId, visible);
+  const showContext = conversationType === 'aionrs' && conversationId !== null;
+  const [activePane, setActivePane] = useState<'save' | 'context'>('save');
+
+  useEffect(() => {
+    if (!showContext) setActivePane('save');
+  }, [showContext]);
 
   const groups = useMemo(() => {
     const items = snapshot?.items ?? [];
@@ -138,7 +157,7 @@ const MemorySessionDrawer: React.FC<MemorySessionDrawerProps> = ({ memId, visibl
 
   return (
     <Drawer
-      width={420}
+      width={showContext ? 620 : 420}
       visible={visible}
       onCancel={onClose}
       footer={null}
@@ -160,127 +179,146 @@ const MemorySessionDrawer: React.FC<MemorySessionDrawerProps> = ({ memId, visibl
         </div>
       ) : (
         <div className='flex flex-col gap-16px h-full min-h-0'>
-          {/* Token-budget gauge */}
-          <div className='flex flex-col gap-6px'>
-            <div className='flex items-center justify-between'>
-              <span className='text-11px font-600 uppercase tracking-wide text-t-tertiary'>
-                {t('ide.memory.usage')}
-              </span>
-              <span className='text-12px font-500 text-t-secondary'>
-                {t('ide.memory.usageValue', { used: snapshot?.tokensUsed ?? 0, budget: snapshot?.tokenBudget ?? 0 })}
-              </span>
-            </div>
-            <Progress percent={pct} status={usageStatus(pct)} showText={false} strokeWidth={8} />
-          </div>
-
-          {/* Stat row */}
-          <div className='flex flex-wrap gap-6px'>
-            <Stat label={t('ide.memory.notes')} value={groups.recent.length + groups.pinned.length} />
-            <Stat label={t('ide.memory.summaries')} value={groups.summaries.length} />
-            <Stat label={t('ide.memory.pinned')} value={groups.pinned.length} />
-            <Stat label={t('ide.memory.deduped')} value={snapshot?.deduped ?? 0} />
-            <Stat label={t('ide.memory.recalls')} value={snapshot?.recalls ?? 0} />
-            <Stat label={t('ide.memory.compactions')} value={snapshot?.compactions ?? 0} />
-          </div>
-
-          {/* Notes */}
-          <div className='flex-1 min-h-0 overflow-y-auto flex flex-col gap-12px pr-2px'>
-            {isEmpty ? (
-              <div className='py-24px flex-center'>
-                <Empty description={t('ide.memory.empty')} />
-              </div>
-            ) : (
-              <>
-                {groups.summaries.length > 0 ? (
-                  <Section title={t('ide.memory.summaries')}>
-                    {groups.summaries.map((item) => (
-                      <NoteRow
-                        key={item.id}
-                        item={item}
-                        kindLabel={kindLabel(item.kind)}
-                        pinnedLabel={t('ide.memory.pinnedTag')}
-                      />
-                    ))}
-                  </Section>
-                ) : null}
-                {groups.pinned.length > 0 ? (
-                  <Section title={t('ide.memory.pinned')}>
-                    {groups.pinned.map((item) => (
-                      <NoteRow
-                        key={item.id}
-                        item={item}
-                        kindLabel={kindLabel(item.kind)}
-                        pinnedLabel={t('ide.memory.pinnedTag')}
-                      />
-                    ))}
-                  </Section>
-                ) : null}
-                {groups.recent.length > 0 ? (
-                  <Section title={t('ide.memory.notes')}>
-                    {groups.recent.map((item) => (
-                      <NoteRow
-                        key={item.id}
-                        item={item}
-                        kindLabel={kindLabel(item.kind)}
-                        pinnedLabel={t('ide.memory.pinnedTag')}
-                      />
-                    ))}
-                  </Section>
-                ) : null}
-              </>
-            )}
-          </div>
-
-          {/* Secret keys */}
-          <div className='flex flex-col gap-6px'>
-            <div className='flex items-center gap-6px'>
-              <Lock theme='outline' size={13} className='text-t-tertiary' />
-              <span className='text-11px font-600 uppercase tracking-wide text-t-tertiary'>
-                {t('ide.memory.secretKeys')}
-              </span>
-            </div>
-            {snapshot && snapshot.secretKeys.length > 0 ? (
-              <div className='flex flex-wrap gap-6px'>
-                {snapshot.secretKeys.map((key) => (
-                  <Tag key={key} size='small' bordered icon={<Lock theme='outline' size={11} />}>
-                    {key}
-                  </Tag>
-                ))}
-              </div>
-            ) : (
-              <span className='text-12px text-t-tertiary'>{t('ide.memory.noSecrets')}</span>
-            )}
-            <span className='text-11px text-t-tertiary leading-relaxed'>{t('ide.memory.secretsHint')}</span>
-          </div>
-
-          {/* Quick-add a note for the agent */}
-          <QuickAddNote
-            remember={remember}
-            kindOptions={recordableKindOptions}
-            labels={{
-              placeholder: t('ide.memory.addPlaceholder'),
-              add: t('ide.memory.add'),
-              pin: t('ide.memory.pinNew'),
-              kind: t('ide.memory.kindLabel'),
-              saved: t('ide.memory.added'),
-            }}
-          />
-
-          {/* Actions */}
-          <div className='shrink-0 flex items-center justify-between gap-8px pt-8px border-t border-t-1'>
-            <Button
-              size='small'
-              icon={loading ? <Spin size={12} /> : <Refresh theme='outline' size={14} />}
-              onClick={() => void refresh()}
+          {showContext ? (
+            <Tabs
+              activeTab={activePane}
+              onChange={(key) => setActivePane(key as 'save' | 'context')}
+              className='shrink-0'
             >
-              {t('ide.memory.refresh')}
-            </Button>
-            <Popconfirm focusLock title={t('ide.memory.clearConfirm')} onOk={() => void clear()}>
-              <Button size='small' status='danger' icon={<Delete theme='outline' size={14} />} disabled={isEmpty}>
-                {t('ide.memory.clear')}
-              </Button>
-            </Popconfirm>
-          </div>
+              <Tabs.TabPane key='save' title={t('ide.memory.tabs.save')} />
+              <Tabs.TabPane key='context' title={t('ide.memory.tabs.context')} />
+            </Tabs>
+          ) : null}
+          {activePane === 'context' && conversationId ? (
+            <AionrsContextPanel conversationId={conversationId} active={visible} />
+          ) : (
+            <>
+              {/* Token-budget gauge */}
+              <div className='flex flex-col gap-6px'>
+                <div className='flex items-center justify-between'>
+                  <span className='text-11px font-600 uppercase tracking-wide text-t-tertiary'>
+                    {t('ide.memory.usage')}
+                  </span>
+                  <span className='text-12px font-500 text-t-secondary'>
+                    {t('ide.memory.usageValue', {
+                      used: snapshot?.tokensUsed ?? 0,
+                      budget: snapshot?.tokenBudget ?? 0,
+                    })}
+                  </span>
+                </div>
+                <Progress percent={pct} status={usageStatus(pct)} showText={false} strokeWidth={8} />
+              </div>
+
+              {/* Stat row */}
+              <div className='flex flex-wrap gap-6px'>
+                <Stat label={t('ide.memory.notes')} value={groups.recent.length + groups.pinned.length} />
+                <Stat label={t('ide.memory.summaries')} value={groups.summaries.length} />
+                <Stat label={t('ide.memory.pinned')} value={groups.pinned.length} />
+                <Stat label={t('ide.memory.deduped')} value={snapshot?.deduped ?? 0} />
+                <Stat label={t('ide.memory.recalls')} value={snapshot?.recalls ?? 0} />
+                <Stat label={t('ide.memory.compactions')} value={snapshot?.compactions ?? 0} />
+              </div>
+
+              {/* Notes */}
+              <div className='flex-1 min-h-0 overflow-y-auto flex flex-col gap-12px pr-2px'>
+                {isEmpty ? (
+                  <div className='py-24px flex-center'>
+                    <Empty description={t('ide.memory.empty')} />
+                  </div>
+                ) : (
+                  <>
+                    {groups.summaries.length > 0 ? (
+                      <Section title={t('ide.memory.summaries')}>
+                        {groups.summaries.map((item) => (
+                          <NoteRow
+                            key={item.id}
+                            item={item}
+                            kindLabel={kindLabel(item.kind)}
+                            pinnedLabel={t('ide.memory.pinnedTag')}
+                          />
+                        ))}
+                      </Section>
+                    ) : null}
+                    {groups.pinned.length > 0 ? (
+                      <Section title={t('ide.memory.pinned')}>
+                        {groups.pinned.map((item) => (
+                          <NoteRow
+                            key={item.id}
+                            item={item}
+                            kindLabel={kindLabel(item.kind)}
+                            pinnedLabel={t('ide.memory.pinnedTag')}
+                          />
+                        ))}
+                      </Section>
+                    ) : null}
+                    {groups.recent.length > 0 ? (
+                      <Section title={t('ide.memory.notes')}>
+                        {groups.recent.map((item) => (
+                          <NoteRow
+                            key={item.id}
+                            item={item}
+                            kindLabel={kindLabel(item.kind)}
+                            pinnedLabel={t('ide.memory.pinnedTag')}
+                          />
+                        ))}
+                      </Section>
+                    ) : null}
+                  </>
+                )}
+              </div>
+
+              {/* Secret keys */}
+              <div className='flex flex-col gap-6px'>
+                <div className='flex items-center gap-6px'>
+                  <Lock theme='outline' size={13} className='text-t-tertiary' />
+                  <span className='text-11px font-600 uppercase tracking-wide text-t-tertiary'>
+                    {t('ide.memory.secretKeys')}
+                  </span>
+                </div>
+                {snapshot && snapshot.secretKeys.length > 0 ? (
+                  <div className='flex flex-wrap gap-6px'>
+                    {snapshot.secretKeys.map((key) => (
+                      <Tag key={key} size='small' bordered icon={<Lock theme='outline' size={11} />}>
+                        {key}
+                      </Tag>
+                    ))}
+                  </div>
+                ) : (
+                  <span className='text-12px text-t-tertiary'>{t('ide.memory.noSecrets')}</span>
+                )}
+                <span className='text-11px text-t-tertiary leading-relaxed'>{t('ide.memory.secretsHint')}</span>
+              </div>
+
+              {/* Quick-add a note for the agent */}
+              <QuickAddNote
+                remember={remember}
+                kindOptions={recordableKindOptions}
+                labels={{
+                  placeholder: t('ide.memory.addPlaceholder'),
+                  add: t('ide.memory.add'),
+                  pin: t('ide.memory.pinNew'),
+                  kind: t('ide.memory.kindLabel'),
+                  saved: t('ide.memory.added'),
+                }}
+              />
+
+              {/* Actions */}
+              <div className='shrink-0 flex items-center justify-between gap-8px pt-8px border-t border-t-1'>
+                <Button
+                  size='small'
+                  icon={loading ? <Spin size={12} /> : <Refresh theme='outline' size={14} />}
+                  onClick={() => void refresh()}
+                >
+                  {t('ide.memory.refresh')}
+                </Button>
+                <Popconfirm focusLock title={t('ide.memory.clearConfirm')} onOk={() => void clear()}>
+                  <Button size='small' status='danger' icon={<Delete theme='outline' size={14} />} disabled={isEmpty}>
+                    {t('ide.memory.clear')}
+                  </Button>
+                </Popconfirm>
+              </div>
+            </>
+          )}
         </div>
       )}
     </Drawer>

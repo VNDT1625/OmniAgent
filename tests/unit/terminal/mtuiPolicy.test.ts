@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -8,8 +8,17 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseMtuiOutput, resolveInstalledWindowsMtui } from '@/process/terminal/mtuiBridge';
-import { commandFromTerminalInput, detectMtuiViolations, isDirectWriteCommand } from '@/process/terminal/mtuiPolicy';
+import {
+  parseMtuiOutput,
+  resolveDevelopmentMtuiPath,
+  resolveInstalledWindowsMtui,
+} from '@/process/terminal/mtuiBridge';
+import {
+  commandFromTerminalInput,
+  detectMtuiViolations,
+  isDirectWriteCommand,
+  MTUI_POLICY_OPERATION_LIMIT,
+} from '@/process/terminal/mtuiPolicy';
 
 const tempDirs: string[] = [];
 
@@ -118,7 +127,23 @@ describe('MTUI strict policy helpers', () => {
   });
 });
 
+describe('MTUI policy history window', () => {
+  it('keeps enough operations for long agent sessions with many localized edits', () => {
+    expect(MTUI_POLICY_OPERATION_LIMIT).toBeGreaterThanOrEqual(10_000);
+  });
+});
+
 describe('MTUI binary resolution', () => {
+  it('prefers a workspace build over a stale installed binary in development', () => {
+    const root = createInstallDir();
+    const workspaceBinary = join(root, 'packages', 'mtui', 'target', 'debug', 'mtui.exe');
+    const installedBinary = join(root, 'installed', 'mtui.exe');
+    createBinary(workspaceBinary);
+    createBinary(installedBinary);
+
+    expect(resolveDevelopmentMtuiPath(root, 'mtui.exe', installedBinary)).toBe(workspaceBinary);
+  });
+
   it('prefers the installer latest metadata over lexicographic version folders', () => {
     const installDir = createInstallDir();
     const latestBinary = join(installDir, 'versions', '0.1.0-9', 'mtui.exe');

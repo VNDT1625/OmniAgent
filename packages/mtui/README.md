@@ -62,11 +62,21 @@ mtui read src/app.ts --all --json
 mtui search src "keyword" --json
 mtui search src "keyword" --limit 20 --json
 mtui search src "keyword" --max-count 20 --json
+
+# Ripgrep-style deterministic filters without a shell pipeline
+mtui --json search src "<(button|input)\\b" --regex --glob "**/*.{ts,tsx}" --count
+mtui --json search src "security todo" --ignore-case --context 2
+mtui --json search src "register" --glob "**/*.rs" --exclude "**/tests/**" --files-with-matches
+
+# Tree metrics without PowerShell/find/wc pipelines
+mtui --json stats packages/desktop/src/process/ide --largest 20
 ```
 
 `read` validates paths, rejects ignored/binary/non-UTF-8 files, and caps output by default to protect agent context. Use `--from/--to` for targeted source reads, `--max-lines` or `--max-chars` for larger bounded reads, and `--all` only when full content is necessary.
 
-`search` skips build/cache folders such as `.git`, `.mtui`, `.omni`, `node_modules`, `target`, `dist`, and `build`. `--max-count` is an alias for `--limit` for agents coming from ripgrep-style commands.
+`search` skips build/cache folders such as `.git`, `.mtui`, `.omni`, `node_modules`, `target`, `dist`, and `build`. It supports literal or regex matching, Unicode-safe previews, ignore-case, repeatable include/exclude globs, brace globs, context lines, files-only output, and grouped matching-line counts. `--max-count` is an alias for `--limit` for agents coming from ripgrep-style commands.
+
+`stats` returns direct-child count, recursive file/directory totals, bytes, text lines, extension totals, and the largest files while applying the same build/cache ignores as `analyze`.
 
 `context` and `map intent` return ranked candidates with score, stale flag, role, layer, language, module, summaries, and next read commands. They also include compact freshness counts (`changed`, `missing`, `unknown fingerprint`) with sample paths, so agents can decide whether to rebuild Understand/codegraph or continue with bounded source reads.
 
@@ -95,6 +105,16 @@ Token-saving layers:
 4. `memory compact`: session compression for recent MTUI writes, command history, and optional task state.
 
 Compressed outputs are explicit: they include `compressed`/`lossy` flags where applicable, source paths, ranges, and next commands so agents know when to read raw source.
+
+### Shared Project Wiki
+
+```bash
+# Retrieve ranked Wiki sections for an agent task
+mtui wiki "api" --json
+mtui wiki "how many processes are required to run the complete web app" --limit 3 --json
+```
+
+`wiki` reads the durable repository export at `.omni/wiki/wiki.json`. Build or rebuild the Wiki from AionUi Studio first. The command is read-only and returns authored section content, build metadata, and the key files used as evidence, so agents share the same project knowledge without rescanning the repository.
 
 ### Diff / Undo
 
@@ -188,11 +208,14 @@ mtui --json verify python --spec my-plan .omni/specs/my-plan/plan/temporary/test
 # Run a generic verification command without shell expansion
 mtui --json verify run bun test tests/unit/example.test.ts
 
+# Run from a repo subdirectory without changing shell state
+mtui --json verify run --cwd packages/mtui cargo test
+
 # Return full output instead of the compact focused view
 mtui --json verify python --all .omni/specs/my-plan/plan/temporary/test.py
 ```
 
-`verify` captures stdout/stderr, stores the full log, and returns structured JSON with `passed`, `exit_code`, `duration_ms`, `summary`, `output`, and `full_log_path`. Successful runs stay short. Failed runs focus on traceback, assertion, warning, error, and file-line signals. When `--spec` is provided, logs are written to `.omni/specs/<slug>/plan/temporary/`; otherwise they go to `.mtui/verify/`.
+`verify` captures stdout/stderr, stores the full log, and returns structured JSON with `passed`, `exit_code`, `duration_ms`, `summary`, `output`, `cwd`, and `full_log_path`. Successful runs stay short. Failed runs focus on traceback, assertion, warning, error, and file-line signals. When `--spec` is provided, logs are written to `.omni/specs/<slug>/plan/temporary/`; otherwise they go to `.mtui/verify/`.
 
 ### Strict MTUI Policy
 
@@ -255,11 +278,11 @@ mtui information folder . --json
 
 `summary` and `info` read `.omni/understand/summary.json`, exported by the IDE Understand/codegraph build. Treat results with `"stale": true` as hints only and rebuild Understand before relying on them.
 
-If the Understand cache is missing a file or folder, `summary`, `info`, and `map folder` fall back to a safe filesystem scan instead of returning an empty result. Fallback output is marked with `summarySource: "filesystem-fallback"`, `stale: true`, and low map confidence; use it to pick candidate files, then run `compass read` or rebuild Understand for semantic relationships.
+If the Understand cache is missing a file or folder, `summary`, `info`, and `map folder` fall back to a safe filesystem scan instead of returning an empty result. When a folder map is stale but still available, MTUI overlays new filesystem files and refreshes the visible module file count while retaining cached semantic summaries as explicitly stale hints. Fallback output is marked with `summarySource: "filesystem-fallback"`, `stale: true`, and low map confidence; use it to pick candidate files, then run `compass read` or rebuild Understand for semantic relationships.
 
 ## JSON Output
 
-All commands support `--json` for structured output. Success responses have `ok: true`; error responses have `ok: false` with `error_type`, `message`, and optional `suggestion`. Invalid arguments also honor `--json`, so agents can parse CLI mistakes instead of hanging on human-only Clap output.
+All commands support `--json` for structured output. JSON is emitted as compact single-line data to minimize agent context usage; empty optional collections are omitted where possible. Success responses have `ok: true`; error responses have `ok: false` with `error_type`, `message`, and optional `suggestion`. Invalid arguments also honor `--json`, so agents can parse CLI mistakes instead of hanging on human-only Clap output.
 
 ### Success envelope
 

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -27,6 +27,7 @@ import type {
 } from '@process/ide/teamEdit/cloud/cloudWorkspaceBridge';
 import type { CloudWorkspaceLeaseClaimResult, CloudWorkspaceOperation } from '@/common/adapter/cloudWorkspaceMapper';
 import type { TeamTreeEntry } from '@process/ide/teamEdit/teamSessionHost';
+import type { ReplicaConflictResolution, ReplicaSyncStatus } from '@process/ide/teamEdit/cloud/cloudReplicaTypes';
 
 const CLOUD_WORKSPACE_CHANNELS = {
   connect: 'ide.cloud-workspace-connect',
@@ -42,6 +43,8 @@ const CLOUD_WORKSPACE_CHANNELS = {
   publishStatus: 'ide.cloud-workspace-publish-status',
   pull: 'ide.cloud-workspace-pull',
   pullStatus: 'ide.cloud-workspace-pull-status',
+  replicaSync: 'ide.cloud-workspace-replica-sync',
+  replicaResolve: 'ide.cloud-workspace-replica-resolve',
   event: 'ide.cloud-workspace-event',
 } as const;
 
@@ -89,6 +92,13 @@ const channels = {
   pullStatus: bridge.buildProvider<CloudWorkspaceResult<CloudWorkspacePullProgress>, { workspaceId: string }>(
     CLOUD_WORKSPACE_CHANNELS.pullStatus
   ),
+  replicaSync: bridge.buildProvider<CloudWorkspaceResult<ReplicaSyncStatus>, { workspaceId: string }>(
+    CLOUD_WORKSPACE_CHANNELS.replicaSync
+  ),
+  replicaResolve: bridge.buildProvider<
+    CloudWorkspaceResult<ReplicaSyncStatus>,
+    { workspaceId: string; conflictId: string; resolution: ReplicaConflictResolution; mergedContent?: string }
+  >(CLOUD_WORKSPACE_CHANNELS.replicaResolve),
   event: bridge.buildEmitter<CloudWorkspaceEventEnvelope>(CLOUD_WORKSPACE_CHANNELS.event),
 };
 
@@ -187,6 +197,20 @@ export const cloudWorkspaceClient = {
     withTimeout(CLOUD_WORKSPACE_CHANNELS.pull, () => channels.pull.invoke({ workspaceId, rootPath }), 20000),
   pullStatus: (workspaceId: string): Promise<CloudWorkspaceResult<CloudWorkspacePullProgress>> =>
     withTimeout(CLOUD_WORKSPACE_CHANNELS.pullStatus, () => channels.pullStatus.invoke({ workspaceId }), 15000),
+  replicaSync: (workspaceId: string): Promise<CloudWorkspaceResult<ReplicaSyncStatus>> =>
+    withTimeout(CLOUD_WORKSPACE_CHANNELS.replicaSync, () => channels.replicaSync.invoke({ workspaceId }), 120000),
+  replicaResolve: (
+    workspaceId: string,
+    conflictId: string,
+    resolution: ReplicaConflictResolution,
+    mergedContent?: string
+  ): Promise<CloudWorkspaceResult<ReplicaSyncStatus>> =>
+    withTimeout(
+      CLOUD_WORKSPACE_CHANNELS.replicaResolve,
+      () => channels.replicaResolve.invoke({ workspaceId, conflictId, resolution, mergedContent }),
+      120000
+    ),
+
   onEvent: (listener: (event: CloudWorkspaceEventEnvelope['event']) => void): (() => void) =>
     channels.event.on((envelope) => listener(envelope.event)),
 };

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  *
  * Unit tests for quickTestNativeTracer — the native (android/windows) runtime
@@ -13,11 +13,13 @@ import {
   mapNativeLogLine,
   type NativeLogStream,
 } from '@/process/ide/quickTestNativeTracer';
+import type { TraceEvent } from '@/process/ide/quickTestTracer';
 
 /** Build a fake NativeLogStream the test can drive by emitting lines/close. */
 const makeFakeStream = () => {
   let lineListener: ((line: string) => void) | null = null;
   let closeListener: ((info: { code: number | null }) => void) | null = null;
+  let interactionListener: ((event: Extract<TraceEvent, { kind: 'click' | 'input' }>) => void) | null = null;
   let closed = false;
 
   const stream: NativeLogStream = {
@@ -27,6 +29,9 @@ const makeFakeStream = () => {
     onClose: (listener) => {
       closeListener = listener;
     },
+    onInteraction: (listener) => {
+      interactionListener = listener;
+    },
     close: () => {
       closed = true;
     },
@@ -35,6 +40,7 @@ const makeFakeStream = () => {
   return {
     stream,
     emit: (line: string) => lineListener?.(line),
+    emitInteraction: (event: Extract<TraceEvent, { kind: 'click' | 'input' }>) => interactionListener?.(event),
     fireClose: (code: number | null) => closeListener?.({ code }),
     isClosed: () => closed,
   };
@@ -92,6 +98,20 @@ describe('createQuickTestNativeTracer', () => {
     fake.emit('E/MyApp( 1): boom');
     const events = tracer.currentEvents();
     expect(events.some((e) => e.kind === 'console' && e.level === 'error')).toBe(true);
+  });
+
+  it('records structured accessibility interactions supplied by a native adapter', async () => {
+    const fake = makeFakeStream();
+    const tracer = createQuickTestNativeTracer({ openStream: async () => fake.stream, now: () => 1000 });
+    await tracer.start('android', '/repo', 'emulator-5554');
+    fake.emitInteraction({ kind: 'click', selector: 'android:id/login', text: 'Login', at: 1100 });
+    expect(tracer.currentEvents()).toContainEqual({
+      kind: 'click',
+      selector: 'android:id/login',
+      text: 'Login',
+      at: 1100,
+    });
+    expect(tracer.hasStructuredInteractions()).toBe(true);
   });
 
   it('stop returns a trace with the right platform + firstError and closes the stream', async () => {

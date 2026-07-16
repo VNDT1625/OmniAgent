@@ -10,7 +10,7 @@
   {
     "id": "aionui-home",
     "name": "AionUI Home",
-    "entryPoint": "https://aionui.com/",
+    "entryPoint": "https://github.com/VNDT1625/OmniAgent/",
     "icon": "assets/star-office-icon.svg",
     "position": { "anchor": "display", "placement": "after" },
     "order": 80

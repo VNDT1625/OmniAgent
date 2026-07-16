@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/iOfficeAI/Omni?style=flat-square&color=32CD32" alt="Version">
+  <img src="https://img.shields.io/github/v/release/VNDT1625/Omni?style=flat-square&color=32CD32" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-32CD32?style=flat-square&logo=apache&logoColor=white" alt="License">
   &nbsp;
@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/⬇️%20Descargar%20ahora-Última%20versión-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="Descargar última versión" height="50">
   </a>
 </p>
@@ -234,7 +234,7 @@ _Tu asistente AI 24/7 — accede a Omni desde cualquier dispositivo, en cualquie
 
 <p align="center"><em>Controla y supervisa tu agente en remoto — Claude, Gemini, Codex. Desde el navegador o el móvil, como Claude Code remote.</em></p>
 
-> [Tutorial de acceso remoto a Internet](https://github.com/iOfficeAI/Omni/wiki/Remote-Internet-Access-Guide-Chinese)
+> [Tutorial de acceso remoto a Internet](https://github.com/VNDT1625/Omni/wiki/Remote-Internet-Access-Guide-Chinese)
 
 ## ✨ Cowork en acción
 
@@ -393,7 +393,7 @@ _Generación, edición y reconocimiento inteligente de imágenes, impulsado por 
 
 </details>
 
-> [Guía de configuración del modelo de generación de imágenes](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide)
+> [Guía de configuración del modelo de generación de imágenes](https://github.com/VNDT1625/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide)
 
 ---
 
@@ -553,7 +553,7 @@ R: Todos los datos se almacenan localmente en una base de datos SQLite. No se su
 ### Instalar
 
 <p>
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/Descargar-Última%20versión-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="Descargar última versión" height="50">
   </a>
 </p>
@@ -580,23 +580,23 @@ brew install omni
 
 **🚀 Inicio rápido**
 
-- [📖 Guía de instalación completa](https://github.com/iOfficeAI/Omni/wiki/Getting-Started) — Pasos detallados desde la descarga hasta la configuración
-- [⚙️ Guía de configuración LLM](https://github.com/iOfficeAI/Omni/wiki/LLM-Configuration) — Configuración de modelos AI multiplataforma
-- [🤖 Configuración del modo Multi-Agent](https://github.com/iOfficeAI/Omni/wiki/ACP-Setup) — Integrar Agents AI de terminal
-- [🔌 Configuración de herramientas MCP](https://github.com/iOfficeAI/Omni/wiki/MCP-Configuration-Guide) — Configuración del servidor Model Context Protocol
-- [🌐 Guía de configuración WebUI](https://github.com/iOfficeAI/Omni/wiki/WebUI-Configuration-Guide) — Tutorial completo de configuración y configuración de WebUI
+- [📖 Guía de instalación completa](https://github.com/VNDT1625/Omni/wiki/Getting-Started) — Pasos detallados desde la descarga hasta la configuración
+- [⚙️ Guía de configuración LLM](https://github.com/VNDT1625/Omni/wiki/LLM-Configuration) — Configuración de modelos AI multiplataforma
+- [🤖 Configuración del modo Multi-Agent](https://github.com/VNDT1625/Omni/wiki/ACP-Setup) — Integrar Agents AI de terminal
+- [🔌 Configuración de herramientas MCP](https://github.com/VNDT1625/Omni/wiki/MCP-Configuration-Guide) — Configuración del servidor Model Context Protocol
+- [🌐 Guía de configuración WebUI](https://github.com/VNDT1625/Omni/wiki/WebUI-Configuration-Guide) — Tutorial completo de configuración y configuración de WebUI
 
 **🎯 Casos de uso**
 
-- [📁 Gestión de archivos](https://github.com/iOfficeAI/Omni/wiki/file-management) — Organización inteligente de archivos
-- [📊 Procesamiento de Excel](https://github.com/iOfficeAI/Omni/wiki/excel-processing) — Procesamiento de datos impulsado por AI
-- [🎨 Generación de imágenes](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide) — Creación de imágenes AI
-- [📚 Más casos de uso](https://github.com/iOfficeAI/Omni/wiki/Use-Cases-Overview)
+- [📁 Gestión de archivos](https://github.com/VNDT1625/Omni/wiki/file-management) — Organización inteligente de archivos
+- [📊 Procesamiento de Excel](https://github.com/VNDT1625/Omni/wiki/excel-processing) — Procesamiento de datos impulsado por AI
+- [🎨 Generación de imágenes](https://github.com/VNDT1625/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide) — Creación de imágenes AI
+- [📚 Más casos de uso](https://github.com/VNDT1625/Omni/wiki/Use-Cases-Overview)
 
 **❓ Soporte y ayuda**
 
-- [❓ FAQ](https://github.com/iOfficeAI/Omni/wiki/FAQ) — Preguntas y solución de problemas
-- [🔧 Tutoriales de configuración y uso](https://github.com/iOfficeAI/Omni/wiki/Configuration-Guides) — Documentación de configuración completa
+- [❓ FAQ](https://github.com/VNDT1625/Omni/wiki/FAQ) — Preguntas y solución de problemas
+- [🔧 Tutoriales de configuración y uso](https://github.com/VNDT1625/Omni/wiki/Configuration-Guides) — Documentación de configuración completa
 
 </details>
 
@@ -612,9 +612,9 @@ brew install omni
   </a>
 </p>
 
-- [GitHub Discussions](https://github.com/iOfficeAI/Omni/discussions) — comparte ideas e intercambia consejos
-- [Reportar problemas](https://github.com/iOfficeAI/Omni/issues) — errores y solicitudes de funciones
-- [Actualizaciones de lanzamiento](https://github.com/iOfficeAI/Omni/releases) — obtén la última versión
+- [GitHub Discussions](https://github.com/VNDT1625/Omni/discussions) — comparte ideas e intercambia consejos
+- [Reportar problemas](https://github.com/VNDT1625/Omni/issues) — errores y solicitudes de funciones
+- [Actualizaciones de lanzamiento](https://github.com/VNDT1625/Omni/releases) — obtén la última versión
 - [Comunidad Discord](https://discord.gg/2QAwJn7Egx) — comunidad en inglés
 - [Grupo WeChat](../../resources/wx-9.png) — comunidad china
 
@@ -649,16 +649,16 @@ Este proyecto está licenciado bajo [Apache-2.0](../../LICENSE).
 ## Contribuidores
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=iOfficeAI/Omni&max=100" alt="Contributors" />
+  <a href="https://github.com/VNDT1625/Omni/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=VNDT1625/Omni&max=100" alt="Contributors" />
   </a>
 </p>
 
 ## Historial de estrellas
 
 <p align="center">
-  <a href="https://www.star-history.com/#iOfficeAI/omni&Date" target="_blank">
-    <img src="https://api.star-history.com/svg?repos=iOfficeAI/omni&type=Date" alt="Star History" width="600">
+  <a href="https://www.star-history.com/#VNDT1625/omni&Date" target="_blank">
+    <img src="https://api.star-history.com/svg?repos=VNDT1625/omni&type=Date" alt="Star History" width="600">
   </a>
 </p>
 
@@ -666,6 +666,6 @@ Este proyecto está licenciado bajo [Apache-2.0](../../LICENSE).
 
 **Si te gusta, danos una estrella**
 
-[Reportar error](https://github.com/iOfficeAI/Omni/issues) · [Solicitar función](https://github.com/iOfficeAI/Omni/issues)
+[Reportar error](https://github.com/VNDT1625/Omni/issues) · [Solicitar función](https://github.com/VNDT1625/Omni/issues)
 
 </div>

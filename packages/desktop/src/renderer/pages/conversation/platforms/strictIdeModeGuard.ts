@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -27,7 +27,6 @@ import {
   IDE_STRICT_MODE_PREFIX,
   evaluateStrictModePermission,
   evaluateStrictModeConfirmation,
-  isToolCallAllowedInStrictMode,
   type GuardConfirmation,
   type GuardPermissionOption,
   type GuardToolCall,
@@ -38,15 +37,11 @@ import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conve
 
 /** Read the per-workspace Strict IDE Mode toggle from localStorage. */
 export const isStrictIdeModeEnabled = (rootPath: string | undefined): boolean => {
-  // Strict IDE Mode is now hard-locked ON for all IDE workspaces: native
-  // Read/Grep/Glob/Bash/Write/Edit tools are always denied and agents must
-  // route through the ide_* / team_* / db_* tooling.
   if (!rootPath) return false;
   try {
-    const stored = localStorage.getItem(IDE_STRICT_MODE_PREFIX + rootPath);
-    return stored !== '0';
+    return localStorage.getItem(IDE_STRICT_MODE_PREFIX + rootPath) === '1';
   } catch {
-    return true;
+    return false;
   }
 };
 
@@ -153,12 +148,15 @@ type PermissionConfirmParams = {
 
 type ConfirmFn = (params: PermissionConfirmParams) => Promise<void>;
 
+type StopFn = (params: { conversation_id: string }) => Promise<void>;
+
 type PermissionMode = 'manual' | 'auto';
 
 type PermissionDeps = {
   isEnabled?: (rootPath: string | undefined) => boolean;
   resolveWorkspacePath?: (conversation_id: string) => Promise<string | undefined>;
   confirm?: ConfirmFn;
+  stop?: StopFn;
   permissionMode?: PermissionMode;
 };
 
@@ -180,17 +178,18 @@ const isAutoPermissionMode = (mode: PermissionMode | undefined): boolean => mode
 
 const defaultConfirm: ConfirmFn = (params) => ipcBridge.conversation.confirmMessage.invoke(params);
 
-// (simplified) No complex route execution for native deny. Just auto-deny via confirm(reject).
-// The model is guided by system prompts to use ide_*/team_* tools after denial.
+const defaultStop: StopFn = (params) => ipcBridge.conversation.stop.invoke(params);
 
-const confirmationToToolCall = (confirmation: GuardConfirmation | undefined): GuardToolCall | undefined => {
-  if (!confirmation) return undefined;
-  return {
-    tool_call_id: confirmation.call_id,
-    title: confirmation.title || confirmation.action,
-    raw_input: { command: confirmation.command_type, name: confirmation.action },
-  };
+const stopTurnFailClosed = async (conversationId: string, stop: StopFn, context: string): Promise<void> => {
+  try {
+    await stop({ conversation_id: conversationId });
+  } catch (error: unknown) {
+    console.error(`Strict IDE Mode failed to stop the turn after ${context}:`, error);
+  }
 };
+
+// Rejecting a single native call is preferred. Stopping the turn is the fail-closed
+// fallback when the backend offers no reject option or cannot record the rejection.
 
 /**
  * Inspect an `acp_permission` message and, when Strict IDE Mode is on and the
@@ -214,46 +213,44 @@ export const enforceStrictIdeModeOnPermission = async (
 
   const decision = evaluateStrictModePermission(enabled, tool_call, options);
   const confirm = deps?.confirm ?? defaultConfirm;
+  const stop = deps?.stop ?? defaultStop;
   if (!decision.deny) {
     const allowOptionId = pickAllowOptionId(options);
-    // When Strict IDE Mode is on, even in YOLO/auto permission modes we do NOT
-    // auto-allow ide_*/team_* tools — we show the permission card so the user
-    // is asked. Only native tools are auto-blocked + routed.
-    if (
-      !enabled &&
-      isAutoPermissionMode(deps?.permissionMode) &&
-      allowOptionId &&
-      isToolCallAllowedInStrictMode(tool_call)
-    ) {
-      await confirm({
-        confirm_key: allowOptionId,
-        msg_id: message.id,
-        conversation_id: message.conversation_id,
-        call_id: tool_call?.tool_call_id || message.id,
-      }).catch((error: unknown) => {
+    // Strict Mode decides which tools are permitted; YOLO independently decides
+    // whether a permitted call is approved automatically.
+    if (isAutoPermissionMode(deps?.permissionMode) && allowOptionId) {
+      try {
+        await confirm({
+          confirm_key: allowOptionId,
+          msg_id: message.id,
+          conversation_id: message.conversation_id,
+          call_id: tool_call?.tool_call_id || message.id,
+        });
+      } catch (error: unknown) {
         console.error('Strict IDE Mode auto-allow failed:', error);
-      });
+        await stopTurnFailClosed(message.conversation_id, stop, 'auto-allow failure');
+      }
       return { denied: true, reason: `✅ ${tool_call?.title || 'IDE tool'} tự động được phép theo quyền YOLO.` };
     }
     return { denied: false, reason: decision.reason };
   }
 
-  // No usable reject option: do NOT stop the turn (that would disconnect the AI).
-  // Instead, surface the approval card so the user decides — the turn stays alive.
   if (!decision.rejectOptionId) {
-    return { denied: false, reason: 'no-reject-option' };
+    await stopTurnFailClosed(message.conversation_id, stop, 'missing reject option');
+    return { denied: true, reason: decision.reason };
   }
 
-  // Simple auto-deny for native tools. Use the reject option so backend properly
-  // marks only this tool call as denied (without killing the whole turn).
-  await confirm({
-    confirm_key: decision.rejectOptionId,
-    msg_id: message.id,
-    conversation_id: message.conversation_id,
-    call_id: tool_call?.tool_call_id || message.id,
-  }).catch((error: unknown) => {
+  try {
+    await confirm({
+      confirm_key: decision.rejectOptionId,
+      msg_id: message.id,
+      conversation_id: message.conversation_id,
+      call_id: tool_call?.tool_call_id || message.id,
+    });
+  } catch (error: unknown) {
     console.error('Strict IDE Mode auto-deny failed:', error);
-  });
+    await stopTurnFailClosed(message.conversation_id, stop, 'reject failure');
+  }
 
   return { denied: true, reason: decision.reason };
 };
@@ -273,24 +270,23 @@ export const enforceStrictIdeModeOnConfirmation = async (
 
   const decision = evaluateStrictModeConfirmation(enabled, confirmation);
   const confirm = deps?.confirm ?? defaultConfirm;
+  const stop = deps?.stop ?? defaultStop;
   if (!decision.deny) {
     const allowKey = pickConfirmationAllow(confirmation);
-    // When Strict IDE Mode is on, even in YOLO/auto we show the card for ide/team tools
-    // (user is asked). Native tools are always auto-denied + routed.
-    if (
-      !enabled &&
-      isAutoPermissionMode(deps?.permissionMode) &&
-      allowKey &&
-      isToolCallAllowedInStrictMode(confirmationToToolCall(confirmation))
-    ) {
-      await confirm({
-        confirm_key: allowKey,
-        msg_id: message.id,
-        conversation_id: message.conversation_id,
-        call_id: confirmation?.call_id || message.id,
-      }).catch((error: unknown) => {
+    // Strict Mode decides which tools are permitted; YOLO independently decides
+    // whether a permitted call is approved automatically.
+    if (isAutoPermissionMode(deps?.permissionMode) && allowKey) {
+      try {
+        await confirm({
+          confirm_key: allowKey,
+          msg_id: message.id,
+          conversation_id: message.conversation_id,
+          call_id: confirmation?.call_id || message.id,
+        });
+      } catch (error: unknown) {
         console.error('Strict IDE Mode auto-allow (confirmation) failed:', error);
-      });
+        await stopTurnFailClosed(message.conversation_id, stop, 'confirmation auto-allow failure');
+      }
       return {
         denied: true,
         reason: `✅ ${confirmation?.title || confirmation?.action || 'IDE tool'} tự động được phép theo quyền YOLO.`,
@@ -299,19 +295,21 @@ export const enforceStrictIdeModeOnConfirmation = async (
     return { denied: false, reason: decision.reason };
   }
   if (!decision.rejectKey) {
-    // Do NOT stop the turn (that disconnects the AI). Show the card instead.
-    return { denied: false, reason: 'no-reject-option' };
+    await stopTurnFailClosed(message.conversation_id, stop, 'missing confirmation reject option');
+    return { denied: true, reason: decision.reason };
   }
 
-  // Simple auto-deny for native tools.
-  await confirm({
-    confirm_key: decision.rejectKey,
-    msg_id: message.id,
-    conversation_id: message.conversation_id,
-    call_id: confirmation?.call_id || message.id,
-  }).catch((error: unknown) => {
+  try {
+    await confirm({
+      confirm_key: decision.rejectKey,
+      msg_id: message.id,
+      conversation_id: message.conversation_id,
+      call_id: confirmation?.call_id || message.id,
+    });
+  } catch (error: unknown) {
     console.error('Strict IDE Mode auto-deny (confirmation) failed:', error);
-  });
+    await stopTurnFailClosed(message.conversation_id, stop, 'confirmation reject failure');
+  }
 
   return { denied: true, reason: decision.reason };
 };

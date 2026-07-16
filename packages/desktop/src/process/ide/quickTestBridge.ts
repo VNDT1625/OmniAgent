@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -28,9 +28,11 @@ import {
   type CdpWebContents,
   type RuntimeTrace,
   type TraceEvent,
+  type TraceEvidence,
   type TracePlatform,
 } from './quickTestTracer';
 import { createQuickTestNativeTracer, type NativeStreamOpener } from './quickTestNativeTracer';
+import { createAdaptiveRuntimeProbe } from './adaptiveRuntimeProbe';
 import { isSignificantEvent } from './quickTestBuffer';
 import { buildTraceContext } from './traceContextBuilder';
 import type { loadGraph } from './quickTestBridgeHelpers';
@@ -157,6 +159,8 @@ export function registerQuickTestBridge(deps: QuickTestBridgeDeps): void {
   let activeExpectedText: string | null = null;
   /** Whether the active session is the web tracer (the only one with coverage). */
   let activeIsWeb = false;
+  let activeEvidence: TraceEvidence | null = null;
+  const adaptiveProbe = createAdaptiveRuntimeProbe({ getWebContents: () => deps.getWebContents(activeTabId) });
 
   qtChannels.start.provider(async (req): Promise<UnderstandResult<boolean>> => {
     const rootPath = req.rootPath?.trim();
@@ -174,8 +178,10 @@ export function registerQuickTestBridge(deps: QuickTestBridgeDeps): void {
         activeTracer = platform === 'web' ? webTracer : nativeTracer;
         activeIsWeb = platform === 'web';
         activeExpectedText = platform === 'web' ? req.expectedText?.trim() || null : null;
+        activeEvidence = adaptiveProbe.inspect(platform, platform !== 'web', nativeTracer.hasStructuredInteractions());
       } else {
         activeTabId = undefined;
+        activeEvidence = null;
       }
       return { ok: true, data: started };
     } catch (error) {
@@ -198,11 +204,13 @@ export function registerQuickTestBridge(deps: QuickTestBridgeDeps): void {
       if (activeIsWeb) {
         await webTracer.finalizeCoverage().catch((): void => undefined);
       }
-      const trace = activeTracer ? activeTracer.stop() : webTracer.stop();
+      const rawTrace = activeTracer ? activeTracer.stop() : webTracer.stop();
+      const trace: RuntimeTrace = { ...rawTrace, ...(activeEvidence ? { evidence: activeEvidence } : {}) };
       activeTracer = null;
       activeExpectedText = null;
       activeIsWeb = false;
       activeTabId = undefined;
+      activeEvidence = null;
       // Build a context pack from the trace + the repo's KG (best-effort).
       let contextPack: ContextPack | null = null;
       if (trace.rootPath) {

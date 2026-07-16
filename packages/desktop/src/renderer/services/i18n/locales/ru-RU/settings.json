@@ -797,6 +797,11 @@
     "revokeFailed": "Не удалось отозвать",
     "copyCode": "Копировать код сопряжения",
     "agentDescTelegram": "Для диалогов через Channel",
+    "permissionMode": "Режим разрешений",
+    "permissionModeDescTelegram": "Выберите, должен ли Telegram запрашивать подтверждение перед изменением файлов или запуском команд",
+    "permissionModeSaved": "Режим разрешений сохранён",
+    "permissionModeSaveFailed": "Не удалось сохранить режим разрешений",
+    "permissionModeUnavailable": "Этот Agent не предоставляет режимы разрешений",
     "autoFollowCliModel": "Автоматически следовать модели при работе CLI",
     "agentSwitched": "Агент успешно переключён",
     "modelSwitched": "Модель успешно переключена"

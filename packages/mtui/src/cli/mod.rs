@@ -79,11 +79,21 @@ pub enum Commands {
     #[command(about = "Build intent-focused repo context from Understand/codegraph")]
     Context(ContextArgs),
 
+    #[command(about = "Query the durable shared project Wiki built by AionUi Studio")]
+    Wiki(WikiArgs),
+
     #[command(about = "Show a codebase map from Understand/codegraph")]
     Map(MapArgs),
 
-    #[command(about = "Analyze the codebase: `analyze type` detects languages + editor engines; `analyze [path]` error-checks")]
+    #[command(
+        about = "Analyze the codebase: `analyze type` detects languages + editor engines; `analyze [path]` error-checks"
+    )]
     Analyze(AnalyzeArgs),
+
+    #[command(
+        about = "Measure a file tree: direct children, files, lines, extensions, and largest files"
+    )]
+    Stats(StatsArgs),
 
     #[command(about = "Compact recent MTUI session state for agent continuity")]
     Memory(MemoryArgs),
@@ -100,7 +110,9 @@ pub enum Commands {
     #[command(about = "Diagnose MTUI install, PATH, and Understand cache state")]
     Doctor,
 
-    #[command(about = "ExpBase debugging memory: search/add/get/list/forget/feedback (reads .mtui/exp)")]
+    #[command(
+        about = "ExpBase debugging memory: search/add/get/list/forget/feedback (reads .mtui/exp)"
+    )]
     Exp(ExpArgs),
 }
 
@@ -397,6 +409,43 @@ pub struct SearchArgs {
     #[arg(help = "Text to search for")]
     pub query: String,
 
+    #[arg(long, help = "Interpret the query as a regular expression")]
+    pub regex: bool,
+
+    #[arg(short = 'i', long, help = "Match without case sensitivity")]
+    pub ignore_case: bool,
+
+    #[arg(
+        short = 'g',
+        long = "glob",
+        help = "Include files matching this glob (repeatable)"
+    )]
+    pub globs: Vec<String>,
+
+    #[arg(
+        long = "exclude",
+        help = "Exclude files matching this glob (repeatable)"
+    )]
+    pub excludes: Vec<String>,
+
+    #[arg(
+        short = 'C',
+        long,
+        default_value_t = 0,
+        help = "Context lines before and after each match"
+    )]
+    pub context: usize,
+
+    #[arg(short = 'l', long, help = "Return only files containing matches")]
+    pub files_with_matches: bool,
+
+    #[arg(
+        short = 'c',
+        long,
+        help = "Return matching-line counts grouped by file"
+    )]
+    pub count: bool,
+
     #[arg(
         long,
         alias = "max-count",
@@ -522,6 +571,12 @@ pub struct VerifyPythonArgs {
     #[arg(help = "Python script path")]
     pub script: String,
 
+    #[arg(
+        long,
+        help = "Working directory for the verification command (defaults to project root)"
+    )]
+    pub cwd: Option<String>,
+
     #[arg(long, default_value = "python", help = "Python executable to use")]
     pub python_bin: String,
 
@@ -562,6 +617,12 @@ pub struct VerifyPythonArgs {
 pub struct VerifyRunArgs {
     #[arg(help = "Program to run")]
     pub program: String,
+
+    #[arg(
+        long,
+        help = "Working directory for the command (defaults to project root)"
+    )]
+    pub cwd: Option<String>,
 
     #[arg(
         long,
@@ -747,6 +808,16 @@ pub struct ContextArgs {
 }
 
 #[derive(Args)]
+pub struct WikiArgs {
+    #[arg(help = "Topic or question to retrieve from the shared project Wiki")]
+    pub query: String,
+
+    #[arg(long, default_value_t = 5, help = "Maximum matching Wiki sections")]
+    pub limit: usize,
+}
+
+#[derive(Args)]
+
 pub struct MapArgs {
     #[command(subcommand)]
     pub query: MapQuery,
@@ -763,6 +834,25 @@ pub struct AnalyzeArgs {
         long,
         default_value_t = 20000,
         help = "Maximum files to scan before stopping (keeps huge repos responsive)"
+    )]
+    pub max_files: usize,
+}
+
+#[derive(Args)]
+pub struct StatsArgs {
+    #[arg(
+        default_value = ".",
+        help = "Repo-relative or absolute file/directory path"
+    )]
+    pub path: String,
+
+    #[arg(long, default_value_t = 20, help = "Number of largest files to return")]
+    pub largest: usize,
+
+    #[arg(
+        long,
+        default_value_t = 20000,
+        help = "Maximum files to scan before stopping"
     )]
     pub max_files: usize,
 }
@@ -874,7 +964,10 @@ pub struct ExpSearchArgs {
     #[arg(long, help = "Error category to match")]
     pub error: Option<String>,
 
-    #[arg(long, help = "Restrict to one kind: successful_fix|agent_mistake|failed_attempt|lesson")]
+    #[arg(
+        long,
+        help = "Restrict to one kind: successful_fix|agent_mistake|failed_attempt|lesson"
+    )]
     pub kind: Option<String>,
 
     #[arg(long, help = "Tag to match, may be repeated")]
@@ -883,16 +976,27 @@ pub struct ExpSearchArgs {
     #[arg(long, default_value_t = 5, help = "Maximum suggestions to return")]
     pub limit: usize,
 
-    #[arg(long, default_value_t = 0.18, help = "Minimum combined score to surface")]
+    #[arg(
+        long,
+        default_value_t = 0.18,
+        help = "Minimum combined score to surface"
+    )]
     pub min_score: f64,
 }
 
 #[derive(Args)]
 pub struct ExpAddArgs {
-    #[arg(long, help = "Read the full draft JSON object from stdin instead of flags")]
+    #[arg(
+        long,
+        help = "Read the full draft JSON object from stdin instead of flags"
+    )]
     pub stdin: bool,
 
-    #[arg(long, default_value = "lesson", help = "Kind: successful_fix|agent_mistake|failed_attempt|lesson")]
+    #[arg(
+        long,
+        default_value = "lesson",
+        help = "Kind: successful_fix|agent_mistake|failed_attempt|lesson"
+    )]
     pub kind: String,
 
     #[arg(long, help = "Symptom summary (required unless --stdin)")]
@@ -952,6 +1056,9 @@ pub struct ExpFeedbackArgs {
     #[arg(long, help = "Mark the suggestion as helpful (raises confidence)")]
     pub helpful: bool,
 
-    #[arg(long, help = "Mark the suggestion as unhelpful / a false match (lowers confidence)")]
+    #[arg(
+        long,
+        help = "Mark the suggestion as unhelpful / a false match (lowers confidence)"
+    )]
     pub unhelpful: bool,
 }

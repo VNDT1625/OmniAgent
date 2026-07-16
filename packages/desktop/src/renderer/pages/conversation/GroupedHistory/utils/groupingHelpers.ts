@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -30,11 +30,28 @@ export const getConversationPinnedAt = (conversation: TChatConversation): number
   return 0;
 };
 
+type WorkspaceIdentity = { key: string; workspace: string };
+
+/** Treat equivalent Windows path spellings as one sidebar project. */
+const normalizeWorkspaceIdentity = (workspace: string): WorkspaceIdentity => {
+  const normalizedSlashes = workspace
+    .trim()
+    .replace(/^\\\\\?\\/, '')
+    .replace(/\\/g, '/')
+    .replace(/\/+$/, '');
+  const isWindowsPath = /^[a-z]:\//i.test(normalizedSlashes);
+  const displayPath = isWindowsPath ? normalizedSlashes.replace(/\//g, '\\') : normalizedSlashes;
+  return {
+    key: isWindowsPath ? normalizedSlashes.toLocaleLowerCase() : normalizedSlashes,
+    workspace: displayPath,
+  };
+};
+
 export const groupConversationsByWorkspace = (
   conversations: TChatConversation[],
   t: (key: string) => string
 ): TimelineSection[] => {
-  const allWorkspaceGroups = new Map<string, TChatConversation[]>();
+  const allWorkspaceGroups = new Map<string, { workspace: string; conversations: TChatConversation[] }>();
   const withoutWorkspaceConvs: TChatConversation[] = [];
 
   conversations.forEach((conv) => {
@@ -42,10 +59,13 @@ export const groupConversationsByWorkspace = (
     const custom_workspace = conv.extra?.custom_workspace;
 
     if (custom_workspace && workspace) {
-      if (!allWorkspaceGroups.has(workspace)) {
-        allWorkspaceGroups.set(workspace, []);
+      const normalized = normalizeWorkspaceIdentity(workspace);
+      const group = allWorkspaceGroups.get(normalized.key);
+      if (group) {
+        group.conversations.push(conv);
+      } else {
+        allWorkspaceGroups.set(normalized.key, { workspace: normalized.workspace, conversations: [conv] });
       }
-      allWorkspaceGroups.get(workspace)!.push(conv);
     } else {
       withoutWorkspaceConvs.push(conv);
     }
@@ -53,7 +73,7 @@ export const groupConversationsByWorkspace = (
 
   const items: TimelineItem[] = [];
 
-  allWorkspaceGroups.forEach((convList, workspace) => {
+  allWorkspaceGroups.forEach(({ workspace, conversations: convList }) => {
     const sortedConvs = [...convList].toSorted((a, b) => getActivityTime(b) - getActivityTime(a));
     const latestConversationTime = getActivityTime(sortedConvs[0]);
     const updateTime = getWorkspaceUpdateTime(workspace);

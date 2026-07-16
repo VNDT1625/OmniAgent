@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -26,6 +26,20 @@ describe('officeEditorGuidance', () => {
     expect(rules).toContain('/docs/report.docx');
     expect(rules).toContain('Document editor (you can edit the open file live)');
     expect(rules).toContain('office_read_document');
+  });
+
+  it('directs agents to use live Office tools for PPTX edits and verify changes', () => {
+    const rules = buildOfficeEditorRules('/docs/deck.pptx');
+
+    expect(rules).toContain('PPTX files');
+    expect(rules).toContain('Api.GetPresentation()');
+    expect(rules).toContain('Production deck/doc quality bar');
+    expect(rules).toContain('visual system, clear hierarchy');
+    expect(rules).toContain('generated or user-provided images');
+    expect(rules).toContain('office_review_premium_quality');
+    expect(rules).toContain('If it lists required improvements, revise');
+    expect(rules).toContain('Never edit the open `.docx`, `.xlsx`, or `.pptx` by shelling out');
+    expect(rules).toContain('verify the result with `office_read_document`');
   });
 
   it('appends the block when there are no existing rules', () => {

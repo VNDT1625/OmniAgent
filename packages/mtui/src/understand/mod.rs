@@ -1,3 +1,4 @@
+pub mod wiki;
 use crate::error::MtuiError;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
@@ -157,11 +158,17 @@ pub struct MapResult {
     pub stale: bool,
     pub freshness: FreshnessSummary,
     pub confidence: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub overview: Option<MapOverview>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub modules: Vec<MapModuleEntry>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub files: Vec<MapFileEntry>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub recommended_path: Vec<MapIntentStep>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub related_folders: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub next_commands: Vec<String>,
 }
 
@@ -525,25 +532,7 @@ fn fallback_map_folder(
     let file_entries = files
         .iter()
         .enumerate()
-        .map(|(index, file)| {
-            let rel = normalize_rel(file, project_root);
-            MapFileEntry {
-                path: rel.clone(),
-                role: "filesystem fallback; graph summary unavailable".to_string(),
-                layer: "unknown".to_string(),
-                language: language_for_path(file).to_string(),
-                summary: format!(
-                    "`{}` discovered from filesystem fallback. Use compass/read for real code; rebuild Understand/codegraph for semantic ranking.",
-                    rel
-                ),
-                read_priority: index + 1,
-                stale: true,
-                next_commands: vec![
-                    format!("mtui --json compass read {} --query \"<intent>\"", rel),
-                    format!("mtui --json information file {}", rel),
-                ],
-            }
-        })
+        .map(|(index, file)| fallback_map_file_entry(project_root, file, index + 1))
         .collect::<Vec<_>>();
     Ok(MapResult {
         command: "map".to_string(),
@@ -571,6 +560,26 @@ fn fallback_map_folder(
             "mtui --json read <file> --from <line> --to <line>".to_string(),
         ],
     })
+}
+
+fn fallback_map_file_entry(project_root: &Path, file: &Path, read_priority: usize) -> MapFileEntry {
+    let rel = normalize_rel(file, project_root);
+    MapFileEntry {
+        path: rel.clone(),
+        role: "filesystem fallback; graph summary unavailable".to_string(),
+        layer: "unknown".to_string(),
+        language: language_for_path(file).to_string(),
+        summary: format!(
+            "`{}` discovered from filesystem fallback. Use compass/read for real code; rebuild Understand/codegraph for semantic ranking.",
+            rel
+        ),
+        read_priority,
+        stale: true,
+        next_commands: vec![
+            format!("mtui --json compass read {} --query \"<intent>\"", rel),
+            format!("mtui --json information file {}", rel),
+        ],
+    }
 }
 
 fn base36_u32(mut value: u32) -> String {
@@ -1035,12 +1044,32 @@ pub fn map_folder(
         .enumerate()
         .map(|(index, file)| map_file_entry(project_root, file, index + 1))
         .collect::<Vec<_>>();
+    let live_files = if freshness.fresh {
+        Vec::new()
+    } else {
+        fallback_folder_files(project_root, folder_path, 20_000)
+    };
+    if !live_files.is_empty() {
+        let cached_paths = file_entries
+            .iter()
+            .map(|entry| entry.path.clone())
+            .collect::<std::collections::HashSet<_>>();
+        for file in &live_files {
+            let rel = normalize_rel(file, project_root);
+            if !cached_paths.contains(&rel) {
+                file_entries.push(fallback_map_file_entry(project_root, file, 0));
+            }
+        }
+    }
     file_entries.sort_by(|a, b| {
         a.read_priority
             .cmp(&b.read_priority)
             .then_with(|| a.path.cmp(&b.path))
     });
     file_entries.truncate(limit.max(1));
+    for (index, entry) in file_entries.iter_mut().enumerate() {
+        entry.read_priority = index + 1;
+    }
     let stale = !freshness.fresh || file_entries.iter().any(|file| file.stale);
     let related_folders = related_folders_for_files(&files);
     let output_target = if target.is_empty() {
@@ -1048,6 +1077,21 @@ pub fn map_folder(
     } else {
         target.clone()
     };
+    let mut modules = module
+        .filter(|module| target.is_empty() || module.id == target)
+        .map(|module| vec![map_module_entry(project_root, &cache, module)])
+        .unwrap_or_else(|| vec![synthetic_folder_module_entry(project_root, &target, &files)]);
+    if !live_files.is_empty() {
+        for module in &mut modules {
+            module.file_count = live_files.len();
+            module.key_files = live_files
+                .iter()
+                .take(6)
+                .map(|file| normalize_rel(file, project_root))
+                .collect();
+            module.stale = true;
+        }
+    }
     Ok(MapResult {
         command: "map".to_string(),
         scope: "folder".to_string(),
@@ -1062,10 +1106,7 @@ pub fn map_folder(
             technologies: overview.technologies.clone(),
             entry_points: overview.entry_points.clone(),
         }),
-        modules: module
-            .filter(|module| target.is_empty() || module.id == target)
-            .map(|module| vec![map_module_entry(project_root, &cache, module)])
-            .unwrap_or_else(|| vec![synthetic_folder_module_entry(project_root, &target, &files)]),
+        modules,
         files: file_entries,
         recommended_path: Vec::new(),
         related_folders,
@@ -1207,14 +1248,7 @@ fn synthetic_folder_module_entry(
         .map(|file| file.path.clone())
         .collect::<Vec<_>>();
     if key_files.is_empty() {
-        key_files = files
-            .iter()
-            .cloned()
-            .collect::<Vec<_>>()
-            .into_iter()
-            .map(|file| file.path)
-            .take(6)
-            .collect();
+        key_files = files.iter().take(6).map(|file| file.path.clone()).collect();
     } else {
         key_files.truncate(6);
     }
@@ -2106,6 +2140,38 @@ mod tests {
             compact_summary.details["sourceModule"].as_str(),
             Some("packages/desktop/src")
         );
+
+        let live_folder = temp.path().join("packages/desktop/src/process/browser");
+        std::fs::create_dir_all(&live_folder).expect("live folder");
+        std::fs::write(
+            live_folder.join("webAgentRunner.ts"),
+            "export const cached = true;\n",
+        )
+        .expect("cached file");
+        std::fs::write(
+            live_folder.join("newBrowserTool.ts"),
+            "export const fresh = true;\n",
+        )
+        .expect("new file");
+        std::fs::write(
+            cache_dir.join("stale.json"),
+            serde_json::json!({ "paths": ["packages/desktop/src/process/browser/newBrowserTool.ts"] }).to_string(),
+        )
+        .expect("stale marker");
+
+        let overlaid = map_folder(
+            temp.path(),
+            std::path::Path::new("packages/desktop/src/process/browser"),
+            10,
+        )
+        .expect("overlaid map");
+        assert!(overlaid.stale);
+        assert_eq!(overlaid.files.len(), 2);
+        assert!(overlaid
+            .files
+            .iter()
+            .any(|file| file.path.ends_with("newBrowserTool.ts") && file.stale));
+        assert_eq!(overlaid.modules[0].file_count, 2);
     }
 
     #[test]

@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/iOfficeAI/Omni?style=flat-square&color=32CD32" alt="Version">
+  <img src="https://img.shields.io/github/v/release/VNDT1625/Omni?style=flat-square&color=32CD32" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-32CD32?style=flat-square&logo=apache&logoColor=white" alt="License">
   &nbsp;
@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/⬇️%20Download%20Now-Latest%20Release-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="Download Latest Release" height="50">
   </a>
 </p>
@@ -86,13 +86,13 @@ Omni поставляется с полноценным движком ИИ-аг
 
 ### **Офисные ассистенты — PPT, Word и Excel**
 
-Эти направления соответствуют тому, что приложение действительно предоставляет: предустановки **Morph PPT** и навыки **`pptx` / `docx` / `xlsx`** (см. предустановки `assistant/` и `skills/` в репозитории). Нужен вывод в документы или таблицы? Встроенный **[OfficeCLI](https://github.com/iOfficeAI/OfficeCli)** помогает превратить запрос в готовый PPT (Morph), Word (`.docx`) и Excel (`.xlsx/.xlsm/.csv`) быстрее и надёжнее.
+Эти направления соответствуют тому, что приложение действительно предоставляет: предустановки **Morph PPT** и навыки **`pptx` / `docx` / `xlsx`** (см. предустановки `assistant/` и `skills/` в репозитории). Нужен вывод в документы или таблицы? Встроенный **[OfficeCLI](https://github.com/VNDT1625/OfficeCli)** помогает превратить запрос в готовый PPT (Morph), Word (`.docx`) и Excel (`.xlsx/.xlsm/.csv`) быстрее и надёжнее.
 Три типа ассистентов соответствуют файловым рабочим процессам, а итоговые файлы можно сразу редактировать и использовать повторно.
 
 #### **Ассистент PPT**
 
 > **Результат:** редактируемый Morph PPT (`.pptx`)
-> Морфированные переходы между слайдами с согласованным повествованием; на базе [OfficeCLI](https://github.com/iOfficeAI/OfficeCli).
+> Морфированные переходы между слайдами с согласованным повествованием; на базе [OfficeCLI](https://github.com/VNDT1625/OfficeCli).
 
 <table>
   <tr>
@@ -108,7 +108,7 @@ Omni поставляется с полноценным движком ИИ-аг
 #### **Ассистент Word**
 
 > **Результат:** редактируемый Word (`.docx`)
-> Написание статей/диссертаций и готовое редактирование документов через навык `docx`; на базе [OfficeCLI](https://github.com/iOfficeAI/OfficeCli).
+> Написание статей/диссертаций и готовое редактирование документов через навык `docx`; на базе [OfficeCLI](https://github.com/VNDT1625/OfficeCli).
 
 <table>
   <tr>
@@ -124,7 +124,7 @@ Omni поставляется с полноценным движком ИИ-аг
 #### **Ассистент Excel**
 
 > **Результат:** готовый Excel (`.xlsx/.xlsm/.csv`)
-> Генерация/обновление таблиц через `xlsx` для анализа, автоформатирования и диаграмм; на базе [OfficeCLI](https://github.com/iOfficeAI/OfficeCli).
+> Генерация/обновление таблиц через `xlsx` для анализа, автоформатирования и диаграмм; на базе [OfficeCLI](https://github.com/VNDT1625/OfficeCli).
 
 <table>
   <tr>
@@ -287,7 +287,7 @@ _Ваш ИИ-ассистент 24/7 — доступ к Omni с любого у
 
 <p align="center"><em>Удалённое управление и мониторин агента — Claude, Gemini, Codex. Используйте из браузера или с телефона, так же как удалённый доступ Claude Code.</em></p>
 
-> [Руководство по удалённому доступу через интернет](https://github.com/iOfficeAI/Omni/wiki/Remote-Internet-Access-Guide-Chinese)
+> [Руководство по удалённому доступу через интернет](https://github.com/VNDT1625/Omni/wiki/Remote-Internet-Access-Guide-Chinese)
 
 ## ✨ Cowork в действии
 
@@ -446,7 +446,7 @@ _Интеллектуальная генерация, редактировани
 
 </details>
 
-> [Руководство по конфигурации модели генерации изображений](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide)
+> [Руководство по конфигурации модели генерации изображений](https://github.com/VNDT1625/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide)
 
 ---
 
@@ -606,7 +606,7 @@ Omni — это **бесплатный мультиагентный рабочи
 ### Установка
 
 <p>
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/Download-Latest%20Release-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="Download Latest Release" height="50">
   </a>
 </p>
@@ -633,23 +633,23 @@ brew install omni
 
 **🚀 Быстрый старт**
 
-- [📖 Полное руководство по установке](https://github.com/iOfficeAI/Omni/wiki/Getting-Started) — подробные шаги от загрузки до настройки
-- [⚙️ Руководство по настройке LLM](https://github.com/iOfficeAI/Omni/wiki/LLM-Configuration) — настройка ИИ-моделей на множестве платформ
-- [🤖 Настройка мультиагентного режима](https://github.com/iOfficeAI/Omni/wiki/ACP-Setup) — интеграция ИИ-агентов терминала
-- [🔌 Настройка MCP-инструментов](https://github.com/iOfficeAI/Omni/wiki/MCP-Configuration-Guide) — настройка сервера Model Context Protocol
-- [🌐 Руководство по настройке WebUI](https://github.com/iOfficeAI/Omni/wiki/WebUI-Configuration-Guide) — полное руководство по настройке WebUI
+- [📖 Полное руководство по установке](https://github.com/VNDT1625/Omni/wiki/Getting-Started) — подробные шаги от загрузки до настройки
+- [⚙️ Руководство по настройке LLM](https://github.com/VNDT1625/Omni/wiki/LLM-Configuration) — настройка ИИ-моделей на множестве платформ
+- [🤖 Настройка мультиагентного режима](https://github.com/VNDT1625/Omni/wiki/ACP-Setup) — интеграция ИИ-агентов терминала
+- [🔌 Настройка MCP-инструментов](https://github.com/VNDT1625/Omni/wiki/MCP-Configuration-Guide) — настройка сервера Model Context Protocol
+- [🌐 Руководство по настройке WebUI](https://github.com/VNDT1625/Omni/wiki/WebUI-Configuration-Guide) — полное руководство по настройке WebUI
 
 **🎯 Сценарии использования**
 
-- [📁 Управление файлами](https://github.com/iOfficeAI/Omni/wiki/file-management) — умная организация файлов
-- [📊 Обработка Excel](https://github.com/iOfficeAI/Omni/wiki/excel-processing) — обработка данных на базе ИИ
-- [🎨 Генерация изображений](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide) — создание изображений на базе ИИ
-- [📚 Больше сценариев](https://github.com/iOfficeAI/Omni/wiki/Use-Cases-Overview)
+- [📁 Управление файлами](https://github.com/VNDT1625/Omni/wiki/file-management) — умная организация файлов
+- [📊 Обработка Excel](https://github.com/VNDT1625/Omni/wiki/excel-processing) — обработка данных на базе ИИ
+- [🎨 Генерация изображений](https://github.com/VNDT1625/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide) — создание изображений на базе ИИ
+- [📚 Больше сценариев](https://github.com/VNDT1625/Omni/wiki/Use-Cases-Overview)
 
 **❓ Поддержка и помощь**
 
-- [❓ FAQ](https://github.com/iOfficeAI/Omni/wiki/FAQ) — вопросы и устранение неполадок
-- [🔧 Руководства по настройке и использованию](https://github.com/iOfficeAI/Omni/wiki/Configuration-Guides) — полная документация по настройке
+- [❓ FAQ](https://github.com/VNDT1625/Omni/wiki/FAQ) — вопросы и устранение неполадок
+- [🔧 Руководства по настройке и использованию](https://github.com/VNDT1625/Omni/wiki/Configuration-Guides) — полная документация по настройке
 
 </details>
 
@@ -665,9 +665,9 @@ brew install omni
   </a>
 </p>
 
-- [GitHub Discussions](https://github.com/iOfficeAI/Omni/discussions) — делитесь идеями и обменивайтесь советами
-- [Сообщить о проблемах](https://github.com/iOfficeAI/Omni/issues) — ошибки и запросы функций
-- [Обновления релизов](https://github.com/iOfficeAI/Omni/releases) — получите последнюю версию
+- [GitHub Discussions](https://github.com/VNDT1625/Omni/discussions) — делитесь идеями и обменивайтесь советами
+- [Сообщить о проблемах](https://github.com/VNDT1625/Omni/issues) — ошибки и запросы функций
+- [Обновления релизов](https://github.com/VNDT1625/Omni/releases) — получите последнюю версию
 - [Сообщество Discord](https://discord.gg/2QAwJn7Egx) — англоязычное сообщество
 - [Группа WeChat](./resources/wx-9.png) — русскоязычное сообщество
 
@@ -700,16 +700,16 @@ bun run test       # запустить юнит-тесты
 ## Участники
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=iOfficeAI/Omni&max=100" alt="Contributors" />
+  <a href="https://github.com/VNDT1625/Omni/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=VNDT1625/Omni&max=100" alt="Contributors" />
   </a>
 </p>
 
 ## История звёзд
 
 <p align="center">
-  <a href="https://www.star-history.com/#iOfficeAI/omni&Date" target="_blank">
-    <img src="https://api.star-history.com/svg?repos=iOfficeAI/omni&type=Date" alt="Star History" width="600">
+  <a href="https://www.star-history.com/#VNDT1625/omni&Date" target="_blank">
+    <img src="https://api.star-history.com/svg?repos=VNDT1625/omni&type=Date" alt="Star History" width="600">
   </a>
 </p>
 
@@ -717,6 +717,6 @@ bun run test       # запустить юнит-тесты
 
 **Если нравится, поставьте нам звезду**
 
-[Сообщить об ошибке](https://github.com/iOfficeAI/Omni/issues) · [Запросить функцию](https://github.com/iOfficeAI/Omni/issues)
+[Сообщить об ошибке](https://github.com/VNDT1625/Omni/issues) · [Запросить функцию](https://github.com/VNDT1625/Omni/issues)
 
 </div>

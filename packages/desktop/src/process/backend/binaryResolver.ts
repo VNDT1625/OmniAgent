@@ -1,5 +1,5 @@
 /**
- * Resolve the aioncore binary path.
+ * Resolve the tomny-core binary path.
  *
  * Search order:
  *  1. Bundled with app (production)
@@ -10,7 +10,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
 
-const BINARY_NAME = 'aioncore';
+const BINARY_NAME = 'tomny-core';
 const MAX_DIR_ENTRIES = 20;
 const MAX_LOOKUP_TEXT_LENGTH = 1000;
 
@@ -61,7 +61,7 @@ function trimLookupText(text: string): string {
 }
 
 /**
- * Resolve the aioncore binary path.
+ * Resolve the tomny-core binary path.
  * Returns the absolute path to the binary, or throws if not found.
  */
 export function resolveBinaryPath(): string {
@@ -72,6 +72,9 @@ export function resolveBinaryPath(): string {
     binaryName,
     pathLookupCommand: process.platform === 'win32' ? `where ${BINARY_NAME}` : `which ${BINARY_NAME}`,
   };
+
+  const localDev = localDevPath(runtimeKey, binaryName);
+  if (localDev) return localDev;
 
   const bundled = bundledPath(runtimeKey, binaryName, diagnostics);
   if (bundled) return bundled;
@@ -87,8 +90,26 @@ export function resolveBinaryPath(): string {
 
 /**
  * Check bundled binary in resources directory.
- * Layout: bundled-aioncore/{platform}-{arch}/aioncore[.exe]
+ * Layout: bundled-tomny-core/{platform}-{arch}/tomny-core[.exe]
  */
+/** Prefer an isolated project-local backend only while Electron runs in development mode. */
+function localDevPath(runtimeKey: string, binaryName: string): string | null {
+  const isElectronDev = (process as NodeJS.Process & { defaultApp?: boolean }).defaultApp === true;
+  if (!isElectronDev) return null;
+
+  const localDir = join(process.cwd(), '.aionui', 'local-tomny-core', runtimeKey);
+  const nextDevCandidate = join(localDir, process.platform === 'win32' ? 'aioncore-dev-next.exe' : 'aioncore-dev-next');
+  if (existsSync(nextDevCandidate)) return nextDevCandidate;
+  const devCandidate = join(localDir, process.platform === 'win32' ? 'aioncore-dev.exe' : 'aioncore-dev');
+  if (existsSync(devCandidate)) return devCandidate;
+
+  const candidate = join(localDir, binaryName);
+  if (existsSync(candidate)) return candidate;
+
+  const preparedSourceBuild = join(process.cwd(), 'resources', 'bundled-tomny-core', runtimeKey, binaryName);
+  return existsSync(preparedSourceBuild) ? preparedSourceBuild : null;
+}
+
 function bundledPath(
   runtimeKey: string,
   binaryName: string,
@@ -98,7 +119,7 @@ function bundledPath(
   if (!resourcesPath) return null;
   diagnostics.resourcesPath = resourcesPath;
 
-  const bundledDir = join(resourcesPath, 'bundled-aioncore');
+  const bundledDir = join(resourcesPath, 'bundled-tomny-core');
   const runtimeDir = join(bundledDir, runtimeKey);
   const candidate = join(runtimeDir, binaryName);
   diagnostics.checkedBundledPath = candidate;

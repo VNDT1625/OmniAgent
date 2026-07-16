@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -28,10 +28,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ipcBridge } from '@/common';
 
-import { STRICT_IDE_CLAUDE_AGENT_NAME } from '@/common/chat/approval/ideToolGuard';
 import type { Assistant } from '@/common/types/agent/assistantTypes';
 import { getAskMode } from '@/common/types/agent/agentModes';
 import { resolveAgentBackendKey } from '@/common/utils/buildAgentConversationParams';
+
 import type { AgentMetadata } from '@/renderer/utils/model/agentTypes';
 import { emitter } from '@/renderer/utils/emitter';
 import {
@@ -39,12 +39,40 @@ import {
   buildPresetAssistantParams,
 } from '@/renderer/pages/conversation/utils/createConversationParams';
 import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
-import { isStrictIdeModeEnabled } from '@/renderer/pages/conversation/platforms/strictIdeModeGuard';
+import {
+  enforceStrictIdeSessionMode,
+  isStrictIdeModeEnabled,
+} from '@/renderer/pages/conversation/platforms/strictIdeModeGuard';
+
 import { ensureBackendMcpCatalog, toSessionMcpServer } from '@/renderer/hooks/mcp/catalog';
 import { IDE_MCP_NAME, withIdeMemoryRules, withIdeToolRules } from '@/renderer/pages/conversation/hooks/superGuidance';
 import { buildWorkspacePrimer as buildWorkspacePrimerShared } from '@process/ide/workspacePrimer';
-import type { ISessionMcpServer } from '@/common/config/storage';
+import type { ISessionMcpServer, TChatConversation } from '@/common/config/storage';
 import { ideClient } from './ideClient';
+
+type IdeWorkspaceConversationExtra = {
+  workspace?: string;
+  team_id?: string;
+  teamId?: string;
+  cron_job_id?: string;
+};
+
+/** Normalize equivalent Windows workspace spellings before matching IDE history. */
+const normalizeIdeWorkspaceIdentity = (workspace: string): string => {
+  const normalized = workspace
+    .trim()
+    .replace(/^\\\\\?\\/, '')
+    .replace(/\\/g, '/')
+    .replace(/\/+$/, '');
+  return /^[a-z]:\//i.test(normalized) ? normalized.toLocaleLowerCase() : normalized;
+};
+
+/** Return whether a user conversation belongs in this IDE workspace's history. */
+export const isConversationForIdeWorkspace = (conversation: TChatConversation, rootPath: string): boolean => {
+  const extra = conversation.extra as IdeWorkspaceConversationExtra | undefined;
+  if (!extra?.workspace || extra.team_id || extra.teamId || extra.cron_job_id) return false;
+  return normalizeIdeWorkspaceIdentity(extra.workspace) === normalizeIdeWorkspaceIdentity(rootPath);
+};
 
 /** localStorage key for the per-repo tab id list. */
 const STORAGE_PREFIX = 'studio.ide.chatTabs.';
@@ -63,13 +91,7 @@ const MAX_TABS = 12;
  * Mode still hard-enforces the remap (`ideToolGuard`) regardless.
  */
 const IDE_TOOL_PREFERENCE_NOTE =
-  'Workspace tool rule (Strict IDE Mode is ON): ALL repo read/search/edit/run MUST use AionUi system tools (ide_* and team_*). Never call native Bash/Read/Grep/Glob/Write/Edit etc.\n\n' +
-  'When you request a native tool (Bash, Read, etc.), Strict IDE Mode will CANCEL the permission to prevent the backend from running the dangerous native tool.\n' +
-  'The system will:\n' +
-  '1. Run the equivalent allowed tool (ide_command, ide_read_file, team_edit_file, etc.) on the server side.\n' +
-  '2. Deliver the ACTUAL OUTPUT to you as a completed tool_call result (status=completed) for the same tool_call_id.\n' +
-  '3. Also add a short explanation message in chat.\n\n' +
-  'You will receive the real stdout / file content / etc. as the tool result. Ignore any "User denied the tool request" or "cancelled: User denied" status — that is just the policy enforcement. Use the output from the completed tool_call as your result and continue. The explanation message will say something like "Đã chuyển từ ... sang `ide_xxx`".';
+  'Prefer AionUi system tools (ide_* and team_*) for repository work. When Strict IDE Mode is enabled, native filesystem and shell tools are blocked; use the specific ide_* tool named in the denial message. Strict Mode does not reroute or execute denied tools. When Strict Mode is disabled, the selected default or YOLO permission mode applies normally.';
 
 const buildCloudWorkspaceGuide = (cloud: IdeChatCloudWorkspace): string =>
   [
@@ -92,6 +114,20 @@ export type IdeChatTab = {
    * tab clears the matching session (RAM-only, gone on close).
    */
   memId: string;
+};
+
+/** Keep the selected tab during a background tab-list refresh when it still exists. */
+export const resolveRestoredIdeChatActiveId = (
+  restored: readonly IdeChatTab[],
+  currentId: string | null
+): string | null => (currentId && restored.some((tab) => tab.id === currentId) ? currentId : (restored[0]?.id ?? null));
+
+/** Select the nearest remaining tab after closing the active one. */
+export const resolveIdeChatActiveIdAfterClose = (tabs: readonly IdeChatTab[], closingId: string): string | null => {
+  const closingIndex = tabs.findIndex((tab) => tab.id === closingId);
+  const remaining = tabs.filter((tab) => tab.id !== closingId);
+  if (closingIndex < 0 || remaining.length === 0) return null;
+  return remaining[Math.min(closingIndex, remaining.length - 1)]?.id ?? null;
 };
 
 /** What the caller picks when opening a new tab. */
@@ -209,18 +245,56 @@ const buildWorkspacePrimer = (
 
 /**
  * Resolve the built-in IDE MCP server (`aionui-ide`, an in-process SSE host
- * registered at boot) as a session-server snapshot, or null when unavailable.
+ * registered at boot) as a live session-server snapshot.
  * Attaching it to an IDE chat tab is what actually gives the agent the `ide_*`
  * repo-intelligence tools AND the `ide_memory_*` session-memory tools.
  */
-const resolveIdeMcp = async (): Promise<ISessionMcpServer | null> => {
-  try {
-    const { allServers } = await ensureBackendMcpCatalog();
-    const server = allServers.find((s) => s.name === IDE_MCP_NAME);
-    return server ? toSessionMcpServer(server) : null;
-  } catch {
-    return null;
-  }
+const resolveIdeMcp = async (): Promise<ISessionMcpServer> => {
+  const { allServers } = await ensureBackendMcpCatalog();
+  const server = allServers.find((candidate) => candidate.name === IDE_MCP_NAME);
+  if (!server) throw new Error(`Required MCP server ${IDE_MCP_NAME} is unavailable`);
+  return toSessionMcpServer(server);
+};
+
+/** Replace managed MCP snapshots while retaining unrelated and cloud servers. */
+export const mergeIdeSessionMcpServers = (
+  existing: readonly ISessionMcpServer[],
+  ideServer: ISessionMcpServer,
+  cloudServer?: ISessionMcpServer | null
+): ISessionMcpServer[] => {
+  const managed = cloudServer && cloudServer.name !== ideServer.name ? [ideServer, cloudServer] : [ideServer];
+  const managedNames = new Set(managed.map((server) => server.name));
+  return [...existing.filter((server) => !managedNames.has(server.name)), ...managed];
+};
+
+/** Refresh persisted MCP snapshots before an existing conversation resumes. */
+const refreshConversationMcpServers = async (
+  conversation: TChatConversation,
+  ideServer: ISessionMcpServer,
+  memoryId: string,
+  cloudServer?: ISessionMcpServer | null
+): Promise<void> => {
+  const extra = (conversation.extra ?? {}) as TChatConversation['extra'] & {
+    session_mcp_servers?: ISessionMcpServer[];
+    surface?: string;
+    ide_memory_id?: string;
+  };
+  const existing = Array.isArray(extra.session_mcp_servers) ? extra.session_mcp_servers : [];
+  const refreshed = mergeIdeSessionMcpServers(existing, ideServer, cloudServer);
+  const surfaceCurrent = extra.surface === 'ide' && extra.ide_memory_id === memoryId;
+  if (surfaceCurrent && JSON.stringify(existing) === JSON.stringify(refreshed)) return;
+
+  const updated = await ipcBridge.conversation.update.invoke({
+    id: conversation.id,
+    updates: {
+      session_mcp_servers: refreshed,
+      surface: 'ide',
+      surface_version: 1,
+      ide_memory_id: memoryId,
+    } as never,
+    merge_extra: true,
+  });
+  if (!updated) throw new Error(`Conversation ${conversation.id} rejected the IDE MCP refresh`);
 };
 
 /**
@@ -234,6 +308,7 @@ export const useIdeChat = (rootPath: string | null, options: IdeChatOptions = {}
   const [activeId, setActiveId] = useState<string | null>(null);
   const [planningEnabled, setPlanningEnabledState] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [syncRevision, setSyncRevision] = useState(0);
   const aliveRef = useRef(true);
 
   useEffect(() => {
@@ -242,6 +317,16 @@ export const useIdeChat = (rootPath: string | null, options: IdeChatOptions = {}
       aliveRef.current = false;
     };
   }, []);
+
+  useEffect(
+    () =>
+      ipcBridge.conversation.listChanged.on((event) => {
+        if (event.action === 'created' || event.action === 'deleted') {
+          setSyncRevision((revision) => revision + 1);
+        }
+      }),
+    []
+  );
 
   // Restore tabs when a folder is opened: re-fetch each id and prune stale ones.
   useEffect(() => {
@@ -252,33 +337,73 @@ export const useIdeChat = (rootPath: string | null, options: IdeChatOptions = {}
       return;
     }
     setPlanningEnabledState(readPlanningEnabled(rootPath));
-    const ids = readPersistedTabs(rootPath);
-    if (ids.length === 0) {
-      setTabs([]);
-      setActiveId(null);
-      return;
-    }
+    const persisted = readPersistedTabs(rootPath);
     let cancelled = false;
-    void Promise.all(ids.map((rec) => getConversationOrNull(rec.id).catch((): null => null))).then((conversations) => {
-      if (cancelled || !aliveRef.current) return;
-      const restored: IdeChatTab[] = [];
-      conversations.forEach((conv, i) => {
-        if (conv && conv.id) {
-          restored.push({ id: conv.id, title: conv.name ?? `Chat ${i + 1}`, memId: ids[i]?.memId ?? newMemId() });
+    void Promise.all([resolveIdeMcp(), ipcBridge.database.getUserConversations.invoke({ limit: 200 })])
+      .then(async ([ideServer, result]) => {
+        const discovered = (result?.items ?? [])
+          .filter((conversation) => isConversationForIdeWorkspace(conversation, rootPath))
+          .map((conversation): PersistedTab => {
+            const extra = conversation.extra as { ide_memory_id?: string } | undefined;
+            return { id: conversation.id, memId: extra?.ide_memory_id || newMemId() };
+          });
+        const seen = new Set<string>();
+        const ids = [...persisted, ...discovered]
+          .filter((record) => {
+            if (seen.has(record.id)) return false;
+            seen.add(record.id);
+            return true;
+          })
+          .slice(-MAX_TABS);
+        const entries = (
+          await Promise.all(ids.map((rec) => getConversationOrNull(rec.id).catch((): null => null)))
+        ).flatMap((conversation, index) => (conversation?.id ? [{ conversation, index }] : []));
+        const refreshed = await Promise.allSettled(
+          entries.map(({ conversation, index }) =>
+            refreshConversationMcpServers(
+              conversation,
+              ideServer,
+              ids[index]?.memId ?? newMemId(),
+              options.cloudWorkspace?.remoteMcpServer ?? null
+            )
+          )
+        );
+        if (cancelled || !aliveRef.current) return;
+        refreshed.forEach((refreshResult, index) => {
+          if (refreshResult.status === 'rejected') {
+            console.warn(
+              `[useIdeChat] MCP refresh failed for conversation ${entries[index]?.conversation.id ?? 'unknown'}:`,
+              refreshResult.reason
+            );
+          }
+        });
+        const restored = entries.map(
+          ({ conversation, index }): IdeChatTab => ({
+            id: conversation.id,
+            title: conversation.name ?? `Chat ${index + 1}`,
+            memId: ids[index]?.memId ?? newMemId(),
+          })
+        );
+        setTabs(restored);
+        // A create/delete event also triggers this reconciliation. Do not reset
+        // a valid user selection to the first tab while it is running.
+        setActiveId((currentId) => resolveRestoredIdeChatActiveId(restored, currentId));
+        writePersistedTabs(
+          rootPath,
+          restored.map((t) => ({ id: t.id, memId: t.memId }))
+        );
+      })
+      .catch((error: unknown) => {
+        console.error('[useIdeChat] restore failed:', error);
+        if (!cancelled && aliveRef.current) {
+          setTabs([]);
+          setActiveId(null);
         }
       });
-      setTabs(restored);
-      setActiveId(restored[0]?.id ?? null);
-      // Prune stale ids from storage.
-      writePersistedTabs(
-        rootPath,
-        restored.map((t) => ({ id: t.id, memId: t.memId }))
-      );
-    });
     return () => {
       cancelled = true;
     };
-  }, [rootPath]);
+  }, [options.cloudWorkspace?.remoteMcpServer, rootPath, syncRevision]);
 
   const persist = useCallback(
     (next: IdeChatTab[]): void => {
@@ -305,29 +430,12 @@ export const useIdeChat = (rootPath: string | null, options: IdeChatOptions = {}
           launcher.kind === 'cli'
             ? resolveAgentBackendKey(launcher.agent)
             : launcher.assistant.preset_agent_type || 'claude';
-        // Hard-lock Strict IDE Mode: native Read/Grep/Glob/Bash/Write/Edit tools are
-        // always blocked in IDE workspaces; agents must use ide_* / team_* / db_* tools.
-        const strictMode = true;
-        if (strictMode && backend === 'claude') {
-          const agents = await ipcBridge.acpConversation.getAvailableAgents.invoke();
-          const strictAgent = agents.find(
-            (agent) => agent.name === STRICT_IDE_CLAUDE_AGENT_NAME && agent.agent_source === 'custom' && agent.available
-          );
-          if (!strictAgent) {
-            throw new Error('Strict Claude ACP adapter is unavailable');
-          }
-          const strictParams = await buildCliAgentParams(strictAgent, rootPath);
-          params = {
-            ...strictParams,
-            name: params.name,
-            extra: {
-              ...params.extra,
-              ...strictParams.extra,
-            },
-          };
+        const strictMode = isStrictIdeModeEnabled(rootPath);
+        if (strictMode) {
+          const askMode = getAskMode(backend);
+          if (!askMode) throw new Error(`Strict IDE Mode is not supported by backend ${backend}.`);
+          params.extra.session_mode = askMode;
         }
-        const strictSessionMode = strictMode ? getAskMode(backend) : undefined;
-        if (strictSessionMode) params.extra.session_mode = strictSessionMode;
         // Tab title: prefer the agent/assistant name (the conversation gets a
         // default name auto-derived later from history; we just need something
         // human in the strip).
@@ -352,47 +460,27 @@ export const useIdeChat = (rootPath: string | null, options: IdeChatOptions = {}
           // Guide injection is best-effort — never block tab creation.
         }
         // ─────────────────────────────────────────────────────────────────────
-        // Attach the built-in IDE MCP server (best-effort) so the agent actually
-        // has the semantic `ide_*` repo-intelligence tools and the `ide_memory_*`
-        // session-memory tools. The concise rules are injected once at session
-        // creation; per-turn reminders are intentionally avoided.
-        try {
-          const ideServer = await resolveIdeMcp();
-          const cloudServer = options.cloudWorkspace?.remoteMcpServer ?? null;
-          if (ideServer || cloudServer) {
-            if (!params.extra) (params as unknown as Record<string, unknown>).extra = {};
-            const existing = Array.isArray(params.extra.selected_session_mcp_servers)
-              ? params.extra.selected_session_mcp_servers
-              : [];
-            const withoutManagedServers = existing.filter(
-              (server) =>
-                (!ideServer || server.name !== IDE_MCP_NAME) && (!cloudServer || server.name !== cloudServer.name)
-            );
-            params.extra.selected_session_mcp_servers = [
-              ...withoutManagedServers,
-              ...(ideServer ? [ideServer] : []),
-              ...(cloudServer ? [cloudServer] : []),
-            ];
-            // Bind the session-memory rules (with this tab's memId) onto the
-            // INVISIBLE rules layer, alongside the IDE tool rules. `preset_rules`
-            // is delivered to the agent as a system/standing instruction — the
-            // same channel that carries the IDE tools — so the agent learns its
-            // `sessionId` and the `ide_memory_*` tools WITHOUT any visible setup
-            // turn. (The verbose guidance is also in `preset_context` for
-            // preset-aware backends; this covers CLI/ACP backends that read
-            // `preset_rules`.)
-            const baseRules = withIdeMemoryRules(
-              memId,
-              withIdeToolRules(typeof params.extra.preset_rules === 'string' ? params.extra.preset_rules : '')
-            );
-            const cloudRules = options.cloudWorkspace ? buildCloudWorkspaceGuide(options.cloudWorkspace) : '';
-            params.extra.preset_rules = cloudRules ? `${cloudRules}\n\n${baseRules}` : baseRules;
-          }
-        } catch {
-          // Server attach is best-effort — never block tab creation.
-        }
+        // The IDE MCP is mandatory for Studio chat: creating a session without it
+        // would leave Strict Mode no valid replacement tools.
+        const ideServer = await resolveIdeMcp();
+        const cloudServer = options.cloudWorkspace?.remoteMcpServer ?? null;
+        const existing = Array.isArray(params.extra.selected_session_mcp_servers)
+          ? params.extra.selected_session_mcp_servers
+          : [];
+        params.extra.selected_session_mcp_servers = mergeIdeSessionMcpServers(existing, ideServer, cloudServer);
+        params.extra.surface = 'ide';
+        params.extra.surface_version = 1;
+        params.extra.ide_memory_id = memId;
+        params.extra.ide_planning_enabled = planningEnabled;
+        const baseRules = withIdeMemoryRules(
+          memId,
+          withIdeToolRules(typeof params.extra.preset_rules === 'string' ? params.extra.preset_rules : '')
+        );
+        const cloudRules = options.cloudWorkspace ? buildCloudWorkspaceGuide(options.cloudWorkspace) : '';
+        params.extra.preset_rules = cloudRules ? `${cloudRules}\n\n${baseRules}` : baseRules;
         const conv = await ipcBridge.conversation.create.invoke(params);
         if (!conv?.id) return null;
+        if (strictMode) await enforceStrictIdeSessionMode(conv.id);
         // No visible "primer" turn: the session-memory binding rides the silent
         // rules/context layers above, so the chat opens clean and the agent just
         // greets the user instead of echoing a wall of setup text.
@@ -435,7 +523,7 @@ export const useIdeChat = (rootPath: string | null, options: IdeChatOptions = {}
       const next = tabs.filter((t) => t.id !== id);
       setTabs(next);
       persist(next);
-      if (activeId === id) setActiveId(next[0]?.id ?? null);
+      if (activeId === id) setActiveId(resolveIdeChatActiveIdAfterClose(tabs, id));
       // Wipe this tab's ephemeral session memory (close the tab → memory gone).
       if (closing?.memId) await ideClient.memoryClear(closing.memId).catch((): undefined => undefined);
       await ipcBridge.conversation.remove.invoke({ id }).catch((): undefined => undefined);

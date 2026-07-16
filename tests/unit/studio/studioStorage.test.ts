@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  *
  * Unit tests for the Studio recent/starred local store. Exercises de-dup,
@@ -25,10 +25,12 @@ import {
   addRecentFile,
   baseName,
   clearRecentFiles,
+  getLastStudioView,
   getRecentFiles,
   getStarredFiles,
   isStarred,
   removeRecentFile,
+  setLastStudioView,
   toggleStarred,
 } from '@/renderer/pages/studio/studioStorage';
 
@@ -84,5 +86,23 @@ describe('studioStorage starred list', () => {
     toggleStarred('/a/one.txt');
     expect(isStarred('/a/one.txt')).toBe(false);
     expect(getStarredFiles()).toEqual([]);
+  });
+});
+
+describe('studioStorage last view', () => {
+  it('restores the last selected Studio view', () => {
+    setLastStudioView({ mode: 'ide' });
+    expect(getLastStudioView()).toEqual({ mode: 'ide' });
+
+    setLastStudioView({ mode: 'editor', filePath: '/a/notes.md' });
+    expect(getLastStudioView()).toEqual({ mode: 'editor', filePath: '/a/notes.md' });
+  });
+
+  it('falls back to the dashboard when the stored view is invalid', () => {
+    store.set('studio.lastView', JSON.stringify({ mode: 'peer', joinCode: 'secret' }));
+    expect(getLastStudioView()).toEqual({ mode: 'dashboard' });
+
+    store.set('studio.lastView', '{not json');
+    expect(getLastStudioView()).toEqual({ mode: 'dashboard' });
   });
 });

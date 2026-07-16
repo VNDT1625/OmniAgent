@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -27,6 +27,7 @@
 import * as http from 'node:http';
 import { mcpService } from '@/common/adapter/ipcBridge';
 import { startIdeMcpHost } from './ideMcpHost';
+import { buildIdeServer } from './ideMcpWiring';
 import { BUILTIN_IDE_NAME } from './ideServer';
 
 /** Human-readable description shown for the IDE MCP server in the catalog. */
@@ -44,7 +45,7 @@ type SidecarHealth = { ok?: boolean; url?: string; server?: string; source?: str
 const resolveIdeMcpEndpoint = async (): Promise<IdeMcpEndpoint> => {
   const sidecar = await detectStandaloneSidecar();
   if (sidecar) return sidecar;
-  const host = await startIdeMcpHost();
+  const host = await startIdeMcpHost({ buildServer: buildIdeServer });
   return { url: host.url, source: 'in-process' };
 };
 

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  *
  * Tests the no-AI Quick-Run orchestrator hook. `ideClient` (the plan/probe IPC),
@@ -25,6 +25,7 @@ const { ideClientMock, emitterMock, terminalMock } = vi.hoisted(() => ({
     create: vi.fn(),
     write: vi.fn(),
     onData: vi.fn(),
+    onExit: vi.fn(),
     kill: vi.fn(),
     remove: vi.fn(),
   },
@@ -48,6 +49,16 @@ const FAST = { probeTimeoutMs: 2000, probeIntervalMs: 10, fallbackGraceMs: 50 };
 const makePlan = (overrides: Partial<RunPlan> = {}): RunPlan => ({
   support: { web: true, android: false, desktop: false },
   candidates: [{ platform: 'web', command: 'npm run dev', cwd: '', url: 'http://localhost:5173', port: 5173 }],
+  services: [
+    {
+      id: 'frontend:.:dev',
+      name: 'dev',
+      kind: 'frontend',
+      command: 'npm run dev',
+      cwd: '',
+      url: 'http://localhost:5173',
+    },
+  ],
   packageManager: 'npm',
   hasRunData: true,
   ...overrides,
@@ -76,6 +87,7 @@ beforeEach(() => {
   terminalMock.create.mockResolvedValue({ ok: true, data: { id: 'sess-1' } });
   terminalMock.write.mockResolvedValue({ ok: true, data: undefined });
   terminalMock.onData.mockReturnValue(() => {});
+  terminalMock.onExit.mockReturnValue(() => {});
   terminalMock.kill.mockResolvedValue({ ok: true, data: undefined });
   terminalMock.remove.mockResolvedValue({ ok: true, data: undefined });
 });
@@ -115,6 +127,29 @@ describe('useQuickRun', () => {
     expect(byPlatform).toEqual({ web: true, android: true, desktop: false });
   });
 
+  it('keeps a saved web target selectable when later desktop detection marks web unsupported', async () => {
+    const saved: SavedRunConfig[] = [
+      { platform: 'web', command: 'npm run dev', cwd: '', url: 'http://localhost:5173', manual: false, savedAt: 1 },
+      { platform: 'desktop', command: 'npm run desktop', cwd: '', manual: false, savedAt: 2 },
+    ];
+    planOk(
+      makePlan({
+        support: { web: false, android: false, desktop: true },
+        candidates: [{ platform: 'desktop', command: 'npm run desktop', cwd: '', framework: 'Electron' }],
+        services: [],
+      }),
+      saved
+    );
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('ready'));
+
+    expect(result.current.options.find((option) => option.platform === 'web')?.supported).toBe(true);
+    act(() => result.current.select('web'));
+    expect(result.current.selected).toBe('web');
+    expect(result.current.recipe?.command).toBe('npm run dev');
+    expect(result.current.services).toEqual([expect.objectContaining({ kind: 'frontend', command: 'npm run dev' })]);
+  });
+
   it('spawns a terminal session, focuses the dock, and goes running once reachable', async () => {
     planOk(makePlan());
     const { result } = renderHook(() => useQuickRun('/repo', FAST));
@@ -124,7 +159,7 @@ describe('useQuickRun', () => {
       await result.current.run();
     });
     // The hook spawned a real terminal session at the repo root and wrote the command.
-    expect(terminalMock.create).toHaveBeenCalledWith({ options: { cwd: '/repo' } });
+    expect(terminalMock.create).toHaveBeenCalledWith({ options: { cwd: '/repo', title: 'dev' } });
     expect(terminalMock.write).toHaveBeenCalledWith({ id: 'sess-1', data: 'npm run dev\r' });
     // It surfaced that session in the IDE dock (focus), not a blind run emitter.
     expect(emitterMock.emit).toHaveBeenCalledWith('ide.terminal.focus', { id: 'sess-1' });
@@ -209,6 +244,201 @@ describe('useQuickRun', () => {
     expect(ideClientMock.qrProbe).toHaveBeenCalledWith('http://localhost:5174');
     expect(result.current.phase).toBe('running');
     expect(result.current.readyUrl).toBe('http://localhost:5174');
+  });
+
+  it('falls back to the existing web recipe when no frontend service can be classified', async () => {
+    planOk(
+      makePlan({
+        services: [{ id: 'other', name: 'dev', kind: 'other', command: 'npm run dev', cwd: '' }],
+      })
+    );
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('ready'));
+
+    await act(async () => result.current.run({ mode: 'interface' }));
+
+    expect(terminalMock.write).toHaveBeenCalledWith({ id: 'sess-1', data: 'npm run dev\r' });
+  });
+
+  it('launches the complete detected stack in separate terminal sessions', async () => {
+    planOk(
+      makePlan({
+        services: [
+          {
+            id: 'frontend',
+            name: 'frontend',
+            kind: 'frontend',
+            command: 'npm run dev',
+            cwd: 'web',
+            url: 'http://localhost:5173',
+          },
+          { id: 'backend', name: 'backend', kind: 'backend', command: 'npm run dev', cwd: 'api' },
+          { id: 'ai', name: 'ai', kind: 'ai', command: 'python model.py', cwd: 'ai' },
+        ],
+      })
+    );
+    let session = 0;
+    terminalMock.create.mockImplementation(() => Promise.resolve({ ok: true, data: { id: `sess-${++session}` } }));
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('ready'));
+
+    await act(async () => result.current.run({ mode: 'full' }));
+
+    expect(terminalMock.create).toHaveBeenCalledTimes(3);
+    expect(terminalMock.write.mock.calls.map((call) => call[0].data)).toEqual([
+      'npm run dev\r',
+      'npm run dev\r',
+      'python model.py\r',
+    ]);
+  });
+
+  it('prefers local development services and keeps Docker only as an infrastructure fallback', async () => {
+    planOk(
+      makePlan({
+        services: [
+          {
+            id: 'frontend:web:dev',
+            name: 'web · dev',
+            kind: 'frontend',
+            command: 'npm run dev',
+            cwd: 'frontend/web',
+            url: 'http://localhost:3000',
+          },
+          {
+            id: 'python:.:backend',
+            name: 'backend · local',
+            kind: 'backend',
+            command: 'python -m uvicorn backend.main:app --reload --port 8000',
+            cwd: '',
+          },
+          {
+            id: 'python:.:mcp',
+            name: 'mcp · local',
+            kind: 'other',
+            command: 'python -m mcp_server.server',
+            cwd: '',
+          },
+          {
+            id: 'compose:.:web',
+            name: 'compose - web',
+            kind: 'frontend',
+            command: 'docker compose up --no-deps web',
+            cwd: '',
+          },
+          {
+            id: 'compose:.:backend',
+            name: 'compose - backend',
+            kind: 'backend',
+            command: 'docker compose up --no-deps backend',
+            cwd: '',
+          },
+          {
+            id: 'compose:.:mcp',
+            name: 'compose - mcp',
+            kind: 'other',
+            command: 'docker compose up --no-deps mcp',
+            cwd: '',
+          },
+          {
+            id: 'compose:.:ollama',
+            name: 'compose - ollama',
+            kind: 'ai',
+            command: 'docker compose up --no-deps ollama',
+            cwd: '',
+          },
+          {
+            id: 'compose:.:full',
+            name: 'Docker Compose',
+            kind: 'other',
+            command: 'docker compose up',
+            cwd: '',
+            orchestrator: true,
+          },
+        ],
+      })
+    );
+    let session = 0;
+    terminalMock.create.mockImplementation(() => Promise.resolve({ ok: true, data: { id: `sess-${++session}` } }));
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('ready'));
+
+    await act(async () => result.current.run({ mode: 'full' }));
+
+    expect(terminalMock.create).toHaveBeenCalledTimes(4);
+    expect(terminalMock.create.mock.calls.map((call) => call[0].options.title)).toEqual([
+      'web · dev',
+      'backend · local',
+      'mcp · local',
+      'compose - ollama',
+    ]);
+    expect(terminalMock.write.mock.calls.map((call) => call[0].data)).toEqual([
+      'npm run dev\r',
+      'python -m uvicorn backend.main:app --reload --port 8000\r',
+      'python -m mcp_server.server\r',
+      'docker compose up --no-deps ollama\r',
+    ]);
+  });
+
+  it('runs only selected backend services without waiting for a frontend URL', async () => {
+    planOk(
+      makePlan({
+        services: [
+          {
+            id: 'frontend',
+            name: 'frontend',
+            kind: 'frontend',
+            command: 'npm run dev',
+            cwd: 'web',
+            url: 'http://localhost:5173',
+          },
+          { id: 'backend', name: 'backend', kind: 'backend', command: 'npm run api', cwd: 'api' },
+        ],
+      })
+    );
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('ready'));
+    ideClientMock.qrProbe.mockClear();
+
+    await act(async () => result.current.run({ mode: 'custom', serviceIds: ['backend'] }));
+
+    expect(terminalMock.write).toHaveBeenCalledWith({ id: 'sess-1', data: 'npm run api\r' });
+    expect(ideClientMock.qrProbe).not.toHaveBeenCalled();
+    expect(result.current.phase).toBe('running');
+  });
+
+  it('returns to Start and tears down sibling services when an owned terminal exits manually', async () => {
+    planOk(
+      makePlan({
+        services: [
+          {
+            id: 'frontend',
+            name: 'frontend',
+            kind: 'frontend',
+            command: 'npm run dev',
+            cwd: 'web',
+            url: 'http://localhost:5173',
+          },
+          { id: 'backend', name: 'backend', kind: 'backend', command: 'npm run api', cwd: 'api' },
+        ],
+      })
+    );
+    let session = 0;
+    let emitExit: ((event: { id: string; exitCode: number | null; exitedAt: number }) => void) | undefined;
+    terminalMock.create.mockImplementation(() => Promise.resolve({ ok: true, data: { id: `sess-${++session}` } }));
+    terminalMock.onExit.mockImplementation((listener) => {
+      emitExit = listener;
+      return () => {};
+    });
+    const { result } = renderHook(() => useQuickRun('/repo', FAST));
+    await waitFor(() => expect(result.current.phase).toBe('ready'));
+    await act(async () => result.current.run({ mode: 'full' }));
+
+    act(() => emitExit?.({ id: 'sess-2', exitCode: 0, exitedAt: Date.now() }));
+
+    expect(result.current.phase).toBe('ready');
+    expect(result.current.active).toBe(false);
+    expect(result.current.readyUrl).toBeNull();
+    expect(terminalMock.kill).toHaveBeenCalledWith({ id: 'sess-1' });
   });
 
   it('stop() kills the spawned dev server, clears the URL, and returns to ready', async () => {

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -95,6 +95,10 @@ export const projectIdFromRoot = (projectRoot: string): string => {
   }
   return `proj_${(hash >>> 0).toString(16).padStart(8, '0')}`;
 };
+
+/** Canonical store namespace for small, explicitly cross-workspace lessons. */
+const APP_EXPERIENCE_PROJECT_ID = '__app__';
+const MAX_APP_EXPERIENCES = 200;
 
 /** Options for {@link createExperienceService}. */
 export type ExperienceServiceOptions = {
@@ -196,7 +200,19 @@ export const createExperienceService = (options: ExperienceServiceOptions): Expe
   const rebuildProjectionPublic: ExperienceService['rebuildProjection'] = () => rebuildProjection(true);
 
   const record: ExperienceService['record'] = async (draft) => {
-    const result = await capture.capture({ ...draft, projectId });
+    const scope = draft.scope ?? 'repo';
+    const result = await capture.capture({
+      ...draft,
+      scope,
+      projectId: scope === 'app' ? APP_EXPERIENCE_PROJECT_ID : projectId,
+    });
+    if (scope === 'app') {
+      const appEntries = await store.searchMetadata({ projectId: APP_EXPERIENCE_PROJECT_ID, scope: 'app' });
+      const overflow = appEntries
+        .toSorted((a, b) => a.updatedAt.localeCompare(b.updatedAt))
+        .slice(0, Math.max(0, appEntries.length - MAX_APP_EXPERIENCES));
+      await Promise.all(overflow.map((entry) => store.remove(entry.id)));
+    }
     await safeMetric(() => metrics.recordCapture());
     await rebuildProjection();
     return result;
@@ -204,9 +220,13 @@ export const createExperienceService = (options: ExperienceServiceOptions): Expe
 
   const search: ExperienceService['search'] = async (query, searchOptions = {}) => {
     const projection = await readProjection(options.projectRoot, options.projectionFs);
-    const entries = projection
+    const repoEntries = projection
       ? projection.entries
       : buildProjection(await store.searchMetadata({ projectId })).entries;
+    const appEntries = buildProjection(
+      await store.searchMetadata({ projectId: APP_EXPERIENCE_PROJECT_ID, scope: 'app' })
+    ).entries;
+    const entries = [...repoEntries, ...appEntries];
     const ranked = await retrieval.retrieve(
       { ...query, projectId: query.projectId ?? projectId },
       entries,
@@ -328,7 +348,19 @@ export const createExperienceService = (options: ExperienceServiceOptions): Expe
     rebuildProjection: rebuildProjectionPublic,
     forget,
     get: (entryId) => store.get(entryId),
-    list: (filter) => store.searchMetadata({ ...filter, projectId }),
+    list: async (filter) => {
+      if (filter?.scope === 'repo') {
+        return store.searchMetadata({ ...filter, projectId });
+      }
+      if (filter?.scope === 'app') {
+        return store.searchMetadata({ ...filter, projectId: APP_EXPERIENCE_PROJECT_ID });
+      }
+      const [repoEntries, appEntries] = await Promise.all([
+        store.searchMetadata({ ...filter, projectId }),
+        store.searchMetadata({ ...filter, projectId: APP_EXPERIENCE_PROJECT_ID }),
+      ]);
+      return [...repoEntries, ...appEntries];
+    },
     updateConfidence,
     recordFeedback,
     getMetrics: () => metrics.snapshot(),

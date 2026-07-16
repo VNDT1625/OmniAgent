@@ -121,6 +121,21 @@ fn rel_from_operation(project_root: &Path, operation: &OperationRecord) -> Optio
         return None;
     }
     let file_path = operation.file_path.as_ref()?;
+    let normalized_file = file_path.replace(char::from(92), "/");
+    let normalized_file = normalized_file
+        .strip_prefix("//?/")
+        .unwrap_or(&normalized_file);
+    let root_text = project_root.to_string_lossy().replace(char::from(92), "/");
+    let root_text = root_text.strip_prefix("//?/").unwrap_or(&root_text);
+    let root_text = root_text.trim_end_matches('/');
+    let prefix = format!("{}/", root_text);
+
+    if normalized_file.len() >= prefix.len()
+        && normalized_file[..prefix.len()].eq_ignore_ascii_case(&prefix)
+    {
+        return Some(normalize_rel(&normalized_file[prefix.len()..]));
+    }
+
     let path = PathBuf::from(file_path);
     let rel = path.strip_prefix(project_root).unwrap_or(&path);
     Some(normalize_rel(&rel.to_string_lossy()))

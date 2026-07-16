@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -81,6 +81,9 @@ import { registerExperienceBridge } from '@process/experience/experienceBridge';
 import { getGitManagerServices } from '@process/git/gitManagerWiring';
 import { registerRouter9Bridge } from '@process/router9/router9Bridge';
 import { registerPricingBridge } from '@process/pricing/pricingBridge';
+import { registerProviderBridge } from '@process/services/tomnyProviderBridge';
+
+import { registerExperimentalCoreBridge } from '@process/experimentalCore/experimentalCoreBridge';
 import { getApplicationMainWindow } from './applicationBridge';
 
 export type BridgeDependencies = Record<string, never>;
@@ -476,6 +479,20 @@ export function initAllBridges(_deps: BridgeDependencies = {}): void {
     console.log('[Bridge] Pricing bridge registered.');
   } catch (error) {
     console.error('[Bridge] Failed to register Pricing bridge:', error);
+  }
+
+  try {
+    registerProviderBridge();
+    console.log('[Bridge] Tomny provider bridge registered.');
+  } catch (error) {
+    console.error('[Bridge] Failed to register Tomny provider bridge:', error);
+  }
+
+  try {
+    registerExperimentalCoreBridge();
+    console.log('[Bridge] Experimental core bridge registered.');
+  } catch (error) {
+    console.error('[Bridge] Failed to register experimental core bridge:', error);
   }
 
   try {

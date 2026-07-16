@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -38,6 +38,8 @@ const TerminalPage: React.FC = () => {
   const { t } = useTranslation();
   const isDesktop = isElectronDesktop();
   const state = useTerminalState();
+
+  const intelligence = useTerminalIntelligence();
 
   const [editorVisible, setEditorVisible] = useState(false);
   const [editorDraft, setEditorDraft] = useState<ScheduleDraft | null>(null);
@@ -138,6 +140,10 @@ const TerminalPage: React.FC = () => {
               onInput={(data) => activeSession && state.writeSession(activeSession.id, data)}
               onResize={(cols, rows) => activeSession && state.resizeSession(activeSession.id, cols, rows)}
               visible
+              ghostFor={intelligence.ghostFor}
+              onCommandFinished={intelligence.onCommandFinished}
+              pendingRemap={intelligence.pendingRemap}
+              onDismissRemap={intelligence.dismissRemap}
             />
           </div>
         </Tabs.TabPane>

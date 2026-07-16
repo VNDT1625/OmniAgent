@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -22,7 +22,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { teamCollabClient, type RemoteTeamSnapshot, type TeamPublishData } from './teamCollabClient';
+import { teamCollabClient, type RemoteTeamSnapshot, type TeamJoinData, type TeamPublishData } from './teamCollabClient';
 import type { ISessionMcpServer } from '@/common/config/storage';
 
 /** Local role within a team session. */
@@ -35,6 +35,7 @@ export type PeerConnection = {
   repoName: string;
   workspacePath: string;
   remoteMcpServer: ISessionMcpServer;
+  peerCapabilities: TeamJoinData['peerCapabilities'];
 };
 
 /** Public shape returned by {@link useTeamCollab}. */
@@ -52,7 +53,7 @@ export type UseTeamCollab = {
   /** Last error message (publish/join), or null. */
   error: string | null;
   /** HOST: publish the open repo (LAN by default; `online` opens a WAN tunnel). */
-  publish: (password: string, online: boolean) => Promise<boolean>;
+  publish: (password: string, online: boolean, allowWrites: boolean, allowDatabase: boolean) => Promise<boolean>;
   /** HOST: stop sharing. */
   unpublish: () => Promise<void>;
   /** PEER: join a remote host by base URL + password. */
@@ -121,12 +122,12 @@ export const useTeamCollab = (rootPath: string | null): UseTeamCollab => {
   }, [role, peer]);
 
   const publish = useCallback(
-    async (password: string, online: boolean): Promise<boolean> => {
+    async (password: string, online: boolean, allowWrites: boolean, allowDatabase: boolean): Promise<boolean> => {
       if (!rootPath || busy) return false;
       setBusy(true);
       setError(null);
       try {
-        const res = await teamCollabClient.publish(rootPath, password, online);
+        const res = await teamCollabClient.publish(rootPath, password, online, allowWrites, allowDatabase);
         if (!aliveRef.current) return res.ok;
         if (res.ok === false) {
           setError(res.error);
@@ -172,6 +173,7 @@ export const useTeamCollab = (rootPath: string | null): UseTeamCollab => {
           repoName: res.data.repoName,
           workspacePath: res.data.workspacePath,
           remoteMcpServer: res.data.remoteMcpServer,
+          peerCapabilities: res.data.peerCapabilities,
         });
         return true;
       } catch (e) {

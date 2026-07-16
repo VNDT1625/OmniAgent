@@ -98,6 +98,41 @@ MAC_X64_LATEST=$(find "$ARTIFACTS_DIR" -type f -path "*/macos-build-x64/*" -name
 MAC_ARM64_LATEST=$(find "$ARTIFACTS_DIR" -type f -path "*/macos-build-arm64/*" -name "latest-mac.yml" | sort | head -n 1 || true)
 LINUX_X64_LATEST=$(find "$ARTIFACTS_DIR" -type f -path "*/linux-build-x64/*" -name "latest-linux.yml" | sort | head -n 1 || true)
 LINUX_ARM64_LATEST=$(find "$ARTIFACTS_DIR" -type f -path "*/linux-build-arm64/*" -name "latest-linux-arm64.yml" | sort | head -n 1 || true)
+validate_windows_differential_metadata() {
+  local metadata_file="$1"
+  local label="$2"
+  local installer_name
+
+  if [ -z "$metadata_file" ]; then
+    echo "::error::Missing Windows $label updater metadata"
+    return 1
+  fi
+
+  installer_name=$(grep -E '^path:[[:space:]]*' "$metadata_file" | head -n 1 | sed -E 's/^path:[[:space:]]*//')
+  if [ -z "$installer_name" ]; then
+    installer_name=$(grep -E '^[[:space:]]*-[[:space:]]*url:[[:space:]]*' "$metadata_file" | head -n 1 | sed -E 's/^[[:space:]]*-[[:space:]]*url:[[:space:]]*//')
+  fi
+
+  if [ -z "$installer_name" ] || [[ "$installer_name" != *.exe ]]; then
+    echo "::error::$metadata_file does not reference a Windows NSIS installer"
+    return 1
+  fi
+
+  if ! grep -Eq '^[[:space:]]+size:[[:space:]]*[1-9][0-9]*[[:space:]]*$' "$metadata_file"; then
+    echo "::error::$metadata_file is missing a positive files[].size required for differential updates"
+    return 1
+  fi
+
+  if [ ! -f "$(dirname "$metadata_file")/${installer_name}.blockmap" ]; then
+    echo "::error::Missing differential blockmap for $installer_name next to $metadata_file"
+    return 1
+  fi
+
+  echo "Differential update metadata verified for Windows $label: $installer_name"
+}
+
+validate_windows_differential_metadata "$WIN_X64_LATEST" "x64"
+validate_windows_differential_metadata "$WIN_ARM64_LATEST" "arm64"
 
 # ---------------------------------------------------------------------------
 # 3) Publish deterministic canonical metadata for electron-updater

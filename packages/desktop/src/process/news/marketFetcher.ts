@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -57,7 +57,7 @@ const COINGECKO_URL = 'https://api.coingecko.com/api/v3/simple/price';
 const FETCH_TIMEOUT_MS = 10_000;
 const CACHE_TTL_MS = 60_000;
 const YAHOO_CONCURRENCY = 4;
-const USER_AGENT = 'AionUi-News/1.0 (+https://aionui.com)';
+const USER_AGENT = 'TomniAgentic-News/1.0 (+https://github.com/VNDT1625/OmniAgent)';
 
 type Instrument = { yahoo: string; stooq: string; symbol: string; name: string; kind: MarketKind };
 

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -64,6 +64,18 @@ describe('planRunTargets', () => {
     expect(plan.support.desktop).toBe(true);
     expect(plan.support.web).toBe(false);
     expect(plan.candidates.find((c) => c.platform === 'desktop')?.framework).toBe('Electron');
+  });
+
+  it('keeps web selectable when an Electron desktop shell is added after a standalone web app', () => {
+    const files = pkgFiles({
+      dependencies: { react: '18' },
+      devDependencies: { electron: '30', vite: '5' },
+      scripts: { dev: 'vite', desktop: 'electron .' },
+    });
+    const plan = planRunTargets({ files });
+
+    expect(plan.support).toEqual({ web: true, android: false, desktop: true });
+    expect(plan.candidates.find((c) => c.platform === 'web')?.command).toBe('npm run dev');
   });
 
   it('treats a Capacitor app as BOTH web and android (multi-platform booleans)', () => {
@@ -148,6 +160,131 @@ describe('planRunTargets', () => {
     expect(plan.hasRunData).toBe(true);
     expect(web?.command).toBe('bun run dev');
     expect(web?.cwd).toBe('AI_Education-main');
+  });
+
+  it('discovers independently selectable frontend, backend, and AI services', () => {
+    const files = pkgFiles(
+      {},
+      {
+        'apps/web/package.json': JSON.stringify({ devDependencies: { vite: '5' }, scripts: { dev: 'vite' } }),
+        'apps/api/package.json': JSON.stringify({
+          dependencies: { express: '5' },
+          scripts: { dev: 'tsx watch src.ts' },
+        }),
+        'services/ai/package.json': JSON.stringify({ scripts: { start: 'python model_server.py' } }),
+      }
+    );
+
+    const plan = planRunTargets({ files });
+    expect(plan.services.map((service) => service.kind)).toEqual(['frontend', 'backend', 'ai']);
+    expect(plan.services.map((service) => service.cwd)).toEqual(['apps/web', 'apps/api', 'services/ai']);
+  });
+
+  it('prefers a browser-facing script in a mixed frontend and backend package', () => {
+    const files = pkgFiles({
+      dependencies: { express: '5' },
+      devDependencies: { vite: '5' },
+      scripts: { dev: 'vite', 'dev:api': 'tsx server.ts' },
+    });
+
+    const plan = planRunTargets({ files });
+    expect(plan.services.map((service) => service.kind)).toEqual(['frontend', 'backend']);
+  });
+
+  it('keeps standalone web and Electron package commands on their matching targets', () => {
+    const files = pkgFiles(
+      {},
+      {
+        'frontend/web/package.json': JSON.stringify({
+          dependencies: { next: '15' },
+          scripts: { dev: 'next dev' },
+        }),
+        'frontend/desktop/package.json': JSON.stringify({
+          dependencies: { electron: '30', vite: '5' },
+          scripts: { dev: 'concurrently "vite" "electron ."' },
+        }),
+      }
+    );
+
+    const plan = planRunTargets({ files });
+    expect(plan.candidates.find((candidate) => candidate.platform === 'web')?.cwd).toBe('frontend/web');
+    expect(plan.candidates.find((candidate) => candidate.platform === 'desktop')?.cwd).toBe('frontend/desktop');
+  });
+
+  it('discovers Docker Compose services for full and custom stack runs', () => {
+    const files = pkgFiles(
+      { dependencies: { next: '15' }, scripts: { dev: 'next dev' } },
+      {
+        'docker-compose.yml': [
+          'services:',
+          '  backend:',
+          '    build: .',
+          '    ports:',
+          '      - "8000:8000"',
+          '  web:',
+          '    build: .',
+          '    ports:',
+          '      - "3000:3000"',
+          '  ollama:',
+          '    image: ollama/ollama:latest',
+          '    ports:',
+          '      - "11434:11434"',
+        ].join('\n'),
+      }
+    );
+
+    const plan = planRunTargets({ files });
+    expect(plan.services.map((service) => service.kind)).toEqual(['frontend', 'frontend', 'backend', 'ai', 'other']);
+    expect(plan.services.find((service) => service.id.includes(':web'))?.url).toBe('http://localhost:3000');
+    expect(plan.services.find((service) => service.orchestrator)?.command).toBe('docker compose up');
+  });
+
+  it('discovers local Python backend and MCP services beside Docker infrastructure', () => {
+    const files = pkgFiles(
+      {},
+      {
+        'frontend/web/package.json': JSON.stringify({
+          dependencies: { next: '15' },
+          scripts: { dev: 'next dev' },
+        }),
+        'pyproject.toml': '[project]\ndependencies = [fastapi, uvicorn[standard]]',
+        'docker-compose.yml': [
+          'services:',
+          '  backend:',
+          '    build: .',
+          '    ports:',
+          '      - 8000:8000',
+          '  web:',
+          '    build: .',
+          '    ports:',
+          '      - 3000:3000',
+          '  mcp:',
+          '    build: .',
+          '  ollama:',
+          '    image: ollama/ollama:latest',
+          '    ports:',
+          '      - 11434:11434',
+        ].join('\n'),
+      }
+    );
+
+    const plan = planRunTargets({
+      files,
+      existing: new Set(['backend/main.py', 'mcp_server/server.py']),
+    });
+
+    expect(plan.services.find((service) => service.id === 'python:.:backend')).toMatchObject({
+      name: 'backend · local',
+      kind: 'backend',
+      command: 'python -m uvicorn backend.main:app --reload --host 127.0.0.1 --port 8000',
+    });
+    expect(plan.services.find((service) => service.id === 'python:.:mcp')).toMatchObject({
+      name: 'mcp · local',
+      command: 'python -m mcp_server.server --transport streamable-http --host 127.0.0.1 --port 3001',
+    });
+    expect(plan.services.find((service) => service.id.endsWith(':ollama'))?.command).toBe(
+      'docker compose up --no-deps ollama'
+    );
   });
 
   it('maps run platforms to tracer platforms', () => {

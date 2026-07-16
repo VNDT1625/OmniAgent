@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -72,6 +72,9 @@ export type EditorToolAction =
   | { tool: 'format_passage'; find: string; format: EditorToolTextFormat; until?: string }
   | { tool: 'insert_table'; rows: number; cols: number; data?: string[][] }
   | { tool: 'set_cells'; start: string; values: Array<Array<string | number>>; sheet?: string }
+  | { tool: 'create_premium_doc'; plan: unknown }
+  | { tool: 'create_premium_deck'; plan: unknown }
+  | { tool: 'review_premium_quality' }
   | { tool: 'run_office_api'; code: string };
 
 /** Request for {@link EDITOR_TOOLS_CHANNELS.run}. */

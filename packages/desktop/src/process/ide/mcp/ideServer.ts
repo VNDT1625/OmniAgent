@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -33,6 +33,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ISessionMemoryStore } from '../memory/sessionMemoryStore';
+import type { ExperienceEntryDraft, ExperienceQuery, ExperienceSuggestion } from '@process/experience/experienceTypes';
+import type { DebugEpisode, VerifyOutcomeResult } from '@process/experience/workflow/experienceWorkflow';
 import type {
   ArtifactEditMode,
   ArtifactFileInput,
@@ -51,6 +53,25 @@ export type SessionMemoryAgentService = Pick<
   ISessionMemoryStore,
   'remember' | 'recall' | 'forget' | 'setSecret' | 'listSecretKeys' | 'deleteSecret' | 'snapshot'
 >;
+
+/** Existing project-scoped ExpBase surface exposed to agents through MCP. */
+export type ExperienceAgentService = {
+  search: (
+    projectRoot: string,
+    query: ExperienceQuery,
+    options?: { topK?: number; minScore?: number }
+  ) => Promise<ExperienceSuggestion[]>;
+  record: (
+    projectRoot: string,
+    draft: ExperienceEntryDraft
+  ) => Promise<{ action: 'created' | 'updated'; entryId: string }>;
+  recordFeedback: (projectRoot: string, entryId: string, helped: boolean) => Promise<boolean>;
+  verifyOutcome: (
+    projectRoot: string,
+    episode: DebugEpisode,
+    outcome: 'passed' | 'failed'
+  ) => Promise<VerifyOutcomeResult>;
+};
 
 /** Canonical MCP server name for the built-in IDE server. */
 export const BUILTIN_IDE_NAME = 'aionui-ide';
@@ -226,6 +247,8 @@ export type IdeServerDeps = {
    * Omitted in tests that don't need it.
    */
   memory?: SessionMemoryAgentService;
+  /** Optional project-scoped debugging experience base exposed as `exp_*` tools. */
+  experience?: ExperienceAgentService;
   /**
    * Optional Team Edit coordinator (Agent plane). When present, the server
    * exposes `team_*` tools so several agents (company roles / CLI-agent chat
@@ -962,6 +985,30 @@ Input:
         if (r.stdout.trim().length > 0) parts.push(`--- stdout ---\n${r.stdout.trimEnd()}`);
         if (r.stderr.trim().length > 0) parts.push(`--- stderr ---\n${r.stderr.trimEnd()}`);
         if (r.stdout.trim().length === 0 && r.stderr.trim().length === 0) parts.push('(no output)');
+        if (deps.experience) {
+          try {
+            const errorText = [r.stderr, r.stdout]
+              .map((text) => text.trim())
+              .filter((text) => text.length > 0)
+              .join('\n')
+              .slice(0, 8_000);
+            const observed = await deps.experience.verifyOutcome(
+              rootPath,
+              {
+                command,
+                errorText: errorText || undefined,
+                errorMessages: errorText ? [errorText] : undefined,
+              },
+              r.code === 0 && !r.timedOut ? 'passed' : 'failed'
+            );
+            if (observed.suggestions.length > 0) {
+              parts.push(`--- ExpBase lessons after ${observed.decision.reason} ---`);
+              parts.push(JSON.stringify(observed.suggestions, null, 2));
+            }
+          } catch {
+            // ExpBase is advisory; a memory failure must not hide command output.
+          }
+        }
         return parts.join('\n');
       })
   );
@@ -1262,6 +1309,153 @@ Input:
             null,
             2
           );
+        })
+    );
+  }
+
+  // --- exp_* (Existing project ExpBase — Agent plane) ------------------
+  if (deps.experience) {
+    const experience = deps.experience;
+    const experienceKind = z.enum(['successful_fix', 'failed_attempt', 'agent_mistake', 'lesson']);
+
+    server.tool(
+      'exp_search',
+      `Search the existing project ExpBase for relevant debugging lessons. Use this when a hard failure
+occurs or the same verification fails twice; do not search on ordinary chat turns.
+
+Input:
+- projectRoot: workspace root (required)
+- symptom: current error or symptom (required)
+- files/commands/frameworks/packages: optional context used to improve ranking
+- errorCategory: optional coarse class such as TypeError, compile, or test-failure
+- limit: maximum suggestions (default 5).`,
+      {
+        projectRoot: z.string().describe('Workspace root.'),
+        symptom: z.string().describe('Current error or symptom.'),
+        files: z.array(z.string()).optional(),
+        commands: z.array(z.string()).optional(),
+        frameworks: z.array(z.string()).optional(),
+        packages: z.array(z.string()).optional(),
+        errorCategory: z.string().optional(),
+        limit: z.number().int().min(1).max(10).optional(),
+      },
+      ({ projectRoot, symptom, files, commands, frameworks, packages, errorCategory, limit }) =>
+        guard(async () => {
+          const suggestions = await experience.search(
+            projectRoot,
+            { symptom, files, commands, frameworks, packages, errorCategory },
+            { topK: limit ?? 5 }
+          );
+          return suggestions.length > 0
+            ? JSON.stringify(suggestions, null, 2)
+            : 'No matching experience was found. Continue debugging from current evidence.';
+        })
+    );
+
+    server.tool(
+      'exp_record',
+      `Record a verified debugging experience in the existing project ExpBase. Record successful fixes
+only after verification passes. Record failed_attempt or agent_mistake when it teaches a reusable lesson.
+Never store secrets or large raw logs.
+
+Input:
+- projectRoot, kind, symptom, lesson (required)
+- scope: repo for a repository-specific lesson (default), or app only for a proven reusable lesson
+- rootCause/fixSummary/files/commands/frameworks/packages/errorCategory/tags (optional)
+- verificationCommand + verificationOutcome attach concrete evidence.`,
+      {
+        projectRoot: z.string().describe('Workspace root.'),
+        scope: z.enum(['repo', 'app']).optional().describe('Reuse scope: repo (default) or app.'),
+        kind: experienceKind,
+        symptom: z.string().describe('Concise symptom or error.'),
+        lesson: z.string().describe('Reusable lesson.'),
+        rootCause: z.string().optional(),
+        fixSummary: z.string().optional(),
+        files: z.array(z.string()).optional(),
+        commands: z.array(z.string()).optional(),
+        frameworks: z.array(z.string()).optional(),
+        packages: z.array(z.string()).optional(),
+        errorCategory: z.string().optional(),
+        tags: z.array(z.string()).optional(),
+        verificationCommand: z.string().optional(),
+        verificationOutcome: z.enum(['passed', 'failed', 'not_run']).optional(),
+      },
+      ({
+        projectRoot,
+        scope,
+        kind,
+        symptom,
+        lesson,
+        rootCause,
+        fixSummary,
+        files,
+        commands,
+        frameworks,
+        packages,
+        errorCategory,
+        tags,
+        verificationCommand,
+        verificationOutcome,
+      }) =>
+        guard(async () => {
+          const result = await experience.record(projectRoot, {
+            scope,
+            kind,
+            symptoms: { summary: symptom },
+            context: { files, commands, frameworks, packages, errorCategory },
+            rootCause,
+            fix: fixSummary ? { summary: fixSummary } : undefined,
+            lesson,
+            tags,
+            verification: verificationCommand
+              ? {
+                  commands: [{ command: verificationCommand, outcome: verificationOutcome ?? 'not_run' }],
+                }
+              : undefined,
+          });
+          return `${result.action === 'created' ? 'Recorded' : 'Updated'} experience ${result.entryId}.`;
+        })
+    );
+
+    server.tool(
+      'exp_feedback',
+      `Mark whether an ExpBase suggestion helped. This tunes retrieval confidence for future agents.`,
+      {
+        projectRoot: z.string().describe('Workspace root.'),
+        entryId: z.string().describe('Experience id returned by exp_search.'),
+        helped: z.boolean().describe('Whether the suggestion was useful.'),
+      },
+      ({ projectRoot, entryId, helped }) =>
+        guard(async () => {
+          const updated = await experience.recordFeedback(projectRoot, entryId, helped);
+          return updated ? `Feedback saved for ${entryId}.` : `Experience ${entryId} was not found.`;
+        })
+    );
+
+    server.tool(
+      'exp_verify',
+      `Report a test/build/typecheck outcome to the existing conditional ExpBase trigger. A normal failure
+retrieves lessons after the same signature fails twice; a hard crash retrieves immediately. Call this
+after verification, then follow any returned suggestions before repeating the same failed approach.`,
+      {
+        projectRoot: z.string().describe('Workspace root.'),
+        outcome: z.enum(['passed', 'failed']),
+        command: z.string().optional(),
+        errorText: z.string().optional(),
+        errorMessages: z.array(z.string()).optional(),
+        files: z.array(z.string()).optional(),
+        frameworks: z.array(z.string()).optional(),
+        packages: z.array(z.string()).optional(),
+        errorCategory: z.string().optional(),
+      },
+      ({ projectRoot, outcome, command, errorText, errorMessages, files, frameworks, packages, errorCategory }) =>
+        guard(async () => {
+          const result = await experience.verifyOutcome(
+            projectRoot,
+            { command, errorText, errorMessages, files, frameworks, packages, errorCategory },
+            outcome
+          );
+          return JSON.stringify(result, null, 2);
         })
     );
   }

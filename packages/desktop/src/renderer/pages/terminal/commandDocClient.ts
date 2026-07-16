@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -24,6 +24,8 @@ import type { CaptureInput } from '@process/terminal/commandDoc/commandDocServic
 import type { CommandDocResult } from '@process/terminal/commandDoc/commandDocBridge';
 import type { Remap, SmartFixResult } from '@process/terminal/smartFix/smartFixBridge';
 
+import type { MtuiRepairResult, MtuiResponse, MtuiResult, MtuiSuggestResult } from '@process/terminal/mtuiBridge';
+
 const COMMAND_DOC_CHANNELS = {
   snapshot: 'terminal.cmd-snapshot',
   capture: 'terminal.cmd-capture',
@@ -33,10 +35,23 @@ const SMART_FIX_CHANNELS = {
   remap: 'terminal.cmd-remap',
 } as const;
 
+const MTUI_CHANNELS = {
+  suggest: 'terminal.mtui-suggest',
+  repair: 'terminal.mtui-repair',
+  record: 'terminal.mtui-record',
+} as const;
+
 const providers = {
   snapshot: bridge.buildProvider<CommandDocResult<CommandRecord[]>, void>(COMMAND_DOC_CHANNELS.snapshot),
   capture: bridge.buildProvider<CommandDocResult<boolean>, CaptureInput>(COMMAND_DOC_CHANNELS.capture),
   remap: bridge.buildProvider<SmartFixResult<Remap | null>, { program: string }>(SMART_FIX_CHANNELS.remap),
+  mtuiSuggest: bridge.buildProvider<MtuiResult<MtuiSuggestResult>, { prefix: string }>(MTUI_CHANNELS.suggest),
+  mtuiRepair: bridge.buildProvider<MtuiResult<MtuiRepairResult>, { command: string; stderr: string }>(
+    MTUI_CHANNELS.repair
+  ),
+  mtuiRecord: bridge.buildProvider<MtuiResult<MtuiResponse>, { command: string; exitCode: number; durationMs: number }>(
+    MTUI_CHANNELS.record
+  ),
 };
 
 /** Race a bridge call against a timeout so an unwired bridge never hangs the UI. */
@@ -63,6 +78,29 @@ export const fetchCommandSnapshot = (): Promise<CommandRecord[]> =>
 export const captureCommand = (input: CaptureInput): void => {
   void providers.capture.invoke(input).catch(() => {});
 };
+
+/** Persist a command in MTUI's cross-session history without delaying the terminal. */
+export const recordMtuiCommand = (command: string, exitCode: number, durationMs: number): void => {
+  void providers.mtuiRecord.invoke({ command, exitCode, durationMs }).catch(() => {});
+};
+
+/** Load MTUI-ranked history and project-script suggestions. */
+export const fetchMtuiSuggestions = (prefix = ''): Promise<MtuiSuggestResult['suggestions']> =>
+  withTimeout(
+    providers.mtuiSuggest
+      .invoke({ prefix })
+      .then((result): MtuiSuggestResult['suggestions'] => (result.ok ? result.data.suggestions : [])),
+    []
+  ).catch((): MtuiSuggestResult['suggestions'] => []);
+
+/** Ask MTUI for a deterministic repair after a command fails. */
+export const resolveMtuiRepair = (command: string): Promise<MtuiRepairResult | null> =>
+  withTimeout(
+    providers.mtuiRepair
+      .invoke({ command, stderr: '' })
+      .then((result): MtuiRepairResult | null => (result.ok && result.data.repair_available ? result.data : null)),
+    null
+  ).catch((): MtuiRepairResult | null => null);
 
 /** Resolve a deprecated program to its replacement (consulted on failure only). */
 export const resolveRemap = (program: string): Promise<Remap | null> =>

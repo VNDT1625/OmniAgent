@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -102,7 +102,7 @@ const emptyState = (): ConversationState => ({
 });
 
 /** sessionStorage key holding the per-company conversation state (reload survival). */
-const CONVERSATION_STATE_KEY = 'aionui.company.conversation.state';
+const CONVERSATION_STATE_KEY = 'github.com/VNDT1625/OmniAgentpany.conversation.state';
 
 /** Read the persisted state map from sessionStorage (safe; empty on failure). */
 const readPersisted = (): Record<string, ConversationState> => {

@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/iOfficeAI/Omni?style=flat-square&color=32CD32" alt="Version">
+  <img src="https://img.shields.io/github/v/release/VNDT1625/Omni?style=flat-square&color=32CD32" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-32CD32?style=flat-square&logo=apache&logoColor=white" alt="License">
   &nbsp;
@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/⬇️%20Şimdi%20İndir-En%20Son%20Sürüm-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="En Son Sürümü İndir" height="50">
   </a>
 </p>
@@ -234,7 +234,7 @@ _7/24 AI asistanınız — Omni'ye herhangi bir cihazdan, her yerden erişin._
 
 <p align="center"><em>Agent'ınızı uzaktan kontrol edin ve izleyin — Claude, Gemini, Codex. Tarayıcı veya telefondan, Claude Code remote gibi.</em></p>
 
-> [Uzaktan İnternet Erişimi Öğreticisi](https://github.com/iOfficeAI/Omni/wiki/Remote-Internet-Access-Guide-Chinese)
+> [Uzaktan İnternet Erişimi Öğreticisi](https://github.com/VNDT1625/Omni/wiki/Remote-Internet-Access-Guide-Chinese)
 
 ## ✨ Cowork Eylemde
 
@@ -393,7 +393,7 @@ _Gemini tarafından desteklenen akıllı görüntü oluşturma, düzenleme ve ta
 
 </details>
 
-> [Görüntü oluşturma modeli yapılandırma kılavuzu](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide)
+> [Görüntü oluşturma modeli yapılandırma kılavuzu](https://github.com/VNDT1625/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide)
 
 ---
 
@@ -553,7 +553,7 @@ C: Tüm veriler yerel olarak bir SQLite veritabanında saklanır. Hiçbir şey h
 ### Kurulum
 
 <p>
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/İndir-En%20Son%20Sürüm-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="En Son Sürümü İndir" height="50">
   </a>
 </p>
@@ -580,23 +580,23 @@ brew install omni
 
 **🚀 Hızlı Başlangıç**
 
-- [📖 Tam Kurulum Kılavuzu](https://github.com/iOfficeAI/Omni/wiki/Getting-Started) — İndirmeden yapılandırmaya kadar detaylı adımlar
-- [⚙️ LLM Yapılandırma Kılavuzu](https://github.com/iOfficeAI/Omni/wiki/LLM-Configuration) — Çoklu platform AI model yapılandırması
-- [🤖 Çoklu Agent Modu Kurulumu](https://github.com/iOfficeAI/Omni/wiki/ACP-Setup) — Terminal AI Agent'larını entegre edin
-- [🔌 MCP Araç Yapılandırması](https://github.com/iOfficeAI/Omni/wiki/MCP-Configuration-Guide) — Model Context Protocol sunucu kurulumu
-- [🌐 WebUI Yapılandırma Kılavuzu](https://github.com/iOfficeAI/Omni/wiki/WebUI-Configuration-Guide) — Tam WebUI kurulum ve yapılandırma öğreticisi
+- [📖 Tam Kurulum Kılavuzu](https://github.com/VNDT1625/Omni/wiki/Getting-Started) — İndirmeden yapılandırmaya kadar detaylı adımlar
+- [⚙️ LLM Yapılandırma Kılavuzu](https://github.com/VNDT1625/Omni/wiki/LLM-Configuration) — Çoklu platform AI model yapılandırması
+- [🤖 Çoklu Agent Modu Kurulumu](https://github.com/VNDT1625/Omni/wiki/ACP-Setup) — Terminal AI Agent'larını entegre edin
+- [🔌 MCP Araç Yapılandırması](https://github.com/VNDT1625/Omni/wiki/MCP-Configuration-Guide) — Model Context Protocol sunucu kurulumu
+- [🌐 WebUI Yapılandırma Kılavuzu](https://github.com/VNDT1625/Omni/wiki/WebUI-Configuration-Guide) — Tam WebUI kurulum ve yapılandırma öğreticisi
 
 **🎯 Kullanım Senaryoları**
 
-- [📁 Dosya Yönetimi](https://github.com/iOfficeAI/Omni/wiki/file-management) — Akıllı dosya organizasyonu
-- [📊 Excel İşleme](https://github.com/iOfficeAI/Omni/wiki/excel-processing) — AI destekli veri işleme
-- [🎨 Görüntü Oluşturma](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide) — AI görüntü oluşturma
-- [📚 Daha Fazla Kullanım Senaryosu](https://github.com/iOfficeAI/Omni/wiki/Use-Cases-Overview)
+- [📁 Dosya Yönetimi](https://github.com/VNDT1625/Omni/wiki/file-management) — Akıllı dosya organizasyonu
+- [📊 Excel İşleme](https://github.com/VNDT1625/Omni/wiki/excel-processing) — AI destekli veri işleme
+- [🎨 Görüntü Oluşturma](https://github.com/VNDT1625/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide) — AI görüntü oluşturma
+- [📚 Daha Fazla Kullanım Senaryosu](https://github.com/VNDT1625/Omni/wiki/Use-Cases-Overview)
 
 **❓ Destek ve Yardım**
 
-- [❓ SSS](https://github.com/iOfficeAI/Omni/wiki/FAQ) — Sorular ve sorun giderme
-- [🔧 Yapılandırma ve Kullanım Öğreticileri](https://github.com/iOfficeAI/Omni/wiki/Configuration-Guides) — Tam yapılandırma dokümantasyonu
+- [❓ SSS](https://github.com/VNDT1625/Omni/wiki/FAQ) — Sorular ve sorun giderme
+- [🔧 Yapılandırma ve Kullanım Öğreticileri](https://github.com/VNDT1625/Omni/wiki/Configuration-Guides) — Tam yapılandırma dokümantasyonu
 
 </details>
 
@@ -612,9 +612,9 @@ brew install omni
   </a>
 </p>
 
-- [GitHub Discussions](https://github.com/iOfficeAI/Omni/discussions) — fikirleri paylaşın ve ipuçları alışverişi yapın
-- [Sorun Bildir](https://github.com/iOfficeAI/Omni/issues) — hatalar ve özellik istekleri
-- [Sürüm Güncellemeleri](https://github.com/iOfficeAI/Omni/releases) — en son sürümü alın
+- [GitHub Discussions](https://github.com/VNDT1625/Omni/discussions) — fikirleri paylaşın ve ipuçları alışverişi yapın
+- [Sorun Bildir](https://github.com/VNDT1625/Omni/issues) — hatalar ve özellik istekleri
+- [Sürüm Güncellemeleri](https://github.com/VNDT1625/Omni/releases) — en son sürümü alın
 - [Discord Topluluğu](https://discord.gg/2QAwJn7Egx) — İngilizce topluluk
 - [WeChat Grubu](../../resources/wx-9.png) — Çince topluluk
 
@@ -647,16 +647,16 @@ Bu proje [Apache-2.0](../../LICENSE) lisansı altında lisanslanmıştır.
 ## Katkıda Bulunanlar
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=iOfficeAI/Omni&max=100" alt="Contributors" />
+  <a href="https://github.com/VNDT1625/Omni/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=VNDT1625/Omni&max=100" alt="Contributors" />
   </a>
 </p>
 
 ## Yıldız Geçmişi
 
 <p align="center">
-  <a href="https://www.star-history.com/#iOfficeAI/omni&Date" target="_blank">
-    <img src="https://api.star-history.com/svg?repos=iOfficeAI/omni&type=Date" alt="Star History" width="600">
+  <a href="https://www.star-history.com/#VNDT1625/omni&Date" target="_blank">
+    <img src="https://api.star-history.com/svg?repos=VNDT1625/omni&type=Date" alt="Star History" width="600">
   </a>
 </p>
 
@@ -664,6 +664,6 @@ Bu proje [Apache-2.0](../../LICENSE) lisansı altında lisanslanmıştır.
 
 **Beğendiyseniz, bize bir yıldız verin**
 
-[Hata Bildir](https://github.com/iOfficeAI/Omni/issues) · [Özellik İste](https://github.com/iOfficeAI/Omni/issues)
+[Hata Bildir](https://github.com/VNDT1625/Omni/issues) · [Özellik İste](https://github.com/VNDT1625/Omni/issues)
 
 </div>

@@ -93,5 +93,68 @@
     "phase_done": "Đã có các bước",
     "phase_error": "Tạo bước thất bại",
     "stepsCount": "{{count}} bước"
+  },
+  "runnerTab": "Trình chạy kiểm thử",
+  "core": {
+    "tab": "Core Test",
+    "title": "Core phản hồi AI thử nghiệm",
+    "subtitle": "Kiểm chứng transport trực tiếp cho Codex app-server và các CLI tương thích ACP, hoàn toàn không dùng executable AionCore.",
+    "transportNotice": "Core đa CLI trực tiếp",
+    "loadFailed": "Không tải được danh sách agent.",
+    "selectTarget": "Chọn đích AI",
+    "noTargets": "Không phát hiện agent nào có thể chạy.",
+    "empty": "Chọn một agent và gửi câu hỏi để xem luồng phản hồi đã chuẩn hóa.",
+    "selectModel": "Ch\u1ecdn m\u00f4 h\u00ecnh",
+    "agentDefault": "M\u1eb7c \u0111\u1ecbnh c\u1ee7a agent",
+
+    "selectWorkspace": "Chọn workspace",
+    "workspacePlaceholder": "Đường dẫn thư mục workspace",
+    "recentWorkspaces": "Workspace gần đây",
+    "chooseWorkspace": "Chọn workspace khác",
+
+    "permissionReadOnly": "Chỉ đọc",
+    "permissionWorkspaceWrite": "Ghi trong workspace",
+    "permissionFullAccess": "Toàn quyền",
+    "fullAccessTitle": "Bật Toàn quyền?",
+    "fullAccessWarning": "Agent có thể chạy lệnh và sửa tệp bên ngoài workspace đã chọn. Chỉ bật cho agent và dự án đáng tin cậy.",
+    "enableFullAccess": "Bật Toàn quyền",
+    "permissionRequestTitle": "Agent yêu cầu quyền",
+    "permissionRequestBody": "{{tool}} muốn thực hiện một thao tác được bảo vệ.",
+    "permissionRequestDetail": "{{tool}} muốn thực hiện thao tác được bảo vệ: {{detail}}",
+    "permissionWaiting": "Đang chờ cấp quyền: {{tool}}",
+    "allowOnce": "Cho phép một lần",
+    "deny": "Từ chối",
+    "unknownTool": "Tool không xác định",
+
+    "newSession": "Phi?n tr? chuy?n m?i",
+    "forkSession": "T?o nh?nh",
+    "sessionForked": "?? t?o m?t nh?nh tr? chuy?n ??c l?p.",
+    "sessionStatus": {
+      "idle": "S?n s?ng",
+      "running": "?ang ch?y",
+      "completed": "Ho?n t?t",
+      "interrupted": "B? gi?n ?o?n - c? th? ti?p t?c",
+      "error": "L?i - c? th? ti?p t?c",
+      "cancelled": "?? h?y"
+    },
+
+    "promptPlaceholder": "Hỏi AI đã chọn...",
+    "ready": "Sẵn sàng",
+    "connecting": "Đang kết nối tới agent...",
+    "completed": "Đã nhận xong phản hồi",
+    "failed": "Phản hồi thất bại.",
+    "cancelled": "Đã hủy phản hồi",
+    "stop": "Dừng",
+    "send": "Gửi",
+    "events": "Sự kiện core",
+    "noEvents": "Sự kiện sẽ xuất hiện tại đây.",
+    "kind": {
+      "builtin": "Built-in",
+      "acp": "ACP",
+      "cli": "CLI",
+      "remote": "Remote"
+    },
+    "bridgeUnavailable": "Core Test không nhận được phản hồi từ tiến trình chính. Hãy khởi động lại ứng dụng desktop để nạp bridge mới.",
+    "retry": "Thử lại"
   }
 }

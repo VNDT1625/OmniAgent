@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -58,42 +58,40 @@ const UpdateModal: React.FC = () => {
   const checkForUpdates = async () => {
     setStatus('checking');
     try {
-      // Try auto-update (electron-updater) first
-      let autoUpdateOk = false;
+      // electron-updater is authoritative when its check succeeds. Only use
+      // the GitHub API/manual installer flow when the native updater fails.
+      setAutoUpdateAvailable(false);
       try {
-        const res = await ipcBridge.autoUpdate.check.invoke({ includePrerelease });
-        if (res?.success && res.data?.updateInfo) {
-          autoUpdateOk = true;
-          setAutoUpdateInfo({
-            version: res.data.updateInfo.version,
-            releaseNotes: res.data.updateInfo.releaseNotes,
-          });
-        } else if (res?.msg) {
-          console.warn('Auto-update check failed, using manual mode:', res.msg);
+        const autoResult = await ipcBridge.autoUpdate.check.invoke({ includePrerelease });
+        if (autoResult?.success && autoResult.data) {
+          setCurrentVersion(autoResult.data.currentVersion);
+          if (autoResult.data.updateInfo) {
+            setAutoUpdateAvailable(true);
+            setAutoUpdateInfo({
+              version: autoResult.data.updateInfo.version,
+              releaseNotes: autoResult.data.updateInfo.releaseNotes,
+            });
+            setStatus('available');
+          } else {
+            setStatus('upToDate');
+          }
+          return;
+        }
+        if (autoResult?.msg) {
+          console.warn('Auto-update check failed, using manual mode:', autoResult.msg);
         }
       } catch (err) {
         console.warn('Auto-update check error, using manual mode:', err);
       }
-      setAutoUpdateAvailable(autoUpdateOk);
 
-      // Always run manual check for version info and release notes
+      // Manual GitHub release check is a fallback for broken/missing native
+      // updater metadata. It must never override a successful native check.
       const res = await ipcBridge.update.check.invoke({ includePrerelease });
       if (!res?.success) {
         throw new Error(res?.msg || t('update.checkFailed'));
       }
       setCurrentVersion(res.data?.currentVersion || '');
 
-      if (autoUpdateOk) {
-        // Auto-update available — use manual check data for display only
-        if (res.data?.latest) {
-          setUpdateInfo(res.data.latest);
-          setReleasePageUrl(res.data.latest.htmlUrl || '');
-        }
-        setStatus('available');
-        return;
-      }
-
-      // Manual mode
       if (res.data?.updateAvailable && res.data.latest) {
         setUpdateInfo(res.data.latest);
         setReleasePageUrl(res.data.latest.htmlUrl || '');

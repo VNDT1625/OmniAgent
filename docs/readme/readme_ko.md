@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/iOfficeAI/Omni?style=flat-square&color=32CD32" alt="Version">
+  <img src="https://img.shields.io/github/v/release/VNDT1625/Omni?style=flat-square&color=32CD32" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-32CD32?style=flat-square&logo=apache&logoColor=white" alt="License">
   &nbsp;
@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/⬇️%20지금%20다운로드-최신%20버전-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="최신 버전 다운로드" height="50">
   </a>
 </p>
@@ -234,7 +234,7 @@ _여러분의 24/7 AI 어시스턴트 — 어떤 기기, 어디서나 Omni에 �
 
 <p align="center"><em>에이전트 원격 감시 및 제어 — Claude, Gemini, Codex. 브라우저나 휴대폰에서 Claude Code remote처럼 사용하세요.</em></p>
 
-> [원격 인터넷 접근 튜토리얼](https://github.com/iOfficeAI/Omni/wiki/Remote-Internet-Access-Guide-Chinese)
+> [원격 인터넷 접근 튜토리얼](https://github.com/VNDT1625/Omni/wiki/Remote-Internet-Access-Guide-Chinese)
 
 ## ✨ Cowork 실연
 
@@ -393,7 +393,7 @@ _Gemini 구동의 지능형 이미지 생성, 편집 및 인식_
 
 </details>
 
-> [이미지 생성 모델 구성 가이드](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide)
+> [이미지 생성 모델 구성 가이드](https://github.com/VNDT1625/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide)
 
 ---
 
@@ -553,7 +553,7 @@ A: 모든 데이터는 로컬 SQLite 데이터베이스에 저장됩니다. 어�
 ### 설치
 
 <p>
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/다운로드-최신%20버전-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="최신 버전 다운로드" height="50">
   </a>
 </p>
@@ -580,23 +580,23 @@ brew install omni
 
 **🚀 빠른 시작**
 
-- [📖 완전한 설치 가이드](https://github.com/iOfficeAI/Omni/wiki/Getting-Started) — 다운로드부터 구성까지의 상세한 단계
-- [⚙️ LLM 구성 가이드](https://github.com/iOfficeAI/Omni/wiki/LLM-Configuration) — 멀티 플랫폼 AI 모델 구성
-- [🤖 멀티 Agent 모드 설정](https://github.com/iOfficeAI/Omni/wiki/ACP-Setup) — 터미널 AI Agent 통합
-- [🔌 MCP 도구 구성](https://github.com/iOfficeAI/Omni/wiki/MCP-Configuration-Guide) — Model Context Protocol 서버 설정
-- [🌐 WebUI 구성 가이드](https://github.com/iOfficeAI/Omni/wiki/WebUI-Configuration-Guide) — 완전한 WebUI 설정 및 구성 튜토리얼
+- [📖 완전한 설치 가이드](https://github.com/VNDT1625/Omni/wiki/Getting-Started) — 다운로드부터 구성까지의 상세한 단계
+- [⚙️ LLM 구성 가이드](https://github.com/VNDT1625/Omni/wiki/LLM-Configuration) — 멀티 플랫폼 AI 모델 구성
+- [🤖 멀티 Agent 모드 설정](https://github.com/VNDT1625/Omni/wiki/ACP-Setup) — 터미널 AI Agent 통합
+- [🔌 MCP 도구 구성](https://github.com/VNDT1625/Omni/wiki/MCP-Configuration-Guide) — Model Context Protocol 서버 설정
+- [🌐 WebUI 구성 가이드](https://github.com/VNDT1625/Omni/wiki/WebUI-Configuration-Guide) — 완전한 WebUI 설정 및 구성 튜토리얼
 
 **🎯 사용 사례**
 
-- [📁 파일 관리](https://github.com/iOfficeAI/Omni/wiki/file-management) — 스마트 파일 정리
-- [📊 Excel 처리](https://github.com/iOfficeAI/Omni/wiki/excel-processing) — AI 구동 데이터 처리
-- [🎨 이미지 생성](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide) — AI 이미지 생성
-- [📚 더 많은 사용 사례](https://github.com/iOfficeAI/Omni/wiki/Use-Cases-Overview)
+- [📁 파일 관리](https://github.com/VNDT1625/Omni/wiki/file-management) — 스마트 파일 정리
+- [📊 Excel 처리](https://github.com/VNDT1625/Omni/wiki/excel-processing) — AI 구동 데이터 처리
+- [🎨 이미지 생성](https://github.com/VNDT1625/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide) — AI 이미지 생성
+- [📚 더 많은 사용 사례](https://github.com/VNDT1625/Omni/wiki/Use-Cases-Overview)
 
 **❓ 지원 및 도움말**
 
-- [❓ FAQ](https://github.com/iOfficeAI/Omni/wiki/FAQ) — 질문 및 문제 해결
-- [🔧 구성 및 사용 튜토리얼](https://github.com/iOfficeAI/Omni/wiki/Configuration-Guides) — 완전한 구성 문서
+- [❓ FAQ](https://github.com/VNDT1625/Omni/wiki/FAQ) — 질문 및 문제 해결
+- [🔧 구성 및 사용 튜토리얼](https://github.com/VNDT1625/Omni/wiki/Configuration-Guides) — 완전한 구성 문서
 
 </details>
 
@@ -612,9 +612,9 @@ brew install omni
   </a>
 </p>
 
-- [GitHub Discussions](https://github.com/iOfficeAI/Omni/discussions) — 아이디어를 공유하고 팁을 교환하세요
-- [문제 보고](https://github.com/iOfficeAI/Omni/issues) — 버그 및 기능 요청
-- [릴리스 업데이트](https://github.com/iOfficeAI/Omni/releases) — 최신 버전 받기
+- [GitHub Discussions](https://github.com/VNDT1625/Omni/discussions) — 아이디어를 공유하고 팁을 교환하세요
+- [문제 보고](https://github.com/VNDT1625/Omni/issues) — 버그 및 기능 요청
+- [릴리스 업데이트](https://github.com/VNDT1625/Omni/releases) — 최신 버전 받기
 - [Discord 커뮤니티](https://discord.gg/2QAwJn7Egx) — 영어 커뮤니티
 - [WeChat 그룹](../../resources/wx-9.png) — 중국어 커뮤니티
 
@@ -649,16 +649,16 @@ bun run test       # 단위 테스트 실행
 ## 기여자
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=iOfficeAI/Omni&max=100" alt="Contributors" />
+  <a href="https://github.com/VNDT1625/Omni/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=VNDT1625/Omni&max=100" alt="Contributors" />
   </a>
 </p>
 
 ## Star 히스토리
 
 <p align="center">
-  <a href="https://www.star-history.com/#iOfficeAI/omni&Date" target="_blank">
-    <img src="https://api.star-history.com/svg?repos=iOfficeAI/omni&type=Date" alt="Star History" width="600">
+  <a href="https://www.star-history.com/#VNDT1625/omni&Date" target="_blank">
+    <img src="https://api.star-history.com/svg?repos=VNDT1625/omni&type=Date" alt="Star History" width="600">
   </a>
 </p>
 
@@ -666,6 +666,6 @@ bun run test       # 단위 테스트 실행
 
 **마음에 드시면 스타를 눌러주세요**
 
-[버그 보고](https://github.com/iOfficeAI/Omni/issues) · [기능 요청](https://github.com/iOfficeAI/Omni/issues)
+[버그 보고](https://github.com/VNDT1625/Omni/issues) · [기능 요청](https://github.com/VNDT1625/Omni/issues)
 
 </div>

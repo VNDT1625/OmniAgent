@@ -75,10 +75,48 @@ const server = http.createServer((req, res) => {
   }
 
   const ext = path.extname(target).toLowerCase();
-  res.writeHead(200, {
+  const stat = fs.statSync(target);
+  const headers = {
     'access-control-allow-origin': '*',
+    'accept-ranges': 'bytes',
     'content-type': contentTypes.get(ext) || 'application/octet-stream',
-    'content-length': fs.statSync(target).size,
+  };
+  const range = req.headers.range;
+
+  if (range) {
+    const match = /^bytes=(\d*)-(\d*)$/.exec(range.trim());
+    if (!match) {
+      send(res, 416, 'Invalid range', {
+        ...headers,
+        'content-range': `bytes */${stat.size}`,
+      });
+      return;
+    }
+
+    const start = match[1] ? Number(match[1]) : 0;
+    const requestedEnd = match[2] ? Number(match[2]) : stat.size - 1;
+    const end = Math.min(requestedEnd, stat.size - 1);
+
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || start > end || start >= stat.size) {
+      send(res, 416, 'Range not satisfiable', {
+        ...headers,
+        'content-range': `bytes */${stat.size}`,
+      });
+      return;
+    }
+
+    res.writeHead(206, {
+      ...headers,
+      'content-length': end - start + 1,
+      'content-range': `bytes ${start}-${end}/${stat.size}`,
+    });
+    fs.createReadStream(target, { start, end }).pipe(res);
+    return;
+  }
+
+  res.writeHead(200, {
+    ...headers,
+    'content-length': stat.size,
   });
   fs.createReadStream(target).pipe(res);
 });

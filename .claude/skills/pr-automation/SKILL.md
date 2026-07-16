@@ -24,7 +24,7 @@ No arguments required. The daemon script `scripts/pr-automation.sh` manages the 
 ## Configuration
 
 ```
-TRUSTED_CONTRIBUTORS_TEAM: detected from REPO org (e.g. iOfficeAI/trusted-contributors)
+TRUSTED_CONTRIBUTORS_TEAM: detected from REPO org (e.g. VNDT1625/trusted-contributors)
 CRITICAL_PATH_PATTERN: env var, default in scripts/pr-automation.conf
 LARGE_PR_FILE_THRESHOLD: env var (default: 50), also in scripts/pr-automation.conf
 PR_DAYS_LOOKBACK: env var (default: 7), also in scripts/pr-automation.conf

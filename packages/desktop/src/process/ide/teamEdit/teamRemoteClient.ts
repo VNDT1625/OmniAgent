@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -20,6 +20,7 @@
  */
 
 import type { GuardedEditResult, GuardedWriteResult, TeamEditSnapshot } from './teamEditService';
+import type { TeamPeerCapabilities } from '@process/studio/collabServer';
 import type { TeamTreeEntry, TeamFileRead, TeamDbConnection, TeamDbQueryResult } from './teamSessionHost';
 import type { TeamRequestQueueStatus } from './teamRequestQueue';
 
@@ -71,10 +72,22 @@ export const teamRemoteClient = {
     baseUrl: string,
     password: string,
     name: string
-  ): Promise<{ ok: true; peerToken: string; repoName: string; baseUrl: string } | { ok: false; error: string }> => {
-    const res = await postJson<{ peerToken: string; repoName: string }>(teamUrl(baseUrl, 'join'), { password, name });
+  ): Promise<
+    | { ok: true; peerToken: string; repoName: string; baseUrl: string; peerCapabilities: TeamPeerCapabilities }
+    | { ok: false; error: string }
+  > => {
+    const res = await postJson<{ peerToken: string; repoName: string; peerCapabilities: TeamPeerCapabilities }>(
+      teamUrl(baseUrl, 'join'),
+      { password, name }
+    );
     if (res.ok === false) return res;
-    return { ok: true, peerToken: res.data.peerToken, repoName: res.data.repoName, baseUrl: normBase(baseUrl) };
+    return {
+      ok: true,
+      peerToken: res.data.peerToken,
+      repoName: res.data.repoName,
+      baseUrl: normBase(baseUrl),
+      peerCapabilities: res.data.peerCapabilities,
+    };
   },
 
   /** Drop out of a session (best-effort). */

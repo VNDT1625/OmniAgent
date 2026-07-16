@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -24,7 +24,16 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { bestGhost } from '@process/terminal/commandDoc/commandScore';
 import { classifyCommand, replaceProgram } from '@process/terminal/commandDoc/commandClassify';
 import type { CommandRecord } from '@process/terminal/commandDoc/commandTypes';
-import { captureCommand, fetchCommandSnapshot, resolveRemap } from './commandDocClient';
+
+import type { MtuiSuggestion } from '@process/terminal/mtuiBridge';
+import {
+  captureCommand,
+  fetchCommandSnapshot,
+  fetchMtuiSuggestions,
+  recordMtuiCommand,
+  resolveMtuiRepair,
+  resolveRemap,
+} from './commandDocClient';
 
 /** A pending Smart Fix suggestion for a failed command. */
 export type PendingRemap = {
@@ -47,7 +56,7 @@ export type TerminalIntelligence = {
   /** Ghost-text tail (text AFTER the typed line) for the current input, or null. */
   ghostFor: (line: string) => string | null;
   /** Call when a command finishes (from shell-integration command-end). */
-  onCommandFinished: (commandLine: string, exitCode: number, cwd?: string) => void;
+  onCommandFinished: (commandLine: string, exitCode: number, cwd?: string, durationMs?: number) => void;
   /** The current Smart Fix suggestion, if any. */
   pendingRemap: PendingRemap | null;
   /** Dismiss the current Smart Fix suggestion. */
@@ -87,6 +96,32 @@ const mergeCapture = (records: CommandRecord[], command: string, exitCode: numbe
   ];
 };
 
+/** Merge MTUI history/project scripts into the hot in-memory scorer snapshot. */
+export const mergeMtuiSuggestions = (
+  records: CommandRecord[],
+  suggestions: MtuiSuggestion[],
+  now = Date.now()
+): CommandRecord[] => {
+  const merged = records.slice();
+  const known = new Set(records.map((record) => record.command));
+  for (const suggestion of suggestions) {
+    if (known.has(suggestion.command)) continue;
+    const count = Math.max(1, suggestion.used_count);
+    const lastUsedAt = Date.parse(suggestion.last_used);
+    merged.push({
+      command: suggestion.command,
+      program: classifyCommand(suggestion.command).program,
+      count,
+      successCount: Math.round(Math.max(0, Math.min(1, suggestion.success_rate)) * count),
+      firstUsedAt: Number.isFinite(lastUsedAt) ? lastUsedAt : now,
+      lastUsedAt: Number.isFinite(lastUsedAt) ? lastUsedAt : now,
+      lastExitCode: 0,
+    });
+    known.add(suggestion.command);
+  }
+  return merged;
+};
+
 /** Trivial commands we never learn (mirrors the service's filter). */
 const isWorthy = (command: string): boolean => {
   const c = command.trim();
@@ -100,8 +135,8 @@ export const useTerminalIntelligence = (): TerminalIntelligence => {
 
   useEffect(() => {
     let cancelled = false;
-    void fetchCommandSnapshot().then((records) => {
-      if (!cancelled) recordsRef.current = records;
+    void Promise.all([fetchCommandSnapshot(), fetchMtuiSuggestions()]).then(([records, suggestions]) => {
+      if (!cancelled) recordsRef.current = mergeMtuiSuggestions(records, suggestions);
     });
     return () => {
       cancelled = true;

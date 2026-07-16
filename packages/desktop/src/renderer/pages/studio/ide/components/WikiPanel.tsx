@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -76,11 +76,11 @@ const WikiPanel: React.FC<WikiPanelProps> = ({ rootPath, wiki }) => {
   const { load } = wiki;
   const loadedRootRef = useRef<string | null>(null);
   useEffect(() => {
-    if (rootPath && loadedRootRef.current !== rootPath) {
-      loadedRootRef.current = rootPath;
-      void load(rootPath);
-    }
-  }, [rootPath, load]);
+    if (!rootPath || loadedRootRef.current === rootPath) return;
+    loadedRootRef.current = rootPath;
+    if (wiki.status === 'building' || wiki.status === 'loading') return;
+    void load(rootPath);
+  }, [rootPath, load, wiki.status]);
 
   const handlePickModel = (value: string): void => {
     setModel(value);

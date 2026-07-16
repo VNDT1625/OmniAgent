@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -72,7 +72,7 @@ export type UseCompanyPipeline = {
 // ---------------------------------------------------------------------------
 
 /** sessionStorage key holding the per-company pipeline snapshot (reload survival). */
-const PIPELINE_SNAPSHOT_KEY = 'aionui.company.pipeline.snapshots';
+const PIPELINE_SNAPSHOT_KEY = 'github.com/VNDT1625/OmniAgentpany.pipeline.snapshots';
 
 /**
  * sessionStorage key holding the per-company run INPUT (goal + structure + rules
@@ -81,7 +81,7 @@ const PIPELINE_SNAPSHOT_KEY = 'aionui.company.pipeline.snapshots';
  * never asked it to stop, so we resume without prompting. (The renderer-driven
  * loop cannot resume mid-flight, so "resume" means re-running the same goal.)
  */
-const PIPELINE_INPUT_KEY = 'aionui.company.pipeline.inputs';
+const PIPELINE_INPUT_KEY = 'github.com/VNDT1625/OmniAgentpany.pipeline.inputs';
 
 /** Persisted snapshot map: company id → last snapshot. */
 type PersistMap = Record<string, PipelineSnapshot>;

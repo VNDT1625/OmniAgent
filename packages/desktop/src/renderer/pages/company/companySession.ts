@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -49,7 +49,7 @@ import type { ISessionMcpServer } from '@/common/config/storage';
  * `localStorage` key under which the renderer remembers the conversation opened
  * for each company role. Keyed by `"<companyId>::<roleId>"` → conversation id.
  */
-export const ROLE_CONVERSATIONS_STORAGE_KEY = 'aionui.company.roleConversations';
+export const ROLE_CONVERSATIONS_STORAGE_KEY = 'github.com/VNDT1625/OmniAgentpany.roleConversations';
 
 /** Build the storage map key for one role. */
 const roleKey = (companyId: string, roleId: string): string => `${companyId}::${roleId}`;

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -102,6 +102,7 @@ export const toProjectionEntry = (entry: ExperienceEntry): ExperienceProjectionE
   const verificationStrength = computeVerificationStrength(entry.verification);
   const base = {
     id: entry.id,
+    scope: entry.scope ?? 'repo',
     kind: entry.kind,
     status: entry.status,
     symptom: entry.symptoms.summary,

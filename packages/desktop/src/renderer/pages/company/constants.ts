@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -17,7 +17,7 @@ export const DEFAULT_COMPANY_ID = 'company';
  * the user has worked with. The company bridge addresses companies by id but
  * exposes no "list" channel, so the UI keeps its own lightweight roster here.
  */
-export const KNOWN_COMPANIES_STORAGE_KEY = 'aionui.company.knownIds';
+export const KNOWN_COMPANIES_STORAGE_KEY = 'github.com/VNDT1625/OmniAgentpany.knownIds';
 
 /**
  * `localStorage` key holding the user's app-level "executor strengths" guidance:
@@ -25,7 +25,7 @@ export const KNOWN_COMPANIES_STORAGE_KEY = 'aionui.company.knownIds';
  * every company the user designs (entered once, before AI generation) and fed
  * into the designer prompt so role assignments honour the user's own assessment.
  */
-export const STRENGTHS_GUIDANCE_STORAGE_KEY = 'aionui.company.strengthsGuidance';
+export const STRENGTHS_GUIDANCE_STORAGE_KEY = 'github.com/VNDT1625/OmniAgentpany.strengthsGuidance';
 
 /** Upper bound on the stored guidance length (defensive against pathological input). */
 export const STRENGTHS_GUIDANCE_MAX_LENGTH = 4000;

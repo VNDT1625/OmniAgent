@@ -21,7 +21,7 @@ Deploy AionUi WebUI on headless Linux servers — cloud VMs, Kubernetes Pods, an
 
 - Linux x86_64 (Ubuntu 20.04+ / Debian 11+ recommended)
 - At least 2GB RAM
-- AionUi `.deb` package from [Releases](https://github.com/iOfficeAI/AionUi/releases)
+- AionUi `.deb` package from [Releases](https://github.com/VNDT1625/OmniAgent/releases)
 
 ---
 
@@ -29,7 +29,7 @@ Deploy AionUi WebUI on headless Linux servers — cloud VMs, Kubernetes Pods, an
 
 ```bash
 # Download the latest .deb package
-wget https://github.com/iOfficeAI/AionUi/releases/latest/download/AionUi-linux-amd64.deb
+wget https://github.com/VNDT1625/OmniAgent/releases/latest/download/AionUi-linux-amd64.deb
 
 # Install
 sudo dpkg -i AionUi-linux-amd64.deb
@@ -324,13 +324,13 @@ For Gemini API calls, configure the proxy inside AionUi WebUI:
 
 - Linux x86_64（推荐 Ubuntu 20.04+ / Debian 11+）
 - 至少 2GB 内存
-- AionUi `.deb` 安装包（[下载地址](https://github.com/iOfficeAI/AionUi/releases)）
+- AionUi `.deb` 安装包（[下载地址](https://github.com/VNDT1625/OmniAgent/releases)）
 
 ## 安装
 
 ```bash
 # 下载最新 .deb 包
-wget https://github.com/iOfficeAI/AionUi/releases/latest/download/AionUi-linux-amd64.deb
+wget https://github.com/VNDT1625/OmniAgent/releases/latest/download/AionUi-linux-amd64.deb
 
 # 安装
 sudo dpkg -i AionUi-linux-amd64.deb

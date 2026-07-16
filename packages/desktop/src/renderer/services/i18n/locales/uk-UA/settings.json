@@ -754,6 +754,11 @@
     "revokeFailed": "Не вдалося відкликати",
     "copyCode": "Копіювати код сполучення",
     "agentDescTelegram": "Для діалогів через Channel",
+    "permissionMode": "Режим дозволів",
+    "permissionModeDescTelegram": "Виберіть, чи має Telegram запитувати підтвердження перед зміною файлів або запуском команд",
+    "permissionModeSaved": "Режим дозволів збережено",
+    "permissionModeSaveFailed": "Не вдалося зберегти режим дозволів",
+    "permissionModeUnavailable": "Цей Agent не надає режими дозволів",
     "autoFollowCliModel": "Автоматично слідувати моделі при роботі CLI",
     "agentSwitched": "Агент успішно переключений",
     "modelSwitched": "Модель успішно переключена"

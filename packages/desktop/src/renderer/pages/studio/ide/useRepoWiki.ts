@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -76,6 +76,9 @@ export type UseRepoWiki = {
   load: (rootPath: string) => Promise<void>;
   /** Build (or rebuild) + persist the wiki for `rootPath` with `model`. */
   build: (rootPath: string, model: string, language?: string) => Promise<void>;
+  /** Cancel the active build without deleting an already-persisted wiki. */
+  cancel: () => void;
+
   /** Discard the current wiki view (back to idle). */
   reset: () => void;
 };
@@ -106,6 +109,8 @@ export const useRepoWiki = (): UseRepoWiki => {
   const [phaseDetail, setPhaseDetail] = useState<string | null>(null);
   // Run token: every build/load bumps it; stale async callbacks check it and bail.
   const runRef = useRef(0);
+  const activeBuildRootRef = useRef<string | null>(null);
+  const progressOffRef = useRef<(() => void) | null>(null);
 
   const applyWiki = useCallback((wiki: PersistedWiki, fromDisk: boolean): void => {
     setKeyFiles(wiki.keyFiles);
@@ -115,6 +120,18 @@ export const useRepoWiki = (): UseRepoWiki => {
     setBuiltAt(wiki.builtAt);
     setPersisted(fromDisk);
     setStatus('ready');
+  }, []);
+
+  const cancel = useCallback((): void => {
+    const rootPath = activeBuildRootRef.current;
+    activeBuildRootRef.current = null;
+    runRef.current++;
+    progressOffRef.current?.();
+    progressOffRef.current = null;
+    setPhase(null);
+    setPhaseDetail(null);
+    setStatus('idle');
+    if (rootPath) void ideClient.wikiCancel(rootPath).catch((): undefined => undefined);
   }, []);
 
   const load = useCallback(
@@ -141,6 +158,7 @@ export const useRepoWiki = (): UseRepoWiki => {
   const build = useCallback(
     async (rootPath: string, model: string, language?: string): Promise<void> => {
       const token = ++runRef.current;
+      activeBuildRootRef.current = rootPath;
       setStatus('building');
       setError(null);
       setPhase('scanning');
@@ -153,6 +171,7 @@ export const useRepoWiki = (): UseRepoWiki => {
         setPhase(p.phase);
         setPhaseDetail(p.detail ?? null);
       });
+      progressOffRef.current = off;
 
       const result = await ideClient.wikiBuild({ rootPath, model, language }).catch((e: unknown) => ({
         ok: false as const,
@@ -160,6 +179,8 @@ export const useRepoWiki = (): UseRepoWiki => {
         code: 'error' as const,
       }));
       off();
+      if (progressOffRef.current === off) progressOffRef.current = null;
+      if (activeBuildRootRef.current === rootPath) activeBuildRootRef.current = null;
       if (runRef.current !== token) return;
       setPhase(null);
       setPhaseDetail(null);
@@ -175,6 +196,7 @@ export const useRepoWiki = (): UseRepoWiki => {
   );
 
   const reset = useCallback((): void => {
+    cancel();
     runRef.current++;
     setStatus('idle');
     setError(null);
@@ -186,10 +208,18 @@ export const useRepoWiki = (): UseRepoWiki => {
     setPersisted(false);
     setPhase(null);
     setPhaseDetail(null);
-  }, []);
+  }, [cancel]);
 
-  // Drop any in-flight run when the hook unmounts.
-  useEffect(() => () => void runRef.current++, []);
+  // Stop Main-process work too when the whole workspace unmounts.
+  useEffect(
+    () => () => {
+      runRef.current++;
+      progressOffRef.current?.();
+      const rootPath = activeBuildRootRef.current;
+      if (rootPath) void ideClient.wikiCancel(rootPath).catch((): undefined => undefined);
+    },
+    []
+  );
 
   return {
     status,
@@ -205,6 +235,7 @@ export const useRepoWiki = (): UseRepoWiki => {
     activeIndex: -1,
     load,
     build,
+    cancel,
     reset,
   };
 };

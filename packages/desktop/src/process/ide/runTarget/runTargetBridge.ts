@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -125,6 +125,11 @@ const MANIFEST_FILES = [
   'pnpm-lock.yaml',
   'yarn.lock',
   'package-lock.json',
+  'pyproject.toml',
+  'docker-compose.yml',
+  'docker-compose.yaml',
+  'compose.yml',
+  'compose.yaml',
 ] as const;
 
 /** Subfolders commonly holding the real app(s) in a monorepo (one level deep). */
@@ -134,7 +139,16 @@ const WORKSPACE_DIRS = ['apps', 'packages', 'services', 'frontend', 'backend', '
 const DUPLICATE_PARENT_IGNORED_DIRS = new Set(['.omni', '.aionui', '.cache', '.git', '.mtui', 'node_modules', 'out']);
 
 /** Marker dirs/files the planner checks for native shells (Tauri/Android). */
-const MARKER_PATHS = ['src-tauri', 'android', 'ios', 'src-tauri/tauri.conf.json'] as const;
+const MARKER_PATHS = [
+  'src-tauri',
+  'android',
+  'ios',
+  'src-tauri/tauri.conf.json',
+  'backend/main.py',
+  'mcp_server/server.py',
+  '.venv/Scripts/python.exe',
+  '.venv/bin/python',
+] as const;
 
 /** Read one file as UTF-8, or undefined when missing/unreadable. */
 const readMaybe = async (filePath: string): Promise<string | undefined> => {

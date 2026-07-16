@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -14,6 +14,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { createIdeServer, type IdeMcpService, type IdeServerDeps } from '@/process/ide/mcp/ideServer';
+import { startIdeMcpHost } from '@/process/ide/mcp/ideMcpHost';
+import { buildIdeServer } from '@/process/ide/mcp/ideMcpWiring';
 import { createSessionMemoryStore } from '@/process/ide/memory/sessionMemoryStore';
 
 const makeService = (overrides: Partial<IdeMcpService> = {}): IdeMcpService => ({
@@ -48,6 +50,37 @@ const makeService = (overrides: Partial<IdeMcpService> = {}): IdeMcpService => (
   compact: vi.fn(async () => ({ summary: 'compacted log' })),
   runCommand: vi.fn(async () => ({ code: 0, stdout: 'ok', stderr: '', timedOut: false, durationMs: 5 })),
   ...overrides,
+});
+
+describe('IDE MCP SSE host failures', () => {
+  it('returns an HTTP error instead of leaving the handshake open when server construction fails', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const host = await startIdeMcpHost({
+      buildServer: () => {
+        throw new Error('server build failed');
+      },
+    });
+
+    try {
+      const response = await fetch(host.url);
+      expect(response.status).toBe(500);
+    } finally {
+      await host.close();
+      consoleSpy.mockRestore();
+    }
+  });
+  it('does not return HTTP 500 when the production IDE server completes an SSE handshake', async () => {
+    const host = await startIdeMcpHost({ buildServer: buildIdeServer });
+    const abort = new AbortController();
+
+    try {
+      const response = await fetch(host.url, { signal: abort.signal });
+      expect(response.status).toBe(200);
+    } finally {
+      abort.abort();
+      await host.close();
+    }
+  });
 });
 
 const makeDeps = (overrides: Partial<IdeMcpService> = {}): IdeServerDeps => ({ ide: makeService(overrides) });
@@ -411,6 +444,152 @@ describe('ideServer', () => {
     const result = await client.callTool({ name: 'ide_read_file', arguments: { filePath: '/nope' } });
     expect((result as { isError?: boolean }).isError).toBe(true);
     expect(textOf(result)).toContain('ENOENT');
+  });
+});
+
+describe('ideServer — exp_* (ExpBase agent plane)', () => {
+  const makeExperience = () => ({
+    search: vi.fn(async () => [
+      {
+        entryId: 'exp-1',
+        score: 0.91,
+        kind: 'successful_fix' as const,
+        symptom: 'TypeScript build fails',
+        lesson: 'Regenerate the generated types before typecheck.',
+        whyRelevant: ['same command'],
+        caution: [],
+        suggestedChecks: ['bunx tsc --noEmit'],
+      },
+    ]),
+    record: vi.fn(async () => ({ action: 'created' as const, entry: { id: 'exp-2' } })),
+    recordFeedback: vi.fn(async () => true),
+    verifyOutcome: vi.fn(async () => ({
+      decision: { shouldRetrieve: false, failureCount: 1, reason: 'below-threshold-2' },
+      suggestions: [],
+    })),
+  });
+
+  it('exposes ExpBase tools only when the existing service is injected', async () => {
+    const without = await connect(makeDeps());
+    expect((await without.listTools()).tools.map((tool) => tool.name)).not.toContain('exp_search');
+
+    const experience = makeExperience();
+    const withExp = await connect({ ide: makeService(), experience });
+    expect((await withExp.listTools()).tools.map((tool) => tool.name)).toEqual(
+      expect.arrayContaining(['exp_search', 'exp_record', 'exp_feedback', 'exp_verify'])
+    );
+  });
+
+  it('searches the existing project ExpBase and returns compact lessons', async () => {
+    const experience = makeExperience();
+    const client = await connect({ ide: makeService(), experience });
+    const result = await client.callTool({
+      name: 'exp_search',
+      arguments: { projectRoot: '/repo', symptom: 'tsc fails', files: ['src/auth.ts'], limit: 3 },
+    });
+
+    expect(experience.search).toHaveBeenCalledWith(
+      '/repo',
+      expect.objectContaining({ symptom: 'tsc fails', files: ['src/auth.ts'] }),
+      { topK: 3 }
+    );
+    expect(textOf(result)).toContain('Regenerate the generated types');
+  });
+
+  it('reports verification outcomes through the conditional ExpBase trigger', async () => {
+    const experience = makeExperience();
+    const client = await connect({ ide: makeService(), experience });
+    const result = await client.callTool({
+      name: 'exp_verify',
+      arguments: { projectRoot: '/repo', outcome: 'failed', command: 'bunx tsc --noEmit', errorText: 'TS2322' },
+    });
+
+    expect(experience.verifyOutcome).toHaveBeenCalledWith(
+      '/repo',
+      expect.objectContaining({ command: 'bunx tsc --noEmit', errorText: 'TS2322' }),
+      'failed'
+    );
+    expect(textOf(result)).toContain('below-threshold-2');
+  });
+});
+
+describe('ideServer — automatic ExpBase command observation', () => {
+  it('surfaces an existing lesson when a repeated command failure triggers retrieval', async () => {
+    const verifyOutcome = vi
+      .fn()
+      .mockResolvedValueOnce({
+        decision: { shouldRetrieve: false, failureCount: 1, reason: 'below-threshold-2' },
+        suggestions: [],
+      })
+      .mockResolvedValueOnce({
+        decision: { shouldRetrieve: true, failureCount: 2, reason: 'reached-threshold-2' },
+        suggestions: [
+          {
+            entryId: 'exp-1',
+            score: 0.91,
+            kind: 'successful_fix',
+            symptom: 'TypeScript build fails',
+            lesson: 'Regenerate generated types before retrying.',
+            whyRelevant: [],
+            caution: [],
+            suggestedChecks: ['bun run i18n:types'],
+          },
+        ],
+      });
+    const experience = {
+      search: vi.fn(async () => []),
+      record: vi.fn(async () => ({ action: 'created' as const, entryId: 'exp-2' })),
+      recordFeedback: vi.fn(async () => true),
+      verifyOutcome,
+    };
+    const runCommand = vi.fn(async () => ({
+      code: 1,
+      stdout: '',
+      stderr: 'TS2322',
+      timedOut: false,
+      durationMs: 5,
+    }));
+    const client = await connect({ ide: makeService({ runCommand }), experience });
+
+    await client.callTool({
+      name: 'ide_command',
+      arguments: { rootPath: '/repo', command: 'bunx tsc --noEmit' },
+    });
+    const repeated = await client.callTool({
+      name: 'ide_command',
+      arguments: { rootPath: '/repo', command: 'bunx tsc --noEmit' },
+    });
+
+    expect(verifyOutcome).toHaveBeenCalledTimes(2);
+    expect(textOf(repeated)).toContain('Regenerate generated types before retrying.');
+  });
+});
+
+describe('ideServer — ExpBase observation resilience', () => {
+  it('keeps command output when ExpBase observation fails', async () => {
+    const experience = {
+      search: vi.fn(async () => []),
+      record: vi.fn(async () => ({ action: 'created' as const, entryId: 'exp-2' })),
+      recordFeedback: vi.fn(async () => true),
+      verifyOutcome: vi.fn(async () => {
+        throw new Error('ExpBase unavailable');
+      }),
+    };
+    const runCommand = vi.fn(async () => ({
+      code: 1,
+      stdout: '',
+      stderr: 'TS2322',
+      timedOut: false,
+      durationMs: 5,
+    }));
+    const client = await connect({ ide: makeService({ runCommand }), experience });
+    const result = await client.callTool({
+      name: 'ide_command',
+      arguments: { rootPath: '/repo', command: 'bunx tsc --noEmit' },
+    });
+
+    expect(textOf(result)).toContain('TS2322');
+    expect((result as { isError?: boolean }).isError).not.toBe(true);
   });
 });
 

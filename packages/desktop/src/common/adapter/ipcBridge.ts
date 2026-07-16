@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -18,7 +18,6 @@ import type { OpenDialogOptions } from 'electron';
 import type {
   ICssTheme,
   IMcpServer,
-  IProvider,
   ISessionMcpServer,
   TChatConversation,
   TProviderWithModel,
@@ -34,14 +33,8 @@ import type {
 import type { PreviewHistoryTarget, PreviewSnapshotInfo } from '../types/office/preview';
 import type { PricingRecommendation } from '../pricing/modelPricingAdvisor';
 import type { AcpModelInfo } from '../types/platform/acpTypes';
-import type {
-  CreateProviderRequest,
-  FetchModelsAnonymousRequest,
-  FetchModelsResponse,
-  ProviderHealthCheckRequest,
-  ProviderHealthCheckResponse,
-  UpdateProviderRequest,
-} from '../types/provider/providerApi';
+import type { ProviderHealthCheckRequest, ProviderHealthCheckResponse } from '../types/provider/providerApi';
+import { providerChannels } from '../types/provider/providerChannels';
 import type { SpeechToTextRequest, SpeechToTextResult } from '../types/provider/speech';
 import type {
   ITeamAgentRemovedEvent,
@@ -62,7 +55,6 @@ import type {
   UpdateDownloadRequest,
   UpdateDownloadResult,
 } from '../update/updateTypes';
-import type { ProtocolDetectionRequest, ProtocolDetectionResponse } from '../utils/protocolDetector';
 import type { ApplicablePreset, ResourceBudget, ResourceMode, ResourceState } from '@process/resource/leaseTypes';
 import type { OmniGatewayProgressEvent } from '@process/omni-gateway/omniGatewayProgress';
 import type { OmniAuthMode, OmniOAuthClientSummary, OmniToolPermissions } from '@process/omni-gateway/auth/authTypes';
@@ -141,6 +133,44 @@ export const assistants = {
 // Conversation — REST + WS
 // ---------------------------------------------------------------------------
 
+export type AionrsContextMessage = {
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: Array<Record<string, unknown>>;
+  timestamp?: string;
+};
+
+export type AionrsContextTool = {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+  deferred: boolean;
+};
+
+export type AionrsContextBranch = { id: string; title: string; summary: string; content: string };
+
+export type AionrsContextSnapshot = {
+  model: string;
+  system: string;
+  messages: AionrsContextMessage[];
+  tools: AionrsContextTool[];
+  max_tokens: number;
+  thinking: unknown;
+  reasoning_effort?: string;
+  custom_context: string;
+  context_branches: AionrsContextBranch[];
+  active_context_branch_ids: string[];
+  working_memory: Record<string, unknown>;
+  full_message_count: number;
+  tool_cache: Record<string, unknown>;
+  session_experience: Record<string, unknown>;
+  token_estimate: {
+    system: number;
+    messages: number;
+    tools: number;
+    total: number;
+  };
+};
+
 export const conversation = {
   create: withResponseMap(
     httpPost<TChatConversation, ICreateConversationParams>('/api/conversations', (p) => {
@@ -208,6 +238,17 @@ export const conversation = {
   ),
   reset: httpPost<void, IResetConversationParams>((p) => `/api/conversations/${p.id}/reset`),
   warmup: httpPost<void, { conversation_id: string }>((p) => `/api/conversations/${p.conversation_id}/warmup`),
+  getAionrsContext: httpGet<AionrsContextSnapshot, { conversation_id: string }>(
+    (p) => `/api/conversations/${p.conversation_id}/aionrs-context`
+  ),
+  updateAionrsContext: httpPut<
+    AionrsContextSnapshot,
+    { conversation_id: string; custom_context: string; context_branches: AionrsContextBranch[] }
+  >(
+    (p) => `/api/conversations/${p.conversation_id}/aionrs-context`,
+    (p) => ({ custom_context: p.custom_context, context_branches: p.context_branches })
+  ),
+
   stop: httpPost<void, { conversation_id: string }>((p) => `/api/conversations/${p.conversation_id}/cancel`),
   activeCount: httpGet<{ count: number }>('/api/conversations/active-count'),
   sendMessage: httpPost<ISendMessageResult, ISendMessageParams>(
@@ -445,7 +486,10 @@ export const update = {
 
 export const autoUpdate = {
   check: bridge.buildProvider<
-    IBridgeResponse<{ updateInfo?: { version: string; releaseDate?: string; releaseNotes?: string } }>,
+    IBridgeResponse<{
+      currentVersion: string;
+      updateInfo?: { version: string; releaseDate?: string; releaseNotes?: string };
+    }>,
     { includePrerelease?: boolean }
   >('auto-update.check'),
   download: bridge.buildProvider<IBridgeResponse, void>('auto-update.download'),
@@ -688,33 +732,10 @@ export const bedrock = {
 };
 
 // ---------------------------------------------------------------------------
-// Mode (Provider management) — routed to /api/providers/*
+// Mode (Provider management) — native Tomny provider store
 // ---------------------------------------------------------------------------
 
-export const mode = {
-  listProviders: httpGet<IProvider[], void>('/api/providers'),
-  createProvider: httpPost<IProvider, CreateProviderRequest>('/api/providers'),
-  updateProvider: httpPut<IProvider, { id: string } & UpdateProviderRequest>(
-    (p) => `/api/providers/${p.id}`,
-    (p) => {
-      const { id: _id, ...body } = p;
-      return body;
-    }
-  ),
-  deleteProvider: httpDelete<void, { id: string }>((p) => `/api/providers/${p.id}`),
-  fetchProviderModels: httpPost<FetchModelsResponse, { id: string; try_fix?: boolean }>(
-    (p) => `/api/providers/${p.id}/models`,
-    (p) => ({ try_fix: p.try_fix })
-  ),
-  /**
-   * Pre-create form preview — anonymous fetch-models (T1b).
-   * Takes credentials in the body, no provider row required. Used by
-   * AddPlatformModal / EditModeModal / ApiKeyEditorModal while the
-   * dropdown is still being populated.
-   */
-  fetchModelList: httpPost<FetchModelsResponse, FetchModelsAnonymousRequest>('/api/providers/fetch-models'),
-  detectProtocol: httpPost<ProtocolDetectionResponse, ProtocolDetectionRequest>('/api/providers/detect-protocol'),
-};
+export const mode = providerChannels;
 
 // ---------------------------------------------------------------------------
 // ACP Conversation — routed to /api/agents/* + conversation routes
@@ -1567,6 +1588,14 @@ export interface ICreateConversationParams {
     remote_agent_id?: string;
     extra_skill_paths?: string[];
     team_id?: string;
+    /** Product surface that owns the conversation (for example Studio IDE). */
+    surface?: string;
+    /** Schema version for surface-specific conversation metadata. */
+    surface_version?: number;
+    /** Studio IDE memory shared by every client bound to this conversation. */
+    ide_memory_id?: string;
+    /** Whether the Studio IDE planning workflow is enabled. */
+    ide_planning_enabled?: boolean;
   };
 }
 

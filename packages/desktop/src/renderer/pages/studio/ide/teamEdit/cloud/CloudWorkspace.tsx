@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -26,6 +26,7 @@ import type { TeamTreeEntry } from '@process/ide/teamEdit/teamSessionHost';
 import { cloudWorkspaceClient } from './cloudWorkspaceClient';
 import type { CloudWorkspaceConnection, UseCloudWorkspace } from './useCloudWorkspace';
 import { RemotePeerChatPanel } from '../PeerWorkspace';
+import ReplicaStatusPanel from './ReplicaStatusPanel';
 
 type CloudWorkspaceProps = {
   cloud: UseCloudWorkspace;
@@ -269,6 +270,7 @@ const CloudWorkspace: React.FC<CloudWorkspaceProps> = ({ cloud, onBack, sourceRo
         onPublish={() => void publishLocal()}
         onPull={() => void pullCloud()}
       />
+      <ReplicaStatusPanel cloud={cloud} />
       <div className='flex-1 min-h-0 flex'>
         <nav className='w-60px shrink-0 flex flex-col items-center gap-6px py-12px border-r border-b-1'>
           <CloudActivityItem

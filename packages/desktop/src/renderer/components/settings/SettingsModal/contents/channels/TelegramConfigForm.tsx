@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -8,6 +8,8 @@ import type { IChannelPairingRequest, IChannelPluginStatus, IChannelUser } from 
 import { channel } from '@/common/adapter/ipcBridge';
 import { getAgents } from '@/renderer/hooks/agent/useAgents';
 import { configService } from '@/common/config/configService';
+
+import { getAgentModes, getFullAutoMode } from '@/renderer/utils/model/agentModes';
 import GoogleModelSelector from '@/renderer/pages/conversation/platforms/gemini/GoogleModelSelector';
 import type { GoogleModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGoogleModelSelection';
 import { Button, Dropdown, Empty, Input, Menu, Message, Spin, Tooltip } from '@arco-design/web-react';
@@ -81,6 +83,8 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
     id?: string;
   }>({ agent_type: 'aionrs' });
 
+  const [permissionMode, setPermissionMode] = useState('yolo');
+
   // Load pending pairings
   const loadPendingPairings = useCallback(async () => {
     setPairingLoading(true);
@@ -121,7 +125,11 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
   useEffect(() => {
     const loadAgentsAndSelection = async () => {
       try {
-        const [agentsResp, saved] = await Promise.all([getAgents(), configService.get('assistant.telegram.agent')]);
+        const [agentsResp, saved, savedPermissionMode] = await Promise.all([
+          getAgents(),
+          configService.get('assistant.telegram.agent'),
+          configService.get('assistant.telegram.permissionMode'),
+        ]);
 
         if (Array.isArray(agentsResp)) {
           const list = agentsResp.map((a) => ({
@@ -164,6 +172,9 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
             : 'acp';
           setSelectedAgent({ agent_type: agentType, backend: saved });
         }
+        if (typeof savedPermissionMode === 'string' && savedPermissionMode) {
+          setPermissionMode(savedPermissionMode);
+        }
       } catch (error) {
         console.error('[TelegramConfig] Failed to load agents:', error);
       }
@@ -184,7 +195,10 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
       name: agent.name,
     };
     try {
+      const nextPermissionMode = getFullAutoMode(agent.backend ?? agent.agent_type);
       await configService.set('assistant.telegram.agent', payload);
+      await configService.set('assistant.telegram.permissionMode', nextPermissionMode);
+      setPermissionMode(nextPermissionMode);
       await channel.syncChannelSettings
         .invoke({ platform: 'telegram' })
         .catch((err) => console.warn('[TelegramConfig] syncChannelSettings failed:', err));
@@ -192,6 +206,20 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
     } catch (error) {
       console.error('[TelegramConfig] Failed to save agent:', error);
       Message.error(t('common.saveFailed', 'Failed to save'));
+    }
+  };
+
+  const persistPermissionMode = async (mode: string) => {
+    try {
+      await configService.set('assistant.telegram.permissionMode', mode);
+      setPermissionMode(mode);
+      await channel.syncChannelSettings
+        .invoke({ platform: 'telegram' })
+        .catch((err) => console.warn('[TelegramConfig] syncChannelSettings failed:', err));
+      Message.success(t('settings.assistant.permissionModeSaved', 'Permission mode saved'));
+    } catch (error) {
+      console.error('[TelegramConfig] Failed to save permission mode:', error);
+      Message.error(t('settings.assistant.permissionModeSaveFailed', 'Failed to save permission mode'));
     }
   };
 
@@ -342,6 +370,11 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
   };
 
   const showModelSelector = selectedAgent.agent_type === 'aionrs';
+
+  const permissionOptions = getAgentModes(selectedAgent.backend ?? selectedAgent.agent_type);
+  const activePermissionMode = permissionOptions.some((option) => option.value === permissionMode)
+    ? permissionMode
+    : getFullAutoMode(selectedAgent.backend ?? selectedAgent.agent_type);
   const agentOptions: Array<{
     agent_type: string;
     backend?: string;
@@ -495,6 +528,49 @@ const TelegramConfigForm: React.FC<TelegramConfigFormProps> = ({
           </Dropdown>
         </PreferenceRow>
       </div>
+
+      {/* Telegram permission mode */}
+      <PreferenceRow
+        label={t('settings.assistant.permissionMode', 'Permission Mode')}
+        description={t(
+          'settings.assistant.permissionModeDescTelegram',
+          'Choose whether Telegram asks before tools edit files or run commands'
+        )}
+      >
+        {permissionOptions.length > 0 ? (
+          <Dropdown
+            trigger='click'
+            position='br'
+            droplist={
+              <Menu selectedKeys={[activePermissionMode]}>
+                {permissionOptions.map((option) => (
+                  <Menu.Item
+                    key={option.value}
+                    title={option.description}
+                    onClick={() => {
+                      if (option.value !== activePermissionMode) void persistPermissionMode(option.value);
+                    }}
+                  >
+                    {option.label}
+                  </Menu.Item>
+                ))}
+              </Menu>
+            }
+          >
+            <Button type='secondary' className='min-w-160px flex items-center justify-between gap-8px'>
+              <span className='truncate'>
+                {permissionOptions.find((option) => option.value === activePermissionMode)?.label ??
+                  activePermissionMode}
+              </span>
+              <Down theme='outline' size={14} />
+            </Button>
+          </Dropdown>
+        ) : (
+          <span className='text-12px text-t-tertiary'>
+            {t('settings.assistant.permissionModeUnavailable', 'This agent does not expose permission modes')}
+          </span>
+        )}
+      </PreferenceRow>
 
       {/* Default Model Selection */}
       <PreferenceRow

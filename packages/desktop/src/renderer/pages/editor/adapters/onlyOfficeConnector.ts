@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -136,16 +136,44 @@ const awaitEntry = (filePath: string, timeoutMs = 15000): Promise<ConnectorEntry
   });
 };
 
+const OFFICE_COMMAND_TIMEOUT_MS = 12000;
+
+const callbackOperation = <T>(label: string, start: (done: (value: T) => void) => void): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error(`${label} timed out after ${Math.round(OFFICE_COMMAND_TIMEOUT_MS / 1000)}s.`));
+    }, OFFICE_COMMAND_TIMEOUT_MS);
+
+    const done = (value: T): void => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      resolve(value);
+    };
+
+    try {
+      start(done);
+    } catch (error) {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      reject(error);
+    }
+  });
+
 /** Promise wrapper around `callCommand`. The fn body runs in the editor context. */
 const callCommand = (connector: OnlyOfficeConnector, commandFn: () => unknown, isNoCalc = false): Promise<unknown> =>
-  new Promise((resolve) => {
-    connector.callCommand(commandFn, (ret) => resolve(ret), isNoCalc);
+  callbackOperation('Office editor command', (done) => {
+    connector.callCommand(commandFn, done, isNoCalc);
   });
 
 /** Promise wrapper around `executeMethod`. */
 const executeMethod = (connector: OnlyOfficeConnector, name: string, args: unknown[] = []): Promise<unknown> =>
-  new Promise((resolve) => {
-    connector.executeMethod(name, args, (ret) => resolve(ret));
+  callbackOperation(`Office editor method "${name}"`, (done) => {
+    connector.executeMethod(name, args, done);
   });
 
 /**
@@ -177,8 +205,8 @@ const callWithData = async (connector: OnlyOfficeConnector, data: unknown, bodyS
   const json = JSON.stringify(data ?? null);
   // eslint-disable-next-line no-new-func
   const fn = new Function(`"use strict";\nvar DATA = ${json};\n${bodySource}`) as () => unknown;
-  return new Promise((resolve) => {
-    connector.callCommand(fn, (ret) => resolve(ret));
+  return callbackOperation('Office editor command', (done) => {
+    connector.callCommand(fn, done);
   });
 };
 

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -122,7 +122,7 @@ const tryProvider = async (provider: Provider, doFetch: FetchLike): Promise<Dete
   try {
     const res = await doFetch(provider.url, {
       signal: controller.signal,
-      headers: { Accept: 'application/json', 'User-Agent': 'AionUi-News/1.0' },
+      headers: { Accept: 'application/json', 'User-Agent': 'TomniAgentic-News/1.0' },
     });
     if (!res.ok) return null;
     const body = (await res.json()) as unknown;

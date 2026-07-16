@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -83,6 +83,9 @@ const isFileNotFound = (error: unknown): boolean => (error as NodeJS.ErrnoExcept
 
 const matchesFilter = (entry: ExperienceEntry, filter: ExperienceFilter): boolean => {
   if (filter.projectId !== undefined && entry.projectId !== filter.projectId) {
+    return false;
+  }
+  if (filter.scope !== undefined && (entry.scope ?? 'repo') !== filter.scope) {
     return false;
   }
   if (filter.kind !== undefined && entry.kind !== filter.kind) {

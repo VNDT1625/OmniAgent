@@ -817,6 +817,11 @@
     "revokeFailed": "Failed to revoke user",
     "copyCode": "Copy pairing code",
     "agentDescTelegram": "Used for Telegram conversations",
+    "permissionMode": "Permission Mode",
+    "permissionModeDescTelegram": "Choose whether Telegram asks before tools edit files or run commands",
+    "permissionModeSaved": "Permission mode saved",
+    "permissionModeSaveFailed": "Failed to save permission mode",
+    "permissionModeUnavailable": "This agent does not expose permission modes",
     "autoFollowCliModel": "Automatically follow the model when CLI is running",
     "agentSwitched": "Agent switched successfully",
     "modelSwitched": "Model switched successfully"

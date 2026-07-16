@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -51,8 +51,8 @@ export type IdeMcpHost = {
 export type IdeMcpHostOptions = {
   /** Optional fixed port. Defaults to 0 (ephemeral). */
   port?: number;
-  /** Optional server factory. Defaults to the Electron main-process wiring. */
-  buildServer?: () => McpServer;
+  /** Server factory supplied by the caller so every runtime can choose bundle-safe wiring. */
+  buildServer: () => McpServer;
   /** Label included in logs and health output. */
   serverName?: string;
   /** Extra health metadata for standalone sidecars. */
@@ -69,17 +69,10 @@ let host: IdeMcpHost | undefined;
  *
  * @returns The running host (url + port + close), reused on subsequent calls.
  */
-export const startIdeMcpHost = async (options: IdeMcpHostOptions = {}): Promise<IdeMcpHost> => {
+export const startIdeMcpHost = async (options: IdeMcpHostOptions): Promise<IdeMcpHost> => {
   if (host) return host;
 
-  const buildServer =
-    options.buildServer ??
-    ((): McpServer => {
-      // Keep Electron-tied wiring out of standalone sidecar module loading.
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const { buildIdeServer } = require('./ideMcpWiring') as typeof import('./ideMcpWiring');
-      return buildIdeServer();
-    });
+  const { buildServer } = options;
   const serverName = options.serverName ?? BUILTIN_IDE_NAME;
   const startedAt = new Date().toISOString();
 
@@ -127,12 +120,12 @@ export const startIdeMcpHost = async (options: IdeMcpHostOptions = {}): Promise<
       transport.onclose = () => {
         transports.delete(transport.sessionId);
       };
-      const mcp: McpServer = buildServer();
       try {
+        const mcp: McpServer = buildServer();
         await mcp.connect(transport);
       } catch (error) {
         transports.delete(transport.sessionId);
-        console.error('[IdeMCP] Failed to connect SSE transport:', error);
+        console.error('[IdeMCP] Failed to build or connect SSE transport:', error);
         if (!res.headersSent) res.writeHead(500).end();
       }
       return;
@@ -162,7 +155,7 @@ export const startIdeMcpHost = async (options: IdeMcpHostOptions = {}): Promise<
     });
   });
 
-  host = {
+  const currentHost: IdeMcpHost = {
     url: `http://127.0.0.1:${port}${SSE_PATH}`,
     healthUrl: `http://127.0.0.1:${port}/health`,
     port,
@@ -170,11 +163,17 @@ export const startIdeMcpHost = async (options: IdeMcpHostOptions = {}): Promise<
       new Promise<void>((resolve) => {
         for (const transport of transports.values()) void transport.close();
         transports.clear();
-        server.close(() => resolve());
+        server.close(() => {
+          if (host === currentHost) host = undefined;
+          resolve();
+        });
       }),
   };
-  console.log(`[IdeMCP] MCP host listening on ${host.url} (server: ${serverName}, health: ${host.healthUrl}).`);
-  return host;
+  host = currentHost;
+  console.log(
+    `[IdeMCP] MCP host listening on ${currentHost.url} (server: ${serverName}, health: ${currentHost.healthUrl}).`
+  );
+  return currentHost;
 };
 
 /** Return the running host, if started. */

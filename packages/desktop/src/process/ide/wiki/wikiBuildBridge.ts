@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @license
  * Copyright 2025 Omni Project
  * SPDX-License-Identifier: Apache-2.0
@@ -44,6 +44,7 @@ import type { IdeWikiResult } from '../ideWikiBridge';
 /** IPC channel names for the durable-wiki surface (renderer-safe contract). */
 export const WIKI_BUILD_CHANNELS = {
   build: 'ide.wiki-build',
+  cancel: 'ide.wiki-cancel',
   load: 'ide.wiki-load',
   progress: 'ide.wiki-progress',
 } as const;
@@ -62,6 +63,12 @@ export type WikiBuildRequest = {
   maxFiles?: number;
   /** Max self-improvement passes per section (default 2). */
   maxRefineIterations?: number;
+};
+
+/** Request for {@link WIKI_BUILD_CHANNELS.cancel}. */
+export type WikiCancelRequest = {
+  /** Absolute repo root whose active build should be cancelled. */
+  rootPath: string;
 };
 
 /** Request for {@link WIKI_BUILD_CHANNELS.load}. */
@@ -83,6 +90,7 @@ export type WikiBuildProgress = {
 /** Typed durable-wiki channels. Exported for bootstrap registration wiring. */
 export const wikiBuildChannels = {
   build: bridge.buildProvider<IdeWikiResult<PersistedWiki>, WikiBuildRequest>(WIKI_BUILD_CHANNELS.build),
+  cancel: bridge.buildProvider<IdeWikiResult<boolean>, WikiCancelRequest>(WIKI_BUILD_CHANNELS.cancel),
   load: bridge.buildProvider<IdeWikiResult<PersistedWiki | null>, WikiLoadRequest>(WIKI_BUILD_CHANNELS.load),
   progress: bridge.buildEmitter<WikiBuildProgress>(WIKI_BUILD_CHANNELS.progress),
 };
@@ -93,10 +101,13 @@ const DEFAULT_MAX_FILES = 600;
 const MAX_READABLE_TEXT_FILE_BYTES = 64_000;
 const MAX_PERSISTED_WIKI_BYTES = 2_000_000;
 
+/** Active builds keyed by repo root so leaving the Wiki tab can stop Main-process work. */
+const activeBuilds = new Map<string, AbortController>();
+
 /** Non-code text files whose contents are useful grounding for the wiki. */
 const isWikiTextFile = (relPath: string): boolean =>
   /\.(?:md|mdx|txt|rst|adoc|json|ya?ml|toml|xml|gradle|properties)$/i.test(relPath) ||
-  /(?:^|\/)(?:gemfile|dockerfile|makefile)$/i.test(relPath);
+  /(?:^|\/)(?:gemfile|dockerfile|makefile|justfile|procfile)$/i.test(relPath);
 
 const readTextFileCapped = async (filePath: string, maxBytes = MAX_READABLE_TEXT_FILE_BYTES): Promise<string> => {
   const handle = await fsp.open(filePath, 'r');
@@ -161,11 +172,15 @@ const nodeBootstrapDeps = (maxFiles: number): WikiBootstrapDeps => ({
         maxReadBytes: MAX_READABLE_TEXT_FILE_BYTES,
       }
     ),
-  chat: (model, system, user) =>
-    runIdeChat(model, [
-      { role: 'system', content: system },
-      { role: 'user', content: user },
-    ]),
+  chat: (model, system, user, signal) =>
+    runIdeChat(
+      model,
+      [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+      signal
+    ),
   writeDoc: async (rootPath, relPath, content) => {
     await fsp.writeFile(path.join(rootPath, relPath), content, 'utf-8');
   },
@@ -186,9 +201,16 @@ export const loadWikiForRoot = (rootPath: string): Promise<PersistedWiki | null>
  */
 export function registerWikiBuildBridge(): void {
   wikiBuildChannels.build.provider(async (req): Promise<IdeWikiResult<PersistedWiki>> => {
+    let rootPath = '';
+    let controller: AbortController | null = null;
     try {
-      const rootPath = req.rootPath?.trim();
+      rootPath = req.rootPath?.trim();
       if (!rootPath) throw new Error('A folder path is required.');
+
+      activeBuilds.get(rootPath)?.abort();
+      controller = new AbortController();
+      activeBuilds.set(rootPath, controller);
+
       const maxFiles = req.maxFiles ?? DEFAULT_MAX_FILES;
       const result = await runWikiBootstrap(
         rootPath,
@@ -201,15 +223,26 @@ export function registerWikiBuildBridge(): void {
           maxRefineIterations: req.maxRefineIterations,
         },
         {
+          signal: controller.signal,
           onPhase: (phase, detail) => wikiBuildChannels.progress.emit({ phase, detail, rootPath }),
         }
       );
       return { ok: true, data: result.wiki };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error('[WikiBuildBridge] wiki-build failed:', error);
+      if (!controller?.signal.aborted) console.error('[WikiBuildBridge] wiki-build failed:', error);
       return { ok: false, error: message, code: classifyModelError(error) };
+    } finally {
+      if (controller && activeBuilds.get(rootPath) === controller) activeBuilds.delete(rootPath);
     }
+  });
+
+  wikiBuildChannels.cancel.provider(async (req): Promise<IdeWikiResult<boolean>> => {
+    const rootPath = req.rootPath?.trim();
+    if (!rootPath) return { ok: true, data: false };
+    const controller = activeBuilds.get(rootPath);
+    controller?.abort();
+    return { ok: true, data: Boolean(controller) };
   });
 
   wikiBuildChannels.load.provider(async (req): Promise<IdeWikiResult<PersistedWiki | null>> => {

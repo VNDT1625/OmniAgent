@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -34,19 +34,27 @@
  */
 
 import { bridge } from '@office-ai/platform';
-import { app } from 'electron';
+import type { WebContents } from 'electron';
+
+import type { Dirent } from 'node:fs';
 import { promises as fsp } from 'node:fs';
 import * as path from 'node:path';
 import { locateElement, type LocatedElement, type PickedElement } from './elementInspectorLocator';
 import type { CdpWebContents } from './quickTestTracer';
 import type { loadGraph } from './quickTestBridgeHelpers';
 import type { UnderstandResult } from './understandTypes';
+import { createFfmpegVideoBackend } from '../testing/engines/ffmpegVideoBackend';
+import { resolveFfmpeg } from '../testing/engines/toolResolver';
+import { runUiAudit, type UiAuditReport } from './uiAuditEngine';
 
 /** IPC channel names for the element inspector surface. */
 export const INSPECT_CHANNELS = {
   pick: 'ide.inspect-pick',
   cancel: 'ide.inspect-cancel',
   screenshot: 'ide.inspect-screenshot',
+  videoStart: 'ide.inspect-video-start',
+  videoStop: 'ide.inspect-video-stop',
+  audit: 'ide.ui-audit',
 } as const;
 
 /** Request for {@link INSPECT_CHANNELS.pick}. */
@@ -57,21 +65,98 @@ export type InspectPickRequest = {
   tabId?: string;
 };
 
+/** Area of the embedded page included in a screenshot. */
+export type InspectScreenshotMode = 'viewport' | 'fullPage';
+
+/** Request for {@link INSPECT_CHANNELS.screenshot}. */
+export type InspectScreenshotRequest = InspectPickRequest & {
+  mode: InspectScreenshotMode;
+};
+
 /** Result of a screenshot capture: the saved PNG path the agent can open. */
 export type InspectScreenshotResult = {
   /** Absolute path of the saved PNG. */
   filePath: string;
   /** Data URL (for an inline preview in the panel). */
   dataUrl: string;
+  /** Area of the page represented by this image. */
+  mode: InspectScreenshotMode;
 };
+
+/** Saved recording of the embedded web tab. */
+export type InspectVideoResult = {
+  /** Absolute path of the MP4 that the agent can inspect. */
+  filePath: string;
+  /** Stable embedded-tab id so recording can still stop after navigation. */
+  tabId: string;
+  /** Recording start time (Unix milliseconds). */
+  startedAt: number;
+  /** Final duration; zero while the recording is active. */
+  durationMs: number;
+};
+
+type CaptureSize = { width?: number; height?: number };
+
+const INSPECT_EVIDENCE_TTL_MS = 24 * 60 * 60 * 1000;
+const INSPECT_EVIDENCE_SWEEP_MS = 60 * 60 * 1000;
+const MANAGED_EVIDENCE_PATTERN = /^(shot-(?:full-page|viewport)-|recording-)\d+\.(?:png|mp4|webm)$/i;
+
+/**
+ * Delete stale Quick Test captures while leaving unrelated files untouched.
+ * Evidence remains available for 24 hours after it is sent to an agent.
+ */
+export const pruneInspectEvidence = async (rootPath: string, now = Date.now()): Promise<number> => {
+  const dir = path.join(rootPath, '.omni', 'inspect');
+  const entries = await fsp.readdir(dir, { withFileTypes: true }).catch((): Dirent[] => []);
+  let removed = 0;
+  await Promise.all(
+    entries.map(async (entry) => {
+      if (!entry.isFile() || !MANAGED_EVIDENCE_PATTERN.test(entry.name)) return;
+      const filePath = path.join(dir, entry.name);
+      const stat = await fsp.stat(filePath).catch((): null => null);
+      if (!stat || now - stat.mtimeMs < INSPECT_EVIDENCE_TTL_MS) return;
+      await fsp.rm(filePath, { force: true });
+      removed += 1;
+    })
+  );
+  return removed;
+};
+
+const trackedInspectRoots = new Set<string>();
+let inspectEvidenceSweep: ReturnType<typeof setInterval> | null = null;
+
+const trackInspectEvidenceRoot = (rootPath: string): void => {
+  trackedInspectRoots.add(rootPath);
+  if (inspectEvidenceSweep) return;
+  inspectEvidenceSweep = setInterval(() => {
+    for (const trackedRoot of trackedInspectRoots) {
+      void pruneInspectEvidence(trackedRoot).catch(() => {});
+    }
+  }, INSPECT_EVIDENCE_SWEEP_MS);
+  inspectEvidenceSweep.unref();
+};
+
+/** Resolve a full-page clip without trusting viewport-sized CDP metrics alone. */
+export const resolveFullPageSize = (
+  layoutSize: CaptureSize,
+  domSize: CaptureSize
+): { width: number; height: number } => ({
+  width: Math.ceil(Math.max(layoutSize.width ?? 0, domSize.width ?? 0)),
+  height: Math.ceil(Math.max(layoutSize.height ?? 0, domSize.height ?? 0)),
+});
 
 /** Typed inspector channels. */
 export const inspectChannels = {
   pick: bridge.buildProvider<UnderstandResult<LocatedElement | null>, InspectPickRequest>(INSPECT_CHANNELS.pick),
   cancel: bridge.buildProvider<UnderstandResult<boolean>, InspectPickRequest>(INSPECT_CHANNELS.cancel),
-  screenshot: bridge.buildProvider<UnderstandResult<InspectScreenshotResult | null>, InspectPickRequest>(
+  screenshot: bridge.buildProvider<UnderstandResult<InspectScreenshotResult | null>, InspectScreenshotRequest>(
     INSPECT_CHANNELS.screenshot
   ),
+  videoStart: bridge.buildProvider<UnderstandResult<InspectVideoResult>, InspectPickRequest>(
+    INSPECT_CHANNELS.videoStart
+  ),
+  videoStop: bridge.buildProvider<UnderstandResult<InspectVideoResult>, InspectPickRequest>(INSPECT_CHANNELS.videoStop),
+  audit: bridge.buildProvider<UnderstandResult<UiAuditReport>, InspectPickRequest>(INSPECT_CHANNELS.audit),
 };
 
 /** Injected collaborators for {@link registerElementInspectorBridge}. */
@@ -220,6 +305,13 @@ const CANCEL_SCRIPT = `(function () { window.__omniInspectCancel = true; if (win
  * Main-process bootstrap (alongside the Quick Test bridge).
  */
 export function registerElementInspectorBridge(deps: ElementInspectorBridgeDeps): void {
+  const ffmpeg = resolveFfmpeg();
+  const videoBackend = createFfmpegVideoBackend({
+    getWebContents: (tabId) => (deps.getWebContents(tabId) as unknown as WebContents | null) ?? undefined,
+    ...(ffmpeg.path ? { ffmpegPath: ffmpeg.path } : {}),
+  });
+  const activeVideos = new Map<string, InspectVideoResult>();
+
   inspectChannels.pick.provider(async (req): Promise<UnderstandResult<LocatedElement | null>> => {
     const rootPath = req.rootPath?.trim();
     if (!rootPath) return { ok: false, error: 'A folder path is required.', code: 'error' };
@@ -248,30 +340,144 @@ export function registerElementInspectorBridge(deps: ElementInspectorBridgeDeps)
     }
   });
 
+  inspectChannels.audit.provider(async (req): Promise<UnderstandResult<UiAuditReport>> => {
+    try {
+      const wc = deps.getWebContents(req.tabId);
+      if (!wc) return { ok: false, error: 'No browser tab is available for UI audit.', code: 'error' };
+      return { ok: true, data: await runUiAudit(wc) };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error), code: 'error' };
+    }
+  });
+
   inspectChannels.screenshot.provider(async (req): Promise<UnderstandResult<InspectScreenshotResult | null>> => {
     const rootPath = req.rootPath?.trim();
     if (!rootPath) return { ok: false, error: 'A folder path is required.', code: 'error' };
     const wc = deps.getWebContents(req.tabId);
     if (!wc) return { ok: false, error: 'No embedded browser tab to capture.', code: 'error' };
-    // The Electron WebContents has `capturePage()` (returns a NativeImage); it is
-    // not part of the minimal CDP surface type, so reach it through a cast.
-    const capturable = wc as unknown as {
-      capturePage?: () => Promise<{ isEmpty: () => boolean; toPNG: () => Buffer; toDataURL: () => string }>;
-    };
-    if (typeof capturable.capturePage !== 'function') {
-      return { ok: false, error: 'This tab cannot be captured.', code: 'error' };
-    }
     try {
-      const image = await capturable.capturePage();
-      if (image.isEmpty()) return { ok: true, data: null };
-      // Save the PNG into the repo's `.omni/inspect/` folder so the agent (and
-      // its file tools) can open it by path; also return a data URL for an inline
-      // preview in the panel.
+      trackInspectEvidenceRoot(rootPath);
+      await pruneInspectEvidence(rootPath);
+      let png: Buffer;
+      let dataUrl: string;
+      if (req.mode === 'fullPage') {
+        // A recording may already own the debugger. Reuse it without detaching;
+        // otherwise attach only for the duration of this full-page capture.
+        const wasAttached = wc.debugger.isAttached();
+        if (!wasAttached) wc.debugger.attach('1.3');
+        try {
+          await wc.debugger.sendCommand('Page.enable');
+          const [metrics, domSize] = await Promise.all([
+            wc.debugger.sendCommand('Page.getLayoutMetrics') as Promise<{
+              cssContentSize?: CaptureSize;
+              contentSize?: CaptureSize;
+            }>,
+            wc.executeJavaScript(`(() => {
+              const nodes = [document.documentElement, document.body, document.scrollingElement].filter(Boolean);
+              const dimensions = (key) => nodes.map((node) => Number(node[key]) || 0);
+              return {
+                width: Math.max(
+                  window.innerWidth,
+                  ...dimensions('scrollWidth'),
+                  ...dimensions('offsetWidth'),
+                  ...dimensions('clientWidth')
+                ),
+                height: Math.max(
+                  window.innerHeight,
+                  ...dimensions('scrollHeight'),
+                  ...dimensions('offsetHeight'),
+                  ...dimensions('clientHeight')
+                )
+              };
+            })()`) as Promise<CaptureSize>,
+          ]);
+          const contentSize = metrics.cssContentSize ?? metrics.contentSize ?? {};
+          const { width, height } = resolveFullPageSize(contentSize, domSize);
+          if (width <= 0 || height <= 0) throw new Error('The page has no capturable area.');
+          const captured = (await wc.debugger.sendCommand('Page.captureScreenshot', {
+            format: 'png',
+            fromSurface: true,
+            captureBeyondViewport: true,
+            clip: { x: 0, y: 0, width, height, scale: 1 },
+          })) as { data?: string };
+          if (!captured.data) throw new Error('Chromium returned an empty screenshot.');
+          png = Buffer.from(captured.data, 'base64');
+          dataUrl = `data:image/png;base64,${captured.data}`;
+        } finally {
+          if (!wasAttached && wc.debugger.isAttached()) wc.debugger.detach();
+        }
+      } else {
+        // Electron's `capturePage()` returns only the currently visible frame.
+        const capturable = wc as unknown as {
+          capturePage?: () => Promise<{ isEmpty: () => boolean; toPNG: () => Buffer; toDataURL: () => string }>;
+        };
+        if (typeof capturable.capturePage !== 'function') {
+          return { ok: false, error: 'This tab cannot be captured.', code: 'error' };
+        }
+        const image = await capturable.capturePage();
+        if (image.isEmpty()) return { ok: true, data: null };
+        png = image.toPNG();
+        dataUrl = image.toDataURL();
+      }
+      // Save the PNG into the repo's `.omni/inspect/` folder so the agent can
+      // open the evidence directly with its image tools.
       const dir = path.join(rootPath, '.omni', 'inspect');
       await fsp.mkdir(dir, { recursive: true });
-      const filePath = path.join(dir, `shot-${Date.now()}.png`);
-      await fsp.writeFile(filePath, image.toPNG());
-      return { ok: true, data: { filePath, dataUrl: image.toDataURL() } };
+      const filePath = path.join(dir, `shot-${req.mode === 'fullPage' ? 'full-page' : 'viewport'}-${Date.now()}.png`);
+      await fsp.writeFile(filePath, png);
+      return { ok: true, data: { filePath, dataUrl, mode: req.mode } };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { ok: false, error: message, code: 'error' };
+    }
+  });
+
+  inspectChannels.videoStart.provider(async (req): Promise<UnderstandResult<InspectVideoResult>> => {
+    const rootPath = req.rootPath?.trim();
+    const tabId = req.tabId?.trim();
+    if (!rootPath) return { ok: false, error: 'A folder path is required.', code: 'error' };
+    if (!tabId || !deps.getWebContents(tabId)) {
+      return { ok: false, error: 'No embedded browser tab to record.', code: 'error' };
+    }
+    if (!ffmpeg.ok || !ffmpeg.path) {
+      return { ok: false, error: ffmpeg.reason ?? 'Bundled ffmpeg is unavailable.', code: 'error' };
+    }
+    if (activeVideos.has(tabId)) return { ok: false, error: 'This tab is already being recorded.', code: 'error' };
+    try {
+      trackInspectEvidenceRoot(rootPath);
+      await pruneInspectEvidence(rootPath);
+      const dir = path.join(rootPath, '.omni', 'inspect');
+      await fsp.mkdir(dir, { recursive: true });
+      const webmPath = path.join(dir, `recording-${Date.now()}.webm`);
+      const recording: InspectVideoResult = {
+        filePath: webmPath.replace(/\.webm$/i, '.mp4'),
+        tabId,
+        startedAt: Date.now(),
+        durationMs: 0,
+      };
+      await videoBackend.startVideo({ tabId }, webmPath);
+      activeVideos.set(tabId, recording);
+      return { ok: true, data: recording };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      return { ok: false, error: message, code: 'error' };
+    }
+  });
+
+  inspectChannels.videoStop.provider(async (req): Promise<UnderstandResult<InspectVideoResult>> => {
+    const tabId = req.tabId?.trim();
+    if (!tabId) return { ok: false, error: 'No embedded browser tab to stop.', code: 'error' };
+    const recording = activeVideos.get(tabId);
+    if (!recording) return { ok: false, error: 'This tab is not being recorded.', code: 'error' };
+    activeVideos.delete(tabId);
+    try {
+      await videoBackend.stopVideo({ tabId });
+      const stat = await fsp.stat(recording.filePath).catch((): null => null);
+      if (!stat || stat.size === 0) throw new Error('The recording did not produce a playable video.');
+      return {
+        ok: true,
+        data: { ...recording, durationMs: Math.max(0, Date.now() - recording.startedAt) },
+      };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return { ok: false, error: message, code: 'error' };

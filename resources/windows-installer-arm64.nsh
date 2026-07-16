@@ -13,7 +13,7 @@ Function .onVerifyInstDir
       "Installation package architecture mismatch$\n$\n\
       This AionUi installer is designed for ARM64 architecture.$\n$\n\
       Your system does not support ARM64. Please download the appropriate version for your architecture.$\n$\n\
-      Download: https://github.com/iOfficeAI/AionUi/releases"
+      Download: https://github.com/VNDT1625/OmniAgent/releases"
     Quit
   ${EndIf}
 FunctionEnd

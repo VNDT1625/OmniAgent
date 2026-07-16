@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -36,6 +36,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { EditorToolAction, EditorToolRunResult } from '@process/editor/editorToolsBridge';
+import { validateOfficeApiScript } from '@/common/types/office/officeApiScript';
 
 /** Canonical MCP server name for the built-in Office-editor server. */
 export const BUILTIN_OFFICE_EDITOR_NAME = 'aionui-office-editor';
@@ -75,6 +76,69 @@ const formatSchema = z
     fontFamily: z.string().optional().describe('Font family name, e.g. "Times New Roman".'),
   })
   .describe('Character/paragraph formatting to apply.');
+
+const premiumDeckPlanSchema = z
+  .object({
+    title: z.string().describe('Deck title.'),
+    subtitle: z.string().optional().describe('Deck subtitle or promise.'),
+    theme: z
+      .object({
+        primary: z.string().optional().describe('Primary brand color, #RRGGBB.'),
+        secondary: z.string().optional().describe('Secondary accent color, #RRGGBB.'),
+        background: z.string().optional().describe('Slide background color, #RRGGBB.'),
+        text: z.string().optional().describe('Main text color, #RRGGBB.'),
+        fontFamily: z.string().optional().describe('Presentation font family.'),
+      })
+      .optional(),
+    slides: z
+      .array(
+        z.object({
+          title: z.string().describe('Slide headline.'),
+          subtitle: z.string().optional().describe('Slide supporting line.'),
+          bullets: z.array(z.string()).optional().describe('Short speaker-friendly bullets.'),
+          layout: z.enum(['cover', 'section', 'content', 'split', 'image', 'chart', 'quote']).optional(),
+          imageUrl: z.string().optional().describe('Generated/user-provided image URL or data:image URI.'),
+          accentColor: z.string().optional().describe('Slide accent color, #RRGGBB.'),
+          chartValues: z.array(z.array(z.number())).optional().describe('0-100 values for simple visual bars.'),
+        })
+      )
+      .min(1)
+      .max(12),
+  })
+  .describe('Structured premium PPTX plan with story, theme, layouts, visuals and chart values.');
+const premiumDocPlanSchema = z
+  .object({
+    title: z.string().describe('Document title.'),
+    subtitle: z.string().optional().describe('Executive promise or subtitle.'),
+    theme: z
+      .object({
+        primary: z.string().optional().describe('Primary brand color, #RRGGBB.'),
+        secondary: z.string().optional().describe('Secondary accent color, #RRGGBB.'),
+        background: z.string().optional().describe('Callout/background color, #RRGGBB.'),
+        text: z.string().optional().describe('Main text color, #RRGGBB.'),
+        fontFamily: z.string().optional().describe('Document font family.'),
+      })
+      .optional(),
+    sections: z
+      .array(
+        z.object({
+          heading: z.string().describe('Section heading.'),
+          body: z.array(z.string()).optional().describe('Short paragraphs.'),
+          bullets: z.array(z.string()).optional().describe('Scannable bullet points.'),
+          callout: z.string().optional().describe('Highlighted insight/callout.'),
+          imageUrl: z.string().optional().describe('Generated/user-provided image URL or data:image URI.'),
+          table: z
+            .object({
+              headers: z.array(z.string()),
+              rows: z.array(z.array(z.string())),
+            })
+            .optional(),
+        })
+      )
+      .min(1)
+      .max(12),
+  })
+  .describe('Structured premium DOCX plan with hierarchy, callouts, tables and visual blocks.');
 
 /**
  * Build the Office-editor {@link McpServer} bound to the injected deps.
@@ -297,12 +361,65 @@ Input:
       run(filePath, { tool: 'set_cells', start, values, ...(sheet !== undefined ? { sheet } : {}) })
   );
 
+  // --- office_create_premium_doc ------------------------------------------
+  server.tool(
+    'office_create_premium_doc',
+    `Create or redesign the open DOCX as a polished, document-native deliverable from a structured plan.
+Use this for proposals, reports, briefs, strategy docs, SOPs, and polished documents that should not
+look like plain model output. It creates hierarchy, styled title treatment, callouts, tables, image
+blocks when imageUrl is supplied, and scannable executive density.
+
+Input:
+- filePath (required), plan (required).`,
+    {
+      filePath: z.string().describe('Absolute path of the open DOCX.'),
+      plan: premiumDocPlanSchema,
+    },
+    ({ filePath, plan }) => run(filePath, { tool: 'create_premium_doc', plan })
+  );
+
+  // --- office_create_premium_deck -----------------------------------------
+  server.tool(
+    'office_create_premium_deck',
+    `Create or redesign the open PPTX as a polished, presentation-native deck from a structured plan.
+Use this instead of raw text insertion when the user asks for a beautiful deck, pitch deck, proposal,
+or any PPTX that should compete with dedicated presentation generators. It creates real slides with
+layout, theme colors, visual hierarchy, chart-like bars, image backgrounds when imageUrl is supplied,
+and speaker-friendly density. Generate/attach image assets first when strong visuals are required.
+
+Input:
+- filePath (required), plan (required).`,
+    {
+      filePath: z.string().describe('Absolute path of the open PPTX.'),
+      plan: premiumDeckPlanSchema,
+    },
+    ({ filePath, plan }) => run(filePath, { tool: 'create_premium_deck', plan })
+  );
+
+  // --- office_review_premium_quality --------------------------------------
+  server.tool(
+    'office_review_premium_quality',
+    `Audit the open DOCX/PPTX after creation or edits and return a concrete premium-quality checklist.
+Call this before final response for decks/docs intended to beat generic presentation/document agents.
+It reads the live editor content and flags weak structure, density, missing proof, missing visuals,
+and missing next actions so the agent can revise with office_* tools before reporting completion.
+
+Input:
+- filePath (required).`,
+    {
+      filePath: z.string().describe('Absolute path of the open Office document.'),
+    },
+    ({ filePath }) => run(filePath, { tool: 'review_premium_quality' })
+  );
+
   // --- office_run_api ------------------------------------------------------
   server.tool(
     'office_run_api',
-    `Run ANY ONLYOFFICE Document Builder API script in the live editor — the "do anything Office can
+    `Run ANY ONLYOFFICE Document Builder API script in the live editor - the "do anything Office can
 do" tool for things the specific tools above do not cover (tables, images, charts, fonts/colors,
-page setup, sections, comments, complex formatting).
+page setup, sections, comments, complex formatting). For premium PPTX decks, use this to create
+real presentation structure: add slides, place shapes/images, build visual hierarchy, apply brand
+colors, create charts/diagrams, tune typography, and add transitions/effects when supported.
 
 "code" is a JS function body that uses the editor global \`Api\` and may \`return\` a JSON-serializable
 value. Word: \`Api.GetDocument()\`; Spreadsheet: \`Api.GetActiveSheet()\`; Presentation:
@@ -314,7 +431,13 @@ Input:
       filePath: z.string().describe('Absolute path of the open document.'),
       code: z.string().describe('Document Builder API script body (uses the global `Api`).'),
     },
-    ({ filePath, code }) => run(filePath, { tool: 'run_office_api', code })
+    ({ filePath, code }) => {
+      const validation = validateOfficeApiScript(code);
+      if (validation.ok === false) {
+        return textResult(`Office API script rejected: ${validation.reason}.`, true);
+      }
+      return run(filePath, { tool: 'run_office_api', code: validation.code });
+    }
   );
 
   return server;

@@ -10,6 +10,15 @@ See [docs/contributing/development.md](docs/contributing/development.md) for env
 - [bun](https://bun.sh)
 - [prek](https://github.com/j178/prek) (`npm install -g @j178/prek`)
 
+## Tomni Agentic Release Versioning
+
+Tomni Agentic uses `0.0.x` versions for updater and distribution testing:
+
+- `0.0.0` is the clean baseline installer.
+- `0.0.1`, `0.0.2`, and later patch versions are update-test releases.
+- `0.1.0` is the first official public release.
+- Releases, update metadata, documentation, and downloads must use only `VNDT1625/OmniAgent`. Do not add AionUi or iOfficeAI endpoints.
+
 ## Rule 1: Atomic PRs
 
 Each pull request must contain **exactly one feature or one bug fix** that cannot be further decomposed.

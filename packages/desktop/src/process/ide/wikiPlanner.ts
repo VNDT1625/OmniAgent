@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -63,6 +63,18 @@ const MANIFEST_FILES = new Set([
   'tsconfig.json',
   'pubspec.yaml',
   'deno.json',
+  'dockerfile',
+  'compose.yaml',
+  'compose.yml',
+  'docker-compose.yaml',
+  'docker-compose.yml',
+  'makefile',
+  'justfile',
+  'procfile',
+  'turbo.json',
+  'nx.json',
+  'lerna.json',
+  'pnpm-workspace.yaml',
 ]);
 
 /** Basenames (lowercased) that usually mark a program's entry point. */
@@ -96,6 +108,75 @@ const DATA_HINTS = ['schema', 'migration', 'entity', 'entities', 'model', 'model
 
 /** Tell-tale path fragments that imply an HTTP/API surface worth its own section. */
 const API_HINTS = ['route', 'router', 'controller', 'endpoint', 'api/', 'handler', 'graphql', 'resolver'];
+
+/** Minimal scanned file shape used to build deterministic runtime grounding. */
+export type RuntimeInventoryFile = { relPath: string; content: string };
+
+const RUNTIME_CONFIG_FILES = new Set([
+  'dockerfile',
+  'compose.yaml',
+  'compose.yml',
+  'docker-compose.yaml',
+  'docker-compose.yml',
+  'makefile',
+  'justfile',
+  'procfile',
+  'turbo.json',
+  'nx.json',
+  'lerna.json',
+  'pnpm-workspace.yaml',
+]);
+
+/**
+ * Build compact, deterministic grounding for every independently runnable
+ * workspace and orchestration file. Unlike key-file selection this does not
+ * silently drop later workspace manifests when a monorepo exceeds the general
+ * Wiki evidence limit.
+ */
+export const buildRuntimeInventory = (files: readonly RuntimeInventoryFile[], limitChars = 16_000): string => {
+  const sections: string[] = [];
+  let remaining = Math.max(0, limitChars);
+  const append = (path: string, body: string): void => {
+    if (remaining <= 0 || body.length === 0) return;
+    const header = `### ${path}\n`;
+    if (header.length >= remaining) return;
+    const allowance = remaining - header.length;
+    const clipped = body.length > allowance ? `${body.slice(0, Math.max(0, allowance - 12))}\n[truncated]` : body;
+    sections.push(`${header}${clipped}`);
+    remaining -= header.length + clipped.length + 2;
+  };
+
+  for (const file of files) {
+    const path = file.relPath.replace(/\\/g, '/').replace(/^\.\//, '');
+    const basename = basenameOf(path).toLowerCase();
+    if (basename === 'package.json') {
+      try {
+        const pkg = JSON.parse(file.content) as {
+          name?: unknown;
+          packageManager?: unknown;
+          scripts?: Record<string, unknown>;
+          workspaces?: unknown;
+        };
+        const scripts = Object.entries(pkg.scripts ?? {}).filter((entry): entry is [string, string] => {
+          return typeof entry[1] === 'string';
+        });
+        if (scripts.length === 0 && pkg.workspaces === undefined) continue;
+        const lines = [
+          ...(typeof pkg.name === 'string' ? [`name: ${pkg.name}`] : []),
+          ...(typeof pkg.packageManager === 'string' ? [`packageManager: ${pkg.packageManager}`] : []),
+          ...(pkg.workspaces !== undefined ? [`workspaces: ${JSON.stringify(pkg.workspaces)}`] : []),
+          ...scripts.map(([name, command]) => `script ${name}: ${command}`),
+        ];
+        append(path, lines.join('\n'));
+      } catch {
+        append(path, file.content);
+      }
+      continue;
+    }
+    if (RUNTIME_CONFIG_FILES.has(basename)) append(path, file.content);
+  }
+  return sections.join('\n\n');
+};
 
 /** Basename (last forward-slash segment) of a relative path. */
 const basenameOf = (relPath: string): string => {
@@ -223,7 +304,7 @@ export const planWikiSections = (graph: RepoGraph, metaPaths: string[]): WikiSec
     id: 'buildRun',
     titleKey: 'buildRun',
     brief:
-      'How to build, run, test, and contribute: scripts/commands, environment requirements, and the developer workflow. Ground this in the manifest and config files.',
+      'How to build, run, test, and contribute. Enumerate every independently required runtime process (web UI, API, workers, queues, databases, emulators, proxies, or other services), its command and working directory, required environment and ports, dependencies between processes, and startup order. State the exact process count needed for a complete working application, and determine whether a single root orchestrator command starts everything or whether multiple commands must run concurrently. Ground this in every relevant manifest, workspace, container, and config file; do not reduce a multi-service project to a generic frontend/backend pair.',
   });
 
   return sections;

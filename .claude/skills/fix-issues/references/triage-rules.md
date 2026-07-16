@@ -101,10 +101,10 @@ code path is found, apply a defensive fix.
 git log --oneline --since="2 weeks ago" --grep="<keyword-from-error>"
 
 # Check open PRs
-gh pr list --repo iOfficeAI/AionUi --state open --search "<error-keyword>" --json number,title
+gh pr list --repo VNDT1625/OmniAgent --state open --search "<error-keyword>" --json number,title
 
 # Check closed PRs (recently merged)
-gh pr list --repo iOfficeAI/AionUi --state merged --search "<error-keyword>" --limit 5 --json number,title,mergedAt
+gh pr list --repo VNDT1625/OmniAgent --state merged --search "<error-keyword>" --limit 5 --json number,title,mergedAt
 ```
 
 ## Step E: Judging "needs_more_info" vs fixable

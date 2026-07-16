@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -261,6 +261,14 @@ export const clearAllSessions = (): void => {
  * Ownership is one-directional: the host machine is the single source of truth
  * (files, KG, Wiki, DB all live on its disk); peers act remotely over HTTP.
  */
+export type TeamPeerCapabilities = {
+  write: boolean;
+  database: boolean;
+};
+
+export const TEAM_PEER_IDLE_TTL_MS = 30 * 60 * 1000;
+export const TEAM_MAX_PEERS = 32;
+
 export type TeamSession = {
   /** Stable share id (also the peer-facing session token namespace). */
   shareId: string;
@@ -274,6 +282,10 @@ export type TeamSession = {
   createdAt: number;
   /** Admitted peers by their peer token (token == coordinator agentId). */
   peers: Map<string, TeamPeer>;
+  /** Host-selected capabilities copied into each newly admitted peer token. */
+  peerCapabilities: TeamPeerCapabilities;
+  /** Hard bound preventing an unbounded peer/token collection. */
+  maxPeers: number;
 };
 
 /** A peer admitted to a team session. */
@@ -287,6 +299,8 @@ export type TeamPeer = {
   joinedAt: number;
   /** Last request time (Unix ms) — for idle pruning. */
   lastSeenAt: number;
+  /** Capabilities bound to this opaque token at admission time. */
+  capabilities: TeamPeerCapabilities;
 };
 
 /** Public info returned to the host renderer when a team session is published. */
@@ -303,7 +317,13 @@ export type TeamPublishInfo = {
 const teamSessions = new Map<string, TeamSession>();
 
 /** Publish a team session for a repo root. Replaces any prior session for it. */
-export const publishTeamSession = (params: { repoRoot: string; repoName: string; password: string }): TeamSession => {
+export const publishTeamSession = (params: {
+  repoRoot: string;
+  repoName: string;
+  password: string;
+  peerCapabilities?: Partial<TeamPeerCapabilities>;
+  maxPeers?: number;
+}): TeamSession => {
   // One active team session per repo root: drop a stale one first.
   for (const [id, s] of teamSessions) {
     if (s.repoRoot === params.repoRoot) teamSessions.delete(id);
@@ -315,6 +335,11 @@ export const publishTeamSession = (params: { repoRoot: string; repoName: string;
     passwordHash: hashPassword(params.password),
     createdAt: Date.now(),
     peers: new Map(),
+    peerCapabilities: {
+      write: params.peerCapabilities?.write ?? true,
+      database: params.peerCapabilities?.database ?? false,
+    },
+    maxPeers: Math.max(1, Math.min(TEAM_MAX_PEERS, Math.floor(params.maxPeers ?? TEAM_MAX_PEERS))),
   };
   teamSessions.set(session.shareId, session);
   return session;
@@ -337,23 +362,35 @@ export const hasTeamSessions = (): boolean => teamSessions.size > 0;
 
 /** Admit a peer after the password has been verified; returns the new peer. */
 export const admitTeamPeer = (session: TeamSession, name: string): TeamPeer => {
+  if (session.peers.size >= session.maxPeers) {
+    throw new Error(`Team session reached its ${session.maxPeers}-peer limit.`);
+  }
   const peer: TeamPeer = {
     token: newId('peer'),
-    name: name.trim() || `Guest ${session.peers.size + 1}`,
+    name: name.trim().slice(0, 80) || `Guest ${session.peers.size + 1}`,
     color: colorForIndex(session.peers.size),
     joinedAt: Date.now(),
     lastSeenAt: Date.now(),
+    capabilities: { ...session.peerCapabilities },
   };
   session.peers.set(peer.token, peer);
   return peer;
 };
 
 /** Resolve an admitted peer by token (and refresh its last-seen). */
-export const touchTeamPeer = (session: TeamSession, token: string): TeamPeer | undefined => {
+export const touchTeamPeer = (session: TeamSession, token: string, now = Date.now()): TeamPeer | undefined => {
   const peer = session.peers.get(token);
-  if (peer) peer.lastSeenAt = Date.now();
+  if (peer && now - peer.lastSeenAt > TEAM_PEER_IDLE_TTL_MS) {
+    session.peers.delete(token);
+    return undefined;
+  }
+  if (peer) peer.lastSeenAt = now;
   return peer;
 };
+
+/** Check a server-side capability bound immutably to an admitted peer token. */
+export const teamPeerCan = (peer: TeamPeer, capability: keyof TeamPeerCapabilities): boolean =>
+  peer.capabilities[capability];
 
 /** Remove a peer (on leave). */
 export const removeTeamPeer = (shareId: string, token: string): void => {

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  *
  * Unit tests for quickTestTracer — CDP-based runtime trace recorder.
@@ -22,6 +22,7 @@ const makeFakeWc = () => {
       detach: vi.fn(),
       sendCommand: vi.fn(async (method: string) => {
         sentCommands.push(method);
+        if (method === 'Network.getResponseBody') return { body: '{"ok":true,"token":"secret-value"}' };
         return {};
       }),
       on: vi.fn((_event, listener) => {
@@ -62,6 +63,69 @@ describe('createQuickTestTracer', () => {
     expect(sentCommands).toContain('Runtime.enable');
   });
 
+  it('installs the interaction binding for the current and future documents before start resolves', async () => {
+    const { wc, sentCommands } = makeFakeWc();
+    let releaseInjection: (() => void) | null = null;
+    wc.executeJavaScript = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          releaseInjection = resolve;
+        })
+    );
+    const tracer = createQuickTestTracer({ getWebContents: () => wc });
+    let started = false;
+    const starting = tracer.start('/repo').then((value) => {
+      started = value;
+      return value;
+    });
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
+    expect(sentCommands).toContain('Runtime.addBinding');
+    expect(sentCommands).toContain('Page.addScriptToEvaluateOnNewDocument');
+    expect(started).toBe(false);
+
+    releaseInjection?.();
+    await expect(starting).resolves.toBe(true);
+  });
+
+  it('records interactions delivered through the CDP binding without relying on console.log', async () => {
+    const { wc, fireMessage } = makeFakeWc();
+    const tracer = createQuickTestTracer({ getWebContents: () => wc, now: () => 1000 });
+    await tracer.start('/repo');
+    fireMessage('Runtime.bindingCalled', {
+      name: '__aionuiQuickTestEmit',
+      payload: JSON.stringify({ kind: 'click', selector: 'svg.icon > path', text: '' }),
+    });
+    fireMessage('Runtime.consoleAPICalled', {
+      type: 'log',
+      args: [
+        {
+          value: '[omni-qt-click]' + JSON.stringify({ selector: 'svg.icon > path', text: '' }),
+        },
+      ],
+    });
+    fireMessage('Runtime.bindingCalled', {
+      name: '__aionuiQuickTestEmit',
+      payload: JSON.stringify({ kind: 'input', selector: 'input#email', value: 'a@b.co' }),
+    });
+
+    expect(tracer.currentEvents().map((event) => event.kind)).toEqual(['click', 'input']);
+  });
+
+  it('rebinds tracing when Quick Test replaces the embedded WebContents', async () => {
+    const first = makeFakeWc();
+    const second = makeFakeWc();
+    let current: CdpWebContents | null = first.wc;
+    const tracer = createQuickTestTracer({ getWebContents: () => current });
+
+    await tracer.start('/repo');
+    current = second.wc;
+    await tracer.start('/repo');
+
+    expect(first.wc.debugger.detach).toHaveBeenCalled();
+    expect(second.wc.debugger.attach).toHaveBeenCalledWith('1.3');
+  });
+
   it('records a console error event', async () => {
     const { wc, fireMessage } = makeFakeWc();
     const tracer = createQuickTestTracer({ getWebContents: () => wc, now: () => 1000 });
@@ -84,6 +148,35 @@ describe('createQuickTestTracer', () => {
     });
     const events = tracer.currentEvents();
     expect(events.some((e) => e.kind === 'network' && e.status === 500)).toBe(true);
+  });
+
+  it('records request parameters and a redacted response body in sequence', async () => {
+    const { wc, fireMessage } = makeFakeWc();
+    const tracer = createQuickTestTracer({ getWebContents: () => wc, now: () => 1000 });
+    await tracer.start('/repo');
+    fireMessage('Network.requestWillBeSent', {
+      requestId: 'req-1',
+      type: 'Fetch',
+      request: {
+        method: 'POST',
+        url: 'http://localhost/api/login',
+        postData: '{"email":"user@example.com","password":"do-not-store"}',
+      },
+    });
+    fireMessage('Network.responseReceived', {
+      requestId: 'req-1',
+      type: 'Fetch',
+      response: { url: 'http://localhost/api/login', status: 200, headers: { 'content-type': 'application/json' } },
+    });
+    fireMessage('Network.loadingFinished', { requestId: 'req-1' });
+    await tracer.finalizeCoverage();
+
+    const event = tracer.currentEvents().find((item) => item.kind === 'network');
+    expect(event).toMatchObject({ kind: 'network', method: 'POST', status: 200, resourceType: 'Fetch' });
+    if (event?.kind === 'network') {
+      expect(event.requestBody).toContain('[REDACTED]');
+      expect(event.responseBody).not.toContain('secret-value');
+    }
   });
 
   it('records a failed network request (Network.loadingFailed)', async () => {
@@ -157,16 +250,23 @@ describe('createQuickTestTracer', () => {
         exception: { description: 'TypeError: null\n  at foo.ts:10' },
         url: 'http://localhost/foo.ts',
         lineNumber: 10,
+        stackTrace: {
+          callFrames: [
+            { functionName: 'submitLogin', url: 'http://localhost/src/login.ts', lineNumber: 41, columnNumber: 3 },
+          ],
+        },
       },
     });
     const events = tracer.currentEvents();
-    expect(events.some((e) => e.kind === 'exception')).toBe(true);
+    const event = events.find((e) => e.kind === 'exception');
+    expect(event?.kind).toBe('exception');
+    if (event?.kind === 'exception')
+      expect(event.stackFrames?.[0]).toMatchObject({ functionName: 'submitLogin', line: 42, column: 4 });
   });
 
   it('stop returns a RuntimeTrace with firstError set', async () => {
     const { wc, fireMessage } = makeFakeWc();
-    // Make isAttached return true after attach so detach is called on stop.
-    (wc.debugger.isAttached as ReturnType<typeof vi.fn>).mockReturnValue(true);
+
     const tracer = createQuickTestTracer({ getWebContents: () => wc, now: () => 1000 });
     await tracer.start('/repo');
     fireMessage('Runtime.exceptionThrown', {

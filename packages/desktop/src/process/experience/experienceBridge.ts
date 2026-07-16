@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -105,6 +105,10 @@ const getWorkflow = async (projectRoot: string): Promise<ReturnType<typeof creat
   workflowCache.set(projectRoot, workflow);
   return workflow;
 };
+
+/** Shared project-scoped service access for IPC and the IDE MCP agent plane. */
+export const getExperienceServiceForRoot = getService;
+export const getExperienceWorkflowForRoot = getWorkflow;
 
 const requireRoot = (projectRoot: string | undefined): string => {
   const root = projectRoot?.trim();

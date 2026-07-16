@@ -58,6 +58,8 @@ export type ConfigKeyMap = {
   'assistant.telegram.agent':
     | { agent_type: string; backend?: string; id?: string; custom_agent_id?: string; name?: string }
     | undefined;
+
+  'assistant.telegram.permissionMode': string | undefined;
   'assistant.lark.defaultModel': { id: string; use_model: string } | undefined;
   'assistant.lark.agent':
     | { agent_type: string; backend?: string; id?: string; custom_agent_id?: string; name?: string }

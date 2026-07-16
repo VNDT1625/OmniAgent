@@ -90,10 +90,14 @@ export function resolveMtuiPath(): string {
     platform === 'win32'
       ? resolveInstalledWindowsMtui(binName)
       : resolvePath(process.env.HOME ?? '', '.local', 'bin', binName);
-  if (fs.existsSync(installedPath)) return installedPath;
-  const devPath = resolvePath(process.cwd(), 'packages', 'mtui', 'target', 'debug', binName);
+  return resolveDevelopmentMtuiPath(process.cwd(), binName, installedPath);
+}
+
+/** Prefer the workspace build in development so source and CLI capabilities cannot drift. */
+export function resolveDevelopmentMtuiPath(cwd: string, binName: string, installedPath: string): string {
+  const devPath = resolvePath(cwd, 'packages', 'mtui', 'target', 'debug', binName);
   if (fs.existsSync(devPath)) return devPath;
-  const releasePath = resolvePath(process.cwd(), 'packages', 'mtui', 'target', 'release', binName);
+  const releasePath = resolvePath(cwd, 'packages', 'mtui', 'target', 'release', binName);
   if (fs.existsSync(releasePath)) return releasePath;
   return installedPath;
 }

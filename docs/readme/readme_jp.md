@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/iOfficeAI/Omni?style=flat-square&color=32CD32" alt="Version">
+  <img src="https://img.shields.io/github/v/release/VNDT1625/Omni?style=flat-square&color=32CD32" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-32CD32?style=flat-square&logo=apache&logoColor=white" alt="License">
   &nbsp;
@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/⬇️%20今すぐダウンロード-最新版-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="最新版をダウンロード" height="50">
   </a>
 </p>
@@ -86,7 +86,7 @@ Omni には完全な AI Agent エンジンが内蔵されています。CLI Agen
 
 ### **Morph PPT アニメーションデモ — 一言で滑らかな遷移**
 
-_Omni には専用の Morph PPT アシスタントが内蔵されています。静的なスライドを作るだけでなく、内容を“語れる”動的プレゼンに変えます。テーマ/アウトライン（または参考スタイル）を入力するだけで、連続感のある Morph プレゼンを生成できます。基盤は [OfficeCLI](https://github.com/iOfficeAI/OfficeCli#) で動作します。_
+_Omni には専用の Morph PPT アシスタントが内蔵されています。静的なスライドを作るだけでなく、内容を“語れる”動的プレゼンに変えます。テーマ/アウトライン（または参考スタイル）を入力するだけで、連続感のある Morph プレゼンを生成できます。基盤は [OfficeCLI](https://github.com/VNDT1625/OfficeCli#) で動作します。_
 
 - **普通の PPT 生成とは違う** — Morph によるストーリー表現とスライド間の連続的な動きに特化
 - **ワークフローを内蔵** — 企画、生成、品質チェック、反復を一体化
@@ -247,7 +247,7 @@ _あなたの 24/7 AI アシスタント — あらゆるデバイス、どこ�
 
 <p align="center"><em>リモートでエージェントを監視・操作 — Claude、Gemini、Codex。ブラウザやスマホから、Claude Code remote のように使えます。</em></p>
 
-> [リモートインターネットアクセスのチュートリアル](https://github.com/iOfficeAI/Omni/wiki/Remote-Internet-Access-Guide-Chinese)
+> [リモートインターネットアクセスのチュートリアル](https://github.com/VNDT1625/Omni/wiki/Remote-Internet-Access-Guide-Chinese)
 
 ## ✨ Cowork の実演
 
@@ -406,7 +406,7 @@ _Gemini 駆動のインテリジェントな画像生成、編集、認識_
 
 </details>
 
-> [画像生成モデル設定ガイド](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide)
+> [画像生成モデル設定ガイド](https://github.com/VNDT1625/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide)
 
 ---
 
@@ -566,7 +566,7 @@ A: すべてのデータはローカルの SQLite データベースに保存さ
 ### インストール
 
 <p>
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/ダウンロード-最新版-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="最新版をダウンロード" height="50">
   </a>
 </p>
@@ -593,23 +593,23 @@ brew install omni
 
 **🚀 クイックスタート**
 
-- [📖 完全インストールガイド](https://github.com/iOfficeAI/Omni/wiki/Getting-Started) — ダウンロードから設定までの詳細な手順
-- [⚙️ LLM 設定ガイド](https://github.com/iOfficeAI/Omni/wiki/LLM-Configuration) — マルチプラットフォーム AI モデル設定
-- [🤖 マルチ Agent モード設定](https://github.com/iOfficeAI/Omni/wiki/ACP-Setup) — ターミナル AI Agent を統合
-- [🔌 MCP ツール設定](https://github.com/iOfficeAI/Omni/wiki/MCP-Configuration-Guide) — Model Context Protocol サーバー設定
-- [🌐 WebUI 設定ガイド](https://github.com/iOfficeAI/Omni/wiki/WebUI-Configuration-Guide) — 完全な WebUI セットアップと設定チュートリアル
+- [📖 完全インストールガイド](https://github.com/VNDT1625/Omni/wiki/Getting-Started) — ダウンロードから設定までの詳細な手順
+- [⚙️ LLM 設定ガイド](https://github.com/VNDT1625/Omni/wiki/LLM-Configuration) — マルチプラットフォーム AI モデル設定
+- [🤖 マルチ Agent モード設定](https://github.com/VNDT1625/Omni/wiki/ACP-Setup) — ターミナル AI Agent を統合
+- [🔌 MCP ツール設定](https://github.com/VNDT1625/Omni/wiki/MCP-Configuration-Guide) — Model Context Protocol サーバー設定
+- [🌐 WebUI 設定ガイド](https://github.com/VNDT1625/Omni/wiki/WebUI-Configuration-Guide) — 完全な WebUI セットアップと設定チュートリアル
 
 **🎯 使用例**
 
-- [📁 ファイル管理](https://github.com/iOfficeAI/Omni/wiki/file-management) — スマートファイル整理
-- [📊 Excel 処理](https://github.com/iOfficeAI/Omni/wiki/excel-processing) — AI 駆動のデータ処理
-- [🎨 画像生成](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide) — AI 画像作成
-- [📚 その他の使用例](https://github.com/iOfficeAI/Omni/wiki/Use-Cases-Overview)
+- [📁 ファイル管理](https://github.com/VNDT1625/Omni/wiki/file-management) — スマートファイル整理
+- [📊 Excel 処理](https://github.com/VNDT1625/Omni/wiki/excel-processing) — AI 駆動のデータ処理
+- [🎨 画像生成](https://github.com/VNDT1625/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide) — AI 画像作成
+- [📚 その他の使用例](https://github.com/VNDT1625/Omni/wiki/Use-Cases-Overview)
 
 **❓ サポートとヘルプ**
 
-- [❓ FAQ](https://github.com/iOfficeAI/Omni/wiki/FAQ) — 質問とトラブルシューティング
-- [🔧 設定と使用チュートリアル](https://github.com/iOfficeAI/Omni/wiki/Configuration-Guides) — 完全な設定ドキュメント
+- [❓ FAQ](https://github.com/VNDT1625/Omni/wiki/FAQ) — 質問とトラブルシューティング
+- [🔧 設定と使用チュートリアル](https://github.com/VNDT1625/Omni/wiki/Configuration-Guides) — 完全な設定ドキュメント
 
 </details>
 
@@ -625,9 +625,9 @@ brew install omni
   </a>
 </p>
 
-- [GitHub Discussions](https://github.com/iOfficeAI/Omni/discussions) — アイデアを共有し、ヒントを交換
-- [問題を報告](https://github.com/iOfficeAI/Omni/issues) — バグと機能リクエスト
-- [リリース更新](https://github.com/iOfficeAI/Omni/releases) — 最新版を取得
+- [GitHub Discussions](https://github.com/VNDT1625/Omni/discussions) — アイデアを共有し、ヒントを交換
+- [問題を報告](https://github.com/VNDT1625/Omni/issues) — バグと機能リクエスト
+- [リリース更新](https://github.com/VNDT1625/Omni/releases) — 最新版を取得
 - [Discord コミュニティ](https://discord.gg/2QAwJn7Egx) — 英語コミュニティ
 - [WeChat グループ](../../resources/wx-9.png) — 中国語コミュニティ
 
@@ -662,16 +662,16 @@ bun run test       # ユニットテストを実行
 ## 貢献者
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=iOfficeAI/Omni&max=100" alt="Contributors" />
+  <a href="https://github.com/VNDT1625/Omni/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=VNDT1625/Omni&max=100" alt="Contributors" />
   </a>
 </p>
 
 ## Star 履歴
 
 <p align="center">
-  <a href="https://www.star-history.com/#iOfficeAI/omni&Date" target="_blank">
-    <img src="https://api.star-history.com/svg?repos=iOfficeAI/omni&type=Date" alt="Star History" width="600">
+  <a href="https://www.star-history.com/#VNDT1625/omni&Date" target="_blank">
+    <img src="https://api.star-history.com/svg?repos=VNDT1625/omni&type=Date" alt="Star History" width="600">
   </a>
 </p>
 
@@ -679,6 +679,6 @@ bun run test       # ユニットテストを実行
 
 **気に入ったら、スターをお願いします**
 
-[バグを報告](https://github.com/iOfficeAI/Omni/issues) · [機能をリクエスト](https://github.com/iOfficeAI/Omni/issues)
+[バグを報告](https://github.com/VNDT1625/Omni/issues) · [機能をリクエスト](https://github.com/VNDT1625/Omni/issues)
 
 </div>

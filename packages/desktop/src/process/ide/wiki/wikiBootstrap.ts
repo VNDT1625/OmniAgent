@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @license
  * Copyright 2025 Omni Project
  * SPDX-License-Identifier: Apache-2.0
@@ -33,7 +33,7 @@
  */
 
 import { buildGraphFromFiles, type RepoGraph } from '../repoGraph';
-import { planWikiSections, selectKeyFiles, type KeyFile } from '../wikiPlanner';
+import { buildRuntimeInventory, planWikiSections, selectKeyFiles, type KeyFile } from '../wikiPlanner';
 import { buildRepoFacts, countIssues, verifyDocs, type DocVerification } from './docVerify';
 import { PERSISTED_WIKI_VERSION, toDocReport, type PersistedWiki, type PersistedWikiSection } from './wikiStore';
 import { refineSection } from './wikiRefine';
@@ -263,6 +263,7 @@ export const runWikiBootstrap = async (
   const metaPaths = files.filter((f) => !isCodeFile(f.relPath)).map((f) => f.relPath.replace(/\\/g, '/'));
   const keyFiles: KeyFile[] = selectKeyFiles(graph, metaPaths, KEY_FILE_LIMIT);
   const sectionPlans = planWikiSections(graph, metaPaths);
+  const runtimeInventory = buildRuntimeInventory(files);
 
   // Build the two grounding digests without duplicating every source file's content.
   const keyPathSet = new Set(keyFiles.filter((key) => key.reason !== 'doc').map((key) => key.path));
@@ -281,7 +282,8 @@ export const runWikiBootstrap = async (
   const outline = sectionPlans.map((s) => s.titleKey);
   const grounding =
     `Verified documentation (already fact-checked against the code):\n\n${docDigest || '(no documentation found)'}` +
-    `\n\nKey code files:\n\n${codeDigest || '(no code files found)'}`;
+    `\n\nKey code files:\n\n${codeDigest || '(no code files found)'}` +
+    `\n\nComplete runtime inventory (all discovered workspace manifests and orchestrators):\n\n${runtimeInventory || '(no runtime manifests found)'}`;
   const system = `${SECTION_SYSTEM_PROMPT}${langLine(opts.language)}\n\nRepository root: ${trimmedRoot}\nFull wiki outline (do not duplicate other sections): ${outline.join(', ')}.`;
 
   // The critic scores cited paths against the repo's real file set + key files.

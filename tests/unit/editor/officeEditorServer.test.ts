@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -53,6 +53,8 @@ describe('officeEditorServer', () => {
     expect(names).toEqual([
       'office_append_text',
       'office_apply_headings',
+      'office_create_premium_deck',
+      'office_create_premium_doc',
       'office_format_passage',
       'office_format_text',
       'office_insert_table',
@@ -61,10 +63,24 @@ describe('officeEditorServer', () => {
       'office_read_document',
       'office_replace_all',
       'office_replace_passage',
+      'office_review_premium_quality',
       'office_run_api',
       'office_search_replace',
       'office_set_cells',
     ]);
+
+    const premiumDocTool = tools.find((tool) => tool.name === 'office_create_premium_doc');
+    expect(premiumDocTool?.description).toContain('polished, document-native deliverable');
+
+    const premiumDeckTool = tools.find((tool) => tool.name === 'office_create_premium_deck');
+    expect(premiumDeckTool?.description).toContain('polished, presentation-native deck');
+
+    const reviewTool = tools.find((tool) => tool.name === 'office_review_premium_quality');
+    expect(reviewTool?.description).toContain('premium-quality checklist');
+
+    const runApiTool = tools.find((tool) => tool.name === 'office_run_api');
+    expect(runApiTool?.description).toContain('premium PPTX decks');
+    expect(runApiTool?.description).toContain('transitions/effects when supported');
   });
 
   it('read_document forwards a read_document action with the file path', async () => {
@@ -106,6 +122,73 @@ describe('officeEditorServer', () => {
       arguments: { filePath: '/tmp/a.xlsx', start: 'A1', values: [['x', 1]] },
     });
     expect(deps.runTool).toHaveBeenCalledWith('/tmp/a.xlsx', { tool: 'set_cells', start: 'A1', values: [['x', 1]] });
+  });
+
+  it('office_create_premium_doc forwards a structured document plan', async () => {
+    const deps = makeDeps();
+    const client = await connect(deps);
+    const plan = {
+      title: 'Executive brief',
+      sections: [{ heading: 'Decision', body: ['Approve'], callout: 'Move now' }],
+    };
+    await client.callTool({
+      name: 'office_create_premium_doc',
+      arguments: { filePath: '/tmp/brief.docx', plan },
+    });
+    expect(deps.runTool).toHaveBeenCalledWith('/tmp/brief.docx', { tool: 'create_premium_doc', plan });
+  });
+
+  it('office_create_premium_deck forwards a structured deck plan', async () => {
+    const deps = makeDeps();
+    const client = await connect(deps);
+    const plan = {
+      title: 'Launch narrative',
+      theme: { primary: '#FF5500' },
+      slides: [
+        { title: 'Cover', layout: 'cover' },
+        { title: 'Proof', bullets: ['Traction'], layout: 'chart' },
+      ],
+    };
+    await client.callTool({
+      name: 'office_create_premium_deck',
+      arguments: { filePath: '/tmp/deck.pptx', plan },
+    });
+    expect(deps.runTool).toHaveBeenCalledWith('/tmp/deck.pptx', { tool: 'create_premium_deck', plan });
+  });
+
+  it('office_review_premium_quality forwards a quality audit action', async () => {
+    const deps = makeDeps();
+    const client = await connect(deps);
+    await client.callTool({ name: 'office_review_premium_quality', arguments: { filePath: '/tmp/deck.pptx' } });
+    expect(deps.runTool).toHaveBeenCalledWith('/tmp/deck.pptx', { tool: 'review_premium_quality' });
+  });
+
+  it('office_run_api forwards a trimmed bounded script', async () => {
+    const deps = makeDeps();
+    const client = await connect(deps);
+    await client.callTool({
+      name: 'office_run_api',
+      arguments: {
+        filePath: '/tmp/a.docx',
+        code: "  const document = Api.GetDocument(); return document ? 'ok' : 'missing';  ",
+      },
+    });
+    expect(deps.runTool).toHaveBeenCalledWith('/tmp/a.docx', {
+      tool: 'run_office_api',
+      code: "const document = Api.GetDocument(); return document ? 'ok' : 'missing';",
+    });
+  });
+
+  it('office_run_api rejects unsafe scripts before invoking the editor bridge', async () => {
+    const deps = makeDeps();
+    const client = await connect(deps);
+    const result = await client.callTool({
+      name: 'office_run_api',
+      arguments: { filePath: '/tmp/a.docx', code: 'return fetch(https://example.com)' },
+    });
+    expect((result as { isError?: boolean }).isError).toBe(true);
+    expect(textOf(result)).toMatch(/rejected/i);
+    expect(deps.runTool).not.toHaveBeenCalled();
   });
 
   it('surfaces a failure envelope as an MCP error result', async () => {

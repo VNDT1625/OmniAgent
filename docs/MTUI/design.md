@@ -102,6 +102,7 @@ mtui
 |   |-- insert-after
 |   `-- delete
 |-- search
+|-- stats
 |-- diff
 |-- undo
 |-- history
@@ -124,6 +125,9 @@ mtui edit <file> insert-before <marker> <content> [--json]
 mtui edit <file> delete <text> [--json]
 
 mtui search <path> <query> [--json]
+mtui search <path> <query> [--regex] [--ignore-case] [--glob <pattern>] [--exclude <pattern>] [--context <n>] [--files-with-matches | --count] [--json]
+
+mtui stats <path> [--largest <n>] [--max-files <n>] [--json]
 
 mtui diff [--last] [--operation <id>] [--json]
 

@@ -93,5 +93,67 @@
     "phase_done": "步骤已就绪",
     "phase_error": "生成失败",
     "stepsCount": "{{count}} 个步骤"
+  },
+  "runnerTab": "Test runner",
+  "core": {
+    "tab": "Core Test",
+    "title": "Experimental AI response core",
+    "subtitle": "直接验证 Codex app-server 与兼容 ACP 的 CLI，不依赖 AionCore 可执行文件。",
+    "transportNotice": "直连多 CLI Core",
+    "loadFailed": "Could not load agents.",
+    "selectTarget": "Select an AI target",
+    "noTargets": "No runnable AI targets were detected.",
+    "empty": "Choose a target and send a prompt to inspect the normalized response stream.",
+    "selectModel": "Select a model",
+    "agentDefault": "Agent default",
+    "selectWorkspace": "选择工作区",
+    "workspacePlaceholder": "工作区文件夹路径",
+    "recentWorkspaces": "最近使用的工作区",
+    "chooseWorkspace": "选择其他工作区",
+
+    "permissionReadOnly": "Read-only",
+    "permissionWorkspaceWrite": "Workspace Write",
+    "permissionFullAccess": "Full Access",
+    "fullAccessTitle": "Enable Full Access?",
+    "fullAccessWarning": "The agent may execute commands and modify files outside the selected workspace. Only enable this for a trusted agent and project.",
+    "enableFullAccess": "Enable Full Access",
+    "permissionRequestTitle": "Agent permission request",
+    "permissionRequestBody": "{{tool}} wants to perform a protected action.",
+    "permissionRequestDetail": "{{tool}} wants to perform a protected action: {{detail}}",
+    "permissionWaiting": "Waiting for permission: {{tool}}",
+    "allowOnce": "Allow once",
+    "deny": "Deny",
+    "unknownTool": "Unknown tool",
+
+    "newSession": "New conversation session",
+    "forkSession": "Fork",
+    "sessionForked": "A separate conversation branch was created.",
+    "sessionStatus": {
+      "idle": "Ready",
+      "running": "Running",
+      "completed": "Completed",
+      "interrupted": "Interrupted - resumable",
+      "error": "Failed - resumable",
+      "cancelled": "Cancelled"
+    },
+
+    "promptPlaceholder": "Ask the selected AI something...",
+    "ready": "Ready",
+    "connecting": "Connecting to the agent...",
+    "completed": "Response completed",
+    "failed": "The response failed.",
+    "cancelled": "Response cancelled",
+    "stop": "Stop",
+    "send": "Send",
+    "events": "Core events",
+    "noEvents": "Events will appear here.",
+    "kind": {
+      "builtin": "Built-in",
+      "acp": "ACP",
+      "cli": "CLI",
+      "remote": "Remote"
+    },
+    "bridgeUnavailable": "Core Test did not receive a response from the Main process. Restart the desktop app to load the new bridge.",
+    "retry": "Retry"
   }
 }

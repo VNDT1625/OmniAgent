@@ -203,6 +203,10 @@ worktrees/
 docs/superpowers/
 resources/bundled-bun
 resources/bundled-aioncore
+resources/bundled-tomny-cli
+resources/bundled-tomny-core
+
+resources/binaries
 resources/hub
 
 # Server build output
@@ -226,6 +230,9 @@ packages/mtui/target/
 .omni/
 .aionui/
 .omni-sidecar/
+.tomny/
+data/*.db-shm
+data/*.db-wal
 
 # Files containing local dev-router API key (do not commit secrets)
 .kiro/steering/claude-ui-testing.md

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -19,7 +19,7 @@ import type { OHLCBar } from './botTypes';
 const STOOQ_HISTORY_URL = 'https://stooq.com/q/d/l/';
 const FETCH_TIMEOUT_MS = 12_000;
 const CACHE_TTL_MS = 6 * 60 * 60_000; // history is daily — 6h cache is ample.
-const USER_AGENT = 'AionUi-News/1.0 (+https://aionui.com)';
+const USER_AGENT = 'TomniAgentic-News/1.0 (+https://github.com/VNDT1625/OmniAgent)';
 
 /** Display ticker → Stooq history symbol. */
 const STOOQ_SYMBOL: Record<string, string> = {

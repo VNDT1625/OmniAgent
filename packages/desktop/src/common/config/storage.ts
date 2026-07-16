@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -106,6 +106,9 @@ export interface IConfigStorageRefer {
     custom_agent_id?: string;
     name?: string;
   };
+
+  // Telegram agent permission/session mode / Telegram Agent 权限模式
+  'assistant.telegram.permissionMode'?: string;
   // Lark assistant default model / Lark 助手默认模型
   'assistant.lark.defaultModel'?: {
     id: string;

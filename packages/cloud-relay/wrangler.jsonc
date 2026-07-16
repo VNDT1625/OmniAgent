@@ -1,0 +1,17 @@
+﻿{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "aionui-cloud-relay",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [{ "name": "WORKSPACE_ROOMS", "class_name": "WorkspaceRoom" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["WorkspaceRoom"] }],
+  "r2_buckets": [{ "binding": "BLOBS", "bucket_name": "aionui-cloud-relay-blobs" }],
+  "observability": {
+    "enabled": true,
+    "logs": { "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.05 },
+  },
+}

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -22,8 +22,18 @@ export type StudioFileEntry = {
   openedAt: number;
 };
 
+/** Studio views that contain enough information to restore after a reload. */
+export type StudioPersistedView =
+  | { mode: 'dashboard' }
+  | { mode: 'editor'; filePath: string }
+  | { mode: 'ide' }
+  | { mode: 'automation' }
+  | { mode: 'makeVideo' }
+  | { mode: 'music' };
+
 const RECENT_KEY = 'studio.recentFiles';
 const STARRED_KEY = 'studio.starredFiles';
+const LAST_VIEW_KEY = 'studio.lastView';
 const RECENT_LIMIT = 50;
 
 /** Read + parse a JSON array from localStorage, tolerating corruption. */
@@ -102,4 +112,45 @@ export const toggleStarred = (filePath: string): StudioFileEntry[] => {
     : [{ path: filePath, name: baseName(filePath), openedAt: Date.now() }, ...current];
   writeList(STARRED_KEY, next);
   return next;
+};
+
+/** Restore the last Studio view that can be safely recreated after unmount or reload. */
+export const getLastStudioView = (): StudioPersistedView => {
+  try {
+    const raw = localStorage.getItem(LAST_VIEW_KEY);
+    if (!raw) return { mode: 'dashboard' };
+
+    const parsed = JSON.parse(raw) as unknown;
+    if (typeof parsed !== 'object' || parsed === null || !('mode' in parsed)) return { mode: 'dashboard' };
+
+    const candidate = parsed as { mode: unknown; filePath?: unknown };
+    if (candidate.mode === 'editor') {
+      return typeof candidate.filePath === 'string' && candidate.filePath.length > 0
+        ? { mode: 'editor', filePath: candidate.filePath }
+        : { mode: 'dashboard' };
+    }
+
+    if (
+      candidate.mode === 'dashboard' ||
+      candidate.mode === 'ide' ||
+      candidate.mode === 'automation' ||
+      candidate.mode === 'makeVideo' ||
+      candidate.mode === 'music'
+    ) {
+      return { mode: candidate.mode };
+    }
+  } catch {
+    /* corrupted or unavailable storage - fall back to the dashboard */
+  }
+
+  return { mode: 'dashboard' };
+};
+
+/** Remember a Studio view that can be safely restored in a later mount. */
+export const setLastStudioView = (view: StudioPersistedView): void => {
+  try {
+    localStorage.setItem(LAST_VIEW_KEY, JSON.stringify(view));
+  } catch {
+    /* storage full or unavailable - navigation still works for this mount */
+  }
 };

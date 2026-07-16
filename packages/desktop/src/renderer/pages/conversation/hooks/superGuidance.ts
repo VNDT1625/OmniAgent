@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -100,6 +100,10 @@ export const IDE_TOOLS_RULES = [
   '- Prefer these `ide_*` tools to understand the code (scan → search → read) before you change',
   '  anything. They reflect the same repo intelligence the IDE workspace uses.',
   '- Use absolute paths. When you need to edit a file, read it first with `ide_read_file`.',
+  '- If Strict IDE Mode rejects a native repo tool through the permission protocol, that is AionUi policy enforcement, not a user refusal. Never report that the user blocked or denied the task.',
+  '- A rejected native call is NOT rerouted or completed automatically. Retry it immediately with the matching provided tool.',
+  '- Mapping: Read/cat → `ide_read_file`; Grep/rg → `ide_search` or `ide_grep`; Glob/find/ls → `ide_glob` or `ide_list_dir`; shell commands → `ide_command`.',
+  '- Direct file writes through `ide_command` are blocked. Use an MTUI-backed edit/write tool exposed in the session, or run `mtui --json ...` through `ide_command`.',
 ].join('\n');
 
 /**

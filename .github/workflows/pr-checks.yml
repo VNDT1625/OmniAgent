@@ -171,7 +171,7 @@ jobs:
         run: bun run test:coverage
 
       - name: Upload coverage to Codecov (Linux coverage only)
-        if: always() && hashFiles('coverage/lcov.info') != '' && github.repository == 'iOfficeAI/AionUi'
+        if: always() && hashFiles('coverage/lcov.info') != '' && github.repository == 'VNDT1625/OmniAgent'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -180,7 +180,7 @@ jobs:
           fail_ci_if_error: false
           verbose: true
       - name: Skip Codecov upload when preconditions are not met
-        if: always() && hashFiles('coverage/lcov.info') != '' && github.repository != 'iOfficeAI/AionUi'
+        if: always() && hashFiles('coverage/lcov.info') != '' && github.repository != 'VNDT1625/OmniAgent'
         shell: bash
         run: |
           echo 'Skipping Codecov upload due to unmet preconditions.'
@@ -573,3 +573,13 @@ jobs:
       - name: Validate script output
         shell: bash
         run: bash scripts/verify-release-assets.sh release-assets
+      # Differential update release regression
+      - name: Reject incomplete differential update metadata
+        shell: bash
+        run: |
+          sed -i '/^[[:space:]]*size:/d' build-artifacts/windows-build-x64/latest.yml
+          if MOCK_VERSION=1.0.0 bash scripts/prepare-release-assets.sh build-artifacts invalid-release-assets; then
+            echo "::error::Release preparation accepted Windows metadata without files[].size"
+            exit 1
+          fi
+          echo "PASS: incomplete differential update metadata was rejected"

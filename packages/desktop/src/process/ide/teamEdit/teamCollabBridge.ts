@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -35,6 +35,7 @@ import {
   hasTeamSessions,
   publishTeamSession,
   unpublishTeamSession,
+  type TeamPeerCapabilities,
   type TeamPublishInfo,
 } from '@process/studio/collabServer';
 import {
@@ -78,9 +79,19 @@ export const TEAM_COLLAB_CHANNELS = {
 export type TeamCollabResult<T> = { ok: true; data: T } | { ok: false; error: string };
 
 /** Host publish request. */
-export type TeamPublishRequest = { rootPath: string; password: string; online?: boolean };
+export type TeamPublishRequest = {
+  rootPath: string;
+  password: string;
+  online?: boolean;
+  allowWrites?: boolean;
+  allowDatabase?: boolean;
+};
 /** Host publish data (join code/url + identity). */
-export type TeamPublishData = TeamPublishInfo & { online: boolean; joinUrl?: string };
+export type TeamPublishData = TeamPublishInfo & {
+  online: boolean;
+  joinUrl?: string;
+  peerCapabilities: TeamPeerCapabilities;
+};
 /** Host status (is a session live + its info). */
 export type TeamStatusData = { publishing: boolean; info?: TeamPublishData };
 
@@ -93,6 +104,7 @@ export type TeamJoinData = {
   baseUrl: string;
   workspacePath: string;
   remoteMcpServer: ISessionMcpServer;
+  peerCapabilities: TeamPeerCapabilities;
 };
 
 /** Auth+target tuple every peer browse/read/write request carries. */
@@ -223,6 +235,10 @@ export function registerTeamCollabBridge(): void {
         repoRoot: rootPath,
         repoName: basename(rootPath),
         password: req.password || '123456',
+        peerCapabilities: {
+          write: req.allowWrites ?? true,
+          database: req.allowDatabase ?? false,
+        },
       });
       // Register the host's user in presence so peers see who owns the repo.
       getTeamEditService().join(rootPath, 'host', 'Host', true);
@@ -253,7 +269,7 @@ export function registerTeamCollabBridge(): void {
           hostName: info.lanIps[0] ?? 'host',
         });
       }
-      publishedInfo = { ...info, online: !!req.online, joinUrl };
+      publishedInfo = { ...info, online: !!req.online, joinUrl, peerCapabilities: session.peerCapabilities };
       return { ok: true, data: publishedInfo };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
@@ -298,6 +314,7 @@ export function registerTeamCollabBridge(): void {
           baseUrl: joined.baseUrl,
           workspacePath: remoteIde.workspacePath,
           remoteMcpServer: remoteIde.server,
+          peerCapabilities: joined.peerCapabilities,
         },
       };
     } catch (error) {

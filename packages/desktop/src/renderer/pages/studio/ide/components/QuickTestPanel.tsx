@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -24,7 +24,19 @@
  */
 
 import { ipcBridge } from '@/common';
-import { Button, Input, Message, Tag, Tooltip } from '@arco-design/web-react';
+import {
+  Button,
+  Checkbox,
+  Collapse,
+  Dropdown,
+  Image,
+  Input,
+  Menu,
+  Message,
+  Modal,
+  Tag,
+  Tooltip,
+} from '@arco-design/web-react';
 import {
   Bug,
   Caution,
@@ -32,26 +44,47 @@ import {
   Click,
   Close,
   Code,
+  Down,
   FileCode,
   FolderOpen,
+  FullScreen,
   Left,
   Lightning,
+  Pic,
   Play,
+  Record,
   Right,
   Robot,
+  VideoTwo,
 } from '@icon-park/react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ideClient } from '../ideClient';
-import type { ContextPack, QtStopResponse, RuntimeTrace, TraceEvent, TracePlatform } from '../ideClient';
+import type {
+  ContextPack,
+  QtStopResponse,
+  RuntimeTrace,
+  TraceEvent,
+  TracePlatform,
+  TraceStackFrame,
+  UiAuditCategory,
+  UiAuditReport,
+} from '../ideClient';
+import type {
+  InspectScreenshotMode,
+  InspectScreenshotResult,
+  InspectVideoResult,
+} from '@process/ide/elementInspectorBridge';
 import type { LocatedElement } from '@process/ide/elementInspectorLocator';
 import { renderMultiElementBrief } from '@process/ide/elementInspectorLocator';
 import QuickTestBrowser from './QuickTestBrowser';
-import { useQuickRun, type PlatformOption, type QuickRunState } from './useQuickRun';
-import type { RunPlatform } from '../ideClient';
+import type { PlatformOption, QuickRunMode, QuickRunState } from './useQuickRun';
+import type { RunPlatform, RunServiceKind } from '../ideClient';
 
 type QuickTestPanelProps = {
   rootPath: string | null;
+  /** Workspace-owned controller that survives switching away from Quick Test. */
+  quickRun: QuickRunState;
   /** Compact mode hides the IDE activity rail together with the Quick Test right rail. */
   onCompactChange?: (compact: boolean) => void;
   /** Called when user clicks "Fix with Agent" — opens a new IDE Chat tab with the trace context. */
@@ -68,6 +101,7 @@ type QTStatus = 'idle' | 'recording' | 'done' | 'error';
 
 const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
   rootPath,
+  quickRun,
   onCompactChange,
   onFixWithAgent,
   onAskAboutElement,
@@ -82,12 +116,11 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
   const [verification, setVerification] = useState<QtStopResponse['verification']>(null);
   const [contextPack, setContextPack] = useState<ContextPack | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [timelineVisible, setTimelineVisible] = useState(false);
   // The embedded browser tab id the user is testing against (web only). CDP
   // attaches to THIS tab, so the trace reflects exactly what the user drives.
   const [webTabId, setWebTabId] = useState<string | null>(null);
-  // Quick-Run controller: mechanically (no AI) reads the wiki run data, runs the
-  // dev command in the IDE terminal, and resolves the dev URL to navigate to.
-  const quickRun = useQuickRun(rootPath);
+
   const logRef = useRef<HTMLDivElement>(null);
   const mountedRef = useRef(true);
 
@@ -95,8 +128,9 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
   // User can hide it for "full browser" UX testing mode, drag to resize,
   // and the browser area becomes almost identical to a normal browser tab.
   const [railVisible, setRailVisible] = useState(true);
-  const [railWidth, setRailWidth] = useState(360);
-  const railDragRef = useRef<{ startX: number; startW: number } | null>(null);
+  const [runOverlayVisible, setRunOverlayVisible] = useState(false);
+  const [railHeight, setRailHeight] = useState(280);
+  const railDragRef = useRef<{ startY: number; startH: number } | null>(null);
 
   useEffect(() => {
     onCompactChange?.(!railVisible);
@@ -136,6 +170,7 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
 
   const handleStart = useCallback(async (): Promise<void> => {
     if (!rootPath) return;
+    setStatus('recording');
     setLiveEvents([]);
     setTrace(null);
     setVerification(null);
@@ -211,10 +246,31 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
   const [inspecting, setInspecting] = useState(false);
   const [picks, setPicks] = useState<LocatedElement[]>([]);
   const [designRequest, setDesignRequest] = useState('');
-  // A captured screenshot of the current page (path the agent can open + a data
-  // URL for the inline preview), so a vision-capable agent SEES the layout.
-  const [shot, setShot] = useState<{ filePath: string; dataUrl: string } | null>(null);
+  // Visual evidence is additive: every capture is kept until the user removes
+  // it or sends the evidence bundle to the agent.
+  const [shots, setShots] = useState<InspectScreenshotResult[]>([]);
+  const [videos, setVideos] = useState<InspectVideoResult[]>([]);
+  const [activeVideo, setActiveVideo] = useState<InspectVideoResult | null>(null);
   const [capturing, setCapturing] = useState(false);
+  const [videoBusy, setVideoBusy] = useState(false);
+  const [auditBusy, setAuditBusy] = useState(false);
+  const [auditReport, setAuditReport] = useState<UiAuditReport | null>(null);
+  const [auditVisible, setAuditVisible] = useState(false);
+  const activeVideoRef = useRef<InspectVideoResult | null>(null);
+  const rootPathRef = useRef(rootPath);
+  activeVideoRef.current = activeVideo;
+  rootPathRef.current = rootPath;
+
+  useEffect(
+    () => () => {
+      const recording = activeVideoRef.current;
+      const recordingRoot = rootPathRef.current;
+      if (recording && recordingRoot) {
+        void ideClient.inspectVideoStop(recordingRoot, recording.tabId).catch(() => {});
+      }
+    },
+    []
+  );
 
   const handleInspect = useCallback(async (): Promise<void> => {
     if (!rootPath || inspecting) return;
@@ -241,38 +297,110 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
 
   const handleClearPicks = useCallback((): void => {
     setPicks([]);
-    setShot(null);
-    setDesignRequest('');
   }, []);
 
-  const _handleScreenshot = useCallback(async (): Promise<void> => {
-    if (!rootPath || capturing) return;
-    setCapturing(true);
-    const result = await ideClient.inspectScreenshot(rootPath, webTabId ?? undefined).catch((): null => null);
+  const handleScreenshot = useCallback(
+    async (mode: InspectScreenshotMode): Promise<void> => {
+      if (!rootPath || capturing) return;
+      setCapturing(true);
+      const result = await ideClient.inspectScreenshot(rootPath, mode, webTabId ?? undefined).catch((): null => null);
+      if (!mountedRef.current) return;
+      setCapturing(false);
+      if (result?.ok && result.data) {
+        setShots((prev) => [...prev, result.data as InspectScreenshotResult]);
+      } else if (result && !result.ok) {
+        Message.error((result as { ok: false; error: string }).error);
+      }
+    },
+    [rootPath, capturing, webTabId]
+  );
+
+  const handleUiAudit = useCallback(async (): Promise<void> => {
+    if (!rootPath || !webTabId || auditBusy) return;
+    setAuditBusy(true);
+    const result = await ideClient.inspectAudit(rootPath, webTabId).catch((error): null => {
+      console.error('[QuickTest] UI audit failed', error);
+      if (mountedRef.current) {
+        Message.error(error instanceof Error ? error.message : String(error));
+      }
+      return null;
+    });
     if (!mountedRef.current) return;
-    setCapturing(false);
+    setAuditBusy(false);
     if (result?.ok && result.data) {
-      setShot(result.data);
+      setAuditReport(result.data);
+      setAuditVisible(true);
+    } else if (result && !result.ok) {
+      Message.error((result as { ok: false; error: string }).error);
+    } else if (result) {
+      Message.error(t('ide.quicktest.uiAuditFailed'));
+    }
+  }, [rootPath, webTabId, auditBusy, t]);
+
+  const removeEvidenceFile = useCallback((filePath: string): void => {
+    void ideClient
+      .deleteFile(filePath)
+      .then((result) => {
+        if (!result.ok) Message.error((result as { ok: false; error: string }).error);
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleRemoveScreenshot = useCallback(
+    (index: number): void => {
+      const evidence = shots[index];
+      setShots((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+      if (evidence) removeEvidenceFile(evidence.filePath);
+    },
+    [shots, removeEvidenceFile]
+  );
+
+  const handleRemoveVideo = useCallback(
+    (index: number): void => {
+      const evidence = videos[index];
+      setVideos((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+      if (evidence) removeEvidenceFile(evidence.filePath);
+    },
+    [videos, removeEvidenceFile]
+  );
+
+  const handleVideoToggle = useCallback(async (): Promise<void> => {
+    const targetTabId = activeVideo?.tabId ?? webTabId;
+    if (!rootPath || !targetTabId || videoBusy) return;
+    setVideoBusy(true);
+    const result = activeVideo
+      ? await ideClient.inspectVideoStop(rootPath, targetTabId).catch((): null => null)
+      : await ideClient.inspectVideoStart(rootPath, targetTabId).catch((): null => null);
+    if (!mountedRef.current) return;
+    setVideoBusy(false);
+    if (result?.ok && result.data) {
+      if (activeVideo) {
+        setVideos((prev) => [...prev, result.data as InspectVideoResult]);
+        setActiveVideo(null);
+      } else {
+        setActiveVideo(result.data);
+      }
     } else if (result && !result.ok) {
       Message.error((result as { ok: false; error: string }).error);
     }
-  }, [rootPath, capturing, webTabId]);
+  }, [rootPath, webTabId, videoBusy, activeVideo]);
 
   const handleAskAboutElement = useCallback((): void => {
-    if (picks.length === 0 && !shot) return;
-    const prompt = renderMultiElementBrief(picks, designRequest, shot?.filePath);
+    if (picks.length === 0 && shots.length === 0 && videos.length === 0) return;
+    const prompt = renderMultiElementBrief(picks, designRequest, shots, videos);
     onAskAboutElement(prompt);
     setPicks([]);
-    setShot(null);
+    setShots([]);
+    setVideos([]);
     setDesignRequest('');
-  }, [picks, designRequest, shot, onAskAboutElement]);
+  }, [picks, designRequest, shots, videos, onAskAboutElement]);
 
   // ── One button drives BOTH run + record ──────────────────────────────────
   // The Quick-Run bar's Run/Stop is the single control. Pressing Run launches
   // the app (no AI); the moment it is up (`running`), recording auto-starts.
   // Pressing Stop tears the run down and that auto-stops + captures the trace.
   // This removes the old redundant second button (the header Start/Stop).
-  const phaseRef = useRef(quickRun.phase);
+  const phaseRef = useRef<QuickRunState['phase'] | null>(null);
   useEffect(() => {
     const prev = phaseRef.current;
     phaseRef.current = quickRun.phase;
@@ -286,10 +414,10 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
       setLiveEvents([]);
     }
     // The app came up → begin recording (web needs the embedded tab ready).
-    if (quickRun.phase === 'running' && prev !== 'running' && (platform !== 'web' || webTabId)) {
+    if (quickRun.phase === 'running' && (prev !== 'running' || status === 'idle') && (platform !== 'web' || webTabId)) {
       void handleStart();
     }
-  }, [quickRun.phase, platform, webTabId, handleStart]);
+  }, [quickRun.phase, platform, webTabId, status, handleStart]);
 
   // The run stopped (Stop pressed, or it errored) while we were recording →
   // capture + stop the trace so the single Stop tears down everything.
@@ -297,14 +425,14 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
     if (!quickRun.active && status === 'recording') void handleStop();
   }, [quickRun.active, status, handleStop]);
 
-  // Drag-to-resize right rail (sidebar with inspect + activity trace).
+  // Drag-to-resize the bottom inspect/activity dock.
   useEffect(() => {
     const onMove = (e: MouseEvent): void => {
       const drag = railDragRef.current;
       if (!drag) return;
-      const delta = e.clientX - drag.startX;
-      const next = Math.max(220, Math.min(520, drag.startW + delta));
-      setRailWidth(next);
+      const delta = drag.startY - e.clientY;
+      const next = Math.max(180, Math.min(480, drag.startH + delta));
+      setRailHeight(next);
     };
     const onUp = (): void => {
       railDragRef.current = null;
@@ -321,11 +449,11 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
 
   const startRailResize = useCallback(
     (e: React.MouseEvent): void => {
-      railDragRef.current = { startX: e.clientX, startW: railWidth };
+      railDragRef.current = { startY: e.clientY, startH: railHeight };
       document.body.style.userSelect = 'none';
-      document.body.style.cursor = 'col-resize';
+      document.body.style.cursor = 'row-resize';
     },
-    [railWidth]
+    [railHeight]
   );
 
   // The status rail content (instructions / live log / trace summary / error).
@@ -343,9 +471,18 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
           contextPack={contextPack}
           onFixWithAgent={handleFixWithAgent}
           onRestart={() => setStatus('idle')}
+          onOpenTimeline={() => setTimelineVisible(true)}
         />
       )}
       {status === 'error' && <ErrorBody message={errorMsg} onRetry={() => setStatus('idle')} />}
+      {trace ? (
+        <TraceTimelineModal
+          trace={trace}
+          contextPack={contextPack}
+          visible={timelineVisible}
+          onClose={() => setTimelineVisible(false)}
+        />
+      ) : null}
     </>
   );
 
@@ -365,16 +502,16 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
         />
       )}
       {platform === 'web' ? (
-        // Web: the live app under test sits beside the trace rail. The browser
-        // is a native WebContentsView, so DOM z-index cannot draw the rail above
-        // it; visible rails must occupy real layout space to avoid being covered.
+        // Web: the live app keeps the full available width. The inspect/trace
+        // tools dock below it so responsive breakpoints match a normal browser.
         // The browser stays mounted across status changes so the user keeps
         // their session (and CDP target) while recording and after stopping.
-        <div className='flex-1 min-h-0 flex'>
-          <div className='flex-1 min-w-0 min-h-0 border-r border-r-1'>
+        <div className='flex-1 min-h-0 flex flex-col'>
+          <div className='flex-1 min-w-0 min-h-0'>
             <QuickTestBrowser
               onTabReady={setWebTabId}
               navigateUrl={quickRun.readyUrl}
+              nativeOverlayBlocked={runOverlayVisible || timelineVisible || auditVisible}
               toolbarLeading={<QuickRunInlineStart run={quickRun} />}
               toolbarTrailing={
                 <QuickRunInlineEnd
@@ -382,33 +519,45 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
                   disabled={status === 'recording'}
                   railVisible={railVisible}
                   onToggleRail={() => setRailVisible((v) => !v)}
+                  onOverlayVisibleChange={setRunOverlayVisible}
                 />
               }
             />
           </div>
 
           {railVisible ? (
-            <div className='shrink-0 flex min-h-0 bg-1 border-l border-l-1' style={{ width: railWidth }}>
-              {/* Resize handle for the right activity/inspect sidebar */}
+            <div className='shrink-0 flex flex-col min-w-0 bg-1 border-t border-t-1' style={{ height: railHeight }}>
+              {/* Bottom dock preserves the tested page's real browser width. */}
               <div
                 role='separator'
-                aria-orientation='vertical'
+                aria-orientation='horizontal'
                 aria-label={t('ide.quicktest.resizeSidebar')}
                 onMouseDown={startRailResize}
-                className='w-4px shrink-0 cursor-col-resize bg-transparent hover:bg-primary-light-2 active:bg-primary transition-colors'
+                className='h-4px w-full shrink-0 cursor-row-resize bg-transparent hover:bg-primary-light-2 active:bg-primary transition-colors'
               />
               <div className='flex-1 min-w-0 min-h-0 overflow-y-auto flex flex-col'>
                 {/* Visual element picker — additive to the trace flow above. */}
                 <InspectBar
                   inspecting={inspecting}
                   picked={picks[0] ?? null}
+                  shots={shots}
+                  videos={videos}
+                  activeVideo={activeVideo}
+                  capturing={capturing}
+                  videoBusy={videoBusy}
+                  auditBusy={auditBusy}
                   designRequest={designRequest}
                   disabled={!webTabId}
                   onInspect={() => void handleInspect()}
                   onCancel={handleCancelInspect}
+                  onScreenshot={(mode) => void handleScreenshot(mode)}
+                  onAudit={() => void handleUiAudit()}
+                  onVideoToggle={() => void handleVideoToggle()}
                   onDesignRequestChange={setDesignRequest}
                   onAsk={handleAskAboutElement}
                   onClearPick={handleClearPicks}
+                  onRemoveScreenshot={handleRemoveScreenshot}
+                  onRemoveVideo={handleRemoveVideo}
                 />
                 {railBody}
               </div>
@@ -418,6 +567,17 @@ const QuickTestPanel: React.FC<QuickTestPanelProps> = ({
       ) : (
         <div className='flex-1 min-h-0 overflow-y-auto'>{railBody}</div>
       )}
+      {auditReport ? (
+        <UiAuditModal
+          report={auditReport}
+          visible={auditVisible}
+          onClose={() => setAuditVisible(false)}
+          onAsk={(report) => {
+            onAskAboutElement(renderUiAuditBrief(report));
+            setAuditVisible(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 };
@@ -560,7 +720,8 @@ const DoneBody: React.FC<{
   contextPack: ContextPack | null;
   onFixWithAgent: () => void;
   onRestart: () => void;
-}> = ({ trace, verification, contextPack, onFixWithAgent, onRestart }) => {
+  onOpenTimeline: () => void;
+}> = ({ trace, verification, contextPack, onFixWithAgent, onRestart, onOpenTimeline }) => {
   const { t } = useTranslation();
   const hasError = Boolean(trace.firstError);
   const failed = hasError || verification?.passed === false;
@@ -592,11 +753,57 @@ const DoneBody: React.FC<{
           <span className={`text-13px font-600 ${failed ? 'text-danger' : passed ? 'text-success' : 'text-t-primary'}`}>
             {resultLabel}
           </span>
-          <span className='text-11px text-t-tertiary'>
+          <Button
+            type='text'
+            size='mini'
+            className='!justify-start !p-0 !h-auto text-11px text-t-tertiary hover:text-t-primary'
+            onClick={onOpenTimeline}
+          >
             {t('ide.quicktest.duration', { s: duration })} · {trace.events.length} {t('ide.quicktest.events')}
-          </span>
+          </Button>
         </div>
       </div>
+
+      {trace.evidence ? (
+        <Section icon={<Bug theme='outline' size={13} />} title={t('ide.quicktest.evidenceLevel')}>
+          <div className='flex flex-col gap-7px'>
+            <div className='flex items-center gap-8px'>
+              <Tag
+                color={
+                  trace.evidence.level === 'full' ? 'green' : trace.evidence.level === 'runtime' ? 'orange' : 'blue'
+                }
+              >
+                {trace.evidence.level === 'full'
+                  ? t('ide.quicktest.evidenceFull')
+                  : trace.evidence.level === 'accessibility'
+                    ? t('ide.quicktest.evidenceAccessibility')
+                    : trace.evidence.level === 'runtime'
+                      ? t('ide.quicktest.evidenceRuntime')
+                      : t('ide.quicktest.evidenceVisual')}
+              </Tag>
+              <code className='text-11px text-t-tertiary'>{trace.evidence.adapter}</code>
+            </div>
+            {trace.evidence.noteKey ? (
+              <p className='m-0 text-11px text-t-secondary leading-relaxed'>
+                {trace.evidence.noteKey === 'full'
+                  ? t('ide.quicktest.evidenceFullHint')
+                  : trace.evidence.noteKey === 'accessibility'
+                    ? t('ide.quicktest.evidenceAccessibilityHint')
+                    : trace.evidence.noteKey === 'runtime'
+                      ? t('ide.quicktest.evidenceRuntimeHint')
+                      : t('ide.quicktest.evidenceVisualHint')}
+              </p>
+            ) : null}
+            <div className='flex flex-wrap gap-4px'>
+              {trace.evidence.capabilities.map((capability) => (
+                <Tag key={capability} size='small'>
+                  {capability}
+                </Tag>
+              ))}
+            </div>
+          </div>
+        </Section>
+      ) : null}
 
       {/* Error detail */}
       {trace.firstError ? (
@@ -709,6 +916,408 @@ const DoneBody: React.FC<{
   );
 };
 
+type TimelineFilter = 'all' | 'interaction' | 'network' | 'error';
+
+const isTimelineEventVisible = (event: TraceEvent, filter: TimelineFilter): boolean => {
+  if (filter === 'all') return true;
+  if (filter === 'interaction') return event.kind === 'click' || event.kind === 'input' || event.kind === 'navigate';
+  if (filter === 'network') return event.kind === 'network';
+  return (
+    event.kind === 'exception' ||
+    (event.kind === 'console' && event.level === 'error') ||
+    (event.kind === 'network' && (Boolean(event.error) || event.status >= 400))
+  );
+};
+
+const timelineSummary = (event: TraceEvent, labels: Record<TraceEvent['kind'], string>): string => {
+  if (event.kind === 'click') return `${labels.click} · ${event.text || event.selector}`;
+  if (event.kind === 'input') return `${labels.input} · ${event.selector}`;
+  if (event.kind === 'navigate') return `${labels.navigate} · ${event.url}`;
+  if (event.kind === 'network') return `${event.method} ${event.status || 'ERR'} · ${event.url}`;
+  if (event.kind === 'console') return `${labels.console} [${event.level.toUpperCase()}] · ${event.message}`;
+  return `${labels.exception} · ${event.message.split('\n')[0]}`;
+};
+
+const StackFrames: React.FC<{ frames: TraceStackFrame[]; unknownLabel: string }> = ({ frames, unknownLabel }) => (
+  <div className='flex flex-col gap-3px'>
+    {frames.map((frame, index) => (
+      <span
+        key={`${frame.url ?? ''}:${frame.line ?? 0}:${index}`}
+        className='font-mono text-11px text-t-secondary break-all'
+      >
+        {frame.functionName}() · {frame.url ?? unknownLabel}
+        {frame.line ? `:${frame.line}` : ''}
+      </span>
+    ))}
+  </div>
+);
+
+const EventDetails: React.FC<{ event: TraceEvent }> = ({ event }) => {
+  const { t } = useTranslation();
+  return (
+    <div className='flex flex-col gap-8px px-6px pb-8px'>
+      {event.kind === 'click' ? (
+        <>
+          <code className='text-11px text-t-secondary break-all'>{event.selector}</code>
+          <span className='text-11px text-t-primary'>{event.text}</span>
+        </>
+      ) : null}
+      {event.kind === 'input' ? (
+        <>
+          <code className='text-11px text-t-secondary break-all'>{event.selector}</code>
+          <pre className='m-0 p-8px rd-6px bg-fill-2 text-11px text-t-primary whitespace-pre-wrap break-all'>
+            {event.value}
+          </pre>
+        </>
+      ) : null}
+      {event.kind === 'navigate' ? <code className='text-11px text-t-secondary break-all'>{event.url}</code> : null}
+      {event.kind === 'network' ? (
+        <>
+          <code className='text-11px text-t-secondary break-all'>
+            {event.method} {event.url}
+          </code>
+          <div className='flex items-center gap-6px'>
+            <Tag size='small'>{event.resourceType ?? t('ide.quicktest.networkEvents')}</Tag>
+            <Tag size='small' color={event.status >= 400 || event.error ? 'red' : 'green'}>
+              {event.status || event.error}
+            </Tag>
+          </div>
+          {event.requestBody ? (
+            <>
+              <span className='text-11px font-600 text-t-primary'>{t('ide.quicktest.requestPayload')}</span>
+              <pre className='m-0 max-h-180px overflow-auto p-8px rd-6px bg-fill-2 text-11px text-t-secondary whitespace-pre-wrap break-all'>
+                {event.requestBody}
+              </pre>
+            </>
+          ) : null}
+          {event.responseHeaders ? (
+            <>
+              <span className='text-11px font-600 text-t-primary'>{t('ide.quicktest.responseHeaders')}</span>
+              <pre className='m-0 max-h-160px overflow-auto p-8px rd-6px bg-fill-2 text-11px text-t-secondary whitespace-pre-wrap break-all'>
+                {JSON.stringify(event.responseHeaders, null, 2)}
+              </pre>
+            </>
+          ) : null}
+          {event.responseBody ? (
+            <>
+              <span className='text-11px font-600 text-t-primary'>{t('ide.quicktest.responsePayload')}</span>
+              <pre className='m-0 max-h-180px overflow-auto p-8px rd-6px bg-fill-2 text-11px text-t-secondary whitespace-pre-wrap break-all'>
+                {event.responseBody}
+              </pre>
+            </>
+          ) : null}
+        </>
+      ) : null}
+      {event.kind === 'console' ? (
+        <pre className='m-0 text-11px text-t-secondary whitespace-pre-wrap break-all'>{event.message}</pre>
+      ) : null}
+      {event.kind === 'exception' ? (
+        <>
+          <pre className='m-0 text-11px text-danger whitespace-pre-wrap break-all'>{event.stack || event.message}</pre>
+          {event.stackFrames?.length ? (
+            <StackFrames frames={event.stackFrames} unknownLabel={t('ide.quicktest.unknownSource')} />
+          ) : null}
+        </>
+      ) : null}
+      {(event.kind === 'click' || event.kind === 'input') && event.coverage?.length ? (
+        <div className='flex flex-col gap-4px border-t border-arco-2 pt-8px'>
+          <span className='text-11px font-600 text-t-primary'>{t('ide.quicktest.executedCode')}</span>
+          {event.coverage.slice(0, 20).map((fn, index) => (
+            <code key={`${fn.file}:${fn.line}:${index}`} className='text-11px text-t-secondary break-all'>
+              {fn.file}
+              {fn.line ? `:${fn.line}` : ''} · {fn.functionName}() ×{fn.callCount}
+            </code>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const TraceTimelineModal: React.FC<{
+  trace: RuntimeTrace;
+  contextPack: ContextPack | null;
+  visible: boolean;
+  onClose: () => void;
+}> = ({ trace, contextPack, visible, onClose }) => {
+  const { t } = useTranslation();
+  const [filter, setFilter] = useState<TimelineFilter>('all');
+  const events = trace.events.filter((event) => isTimelineEventVisible(event, filter));
+  const labels: Record<TraceEvent['kind'], string> = {
+    click: t('ide.quicktest.eventClick'),
+    input: t('ide.quicktest.eventInput'),
+    navigate: t('ide.quicktest.eventNavigate'),
+    network: t('ide.quicktest.networkEvents'),
+    console: t('ide.quicktest.eventConsole'),
+    exception: t('ide.quicktest.eventException'),
+  };
+  return (
+    <Modal
+      visible={visible}
+      title={`${t('ide.quicktest.eventTimeline')} · ${trace.events.length}`}
+      onCancel={onClose}
+      autoFocus={false}
+      focusLock
+      style={{ width: 820 }}
+      footer={
+        <Button type='primary' onClick={onClose}>
+          {t('common.close')}
+        </Button>
+      }
+    >
+      <div className='flex flex-col gap-12px'>
+        <Button.Group>
+          {(['all', 'interaction', 'network', 'error'] as const).map((value) => (
+            <Button
+              key={value}
+              size='small'
+              type={filter === value ? 'primary' : 'secondary'}
+              onClick={() => setFilter(value)}
+            >
+              {value === 'all'
+                ? t('ide.quicktest.timelineAll')
+                : value === 'interaction'
+                  ? t('ide.quicktest.interactionPath')
+                  : value === 'network'
+                    ? t('ide.quicktest.networkEvents')
+                    : t('ide.quicktest.errorDetail')}
+            </Button>
+          ))}
+        </Button.Group>
+        <div className='max-h-430px overflow-auto pr-4px'>
+          <Collapse bordered={false} lazyload>
+            {events.map((event, index) => (
+              <Collapse.Item
+                key={`${event.at}:${index}`}
+                name={`${event.at}:${index}`}
+                header={
+                  <div className='min-w-0 flex items-center gap-10px'>
+                    <span className='shrink-0 font-mono text-10px text-t-tertiary'>
+                      +{((event.at - trace.startedAt) / 1000).toFixed(3)}s
+                    </span>
+                    <span className='truncate text-12px text-t-primary'>{timelineSummary(event, labels)}</span>
+                  </div>
+                }
+              >
+                <EventDetails event={event} />
+              </Collapse.Item>
+            ))}
+          </Collapse>
+        </div>
+        {trace.coverage?.length ? (
+          <Section icon={<Code theme='outline' size={13} />} title={t('ide.quicktest.executedCode')}>
+            <div className='max-h-160px overflow-auto flex flex-col gap-4px'>
+              {trace.coverage.map((fn, index) => (
+                <code key={`${fn.file}:${fn.line}:${index}`} className='text-11px text-t-secondary break-all'>
+                  {fn.file}
+                  {fn.line ? `:${fn.line}` : ''} · {fn.functionName}() ×{fn.callCount}
+                </code>
+              ))}
+            </div>
+          </Section>
+        ) : null}
+        {contextPack?.slices.length ? (
+          <Section icon={<FileCode theme='outline' size={13} />} title={t('ide.quicktest.suspectedFiles')}>
+            <div className='max-h-140px overflow-auto flex flex-col gap-4px'>
+              {contextPack.slices.map((slice) => (
+                <div key={slice.path} className='flex items-center gap-6px'>
+                  <code className='flex-1 text-11px text-t-secondary break-all'>{slice.path}</code>
+                  <Tag size='small'>{slice.layer}</Tag>
+                </div>
+              ))}
+            </div>
+          </Section>
+        ) : null}
+      </div>
+    </Modal>
+  );
+};
+
+const UI_AUDIT_CATEGORIES: UiAuditCategory[] = ['contrast', 'typography', 'accessibility', 'layout', 'interaction'];
+
+const renderUiAuditBrief = (report: UiAuditReport): string => {
+  const newline = String.fromCharCode(10);
+  const findings = report.findings.slice(0, 100).map((finding, index) => {
+    const source = finding.sourceFile
+      ? ' · ' + finding.sourceFile + (finding.sourceLine ? ':' + finding.sourceLine : '')
+      : '';
+    const values =
+      finding.measured || finding.expected
+        ? ' · measured=' + (finding.measured || '—') + ' · expected=' + (finding.expected || '—')
+        : '';
+    return (
+      String(index + 1) +
+      '. [' +
+      finding.severity +
+      '/' +
+      finding.category +
+      '] ' +
+      finding.ruleId +
+      ' · ' +
+      finding.selector +
+      values +
+      source +
+      newline +
+      '   ' +
+      finding.detail
+    );
+  });
+  return [
+    '# Deterministic UI quality audit',
+    'URL: ' + report.url,
+    'Score: ' + report.score + '/100 · Elements: ' + report.elementCount + ' · Findings: ' + report.findings.length,
+    'Category scores: ' + JSON.stringify(report.categoryScores),
+    '',
+    ...findings,
+    report.findings.length > findings.length ? 'Only the first 100 findings are included.' : '',
+    '',
+    'Fix the findings in severity order. Preserve the product intent and verify the measured values after changes.',
+  ].join(newline);
+};
+
+const uiAuditSeverityColor = (severity: string): string =>
+  severity === 'critical' || severity === 'serious' ? 'red' : severity === 'moderate' ? 'orange' : 'blue';
+
+const UiAuditModal: React.FC<{
+  report: UiAuditReport;
+  visible: boolean;
+  onClose: () => void;
+  onAsk: (report: UiAuditReport) => void;
+}> = ({ report, visible, onClose, onAsk }) => {
+  const { t } = useTranslation();
+  const [filter, setFilter] = useState<UiAuditCategory | 'all'>('all');
+  const findings = filter === 'all' ? report.findings : report.findings.filter((item) => item.category === filter);
+  const categoryLabel = (category: UiAuditCategory): string => {
+    const keys: Record<UiAuditCategory, string> = {
+      contrast: 'ide.quicktest.uiAuditCategory_contrast',
+      typography: 'ide.quicktest.uiAuditCategory_typography',
+      accessibility: 'ide.quicktest.uiAuditCategory_accessibility',
+      layout: 'ide.quicktest.uiAuditCategory_layout',
+      interaction: 'ide.quicktest.uiAuditCategory_interaction',
+    };
+    return t(keys[category]);
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      title={t('ide.quicktest.uiAuditTitle')}
+      onCancel={onClose}
+      autoFocus={false}
+      focusLock
+      style={{ width: 900 }}
+      footer={
+        <div className='flex justify-end gap-8px'>
+          <Button onClick={onClose}>{t('common.close')}</Button>
+          <Button type='primary' icon={<Robot theme='outline' size={14} />} onClick={() => onAsk(report)}>
+            {t('ide.quicktest.uiAuditFix')}
+          </Button>
+        </div>
+      }
+    >
+      <div className='flex flex-col gap-14px'>
+        <div className='grid grid-cols-[150px_1fr] gap-12px'>
+          <div className='flex flex-col items-center justify-center rd-10px bg-fill-2 px-12px py-16px'>
+            <span className='text-32px leading-36px font-700 text-primary'>{report.score}</span>
+            <span className='text-11px text-t-secondary'>{t('ide.quicktest.uiAuditScore')}</span>
+          </div>
+          <div className='grid grid-cols-2 gap-8px'>
+            <div className='rd-8px bg-fill-1 px-12px py-9px'>
+              <div className='text-11px text-t-tertiary'>{t('ide.quicktest.uiAuditElements')}</div>
+              <div className='text-16px font-600 text-t-primary'>{report.elementCount}</div>
+            </div>
+            <div className='rd-8px bg-fill-1 px-12px py-9px'>
+              <div className='text-11px text-t-tertiary'>{t('ide.quicktest.uiAuditFindings')}</div>
+              <div className='text-16px font-600 text-t-primary'>{report.findings.length}</div>
+            </div>
+            <code className='col-span-2 truncate rd-8px bg-fill-1 px-12px py-9px text-11px text-t-secondary'>
+              {report.url}
+            </code>
+          </div>
+        </div>
+        <div className='grid grid-cols-5 gap-6px'>
+          {UI_AUDIT_CATEGORIES.map((category) => (
+            <div key={category} className='rd-8px border border-arco-2 px-8px py-7px text-center'>
+              <div className='text-10px text-t-tertiary'>{categoryLabel(category)}</div>
+              <div className='text-14px font-600 text-t-primary'>{report.categoryScores[category]}</div>
+            </div>
+          ))}
+        </div>
+        <Button.Group>
+          <Button size='small' type={filter === 'all' ? 'primary' : 'secondary'} onClick={() => setFilter('all')}>
+            {t('ide.quicktest.timelineAll')}
+          </Button>
+          {UI_AUDIT_CATEGORIES.map((category) => (
+            <Button
+              key={category}
+              size='small'
+              type={filter === category ? 'primary' : 'secondary'}
+              onClick={() => setFilter(category)}
+            >
+              {categoryLabel(category)}
+            </Button>
+          ))}
+        </Button.Group>
+        <div className='max-h-410px overflow-auto pr-4px'>
+          {findings.length === 0 ? (
+            <div className='py-36px text-center text-12px text-t-secondary'>{t('ide.quicktest.uiAuditNoFindings')}</div>
+          ) : (
+            <Collapse bordered={false} lazyload>
+              {findings.map((finding, index) => (
+                <Collapse.Item
+                  key={finding.ruleId + ':' + finding.selector + ':' + index}
+                  name={finding.ruleId + ':' + index}
+                  header={
+                    <div className='min-w-0 flex items-center gap-8px'>
+                      <Tag size='small' color={uiAuditSeverityColor(finding.severity)}>
+                        {finding.severity}
+                      </Tag>
+                      <code className='shrink-0 text-11px text-primary'>{finding.ruleId}</code>
+                      <span className='truncate text-11px text-t-secondary'>{finding.selector}</span>
+                    </div>
+                  }
+                >
+                  <div className='flex flex-col gap-8px text-12px'>
+                    <p className='m-0 text-t-primary'>{finding.detail}</p>
+                    {finding.measured || finding.expected ? (
+                      <div className='grid grid-cols-2 gap-8px'>
+                        <div className='rd-6px bg-fill-2 p-8px'>
+                          <div className='text-10px text-t-tertiary'>{t('ide.quicktest.uiAuditMeasured')}</div>
+                          <code className='text-11px text-t-primary'>{finding.measured || '—'}</code>
+                        </div>
+                        <div className='rd-6px bg-fill-2 p-8px'>
+                          <div className='text-10px text-t-tertiary'>{t('ide.quicktest.uiAuditExpected')}</div>
+                          <code className='text-11px text-t-primary'>{finding.expected || '—'}</code>
+                        </div>
+                      </div>
+                    ) : null}
+                    {finding.rect ? (
+                      <code className='text-11px text-t-secondary'>
+                        x={Math.round(finding.rect.x)}, y={Math.round(finding.rect.y)}, w=
+                        {Math.round(finding.rect.width)}, h={Math.round(finding.rect.height)}
+                      </code>
+                    ) : null}
+                    {finding.sourceFile ? (
+                      <div className='flex items-center gap-6px'>
+                        <FileCode theme='outline' size={13} className='text-primary' />
+                        <span className='text-10px text-t-tertiary'>{t('ide.quicktest.uiAuditSource')}</span>
+                        <code className='break-all text-11px text-t-secondary'>
+                          {finding.sourceFile}
+                          {finding.sourceLine ? ':' + finding.sourceLine : ''}
+                        </code>
+                      </div>
+                    ) : null}
+                  </div>
+                </Collapse.Item>
+              ))}
+            </Collapse>
+          )}
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
 /** Error state. */
 const ErrorBody: React.FC<{ message: string | null; onRetry: () => void }> = ({ message, onRetry }) => {
   const { t } = useTranslation();
@@ -733,6 +1342,21 @@ const PLATFORM_META: Record<RunPlatform, { labelKey: string }> = {
   web: { labelKey: 'ide.quicktest.platformWeb' },
   desktop: { labelKey: 'ide.quickrun.platformDesktop' },
   android: { labelKey: 'ide.quicktest.platformAndroid' },
+};
+
+const RUN_MODE_KEYS: Record<QuickRunMode, string> = {
+  interface: 'ide.quickrun.modeInterface',
+  full: 'ide.quickrun.modeFull',
+  custom: 'ide.quickrun.modeCustom',
+};
+
+const SERVICE_KIND_KEYS: Record<RunServiceKind, string> = {
+  frontend: 'ide.quickrun.serviceFrontend',
+  backend: 'ide.quickrun.serviceBackend',
+  ai: 'ide.quickrun.serviceAi',
+  database: 'ide.quickrun.serviceDatabase',
+  worker: 'ide.quickrun.serviceWorker',
+  other: 'ide.quickrun.serviceOther',
 };
 
 /** Small status label for where Quick Test got its run setup from. */
@@ -821,11 +1445,56 @@ const QuickRunInlineEnd: React.FC<{
   disabled: boolean;
   railVisible: boolean;
   onToggleRail: () => void;
-}> = ({ run, disabled, railVisible, onToggleRail }) => {
+  onOverlayVisibleChange: (visible: boolean) => void;
+}> = ({ run, disabled, railVisible, onToggleRail, onOverlayVisibleChange }) => {
   const { t } = useTranslation();
   const busy = run.phase === 'launching' || run.phase === 'waiting';
   const selectedOption = run.options.find((o) => o.platform === run.selected);
   const statusText = quickRunStatusText(run, t);
+  const [runMode, setRunMode] = useState<QuickRunMode>('interface');
+  const [customVisible, setCustomVisible] = useState(false);
+  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [customServiceIds, setCustomServiceIds] = useState<string[]>([]);
+  const selectableServices = run.services.filter((service) => !service.orchestrator);
+
+  useEffect(() => {
+    onOverlayVisibleChange(dropdownVisible || customVisible);
+  }, [customVisible, dropdownVisible, onOverlayVisibleChange]);
+
+  useEffect(
+    () => () => {
+      onOverlayVisibleChange(false);
+    },
+    [onOverlayVisibleChange]
+  );
+
+  const selectRunMode = useCallback((mode: QuickRunMode): void => {
+    setRunMode(mode);
+    if (mode === 'custom') setCustomVisible(true);
+  }, []);
+
+  const runMenu = (
+    <Menu selectedKeys={[runMode]} onClickMenuItem={(key) => selectRunMode(key as QuickRunMode)}>
+      <Menu.Item key='interface'>
+        <div className='flex flex-col gap-1px py-2px'>
+          <span className='text-12px font-500 text-t-primary'>{t('ide.quickrun.modeInterface')}</span>
+          <span className='text-10px text-t-tertiary'>{t('ide.quickrun.modeInterfaceHint')}</span>
+        </div>
+      </Menu.Item>
+      <Menu.Item key='full'>
+        <div className='flex flex-col gap-1px py-2px'>
+          <span className='text-12px font-500 text-t-primary'>{t('ide.quickrun.modeFull')}</span>
+          <span className='text-10px text-t-tertiary'>{t('ide.quickrun.modeFullHint')}</span>
+        </div>
+      </Menu.Item>
+      <Menu.Item key='custom' disabled={selectableServices.length === 0}>
+        <div className='flex flex-col gap-1px py-2px'>
+          <span className='text-12px font-500 text-t-primary'>{t('ide.quickrun.modeCustom')}</span>
+          <span className='text-10px text-t-tertiary'>{t('ide.quickrun.modeCustomHint')}</span>
+        </div>
+      </Menu.Item>
+    </Menu>
+  );
 
   return (
     <div className='shrink-0 flex items-center gap-6px min-w-0'>
@@ -855,6 +1524,37 @@ const QuickRunInlineEnd: React.FC<{
         >
           {t('ide.quickrun.stop')}
         </Button>
+      ) : run.selected === 'web' ? (
+        <Button.Group>
+          <Button
+            size='mini'
+            type='primary'
+            icon={<Play theme='outline' size={11} />}
+            disabled={disabled || run.phase === 'loading'}
+            onClick={() =>
+              runMode === 'custom' && customServiceIds.length === 0
+                ? setCustomVisible(true)
+                : void run.run({ mode: runMode, serviceIds: customServiceIds })
+            }
+          >
+            {t(RUN_MODE_KEYS[runMode])}
+          </Button>
+          <Dropdown
+            droplist={runMenu}
+            trigger='click'
+            position='br'
+            popupVisible={dropdownVisible}
+            onVisibleChange={setDropdownVisible}
+          >
+            <Button
+              size='mini'
+              type='primary'
+              icon={<Down theme='outline' size={11} />}
+              disabled={disabled || run.phase === 'loading'}
+              aria-label={t('ide.quickrun.runOptions')}
+            />
+          </Dropdown>
+        </Button.Group>
       ) : (
         <Button
           size='mini'
@@ -866,6 +1566,56 @@ const QuickRunInlineEnd: React.FC<{
           {selectedOption?.saved ? t('ide.quickrun.runSaved') : t('ide.quickrun.run')}
         </Button>
       )}
+      <Modal
+        visible={customVisible}
+        title={t('ide.quickrun.customTitle')}
+        okText={t('ide.quickrun.runSelected')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ disabled: customServiceIds.length === 0 }}
+        onCancel={() => setCustomVisible(false)}
+        onOk={() => {
+          if (customServiceIds.length === 0) return;
+          setRunMode('custom');
+          setCustomVisible(false);
+          void run.run({ mode: 'custom', serviceIds: customServiceIds });
+        }}
+      >
+        <div className='flex flex-col gap-10px'>
+          <p className='m-0 text-12px leading-relaxed text-t-secondary'>{t('ide.quickrun.customHint')}</p>
+          <Checkbox
+            checked={customServiceIds.length > 0 && customServiceIds.length === selectableServices.length}
+            indeterminate={customServiceIds.length > 0 && customServiceIds.length < selectableServices.length}
+            onChange={(checked) => setCustomServiceIds(checked ? selectableServices.map((service) => service.id) : [])}
+          >
+            {t('ide.quickrun.selectAll')}
+          </Checkbox>
+          <div className='max-h-320px overflow-y-auto flex flex-col gap-6px'>
+            {selectableServices.map((service) => (
+              <Checkbox
+                key={service.id}
+                checked={customServiceIds.includes(service.id)}
+                onChange={(checked) =>
+                  setCustomServiceIds((current) =>
+                    checked ? [...current, service.id] : current.filter((id) => id !== service.id)
+                  )
+                }
+                className='w-full px-10px py-8px rd-6px border border-arco-2 bg-fill-1 hover:bg-fill-2 transition-colors'
+              >
+                <span className='inline-flex items-center gap-6px min-w-0'>
+                  <Tag
+                    size='small'
+                    color={service.kind === 'ai' ? 'purple' : service.kind === 'backend' ? 'orange' : 'arcoblue'}
+                  >
+                    {t(SERVICE_KIND_KEYS[service.kind])}
+                  </Tag>
+                  <span className='font-500 text-t-primary'>{service.name}</span>
+                  <span className='truncate text-10px text-t-tertiary'>{service.command}</span>
+                </span>
+              </Checkbox>
+            ))}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
@@ -888,6 +1638,10 @@ const QuickRunBar: React.FC<{
   const [manualCommand, setManualCommand] = useState('');
   const [manualUrl, setManualUrl] = useState('');
   const [manualCwd, setManualCwd] = useState('');
+
+  const [runMode, setRunMode] = useState<QuickRunMode>('interface');
+  const [customVisible, setCustomVisible] = useState(false);
+  const [customServiceIds, setCustomServiceIds] = useState<string[]>([]);
 
   // When the wiki has no run data, surface the manual form by default.
   useEffect(() => {
@@ -919,6 +1673,34 @@ const QuickRunBar: React.FC<{
       }
     },
     [run, supported, t]
+  );
+
+  const selectableServices = run.services.filter((service) => !service.orchestrator);
+  const selectRunMode = useCallback((mode: QuickRunMode): void => {
+    setRunMode(mode);
+    if (mode === 'custom') setCustomVisible(true);
+  }, []);
+  const runMenu = (
+    <Menu selectedKeys={[runMode]} onClickMenuItem={(key) => selectRunMode(key as QuickRunMode)}>
+      <Menu.Item key='interface'>
+        <div className='flex flex-col gap-1px py-2px'>
+          <span className='text-12px font-500 text-t-primary'>{t('ide.quickrun.modeInterface')}</span>
+          <span className='text-10px text-t-tertiary'>{t('ide.quickrun.modeInterfaceHint')}</span>
+        </div>
+      </Menu.Item>
+      <Menu.Item key='full'>
+        <div className='flex flex-col gap-1px py-2px'>
+          <span className='text-12px font-500 text-t-primary'>{t('ide.quickrun.modeFull')}</span>
+          <span className='text-10px text-t-tertiary'>{t('ide.quickrun.modeFullHint')}</span>
+        </div>
+      </Menu.Item>
+      <Menu.Item key='custom' disabled={selectableServices.length === 0}>
+        <div className='flex flex-col gap-1px py-2px'>
+          <span className='text-12px font-500 text-t-primary'>{t('ide.quickrun.modeCustom')}</span>
+          <span className='text-10px text-t-tertiary'>{t('ide.quickrun.modeCustomHint')}</span>
+        </div>
+      </Menu.Item>
+    </Menu>
   );
 
   const busy = run.phase === 'launching' || run.phase === 'waiting';
@@ -1006,6 +1788,31 @@ const QuickRunBar: React.FC<{
           >
             {t('ide.quickrun.stop')}
           </Button>
+        ) : run.selected === 'web' ? (
+          <Button.Group>
+            <Button
+              size='mini'
+              type='primary'
+              icon={<Play theme='outline' size={11} />}
+              disabled={disabled || run.phase === 'loading'}
+              onClick={() =>
+                runMode === 'custom' && customServiceIds.length === 0
+                  ? setCustomVisible(true)
+                  : void run.run({ mode: runMode, serviceIds: customServiceIds })
+              }
+            >
+              {t(RUN_MODE_KEYS[runMode])}
+            </Button>
+            <Dropdown droplist={runMenu} trigger='click' position='br'>
+              <Button
+                size='mini'
+                type='primary'
+                icon={<Down theme='outline' size={11} />}
+                disabled={disabled || run.phase === 'loading'}
+                aria-label={t('ide.quickrun.runOptions')}
+              />
+            </Dropdown>
+          </Button.Group>
         ) : (
           <Button
             size='mini'
@@ -1050,6 +1857,57 @@ const QuickRunBar: React.FC<{
           }}
         />
       ) : null}
+
+      <Modal
+        visible={customVisible}
+        title={t('ide.quickrun.customTitle')}
+        okText={t('ide.quickrun.runSelected')}
+        cancelText={t('common.cancel')}
+        okButtonProps={{ disabled: customServiceIds.length === 0 }}
+        onCancel={() => setCustomVisible(false)}
+        onOk={() => {
+          if (customServiceIds.length === 0) return;
+          setRunMode('custom');
+          setCustomVisible(false);
+          void run.run({ mode: 'custom', serviceIds: customServiceIds });
+        }}
+      >
+        <div className='flex flex-col gap-10px'>
+          <p className='m-0 text-12px leading-relaxed text-t-secondary'>{t('ide.quickrun.customHint')}</p>
+          <Checkbox
+            checked={customServiceIds.length > 0 && customServiceIds.length === selectableServices.length}
+            indeterminate={customServiceIds.length > 0 && customServiceIds.length < selectableServices.length}
+            onChange={(checked) => setCustomServiceIds(checked ? selectableServices.map((service) => service.id) : [])}
+          >
+            {t('ide.quickrun.selectAll')}
+          </Checkbox>
+          <div className='max-h-320px overflow-y-auto flex flex-col gap-6px'>
+            {selectableServices.map((service) => (
+              <Checkbox
+                key={service.id}
+                checked={customServiceIds.includes(service.id)}
+                onChange={(checked) =>
+                  setCustomServiceIds((current) =>
+                    checked ? [...current, service.id] : current.filter((id) => id !== service.id)
+                  )
+                }
+                className='w-full px-10px py-8px rd-6px border border-arco-2 bg-fill-1 hover:bg-fill-2 transition-colors'
+              >
+                <span className='inline-flex items-center gap-6px min-w-0'>
+                  <Tag
+                    size='small'
+                    color={service.kind === 'ai' ? 'purple' : service.kind === 'backend' ? 'orange' : 'arcoblue'}
+                  >
+                    {t(SERVICE_KIND_KEYS[service.kind])}
+                  </Tag>
+                  <span className='font-500 text-t-primary'>{service.name}</span>
+                  <span className='truncate text-10px text-t-tertiary'>{service.command}</span>
+                </span>
+              </Checkbox>
+            ))}
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
@@ -1127,33 +1985,124 @@ const ManualRunForm: React.FC<{
 const InspectBar: React.FC<{
   inspecting: boolean;
   picked: LocatedElement | null;
+  shots: InspectScreenshotResult[];
+  videos: InspectVideoResult[];
+  activeVideo: InspectVideoResult | null;
+  capturing: boolean;
+  videoBusy: boolean;
+  auditBusy: boolean;
   designRequest: string;
   disabled: boolean;
   onInspect: () => void;
   onCancel: () => void;
+  onScreenshot: (mode: InspectScreenshotMode) => void;
+  onAudit: () => void;
+  onVideoToggle: () => void;
   onDesignRequestChange: (v: string) => void;
   onAsk: () => void;
   onClearPick: () => void;
+  onRemoveScreenshot: (index: number) => void;
+  onRemoveVideo: (index: number) => void;
 }> = ({
   inspecting,
   picked,
+  shots,
+  videos,
+  activeVideo,
+  capturing,
+  videoBusy,
+  auditBusy,
   designRequest,
   disabled,
   onInspect,
   onCancel,
+  onScreenshot,
+  onAudit,
+  onVideoToggle,
   onDesignRequestChange,
   onAsk,
   onClearPick,
+  onRemoveScreenshot,
+  onRemoveVideo,
 }) => {
   const { t } = useTranslation();
+  const screenshotMenu = (
+    <Menu onClickMenuItem={(key) => onScreenshot(key as InspectScreenshotMode)}>
+      <Menu.Item key='viewport'>
+        <div className='min-h-38px flex items-center gap-9px !leading-normal'>
+          <span className='size-22px shrink-0 inline-flex items-center justify-center rd-5px bg-primary-light-1 leading-none'>
+            <Pic theme='outline' size={14} className='text-primary' style={{ lineHeight: 0 }} />
+          </span>
+          <div className='min-w-0 flex flex-col gap-1px !leading-normal'>
+            <span className='text-12px leading-16px font-500 text-t-primary'>
+              {t('ide.quicktest.screenshotViewport')}
+            </span>
+            <span className='text-10px leading-14px text-t-tertiary'>{t('ide.quicktest.screenshotViewportHint')}</span>
+          </div>
+        </div>
+      </Menu.Item>
+      <Menu.Item key='fullPage'>
+        <div className='min-h-38px flex items-center gap-9px !leading-normal'>
+          <span className='size-22px shrink-0 inline-flex items-center justify-center rd-5px bg-primary-light-1 leading-none'>
+            <FullScreen theme='outline' size={14} className='text-primary' style={{ lineHeight: 0 }} />
+          </span>
+          <div className='min-w-0 flex flex-col gap-1px !leading-normal'>
+            <span className='text-12px leading-16px font-500 text-t-primary'>
+              {t('ide.quicktest.screenshotFullPage')}
+            </span>
+            <span className='text-10px leading-14px text-t-tertiary'>{t('ide.quicktest.screenshotFullPageHint')}</span>
+          </div>
+        </div>
+      </Menu.Item>
+    </Menu>
+  );
   return (
     <div className='shrink-0 flex flex-col gap-8px px-16px py-10px border-b border-b-1 bg-fill-1'>
-      <div className='flex items-center gap-10px'>
+      <div className='flex items-center gap-6px flex-wrap'>
         <span className='flex items-center gap-6px text-11px font-600 uppercase tracking-wide text-t-tertiary'>
           <Click theme='outline' size={13} className='text-primary' />
           {t('ide.quicktest.inspectTitle')}
         </span>
         <div className='flex-1' />
+        <Button
+          size='small'
+          icon={<CheckOne theme='outline' size={13} />}
+          loading={auditBusy}
+          disabled={disabled || auditBusy}
+          title={disabled ? t('ide.quicktest.inspectNoTab') : t('ide.quicktest.uiAuditHint')}
+          onClick={onAudit}
+        >
+          {t('ide.quicktest.uiAudit')}
+        </Button>
+        <Button
+          size='small'
+          type={activeVideo ? 'primary' : 'secondary'}
+          status={activeVideo ? 'danger' : 'default'}
+          icon={
+            activeVideo ? (
+              <span className='size-8px rd-full bg-1 animate-pulse' aria-hidden />
+            ) : (
+              <Record theme='outline' size={13} />
+            )
+          }
+          loading={videoBusy}
+          disabled={(!activeVideo && disabled) || videoBusy}
+          title={disabled ? t('ide.quicktest.inspectNoTab') : t('ide.quicktest.recordVideoHint')}
+          onClick={onVideoToggle}
+        >
+          {t(activeVideo ? 'ide.quicktest.stopVideo' : 'ide.quicktest.recordVideo')}
+        </Button>
+        <Dropdown droplist={screenshotMenu} trigger='click' position='br'>
+          <Button
+            size='small'
+            icon={<Pic theme='outline' size={13} />}
+            loading={capturing}
+            disabled={disabled || capturing}
+            title={disabled ? t('ide.quicktest.inspectNoTab') : t('ide.quicktest.screenshotHint')}
+          >
+            {t('ide.quicktest.screenshot')}
+          </Button>
+        </Dropdown>
         {inspecting ? (
           <Button
             size='small'
@@ -1186,42 +2135,129 @@ const InspectBar: React.FC<{
         </span>
       ) : null}
 
-      {picked ? (
+      {picked || shots.length > 0 || videos.length > 0 || activeVideo ? (
         <div className='flex flex-col gap-8px px-10px py-9px rd-8px bg-1 border border-arco-2'>
-          <div className='flex items-center gap-8px'>
-            <FileCode theme='outline' size={13} className='shrink-0 text-t-tertiary' />
-            <span className='flex-1 truncate font-mono text-11px text-t-primary' title={picked.file ?? undefined}>
-              {picked.file
-                ? `${picked.file}${picked.line ? `:${picked.line}` : ''}`
-                : t('ide.quicktest.inspectUnresolved')}
-            </span>
-            <Tag size='small' className='shrink-0 !text-9px !px-5px !py-1px'>
-              {picked.resolvedBy === 'fiber-source'
-                ? t('ide.quicktest.inspectExact')
-                : picked.resolvedBy === 'token-match'
-                  ? t('ide.quicktest.inspectHeuristic')
-                  : t('ide.quicktest.inspectNone')}
-            </Tag>
-            <Button
-              size='mini'
-              type='text'
-              icon={<Close theme='outline' size={12} />}
-              onClick={onClearPick}
-              aria-label={t('ide.quicktest.inspectClear')}
-            />
-          </div>
-          <div className='flex flex-col gap-2px font-mono text-10px text-t-tertiary'>
-            <span className='truncate'>
-              {`<${picked.element.tagName}>`}
-              {picked.symbol ? ` · ${picked.symbol}` : ''}
-              {picked.element.text ? ` · "${picked.element.text.slice(0, 40)}"` : ''}
-            </span>
-            <span className='truncate'>
-              {`${Math.round(picked.element.rect.width)}×${Math.round(picked.element.rect.height)}`}
-              {picked.element.styles.color ? ` · ${picked.element.styles.color}` : ''}
-              {picked.element.styles.fontSize ? ` · ${picked.element.styles.fontSize}` : ''}
-            </span>
-          </div>
+          {picked ? (
+            <>
+              <div className='flex items-center gap-8px'>
+                <FileCode theme='outline' size={13} className='shrink-0 text-t-tertiary' />
+                <span className='flex-1 truncate font-mono text-11px text-t-primary' title={picked.file ?? undefined}>
+                  {picked.file
+                    ? `${picked.file}${picked.line ? `:${picked.line}` : ''}`
+                    : t('ide.quicktest.inspectUnresolved')}
+                </span>
+                <Tag size='small' className='shrink-0 !text-9px !px-5px !py-1px'>
+                  {picked.resolvedBy === 'fiber-source'
+                    ? t('ide.quicktest.inspectExact')
+                    : picked.resolvedBy === 'token-match'
+                      ? t('ide.quicktest.inspectHeuristic')
+                      : t('ide.quicktest.inspectNone')}
+                </Tag>
+                <Button
+                  size='mini'
+                  type='text'
+                  icon={<Close theme='outline' size={12} />}
+                  onClick={onClearPick}
+                  aria-label={t('ide.quicktest.inspectClear')}
+                />
+              </div>
+              <div className='flex flex-col gap-2px font-mono text-10px text-t-tertiary'>
+                <span className='truncate'>
+                  {`<${picked.element.tagName}>`}
+                  {picked.symbol ? ` · ${picked.symbol}` : ''}
+                  {picked.element.text ? ` · "${picked.element.text.slice(0, 40)}"` : ''}
+                </span>
+                <span className='truncate'>
+                  {`${Math.round(picked.element.rect.width)}×${Math.round(picked.element.rect.height)}`}
+                  {picked.element.styles.color ? ` · ${picked.element.styles.color}` : ''}
+                  {picked.element.styles.fontSize ? ` · ${picked.element.styles.fontSize}` : ''}
+                </span>
+              </div>
+            </>
+          ) : null}
+
+          {shots.length > 0 ? (
+            <div className='flex flex-col gap-7px'>
+              <div className='flex items-center gap-7px'>
+                <Pic theme='outline' size={13} className='shrink-0 text-primary' />
+                <span className='flex-1 text-11px font-500 text-t-primary'>
+                  {t('ide.quicktest.screenshotCaptured')} · {shots.length}
+                </span>
+              </div>
+              <div className='grid grid-cols-2 gap-6px'>
+                {shots.map((shot, index) => (
+                  <div
+                    key={shot.filePath}
+                    className='min-w-0 flex flex-col gap-4px rd-6px bg-fill-2 border border-arco-2 p-4px'
+                  >
+                    <div className='flex items-center gap-4px'>
+                      <Tag size='small' color='arcoblue' className='min-w-0 truncate'>
+                        {t(
+                          shot.mode === 'fullPage'
+                            ? 'ide.quicktest.screenshotFullPage'
+                            : 'ide.quicktest.screenshotViewport'
+                        )}
+                      </Tag>
+                      <div className='flex-1' />
+                      <Button
+                        size='mini'
+                        type='text'
+                        icon={<Close theme='outline' size={11} />}
+                        onClick={() => onRemoveScreenshot(index)}
+                        aria-label={t('ide.quicktest.screenshotRemove')}
+                      />
+                    </div>
+                    <div className='h-96px overflow-hidden flex items-center justify-center'>
+                      <Image
+                        src={shot.dataUrl}
+                        alt={t('ide.quicktest.screenshotPreviewAlt')}
+                        preview
+                        className='w-full h-full flex items-center justify-center [&_.arco-image-img]:w-full [&_.arco-image-img]:h-full [&_.arco-image-img]:object-contain'
+                      />
+                    </div>
+                    <span className='truncate font-mono text-9px text-t-tertiary' title={shot.filePath}>
+                      {shot.filePath}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {activeVideo || videos.length > 0 ? (
+            <div className='flex flex-col gap-6px'>
+              {activeVideo ? (
+                <div className='flex items-center gap-7px px-8px py-7px rd-6px bg-danger-light-1 border border-danger-light-3'>
+                  <span className='size-8px rd-full bg-danger animate-pulse' aria-hidden />
+                  <span className='text-11px font-500 text-danger'>{t('ide.quicktest.recordingVideo')}</span>
+                </div>
+              ) : null}
+              {videos.map((video, index) => (
+                <div
+                  key={video.filePath}
+                  className='flex items-center gap-7px px-8px py-7px rd-6px bg-fill-2 border border-arco-2'
+                >
+                  <VideoTwo theme='outline' size={14} className='shrink-0 text-primary' />
+                  <div className='min-w-0 flex-1 flex flex-col gap-2px'>
+                    <span className='text-11px font-500 text-t-primary'>
+                      {t('ide.quicktest.videoCaptured')} · {Math.max(1, Math.round(video.durationMs / 1000))}s
+                    </span>
+                    <span className='truncate font-mono text-9px text-t-tertiary' title={video.filePath}>
+                      {video.filePath}
+                    </span>
+                  </div>
+                  <Button
+                    size='mini'
+                    type='text'
+                    icon={<Close theme='outline' size={11} />}
+                    onClick={() => onRemoveVideo(index)}
+                    aria-label={t('ide.quicktest.videoRemove')}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : null}
+
           <Input.TextArea
             value={designRequest}
             onChange={onDesignRequestChange}

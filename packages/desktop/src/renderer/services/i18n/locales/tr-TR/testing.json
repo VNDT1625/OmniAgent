@@ -93,5 +93,67 @@
     "phase_done": "Adımlar hazır",
     "phase_error": "Oluşturma başarısız",
     "stepsCount": "{{count}} adım"
+  },
+  "runnerTab": "Test runner",
+  "core": {
+    "tab": "Core Test",
+    "title": "Experimental AI response core",
+    "subtitle": "AionCore yürütülebilir dosyası olmadan Codex app-server ve ACP uyumlu CLI bağlantılarını doğrudan doğrulayın.",
+    "transportNotice": "Doğrudan çoklu CLI Core",
+    "loadFailed": "Could not load agents.",
+    "selectTarget": "Select an AI target",
+    "noTargets": "No runnable AI targets were detected.",
+    "empty": "Choose a target and send a prompt to inspect the normalized response stream.",
+    "selectModel": "Select a model",
+    "agentDefault": "Agent default",
+    "selectWorkspace": "Çalışma alanı seç",
+    "workspacePlaceholder": "Çalışma alanı klasör yolu",
+    "recentWorkspaces": "Son çalışma alanları",
+    "chooseWorkspace": "Başka bir çalışma alanı seç",
+
+    "permissionReadOnly": "Read-only",
+    "permissionWorkspaceWrite": "Workspace Write",
+    "permissionFullAccess": "Full Access",
+    "fullAccessTitle": "Enable Full Access?",
+    "fullAccessWarning": "The agent may execute commands and modify files outside the selected workspace. Only enable this for a trusted agent and project.",
+    "enableFullAccess": "Enable Full Access",
+    "permissionRequestTitle": "Agent permission request",
+    "permissionRequestBody": "{{tool}} wants to perform a protected action.",
+    "permissionRequestDetail": "{{tool}} wants to perform a protected action: {{detail}}",
+    "permissionWaiting": "Waiting for permission: {{tool}}",
+    "allowOnce": "Allow once",
+    "deny": "Deny",
+    "unknownTool": "Unknown tool",
+
+    "newSession": "New conversation session",
+    "forkSession": "Fork",
+    "sessionForked": "A separate conversation branch was created.",
+    "sessionStatus": {
+      "idle": "Ready",
+      "running": "Running",
+      "completed": "Completed",
+      "interrupted": "Interrupted - resumable",
+      "error": "Failed - resumable",
+      "cancelled": "Cancelled"
+    },
+
+    "promptPlaceholder": "Ask the selected AI something...",
+    "ready": "Ready",
+    "connecting": "Connecting to the agent...",
+    "completed": "Response completed",
+    "failed": "The response failed.",
+    "cancelled": "Response cancelled",
+    "stop": "Stop",
+    "send": "Send",
+    "events": "Core events",
+    "noEvents": "Events will appear here.",
+    "kind": {
+      "builtin": "Built-in",
+      "acp": "ACP",
+      "cli": "CLI",
+      "remote": "Remote"
+    },
+    "bridgeUnavailable": "Core Test did not receive a response from the Main process. Restart the desktop app to load the new bridge.",
+    "retry": "Retry"
   }
 }

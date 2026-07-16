@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -347,37 +347,75 @@ const renderElementBlock = (located: LocatedElement, ordinal?: number): string[]
  * right `file:line`. An optional screenshot path is referenced so a
  * vision-capable agent can SEE the current layout. Pure.
  */
-export const renderMultiElementBrief = (items: LocatedElement[], request: string, screenshotPath?: string): string => {
-  if (items.length === 0) return '';
-  if (items.length === 1 && !screenshotPath) return renderElementBrief(items[0], request);
+export type ScreenshotEvidence = {
+  filePath: string;
+  mode: 'viewport' | 'fullPage';
+};
+
+export type VideoEvidence = {
+  filePath: string;
+  durationMs: number;
+};
+
+export const renderMultiElementBrief = (
+  items: LocatedElement[],
+  request: string,
+  screenshots: ScreenshotEvidence[] = [],
+  videos: VideoEvidence[] = []
+): string => {
+  const hasEvidence = screenshots.length > 0 || videos.length > 0;
+  if (items.length === 0 && !hasEvidence) return '';
+  if (items.length === 1 && !hasEvidence) return renderElementBrief(items[0], request);
 
   const trimmedRequest = request.trim();
-  const intro = trimmedRequest
-    ? [
-        `I picked ${items.length} elements in the live app and want this change applied across them:`,
-        '',
-        `> ${trimmedRequest}`,
-        '',
-      ]
-    : [`I picked ${items.length} elements in the live app. Here is exactly what and where each one is:`, ''];
+  const intro =
+    items.length === 0
+      ? trimmedRequest
+        ? ['I captured the live app and want help with this request:', '', `> ${trimmedRequest}`, '']
+        : ['I captured the live app so you can inspect its current visual state.', '']
+      : trimmedRequest
+        ? [
+            `I picked ${items.length} elements in the live app and want this change applied across them:`,
+            '',
+            `> ${trimmedRequest}`,
+            '',
+          ]
+        : [`I picked ${items.length} elements in the live app. Here is exactly what and where each one is:`, ''];
 
   const files = Array.from(new Set(items.map((it) => it.file).filter((f): f is string => Boolean(f))));
   const filesLine = files.length > 0 ? ['**Files involved:** ' + files.map((f) => `\`${f}\``).join(', '), ''] : [];
-
   const blocks = items.flatMap((it, i) => [...renderElementBlock(it, i + 1), '']);
-
-  const shot = screenshotPath
-    ? [
-        '### Screenshot',
-        `A screenshot of the current page was saved at \`${screenshotPath}\` — open it to see the live layout.`,
-        '',
-      ]
-    : [];
+  const shots =
+    screenshots.length > 0
+      ? [
+          '### Screenshots',
+          ...screenshots.map((shot, index) => {
+            const scope = shot.mode === 'fullPage' ? 'full-page' : 'visible-frame';
+            return `${index + 1}. ${scope}: \`${shot.filePath}\``;
+          }),
+          '_Open every screenshot with an image tool before answering._',
+          '',
+        ]
+      : [];
+  const recordings =
+    videos.length > 0
+      ? [
+          '### Screen recordings',
+          ...videos.map(
+            (video, index) =>
+              `${index + 1}. ${Math.max(1, Math.round(video.durationMs / 1000))}s: \`${video.filePath}\``
+          ),
+          '_Review the recordings before answering; extract representative frames if direct playback is unavailable._',
+          '',
+        ]
+      : [];
 
   const closing =
-    files.length > 0
-      ? '_Edit the files above. Respect the project UI stack (Arco + UnoCSS semantic tokens, i18n) — adjust tokens/utilities, not hardcoded values._'
-      : '_Some elements were not tied to a source file; use their selectors + styles above and rebuild the knowledge graph for precise mapping._';
+    items.length === 0
+      ? '_Use all visual evidence and inspect the repository files needed to answer or implement the request._'
+      : files.length > 0
+        ? '_Edit the files above. Respect the project UI stack (Arco + UnoCSS semantic tokens, i18n) — adjust tokens/utilities, not hardcoded values._'
+        : '_Some elements were not tied to a source file; use their selectors + styles above and rebuild the knowledge graph for precise mapping._';
 
-  return [...intro, ...filesLine, ...shot, ...blocks, closing].filter((l) => l !== '').join('\n');
+  return [...intro, ...filesLine, ...shots, ...recordings, ...blocks, closing].filter((line) => line !== '').join('\n');
 };

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -45,7 +45,7 @@ export const isHttpUrl = (url: string): boolean => {
 const FETCH_TIMEOUT_MS = 15_000;
 
 /** A browser-like UA — some hosts reject requests with no/unknown UA. */
-const USER_AGENT = 'Mozilla/5.0 (compatible; AionUi-News/1.0; +https://aionui.com)';
+const USER_AGENT = 'Mozilla/5.0 (compatible; TomniAgentic-News/1.0; +https://github.com/VNDT1625/OmniAgent)';
 
 /** Cap summary length so the store stays compact. */
 const MAX_SUMMARY_CHARS = 500;

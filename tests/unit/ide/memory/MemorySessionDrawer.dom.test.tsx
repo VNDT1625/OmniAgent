@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -31,6 +31,10 @@ let hookValue: {
 
 vi.mock('@/renderer/pages/studio/ide/memory/useIdeMemory', () => ({
   useIdeMemory: () => hookValue,
+}));
+
+vi.mock('@/renderer/pages/studio/ide/memory/AionrsContextPanel', () => ({
+  default: () => <div data-testid='aionrs-context-panel'>context panel</div>,
 }));
 
 import MemorySessionDrawer from '@/renderer/pages/studio/ide/memory/MemorySessionDrawer';
@@ -109,6 +113,25 @@ describe('MemorySessionDrawer', () => {
     };
     render(<MemorySessionDrawer memId='ide-mem-1' visible onClose={vi.fn()} />);
     expect(screen.getByText('ide.memory.empty')).toBeInTheDocument();
+  });
+
+  it('shows Context only for an AionRS conversation', () => {
+    const { rerender } = render(
+      <MemorySessionDrawer memId='ide-mem-1' conversationId='conv-1' conversationType='acp' visible onClose={vi.fn()} />
+    );
+    expect(screen.queryByText('ide.memory.tabs.context')).not.toBeInTheDocument();
+
+    rerender(
+      <MemorySessionDrawer
+        memId='ide-mem-1'
+        conversationId='conv-1'
+        conversationType='aionrs'
+        visible
+        onClose={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('ide.memory.tabs.context'));
+    expect(screen.getByTestId('aionrs-context-panel')).toBeInTheDocument();
   });
 
   it('refreshes when the refresh button is clicked', () => {

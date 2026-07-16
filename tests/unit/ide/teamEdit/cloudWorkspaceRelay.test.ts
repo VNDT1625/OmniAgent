@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -51,6 +51,8 @@ const makeFetch = (manifest: CloudWorkspaceManifest, records: RecordedRequest[])
   return async (url: string, init?: RequestInit): Promise<Response> => {
     records.push({ url, init });
     if (url.endsWith('/manifest')) return jsonResponse(manifest);
+    if (url.endsWith('/tickets') && init?.method === 'POST')
+      return jsonResponse({ ticket: 'socket-ticket', expiresAt: Date.now() + 60_000 });
     if (url.endsWith('/status'))
       return jsonResponse({
         manifest,
@@ -190,7 +192,7 @@ describe('cloudWorkspaceRelay', () => {
     expect(relay.getManifest()?.files['README.md']?.hash).toBe('hash-readme');
   });
 
-  it('sends bearer auth on HTTP and token metadata on WebSocket connect', async () => {
+  it('uses bearer auth to mint a one-time WebSocket ticket without exposing the token in the URL', async () => {
     RecordingWebSocket.urls = [];
     const records: RecordedRequest[] = [];
     const relay = createCloudWorkspaceRelayClient(
@@ -210,7 +212,8 @@ describe('cloudWorkspaceRelay', () => {
     await relay.connect();
 
     expect(records[0]?.init?.headers).toMatchObject({ authorization: 'Bearer secret-token' });
-    expect(RecordingWebSocket.urls[0]).toContain('token=secret-token');
+    expect(RecordingWebSocket.urls[0]).toContain('ticket=socket-ticket');
+    expect(RecordingWebSocket.urls[0]).not.toContain('secret-token');
     expect(RecordingWebSocket.urls[0]).toContain('clientId=client-a');
     expect(RecordingWebSocket.urls[0]).toContain('name=Alice');
   });

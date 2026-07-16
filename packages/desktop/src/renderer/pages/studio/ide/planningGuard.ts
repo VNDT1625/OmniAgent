@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -71,14 +71,6 @@ export const buildPlanningGuard = async (rootPath: string, userMessage: string):
   }
 
   const executeMatch = userMessage.trim().match(EXECUTE_PLAN_RE);
-  if (!executeMatch) {
-    // Ordinary turn (no /execute): skip the plan-claim/policy preflight and send
-    // the message untouched. The tool-preference rule is NOT appended per turn
-    // anymore — it is bound once into the session memory when the IDE chat tab
-    // opens (see useIdeChat), so the agent recalls it on demand via ide_memory_recall
-    // instead of every message carrying a noisy reminder.
-    return userMessage;
-  }
 
   let commandRunbook: SpecTaskRunbook | null = null;
   if (executeMatch) {
@@ -131,7 +123,7 @@ export const buildPlanningGuard = async (rootPath: string, userMessage: string):
     }
   }
 
-  if (isPlanningEnabled(rootPath)) {
+  if (executeMatch && isPlanningEnabled(rootPath)) {
     const statusResult = await ideClient.specStatus(rootPath).catch((): null => null);
     const status = statusResult?.ok ? statusResult.data : null;
     const _tasksResult = commandRunbook

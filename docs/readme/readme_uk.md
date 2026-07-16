@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/iOfficeAI/Omni?style=flat-square&color=32CD32" alt="Версія">
+  <img src="https://img.shields.io/github/v/release/VNDT1625/Omni?style=flat-square&color=32CD32" alt="Версія">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-32CD32?style=flat-square&logo=apache&logoColor=white" alt="Ліцензія">
   &nbsp;
@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/⬇️%20Завантажити-Останній%20реліз-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="Завантажити останній реліз" height="50">
   </a>
 </p>
@@ -86,12 +86,12 @@ Omni постачається з повноцінним рушієм AI-аген
 
 ### **Офісні асистенти — PPT, Word та Excel**
 
-Ці напрямки відповідають реальним можливостям додатка: пресети **Morph PPT** та навички **`pptx` / `docx` / `xlsx`** (див. пресети `assistant/` та `skills/` у репозиторії). Потрібні документи чи таблиці? Вбудований **[OfficeCLI](https://github.com/iOfficeAI/OfficeCli)** допомагає створювати PPT (Morph), Word (`.docx`) та Excel (`.xlsx/.xlsm/.csv`) швидше та надійніше.
+Ці напрямки відповідають реальним можливостям додатка: пресети **Morph PPT** та навички **`pptx` / `docx` / `xlsx`** (див. пресети `assistant/` та `skills/` у репозиторії). Потрібні документи чи таблиці? Вбудований **[OfficeCLI](https://github.com/VNDT1625/OfficeCli)** допомагає створювати PPT (Morph), Word (`.docx`) та Excel (`.xlsx/.xlsm/.csv`) швидше та надійніше.
 
 #### **Асистент PPT**
 
 > **Результат:** редагований Morph PPT (`.pptx`)
-> Плавні переходи між слайдами з анімацією Morph та цілісним сюжетом; працює на базі [OfficeCLI](https://github.com/iOfficeAI/OfficeCli).
+> Плавні переходи між слайдами з анімацією Morph та цілісним сюжетом; працює на базі [OfficeCLI](https://github.com/VNDT1625/OfficeCli).
 
 <table>
   <tr>
@@ -107,7 +107,7 @@ Omni постачається з повноцінним рушієм AI-аген
 #### **Асистент Word**
 
 > **Результат:** редагований Word (`.docx`)
-> Написання статей/дисертацій та редагування документів через навичку `docx`; працює на базі [OfficeCLI](https://github.com/iOfficeAI/OfficeCli).
+> Написання статей/дисертацій та редагування документів через навичку `docx`; працює на базі [OfficeCLI](https://github.com/VNDT1625/OfficeCli).
 
 <table>
   <tr>
@@ -123,7 +123,7 @@ Omni постачається з повноцінним рушієм AI-аген
 #### **Асистент Excel**
 
 > **Результат:** готовий Excel (`.xlsx/.xlsm/.csv`)
-> Генерація та оновлення таблиць через `xlsx` для аналізу, автоформатування та графіків; працює на базі [OfficeCLI](https://github.com/iOfficeAI/OfficeCli).
+> Генерація та оновлення таблиць через `xlsx` для аналізу, автоформатування та графіків; працює на базі [OfficeCLI](https://github.com/VNDT1625/OfficeCli).
 
 <table>
   <tr>
@@ -361,7 +361,7 @@ Omni — це **безкоштовний Multi-AI Agent десктоп**. На �
 ### Встановлення
 
 <p>
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/Завантажити-Останній%20реліз-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="Завантажити останній реліз" height="50">
   </a>
 </p>
@@ -391,8 +391,8 @@ brew install omni
   </a>
 </p>
 
-- [GitHub Discussions](https://github.com/iOfficeAI/Omni/discussions) — діліться ідеями
-- [Повідомити про проблему](https://github.com/iOfficeAI/Omni/issues) — баги та запити функцій
+- [GitHub Discussions](https://github.com/VNDT1625/Omni/discussions) — діліться ідеями
+- [Повідомити про проблему](https://github.com/VNDT1625/Omni/issues) — баги та запити функцій
 - [Discord](https://discord.gg/2QAwJn7Egx) — англомовна спільнота
 
 ### Внесок у проект
@@ -420,8 +420,8 @@ bun run test       # запустити юніт-тести
 ## Contributors
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=iOfficeAI/Omni&max=100" alt="Contributors" />
+  <a href="https://github.com/VNDT1625/Omni/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=VNDT1625/Omni&max=100" alt="Contributors" />
   </a>
 </p>
 

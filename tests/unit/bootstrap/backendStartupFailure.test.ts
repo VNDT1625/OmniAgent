@@ -9,8 +9,8 @@ describe('classifyBackendStartupFailure', () => {
     error.details = {
       stage: 'early_exit',
       stderrTail:
-        "/opt/AionUi/resources/bundled-aioncore/linux-x64/aioncore.bin: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found\n" +
-        "/opt/AionUi/resources/bundled-aioncore/linux-x64/aioncore.bin: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.32' not found",
+        "/opt/AionUi/resources/bundled-tomny-core/linux-x64/tomny-core.bin: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.34' not found\n" +
+        "/opt/AionUi/resources/bundled-tomny-core/linux-x64/tomny-core.bin: /lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.32' not found",
     };
 
     expect(classifyBackendStartupFailure(error)).toEqual({
@@ -57,7 +57,7 @@ describe('classifyBackendStartupFailure', () => {
 
     expect(classifyBackendStartupFailure(error)).toEqual({
       reason: 'backend_incomplete_installation',
-      missingResources: ['bundled-aioncore/', 'bundled-aioncore/win32-x64/'],
+      missingResources: ['bundled-tomny-core/', 'bundled-tomny-core/win32-x64/'],
     });
   });
 
@@ -69,7 +69,7 @@ describe('classifyBackendStartupFailure', () => {
       stage: 'resolve_binary',
       isPackaged: true,
       runtimeKey: 'win32-x64',
-      binaryName: 'aioncore.exe',
+      binaryName: 'tomny-core.exe',
       bundledDirExists: true,
       runtimeDirExists: true,
       resourcesDirEntries: [
@@ -77,7 +77,7 @@ describe('classifyBackendStartupFailure', () => {
         'app.asar',
         'app.asar.unpacked/',
         'app.png',
-        'bundled-aioncore/',
+        'bundled-tomny-core/',
         'elevate.exe',
         'manifest.webmanifest',
         'sw.js',
@@ -87,7 +87,7 @@ describe('classifyBackendStartupFailure', () => {
 
     expect(classifyBackendStartupFailure(error)).toEqual({
       reason: 'backend_incomplete_installation',
-      missingResources: ['bundled-aioncore/win32-x64/aioncore.exe'],
+      missingResources: ['bundled-tomny-core/win32-x64/tomny-core.exe'],
     });
   });
 });

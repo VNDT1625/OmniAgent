@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -61,7 +61,7 @@ const resolveMonitorDir = (): string => path.join(app.getPath('userData'), 'moni
  * Resolve the fork remote URL the publisher pushes fix branches to, from
  * `AIONUI_FIX_REMOTE`. Returns `undefined` when unset → the publisher stays in
  * safe "prepare branch + commit locally, do not push" mode. Never defaults to
- * the upstream `origin` (`iOfficeAI/AionUi`).
+ * the upstream `origin` (`VNDT1625/OmniAgent`).
  */
 const resolveForkUrl = (): string | undefined => {
   const url = process.env.AIONUI_FIX_REMOTE?.trim();

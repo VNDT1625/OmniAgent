@@ -56,6 +56,8 @@ const ALL_LEGACY_KEYS: ConfigKey[] = [
   'browser.openLinksInApp',
   'assistant.telegram.defaultModel',
   'assistant.telegram.agent',
+
+  'assistant.telegram.permissionMode',
   'assistant.lark.defaultModel',
   'assistant.lark.agent',
   'assistant.dingtalk.defaultModel',

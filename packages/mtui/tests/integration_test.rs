@@ -51,6 +51,133 @@ fn test_search_limit_truncates_matches() {
 }
 
 #[test]
+fn test_search_preview_preserves_utf8_boundaries() {
+    let dir = setup_test_env();
+    let file_path = dir.path().join("unicode.txt");
+    let content = format!("{} terminal\n", "ụ".repeat(110));
+    write_file(&file_path, &content);
+
+    let config = mtui::config::MtuiConfig::default();
+    let result = mtui::ops::search(dir.path(), &file_path, "terminal", 200, &config).unwrap();
+
+    assert_eq!(result.match_count, 1);
+    assert!(result.matches[0].preview.contains("terminal"));
+    assert!(result.matches[0].preview.is_char_boundary(0));
+}
+
+#[test]
+fn test_search_supports_regex_glob_ignore_case_and_context() {
+    let dir = setup_test_env();
+    let src = dir.path().join("src");
+    std::fs::create_dir_all(&src).unwrap();
+    write_file(&src.join("a.ts"), "before\nTODO First\nafter\n");
+    write_file(&src.join("b.js"), "TODO Second\n");
+
+    let config = mtui::config::MtuiConfig::default();
+    let result = mtui::ops::search_with_options(
+        dir.path(),
+        &src,
+        r"todo\s+\w+",
+        mtui::ops::SearchOptions {
+            limit: 20,
+            regex: true,
+            ignore_case: true,
+            include_globs: vec!["**/*.{ts,tsx}".to_string()],
+            context: 1,
+            ..mtui::ops::SearchOptions::default()
+        },
+        &config,
+    )
+    .unwrap();
+
+    assert_eq!(result.match_count, 1);
+    assert_eq!(result.scanned_match_count, 1);
+    assert_eq!(result.total_match_count, Some(1));
+    assert_eq!(result.file_count, 1);
+    assert_eq!(result.matches[0].file, "src/a.ts");
+    assert_eq!(result.matches[0].before, vec!["before"]);
+    assert_eq!(result.matches[0].after, vec!["after"]);
+}
+
+#[test]
+fn test_search_count_groups_matching_lines_by_file() {
+    let dir = setup_test_env();
+    write_file(&dir.path().join("a.txt"), "hit\nmiss\nhit\n");
+    write_file(&dir.path().join("b.txt"), "hit\n");
+
+    let config = mtui::config::MtuiConfig::default();
+    let result = mtui::ops::search_with_options(
+        dir.path(),
+        dir.path(),
+        "hit",
+        mtui::ops::SearchOptions {
+            limit: 20,
+            count: true,
+            ..mtui::ops::SearchOptions::default()
+        },
+        &config,
+    )
+    .unwrap();
+
+    assert_eq!(result.match_count, 3);
+    assert_eq!(result.file_count, 2);
+    assert_eq!(result.counts[0].matching_lines, 2);
+    assert_eq!(result.counts[1].matching_lines, 1);
+    assert!(result.matches.is_empty());
+}
+
+#[test]
+fn test_search_rejects_invalid_regex() {
+    let dir = setup_test_env();
+    write_file(&dir.path().join("a.txt"), "value\n");
+
+    let config = mtui::config::MtuiConfig::default();
+    let result = mtui::ops::search_with_options(
+        dir.path(),
+        dir.path(),
+        "[",
+        mtui::ops::SearchOptions {
+            limit: 20,
+            regex: true,
+            ..mtui::ops::SearchOptions::default()
+        },
+        &config,
+    );
+
+    assert!(matches!(
+        result,
+        Err(mtui::error::MtuiError::InvalidArgument { .. })
+    ));
+}
+
+// Compact JSON regression tests.
+#[test]
+fn test_map_json_omits_empty_collections_for_compact_agent_output() {
+    let dir = setup_test_env();
+    let src = dir.path().join("src");
+    std::fs::create_dir_all(&src).unwrap();
+    write_file(&src.join("main.rs"), "fn main() {}\n");
+
+    let result = mtui::understand::map_folder(dir.path(), &src, 10).unwrap();
+    let json = serde_json::to_value(result).unwrap();
+
+    assert!(json.get("files").is_some());
+    assert!(json.get("modules").is_none());
+    assert!(json.get("recommended_path").is_none());
+    assert!(json.get("related_folders").is_none());
+}
+
+#[test]
+fn test_stats_json_omits_empty_breakdowns() {
+    let dir = setup_test_env();
+    let result = mtui::analyze::run_stats(dir.path(), dir.path(), 100, 10).unwrap();
+    let json = serde_json::to_value(result).unwrap();
+
+    assert!(json.get("extensions").is_none());
+    assert!(json.get("largestFiles").is_none());
+}
+
+#[test]
 fn test_create_file() {
     let dir = setup_test_env();
     let file_path = dir.path().join("new_file.txt");
@@ -1258,6 +1385,56 @@ fn test_search_accepts_max_count_alias() {
 }
 
 #[test]
+fn test_wiki_query_returns_ranked_shared_project_knowledge() {
+    let dir = setup_test_env();
+    let wiki_dir = dir.path().join(".omni").join("wiki");
+    std::fs::create_dir_all(&wiki_dir).unwrap();
+    write_file(
+        &wiki_dir.join("wiki.json"),
+        r#"{
+          "version": 1,
+          "rootPath": "/repo",
+          "builtAt": 42,
+          "sections": [
+            {"id":"overview","titleKey":"overview","content":"A web application."},
+            {"id":"api","titleKey":"api","content":"The REST API is served by services/api on port 4000."}
+          ],
+          "keyFiles": ["services/api/package.json"],
+          "docReports": []
+        }"#,
+    );
+
+    let result = mtui::understand::wiki::query_wiki(dir.path(), "api", 3).unwrap();
+
+    assert_eq!(result.matches.len(), 1);
+    assert_eq!(result.matches[0].id, "api");
+    assert!(result.matches[0].content.contains("services/api"));
+}
+
+#[test]
+fn test_wiki_query_reports_when_the_project_wiki_has_not_been_built() {
+    let dir = setup_test_env();
+
+    let error = mtui::understand::wiki::query_wiki(dir.path(), "api", 3).unwrap_err();
+
+    assert!(matches!(error, mtui::error::MtuiError::FileNotFound { .. }));
+}
+
+#[test]
+fn test_cli_accepts_wiki_query_command() {
+    let cli =
+        <mtui::cli::Cli as clap::Parser>::try_parse_from(["mtui", "wiki", "api", "--limit", "2"])
+            .unwrap();
+
+    let mtui::cli::Commands::Wiki(args) = cli.command else {
+        panic!("expected wiki command");
+    };
+    assert_eq!(args.query, "api");
+    assert_eq!(args.limit, 2);
+}
+
+#[test]
+
 fn test_invalid_args_with_json_return_json_error() {
     let output = std::process::Command::new(env!("CARGO_BIN_EXE_mtui"))
         .args(["--json", "search", ".", "needle", "--definitely-invalid"])

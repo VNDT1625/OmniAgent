@@ -140,6 +140,14 @@ jobs:
       - name: Run postinstall
         run: bun run postinstall || true
 
+      - name: Setup Rust toolchain for MTUI
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache MTUI Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/mtui
+
       - name: Setup Windows native dependencies (for Windows only)
         if: startsWith(matrix.platform, 'windows')
         run: |
@@ -229,7 +237,7 @@ jobs:
         if: startsWith(matrix.platform, 'linux')
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential python3 python3-pip pkg-config libsqlite3-dev fakeroot dpkg-dev rpm libnss3-dev libatk-bridge2.0-dev libdrm2 libxkbcommon-dev libxss1 libatspi2.0-dev libgtk-3-dev libxrandr2 libasound2-dev
+          sudo apt-get install -y build-essential gcc-aarch64-linux-gnu g++-aarch64-linux-gnu python3 python3-pip pkg-config libsqlite3-dev fakeroot dpkg-dev rpm libnss3-dev libatk-bridge2.0-dev libdrm2 libxkbcommon-dev libxss1 libatspi2.0-dev libgtk-3-dev libxrandr2 libasound2-dev
 
       - name: Rebuild native modules for Electron (Windows)
         if: startsWith(matrix.platform, 'windows')
@@ -254,13 +262,13 @@ jobs:
           try {
           $prebuildResult = bun x --yes prebuild-install --runtime=electron --target=$electronVer --platform=win32 --arch=$arch --force 2>&1
             if ($LASTEXITCODE -eq 0) {
-              Write-Host "✅ prebuild-install succeeded"
+              Write-Host "? prebuild-install succeeded"
               $success = $true
             } else {
-              Write-Host "⚠️ prebuild-install exited with code $LASTEXITCODE"
+              Write-Host "?? prebuild-install exited with code $LASTEXITCODE"
             }
           } catch {
-            Write-Host "⚠️ prebuild-install failed: $_"
+            Write-Host "?? prebuild-install failed: $_"
           }
 
           # Step 2: Verify or fallback to electron-rebuild
@@ -271,11 +279,11 @@ jobs:
             try {
               bunx electron-rebuild -f -w better-sqlite3
               if ($LASTEXITCODE -eq 0) {
-                Write-Host "✅ electron-rebuild succeeded"
+                Write-Host "? electron-rebuild succeeded"
                 $success = $true
               }
             } catch {
-              Write-Host "❌ electron-rebuild failed: $_"
+              Write-Host "? electron-rebuild failed: $_"
             }
           }
 
@@ -284,15 +292,15 @@ jobs:
           Write-Host "Verifying native modules..."
           if (Test-Path $sqliteNode) {
             $size = [math]::Round((Get-Item $sqliteNode).Length / 1MB, 1)
-            Write-Host "✅ better-sqlite3 found: $sqliteNode ($size MB)"
+            Write-Host "? better-sqlite3 found: $sqliteNode ($size MB)"
           } else {
-            Write-Error "❌ better-sqlite3 native module not found at: $sqliteNode"
+            Write-Error "? better-sqlite3 native module not found at: $sqliteNode"
             exit 1
           }
 
           Write-Host ""
           Write-Host "=========================================="
-          Write-Host "✅ All critical native modules verified"
+          Write-Host "? All critical native modules verified"
           Write-Host "=========================================="
           exit 0
         env:
@@ -304,13 +312,17 @@ jobs:
           MSVS_VERSION: 2022
           GYP_MSVS_VERSION: 2022
 
-      - name: Prepare aioncore binary
+      - name: Prepare source-built Tomny Core
         shell: bash
-        run: node scripts/prepareAioncore.js
+        run: bun run prepare:core
         env:
-          # Version is pinned in repo-root package.json (aioncoreVersion).
-          # Set AIONUI_BACKEND_VERSION here only to override for ad-hoc builds.
+          # Source commit and version are pinned in repo-root package.json.
+          AIONUI_BACKEND_PLATFORM: ${{ startsWith(matrix.platform, 'windows') && 'win32' || startsWith(matrix.platform, 'macos') && 'darwin' || 'linux' }}
           AIONUI_BACKEND_ARCH: ${{ matrix.arch }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
+          AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -341,19 +353,19 @@ jobs:
         env:
           WINDOWS_BUILD_COMMAND: ${{ matrix.command }}
           # Node.js memory limit for vite bundling (prevents OOM during build)
-          # Node.js 内存限制，防止 vite 打包时内存不足
+          # Node.js ??????? vite ???????
           NODE_OPTIONS: '--max-old-space-size=8192'
-          # Target arch / 目标架构
+          # Target arch / ????
           npm_config_arch: ${{ matrix.arch }}
           npm_config_target_arch: ${{ matrix.arch }}
-          # Native module compilation / 原生模块编译
+          # Native module compilation / ??????
           npm_config_runtime: electron
           npm_config_disturl: https://electronjs.org/headers
           npm_config_build_from_source: true
           npm_config_cache: ${{ runner.temp }}/.npm
           ELECTRON_CACHE: ${{ runner.temp }}/.cache/electron
           ELECTRON_BUILDER_CACHE: ${{ runner.temp }}/.cache/electron-builder
-          # Signing & IDs / 签名与应用 ID 配置
+          # Signing & IDs / ????? ID ??
           APP_ID: ${{ secrets.APP_ID }}
           appleId: ${{ secrets.APPLE_ID }}
           appleIdPassword: ${{ secrets.APPLE_ID_PASSWORD }}
@@ -361,7 +373,7 @@ jobs:
           identity: ${{ secrets.IDENTITY }}
           CSC_NAME: ${{ secrets.IDENTITY }}
           CSC_IDENTITY_AUTO_DISCOVERY: false
-          # Windows build flags / Windows 构建参数
+          # Windows build flags / Windows ????
           MSVS_VERSION: 2022
           GYP_MSVS_VERSION: 2022
           WindowsTargetPlatformVersion: 10.0.19041.0
@@ -371,12 +383,12 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
-          # CI flag & GitHub token / CI 标识与 GitHub Token
+          # CI flag & GitHub token / CI ??? GitHub Token
           CI: true
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
       # Clean up any stale disk images before DMG creation (macOS only)
-      # 清理可能残留的磁盘镜像，避免 hdiutil "Device not configured" 错误
+      # ?????????????? hdiutil "Device not configured" ??
       - name: Clean up stale disk images (macOS only)
         if: startsWith(matrix.platform, 'macos')
         run: |
@@ -391,7 +403,7 @@ jobs:
           echo "Cleanup complete"
 
       # macOS: Build with notarization - DMG failure = CI failure, notarization failure = warning only
-      # macOS: 构建并公证 - DMG 失败 = CI 失败，公证失败 = 仅警告
+      # macOS: ????? - DMG ?? = CI ??????? = ???
       - name: Build with electron-builder (macOS)
         if: startsWith(matrix.platform, 'macos')
         id: macos-build
@@ -407,12 +419,12 @@ jobs:
           DMG_EXISTS=false
           if ls out/*.dmg 1>/dev/null 2>&1; then
             DMG_EXISTS=true
-            echo "✅ DMG created successfully"
+            echo "? DMG created successfully"
           fi
 
           # If build succeeded completely
           if [ $BUILD_EXIT_CODE -eq 0 ]; then
-            echo "✅ Build completed successfully"
+            echo "? Build completed successfully"
             echo "notarization_status=success" >> $GITHUB_OUTPUT
             exit 0
           fi
@@ -421,22 +433,22 @@ jobs:
           if [ "$DMG_EXISTS" = true ]; then
             # DMG exists but build failed - likely notarization issue
             if grep -qiE "notariz|staple" "${RUNNER_TEMP}/build.log"; then
-              echo "⚠️ DMG created but notarization failed"
+              echo "?? DMG created but notarization failed"
               echo "notarization_status=failed" >> $GITHUB_OUTPUT
               echo "::warning title=Notarization Failed::DMG was built and signed successfully, but **notarization failed**."
               echo "" >> $GITHUB_STEP_SUMMARY
-              echo "## ⚠️ Notarization Warning" >> $GITHUB_STEP_SUMMARY
+              echo "## ?? Notarization Warning" >> $GITHUB_STEP_SUMMARY
               echo "DMG was built and signed successfully, but **notarization failed**." >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
               echo "Users may see Gatekeeper warnings when opening the app for the first time." >> $GITHUB_STEP_SUMMARY
               echo "" >> $GITHUB_STEP_SUMMARY
-              echo "To fix: Right-click the app → Open → Open" >> $GITHUB_STEP_SUMMARY
+              echo "To fix: Right-click the app ? Open ? Open" >> $GITHUB_STEP_SUMMARY
               exit 0  # Allow CI to continue
             fi
           fi
 
           # DMG doesn't exist or other fatal error - fail CI
-          echo "❌ Build failed - DMG was not created"
+          echo "? Build failed - DMG was not created"
           echo "notarization_status=build_failed" >> $GITHUB_OUTPUT
           exit 1
         env:
@@ -466,7 +478,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
       # Linux: Standard build without special error handling
-      # Linux: 标准构建，无特殊错误处理
+      # Linux: ????????????
       - name: Build with electron-builder (Linux)
         if: startsWith(matrix.platform, 'linux')
         uses: nick-fields/retry@v3
@@ -494,7 +506,7 @@ jobs:
           CI: true
           GH_TOKEN: ${{ secrets.GH_TOKEN }}
 
-      # macOS 钥匙串清理
+      # macOS ?????
       - name: Clean up keychain (macOS only)
         if: startsWith(matrix.platform, 'macos') && always()
         run: |
@@ -503,25 +515,25 @@ jobs:
             echo "Temporary keychain deleted"
           fi
 
-      # macOS 构建失败通知
+      # macOS ??????
       # macOS build failure notification
       - name: Notify on macOS build failure
         if: startsWith(matrix.platform, 'macos') && failure()
         run: |
           echo "::error title=macOS Build Failed::Build failed. Check the logs for details."
           echo ""
-          echo "❌ macOS Build Failed"
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "? macOS Build Failed"
+          echo "?????????????????????????????????????????????????"
           echo ""
           echo "Common causes:"
-          echo "  • hdiutil/DMG creation failure (Device not configured)"
-          echo "  • Code signing issues"
-          echo "  • Notarization timeout"
-          echo "  • Out of memory (OOM)"
+          echo "  ? hdiutil/DMG creation failure (Device not configured)"
+          echo "  ? Code signing issues"
+          echo "  ? Notarization timeout"
+          echo "  ? Out of memory (OOM)"
           echo ""
           echo "Check the build logs above for the specific error."
           echo ""
-          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "?????????????????????????????????????????????????"
 
       - name: List build artifacts
         if: success() || failure()
@@ -540,7 +552,7 @@ jobs:
           fi
 
       # Verify desktop asar does not contain packages/web-cli/ contamination
-      # 验证桌面 asar 没有被 web-cli 代码污染
+      # ???? asar ??? web-cli ????
       - name: Verify desktop asar isolation
         if: >-
           success() &&
@@ -553,23 +565,59 @@ jobs:
             echo "::notice::No app.asar found for ${{ matrix.platform }}, skipping isolation check"
             exit 0
           fi
-          echo "Inspecting $ASAR for web-cli leakage..."
-          LEAK_COUNT=$(bunx @electron/asar list "$ASAR" 2>/dev/null | grep -cE '^/packages/web-cli(/|$)' || true)
-          if [ "$LEAK_COUNT" != "0" ]; then
-            echo "::error::Desktop asar contains $LEAK_COUNT web-cli entries:"
-            bunx @electron/asar list "$ASAR" | grep -E '^/packages/web-cli(/|$)' | head -20
+          echo "Verifying packaged app entries in $ASAR..."
+          ASAR_LIST="${RUNNER_TEMP}/asar-list-${{ matrix.platform }}.txt"
+          ASAR_LIST_NORMALIZED="${ASAR_LIST}.normalized"
+          bunx @electron/asar list "$ASAR" > "$ASAR_LIST"
+          tr '\\' '/' < "$ASAR_LIST" > "$ASAR_LIST_NORMALIZED"
+          for required in \
+            "^/package\.json$" \
+            "^/out/main/index\.js$" \
+            "^/out/renderer/index\.html$"
+          do
+            if ! grep -Eq "$required" "$ASAR_LIST_NORMALIZED"; then
+              echo "::error::Packaged app.asar is missing required entry matching: $required"
+              exit 1
+            fi
+          done
+          RENDERER_INDEX="${RUNNER_TEMP}/renderer-index-${{ matrix.platform }}.html"
+          bunx @electron/asar extract-file "$ASAR" out/renderer/index.html > "$RENDERER_INDEX"
+          if [ ! -s "$RENDERER_INDEX" ]; then
+            echo "::error::Packaged renderer entry is empty: out/renderer/index.html"
             exit 1
           fi
-          echo "✅ asar isolation verified: no packages/web-cli entries"
+          echo "packaged app entries verified"
+          echo "Inspecting $ASAR for web-cli leakage..."
+          LEAK_COUNT=$(grep -cE '^/packages/web-cli(/|$)' "$ASAR_LIST_NORMALIZED" || true)
+          if [ "$LEAK_COUNT" != "0" ]; then
+            echo "::error::Desktop asar contains $LEAK_COUNT web-cli entries:"
+            grep -E '^/packages/web-cli(/|$)' "$ASAR_LIST_NORMALIZED" | head -20
+            exit 1
+          fi
+          echo "? asar isolation verified: no packages/web-cli entries"
+
+      - name: Verify packaged MTUI runtime
+        if: >-
+          success() &&
+          (!startsWith(matrix.platform, 'windows') || steps.windows-build.outputs.result == 'success')
+        shell: bash
+        run: |
+          set -euo pipefail
+          MTUI_BINARY=$(find out -type f \( -path '*/resources/binaries/mtui' -o -path '*/resources/binaries/mtui.exe' \) -size +0c | head -n 1 || true)
+          if [ -z "$MTUI_BINARY" ]; then
+            echo "::error::Packaged app is missing the MTUI runtime for ${{ matrix.platform }}"
+            exit 1
+          fi
+          echo "MTUI: Packaged MTUI runtime verified: $MTUI_BINARY"
 
       # Upload artifacts when:
       # - Build succeeded (all platforms)
       # - macOS: notarization timeout but artifacts exist (handled in build step)
       # - Windows: only if windows-build step succeeded
-      # 上传产物条件：
-      # - 构建成功（所有平台）
-      # - macOS: 公证超时但有产物（已在构建步骤中处理）
-      # - Windows: 仅当 windows-build 步骤成功
+      # ???????
+      # - ??????????
+      # - macOS: ???????????????????
+      # - Windows: ?? windows-build ????
       - name: Clean up non-installer artifacts
         if: >-
           inputs.upload_installers_only && success() &&

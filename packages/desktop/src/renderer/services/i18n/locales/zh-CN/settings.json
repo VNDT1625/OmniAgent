@@ -817,6 +817,11 @@
     "revokeFailed": "撤销失败",
     "copyCode": "复制配对码",
     "agentDescTelegram": "用于与Channel进行对话",
+    "permissionMode": "权限模式",
+    "permissionModeDescTelegram": "选择 Telegram 是否在工具编辑文件或运行命令前请求确认",
+    "permissionModeSaved": "权限模式已保存",
+    "permissionModeSaveFailed": "保存权限模式失败",
+    "permissionModeUnavailable": "此 Agent 未提供权限模式",
     "autoFollowCliModel": "自动跟随CLI运行时的模型",
     "agentSwitched": "Agent 切换成功",
     "modelSwitched": "模型切换成功"

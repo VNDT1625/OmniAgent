@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  *
  * DOM tests for the production-grade, persistent Wiki panel of the merged IDE
@@ -59,6 +59,7 @@ const makeWiki = (overrides: Partial<UseRepoWiki>): UseRepoWiki => ({
   activeIndex: -1,
   load: vi.fn(() => Promise.resolve()),
   build: vi.fn(() => Promise.resolve()),
+  cancel: vi.fn(),
   reset: vi.fn(),
   ...overrides,
 });
@@ -91,6 +92,16 @@ describe('WikiPanel', () => {
     const wiki = makeWiki({ status: 'idle' });
     renderPanel(wiki);
     expect(wiki.load).toHaveBeenCalledWith('/repo');
+  });
+
+  it('keeps Wiki generation running when the panel unmounts', () => {
+    const wiki = makeWiki({ status: 'building' });
+    const { unmount } = renderPanel(wiki);
+
+    unmount();
+
+    expect(wiki.load).not.toHaveBeenCalled();
+    expect(wiki.cancel).not.toHaveBeenCalled();
   });
 
   it('shows the empty state and triggers build() with the picked model + language', async () => {

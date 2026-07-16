@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -55,13 +55,9 @@ interface AutoUpdateCheckParams {
 }
 
 const DEFAULT_REPO = 'VNDT1625/OmniAgent';
-const OFFICIAL_AIONUI_REPO = 'iOfficeAI/AionUi';
-const DEFAULT_USER_AGENT = 'AionUi';
+const DEFAULT_USER_AGENT = 'TomniAgentic';
 const ALLOWED_ASSET_EXTS = new Set(['.exe', '.msi', '.dmg', '.zip', '.deb', '.rpm']);
-const CDN_HOST = 'static.aionui.com';
-const CDN_BASE_URL = `https://${CDN_HOST}/releases`;
 const ALLOWED_DOWNLOAD_HOSTS = new Set<string>([
-  CDN_HOST,
   'github.com',
   'objects.githubusercontent.com',
   'github-releases.githubusercontent.com',
@@ -82,23 +78,10 @@ const normalizeTagToSemver = (tag: string): string | null => {
   return semver.valid(withoutV);
 };
 
-/**
- * Rewrite a GitHub release asset URL to the CDN URL for faster download.
- * The CDN path follows the fixed convention `{base}/{version}/{original-filename}`,
- * matching electron-builder's artifactName output, so no name conversion is needed.
- */
-const rewriteAssetUrlToCDN = (assetName: string, version: string): string => {
-  return `${CDN_BASE_URL}/${version}/${assetName}`;
-};
-
-const shouldUseOfficialCdn = (repo: string): boolean => repo.toLowerCase() === OFFICIAL_AIONUI_REPO.toLowerCase();
-
-const mapAsset = (asset: GitHubReleaseApiAsset, version: string, repo: string): GitHubReleaseAsset => {
-  const useCdn = shouldUseOfficialCdn(repo);
+const mapAsset = (asset: GitHubReleaseApiAsset): GitHubReleaseAsset => {
   return {
     name: asset.name,
-    url: useCdn ? rewriteAssetUrlToCDN(asset.name, version) : asset.browser_download_url,
-    fallbackUrl: useCdn ? asset.browser_download_url : undefined,
+    url: asset.browser_download_url,
     size: asset.size,
     contentType: asset.content_type,
   };
@@ -291,7 +274,7 @@ const mapRelease = (rel: GitHubReleaseApi, repo: string): UpdateReleaseInfo | nu
   const assets = (rel.assets || [])
     .filter((asset) => asset && asset.name && asset.browser_download_url)
     .filter((asset) => isAllowedAssetName(asset.name))
-    .map((asset) => mapAsset(asset, version, repo));
+    .map((asset) => mapAsset(asset));
 
   return {
     tagName: rel.tag_name,
@@ -622,7 +605,7 @@ export function initUpdateBridge(): void {
       params: AutoUpdateCheckParams
     ): Promise<{
       success: boolean;
-      data?: { updateInfo?: { version: string; releaseDate?: string; releaseNotes?: string } };
+      data?: { currentVersion: string; updateInfo?: { version: string; releaseDate?: string; releaseNotes?: string } };
       msg?: string;
     }> => {
       try {
@@ -637,6 +620,7 @@ export function initUpdateBridge(): void {
           return {
             success: true,
             data: {
+              currentVersion: app.getVersion(),
               updateInfo: {
                 version: result.updateInfo.version,
                 releaseDate: result.updateInfo.releaseDate,
@@ -646,7 +630,11 @@ export function initUpdateBridge(): void {
             },
           };
         }
-        return { success: result.success, msg: result.error };
+        return {
+          success: result.success,
+          data: result.success ? { currentVersion: app.getVersion() } : undefined,
+          msg: result.error,
+        };
       } catch (err: unknown) {
         return { success: false, msg: err instanceof Error ? err.message : String(err) };
       }

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -137,6 +137,7 @@ export const normalizeDraft = (draft: ExperienceEntryDraft, id: string, nowIso: 
     createdAt: nowIso,
     updatedAt: nowIso,
     projectId: draft.projectId.trim(),
+    scope: draft.scope ?? 'repo',
     sourceSessionId: draft.sourceSessionId,
     ...core,
     confidence: clampConfidence(draft.confidence),

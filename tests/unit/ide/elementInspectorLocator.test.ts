@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  *
  * Unit tests for elementInspectorLocator — the pure mapping core behind Quick
@@ -8,8 +8,17 @@
  * React fiber source) to the code that renders it, and renders an agent brief.
  */
 
+import { access, mkdir, mkdtemp, rm, utimes, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { locateElement, renderElementBrief, type PickedElement } from '@/process/ide/elementInspectorLocator';
+import { pruneInspectEvidence, resolveFullPageSize } from '@/process/ide/elementInspectorBridge';
+import {
+  locateElement,
+  renderElementBrief,
+  renderMultiElementBrief,
+  type PickedElement,
+} from '@/process/ide/elementInspectorLocator';
 import type { KnowledgeGraph } from '@/process/ide/understandTypes';
 
 const node = (id: string, layer: 'ui' | 'api' | 'service' | 'util' = 'ui', summary = '') => ({
@@ -149,5 +158,59 @@ describe('renderElementBrief', () => {
     const brief = renderElementBrief(located, 'make it bigger');
     expect(brief).toContain('could not be tied to a source file');
     expect(brief).toContain('rebuild the knowledge graph');
+  });
+});
+
+describe('pruneInspectEvidence', () => {
+  it('removes expired managed evidence without touching recent or unrelated files', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'aionui-inspect-'));
+    const dir = join(root, '.omni', 'inspect');
+    const oldShot = join(dir, 'shot-viewport-100.png');
+    const recentVideo = join(dir, 'recording-200.mp4');
+    const unrelated = join(dir, 'notes.txt');
+    const now = Date.now();
+    try {
+      await mkdir(dir, { recursive: true });
+      await Promise.all([writeFile(oldShot, 'old'), writeFile(recentVideo, 'recent'), writeFile(unrelated, 'keep')]);
+      await utimes(oldShot, new Date(now - 25 * 60 * 60 * 1000), new Date(now - 25 * 60 * 60 * 1000));
+
+      expect(await pruneInspectEvidence(root, now)).toBe(1);
+      await expect(access(oldShot)).rejects.toThrow();
+      await expect(Promise.all([access(recentVideo), access(unrelated)])).resolves.toEqual([undefined, undefined]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('resolveFullPageSize', () => {
+  it('uses the DOM scroll dimensions when layout metrics only report the viewport', () => {
+    expect(resolveFullPageSize({ width: 1440, height: 900 }, { width: 1440, height: 6000 })).toEqual({
+      width: 1440,
+      height: 6000,
+    });
+  });
+});
+
+describe('renderMultiElementBrief visual evidence', () => {
+  it('lists every screenshot and recording for the agent', () => {
+    const brief = renderMultiElementBrief(
+      [],
+      'check the mobile layout',
+      [
+        { filePath: 'C:/repo/.omni/inspect/frame.png', mode: 'viewport' },
+        { filePath: 'C:/repo/.omni/inspect/full.png', mode: 'fullPage' },
+      ],
+      [{ filePath: 'C:/repo/.omni/inspect/run.mp4', durationMs: 12_400 }]
+    );
+
+    expect(brief).toContain('> check the mobile layout');
+    expect(brief).toContain('visible-frame: `C:/repo/.omni/inspect/frame.png`');
+    expect(brief).toContain('full-page: `C:/repo/.omni/inspect/full.png`');
+    expect(brief).toContain('12s: `C:/repo/.omni/inspect/run.mp4`');
+  });
+
+  it('returns an empty brief when there is no element or visual evidence', () => {
+    expect(renderMultiElementBrief([], '')).toBe('');
   });
 });

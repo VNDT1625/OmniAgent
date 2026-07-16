@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -57,7 +57,7 @@ export type GithubTrendingDeps = {
 
 const API_URL = 'https://api.github.com/search/repositories';
 const FETCH_TIMEOUT_MS = 12_000;
-const USER_AGENT = 'AionUi-News/1.0 (+https://aionui.com)';
+const USER_AGENT = 'TomniAgentic-News/1.0 (+https://github.com/VNDT1625/OmniAgent)';
 /** Cache TTL — search results barely move minute-to-minute; 30 min is plenty. */
 const CACHE_TTL_MS = 30 * 60_000;
 const DEFAULT_LIMIT = 10;

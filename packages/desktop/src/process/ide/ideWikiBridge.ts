@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -37,7 +37,13 @@ import { bridge } from '@office-ai/platform';
 import { promises as fsp } from 'node:fs';
 import * as path from 'node:path';
 import { buildGraphFromFiles, collectRepoFiles, type RepoGraph } from './repoGraph';
-import { planWikiSections, selectKeyFiles, type KeyFile, type WikiSectionPlan } from './wikiPlanner';
+import {
+  buildRuntimeInventory,
+  planWikiSections,
+  selectKeyFiles,
+  type KeyFile,
+  type WikiSectionPlan,
+} from './wikiPlanner';
 import { classifyModelError, runIdeChat, type IdeChatMessage } from './ideProvider';
 
 /** IPC channel names for the IDE wiki surface (renderer-safe contract). */
@@ -107,7 +113,7 @@ const MAX_READABLE_TEXT_FILE_BYTES = 128_000;
 
 const isWikiTextFile = (relPath: string): boolean =>
   /\.(?:md|mdx|txt|rst|adoc|json|ya?ml|toml|xml|gradle|properties)$/i.test(relPath) ||
-  /(?:^|\/)(?:gemfile|dockerfile|makefile)$/i.test(relPath);
+  /(?:^|\/)(?:gemfile|dockerfile|makefile|justfile|procfile)$/i.test(relPath);
 
 const readTextFileCapped = async (filePath: string, maxBytes = MAX_READABLE_TEXT_FILE_BYTES): Promise<string> => {
   const handle = await fsp.open(filePath, 'r');
@@ -195,7 +201,9 @@ const runPlan = async (req: WikiPlanRequest): Promise<WikiPlan> => {
 
   const { graph, files, metaPaths } = await scan(rootPath, req.maxFiles);
   const keyFiles = selectKeyFiles(graph, metaPaths, KEY_FILE_LIMIT);
-  const digest = await buildDigest(rootPath, keyFiles, files);
+  const keyDigest = await buildDigest(rootPath, keyFiles, files);
+  const runtimeInventory = buildRuntimeInventory(files);
+  const digest = `${keyDigest}\n\n## Complete runtime inventory\n${runtimeInventory || '(no runtime manifests found)'}`;
   const sections = planWikiSections(graph, metaPaths);
   const groupCount = new Set(graph.nodes.map((n) => n.group)).size;
 

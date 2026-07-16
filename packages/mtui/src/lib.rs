@@ -1,3 +1,4 @@
+pub mod analyze;
 pub mod backup;
 pub mod cli;
 pub mod compact;

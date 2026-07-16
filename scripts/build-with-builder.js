@@ -105,12 +105,16 @@ function saveCurrentHash(hash) {
   } catch {}
 }
 
+function hasNonEmptyFile(filePath) {
+  return fs.existsSync(filePath) && fs.statSync(filePath).isFile() && fs.statSync(filePath).size > 0;
+}
+
 function viteBuildExists() {
   const outDir = path.resolve(__dirname, '../out');
   const mainDir = path.join(outDir, 'main');
   const rendererDir = path.join(outDir, 'renderer');
 
-  return fs.existsSync(path.join(mainDir, 'index.js')) && fs.existsSync(path.join(rendererDir, 'index.html'));
+  return hasNonEmptyFile(path.join(mainDir, 'index.js')) && hasNonEmptyFile(path.join(rendererDir, 'index.html'));
 }
 
 function shouldSkipViteBuild(skipViteFlag, forceFlag) {
@@ -441,12 +445,12 @@ try {
   const mainIndex = path.join(outDir, 'main', 'index.js');
   const rendererIndex = path.join(outDir, 'renderer', 'index.html');
 
-  if (!fs.existsSync(mainIndex)) {
-    throw new Error('Missing main entry: out/main/index.js');
+  if (!hasNonEmptyFile(mainIndex)) {
+    throw new Error('Missing or empty main entry: out/main/index.js');
   }
 
-  if (!fs.existsSync(rendererIndex)) {
-    throw new Error('Missing renderer entry: out/renderer/index.html');
+  if (!hasNonEmptyFile(rendererIndex)) {
+    throw new Error('Missing or empty renderer entry: out/renderer/index.html');
   }
 
   // If --pack-only, skip electron-builder distributable creation
@@ -455,15 +459,36 @@ try {
     return;
   }
 
-  // 5. Prepare aioncore binary (for packaged runtime usage)
-  const { prepareAioncore } = require('../packages/shared-scripts/src/prepare-aioncore.js');
-  const { resolveAioncoreVersion } = require('./resolveAioncoreVersion.js');
+  // 5. Build the MTUI runtime for the same architecture as the desktop package.
+  // Packaged code resolves it from process.resourcesPath/binaries.
+  if (multiArch) {
+    throw new Error('MTUI packaging requires one architecture per build invocation');
+  }
+  execSync(`node packages/mtui/scripts/prepare-binary.js --arch ${targetArch}`, {
+    stdio: 'inherit',
+    shell: process.platform === 'win32',
+    env: process.env,
+  });
+
+  // 5. Build the independent Tomny CLI used by the direct built-in adapter.
+  const { prepareTomnyCli } = require('../packages/shared-scripts/src/prepare-tomny-cli.js');
+  prepareTomnyCli({
+    projectRoot: path.resolve(__dirname, '..'),
+    platform: process.platform,
+    arch: targetArch,
+    version: packageJson.tomnyCliVersion,
+    commit: packageJson.tomnyCliCommit,
+  });
+
+  // 5. Build the source-owned Tomny Core compatibility runtime.
+  const { prepareTomnyCore } = require('../packages/shared-scripts/src/prepare-tomny-core.js');
   const projectRoot = path.resolve(__dirname, '..');
-  prepareAioncore({
+  prepareTomnyCore({
     projectRoot,
     platform: process.platform,
     arch: targetArch,
-    version: resolveAioncoreVersion(projectRoot),
+    version: packageJson.tomnyCoreVersion,
+    commit: packageJson.tomnyCoreCommit,
   });
 
   // 6. Prepare hub resources (index.json + extension zips for offline fallback)
@@ -529,7 +554,8 @@ try {
     // Multi-arch builds: Architecture detection not supported yet
   }
 
-  if (process.platform === 'win32' && builderArgs.includes('--win')) {
+  const skipPackCleanup = process.env.AIONUI_SKIP_PACK_CLEANUP === '1';
+  if (!skipPackCleanup && process.platform === 'win32' && builderArgs.includes('--win')) {
     const winUnpackedDir = path.join(outDir, 'win-unpacked');
     let cleaned = tryRemoveDir(winUnpackedDir);
     if (!cleaned) {
@@ -547,7 +573,7 @@ try {
   }
 
   const isWindowsBuild = builderArgs.includes('--win') || builderArgs.includes('--all');
-  if (isWindowsBuild) {
+  if (isWindowsBuild && !skipPackCleanup) {
     cleanupWindowsPackOutput();
   }
 

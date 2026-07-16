@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -154,7 +154,7 @@ const PeerWorkspace: React.FC<PeerWorkspaceProps> = ({ collab, onBack }) => {
 
   /** Switch the viewer to edit mode (claims lease on host). */
   const startEditing = useCallback(async (): Promise<void> => {
-    if (!peer || !openFile) return;
+    if (!peer?.peerCapabilities.write || !openFile) return;
     const res = await teamCollabClient.remoteClaim(peer.baseUrl, peer.token, openFile, 'peer-edit').catch((e): null => {
       Message.error(e instanceof Error ? e.message : String(e));
       return null;
@@ -183,7 +183,7 @@ const PeerWorkspace: React.FC<PeerWorkspaceProps> = ({ collab, onBack }) => {
 
   /** Save draft to host (full-file write under lease, then release). */
   const saveDraft = useCallback(async (): Promise<void> => {
-    if (!peer || !openFile) return;
+    if (!peer?.peerCapabilities.write || !openFile) return;
     setSaving(true);
     const res = await teamCollabClient.remoteWrite(peer.baseUrl, peer.token, openFile, draft).catch((e): null => {
       Message.error(e instanceof Error ? e.message : String(e));
@@ -317,11 +317,13 @@ const PeerWorkspace: React.FC<PeerWorkspaceProps> = ({ collab, onBack }) => {
                     size='mini'
                     icon={<Edit theme='outline' size={12} />}
                     onClick={() => void startEditing()}
-                    disabled={contentLoading || lockedSet.has(openFile)}
+                    disabled={contentLoading || lockedSet.has(openFile) || !peer.peerCapabilities.write}
                   >
-                    {lockedSet.has(openFile)
-                      ? t('ide.teamCollab.lockedByPeer', 'Đang bị peer khác giữ')
-                      : t('common.edit', 'Sửa')}
+                    {!peer.peerCapabilities.write
+                      ? t('ide.teamCollab.fileReadOnlyNote')
+                      : lockedSet.has(openFile)
+                        ? t('ide.teamCollab.lockedByPeer', 'Đang bị peer khác giữ')
+                        : t('common.edit', 'Sửa')}
                   </Button>
                 )}
               </div>
@@ -355,7 +357,10 @@ const PeerWorkspace: React.FC<PeerWorkspaceProps> = ({ collab, onBack }) => {
   );
 };
 
-export const RemotePeerChatPanel: React.FC<{ peer: PeerConnection; fullWidth?: boolean }> = ({ peer, fullWidth }) => {
+export const RemotePeerChatPanel: React.FC<{ peer: Omit<PeerConnection, 'peerCapabilities'>; fullWidth?: boolean }> = ({
+  peer,
+  fullWidth,
+}) => {
   const { t, i18n } = useTranslation();
   const chat = useRemoteIdeChat(peer);
   const { cliAgents, presetAssistants, isLoading } = useConversationAgents();

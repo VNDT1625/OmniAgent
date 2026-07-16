@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -38,7 +38,6 @@ import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conve
 import { warmupConversation } from '@/renderer/pages/conversation/utils/warmupConversation';
 import { usePreviewContext } from '@/renderer/pages/conversation/Preview';
 import { buildPlanningGuard } from '@/renderer/pages/studio/ide/planningGuard';
-import { withResponseLanguageDirective } from '@/renderer/services/i18n/responseLanguage';
 import {
   expandGoalCommand,
   isGoalOffCommand,
@@ -265,9 +264,10 @@ const AionrsSendBox: React.FC<{
         const guardedMessage = await buildPlanningGuard(workspacePath, baseModelMessage);
         // Goal Mode steering: bind every ordinary turn to the mandatory pipeline.
         const steeredMessage = withGoalSteeringDirective(guardedMessage, conversation_id);
-        // Keep the model replying in the app's active language even though the
-        // codebase/files are mostly English (the visible bubble keeps raw text).
-        const modelInput = withResponseLanguageDirective(steeredMessage, conversation_id);
+        // Do not persist UI-language steering in the AionRS transcript. It is
+        // visible in Context/History and makes ordinary user messages look
+        // synthetic; the agent can infer the reply language from the request.
+        const modelInput = steeredMessage;
 
         setWaitingResponse(true);
         void checkAndUpdateTitle(conversation_id, input);
@@ -699,7 +699,7 @@ const AionrsSendBox: React.FC<{
     }
     const continueInstruction =
       'Hãy tiếp tục công việc đang dở từ chỗ bị gián đoạn. / Continue the unfinished work from where it was interrupted.';
-    const modelInput = withResponseLanguageDirective(continueInstruction, conversation_id);
+    const modelInput = continueInstruction;
     setWaitingResponse(true);
     try {
       const res = await ipcBridge.conversation.sendMessage.invoke({

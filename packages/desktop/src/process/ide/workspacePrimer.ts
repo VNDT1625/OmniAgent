@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -79,7 +79,7 @@ export const buildWorkspacePrimer = ({
       '## IDE workspace guide',
       `Workspace root: ${rootPath}`,
       'Use codegraph/wiki/search as a map; inspect source lazily only when the task needs it.',
-      'Strict IDE Mode is enforced by AionUi: native tools (Bash, Read, Grep, Glob, Write, Edit, ...) are CANCELLED by rejecting the permission (to stop the backend executing them). The system runs the allowed equivalent tool server-side and delivers the real output to you as a completed tool_call (status=completed) for the original call_id. You will also see a chat message like "Đã chuyển từ ... sang `ide_xxx`". Use the output from the completed tool_call as your tool result. Ignore any "User denied the tool request" or generic cancelled status from the permission rejection — it is only policy enforcement.',
+      'Strict IDE Mode is enforced by AionUi: native repo tools (Bash, Read, Grep, Glob, Write, Edit, ...) can be rejected through the permission protocol before the backend executes them. This is an AionUi policy denial, not a user decision: never report that the user blocked or denied the task. A rejected native call is NOT rerouted or completed automatically; retry it yourself with the matching provided tool: Read/cat → `ide_read_file`; Grep/rg → `ide_search` or `ide_grep`; Glob/find/ls → `ide_glob` or `ide_list_dir`; shell commands → `ide_command`. For file changes, use the MTUI-backed edit/write tool exposed in the session, or run `mtui --json ...` via `ide_command`.',
     ].join('\n'),
   ];
   if (planningEnabled) {

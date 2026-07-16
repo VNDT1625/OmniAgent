@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -175,6 +175,8 @@ export const detectMtuiViolations = (
   return violations;
 };
 
+export const MTUI_POLICY_OPERATION_LIMIT = 10_000;
+
 export const checkMtuiPolicy = async (rootPath: string, changedPaths: readonly string[]): Promise<MtuiPolicyCheck> => {
   const status = await runMtuiInRoot(
     [
@@ -182,7 +184,7 @@ export const checkMtuiPolicy = async (rootPath: string, changedPaths: readonly s
       'policy',
       'status',
       '--limit',
-      '100',
+      String(MTUI_POLICY_OPERATION_LIMIT),
       '--violation-limit',
       '25',
       '--auto-session',
@@ -217,7 +219,10 @@ export const checkMtuiPolicy = async (rootPath: string, changedPaths: readonly s
     };
   }
 
-  const response = await runMtuiInRoot(['--json', 'history', 'operations', '--limit', '100'], rootPath);
+  const response = await runMtuiInRoot(
+    ['--json', 'history', 'operations', '--limit', String(MTUI_POLICY_OPERATION_LIMIT)],
+    rootPath
+  );
   const operations = response.ok ? operationsFromResponse(response) : [];
   const baselinePaths = await readPolicyBaseline(rootPath);
   const violations = detectMtuiViolations(rootPath, changedPaths, operations, baselinePaths);

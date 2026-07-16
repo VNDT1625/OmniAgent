@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -56,7 +56,16 @@ const jsonHeaders = (token: string): Record<string, string> => ({
 
 const parseJson = async <T>(response: Response): Promise<T> => {
   const text = await response.text();
-  if (!response.ok) throw new Error(text || `Relay request failed with HTTP ${response.status}.`);
+  if (!response.ok) {
+    let message = text || `Relay request failed with HTTP ${response.status}.`;
+    try {
+      const parsed = JSON.parse(text) as { error?: unknown };
+      if (typeof parsed.error === 'string') message = parsed.error;
+    } catch {
+      // Keep the relay's non-JSON response text.
+    }
+    throw new Error(message);
+  }
   return (text.length > 0 ? JSON.parse(text) : null) as T;
 };
 
@@ -124,6 +133,7 @@ export const createCloudWorkspaceRelayClient = (
 
   const applyRemoteOperation = (op: CloudWorkspaceOperation): void => {
     if (!manifest) throw new Error('Cannot apply cloud operation before manifest is loaded.');
+    if (op.seq !== undefined && op.seq <= manifest.seq) return;
     manifest = applyCloudWorkspaceOperation(manifest, op);
     setState({ lastAppliedSeq: manifest.seq });
     emit('operation', op, manifest);
@@ -151,7 +161,12 @@ export const createCloudWorkspaceRelayClient = (
 
   const catchUp = async (): Promise<void> => {
     if (!manifest) await fetchManifest();
+    const expectedSeq = (manifest?.seq ?? 0) + 1;
     const ops = await fetchOpsSince(manifest?.seq ?? 0);
+    if (ops.length > 0 && ops[0].seq !== expectedSeq) {
+      await fetchManifest();
+      return;
+    }
     for (const op of ops) applyRemoteOperation(op);
   };
 
@@ -205,8 +220,15 @@ export const createCloudWorkspaceRelayClient = (
     closed = false;
     setState({ state: reconnectAttempt > 0 ? 'reconnecting' : 'connecting', error: undefined });
     if (!manifest) await fetchManifest();
+    const { ticket } = await requestJson<{ ticket: string; expiresAt: number }>(
+      fetchImpl,
+      urls.tickets,
+      config.token,
+      requestTimeoutMs,
+      { method: 'POST' }
+    );
     const url = new URL(urls.connect);
-    url.searchParams.set('token', config.token);
+    url.searchParams.set('ticket', ticket);
     url.searchParams.set('clientId', config.clientId);
     if (config.displayName) url.searchParams.set('name', config.displayName);
     socket?.close();
@@ -244,29 +266,39 @@ export const createCloudWorkspaceRelayClient = (
     setState({ state: 'offline' });
   };
 
-  const appendOperation = async (op: CloudWorkspaceOperationDraft) => {
-    const currentSeq = manifest?.seq ?? syncState.lastAppliedSeq;
-    const pending = {
-      ...op,
-      workspaceId: config.workspaceId,
-      clientId: config.clientId,
-      baseSeq: currentSeq,
-      createdAt: Date.now(),
-    } as CloudWorkspaceOperation;
+  const appendOperation = async (op: CloudWorkspaceOperationDraft): Promise<CloudWorkspaceOperation> => {
     setState({ pendingOps: syncState.pendingOps + 1 });
+    let lastError: Error | undefined;
     try {
-      const accepted = await requestJson<CloudWorkspaceOperation>(
-        fetchImpl,
-        urls.appendOp,
-        config.token,
-        requestTimeoutMs,
-        {
-          method: 'POST',
-          body: JSON.stringify(pending),
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const pending = {
+          ...op,
+          protocolVersion: 2,
+          workspaceId: config.workspaceId,
+          clientId: config.clientId,
+          baseSeq: manifest?.seq ?? syncState.lastAppliedSeq,
+          createdAt: Date.now(),
+        } as CloudWorkspaceOperation;
+        try {
+          const accepted = await requestJson<CloudWorkspaceOperation>(
+            fetchImpl,
+            urls.appendOp,
+            config.token,
+            requestTimeoutMs,
+            {
+              method: 'POST',
+              body: JSON.stringify(pending),
+            }
+          );
+          applyRemoteOperation(accepted);
+          return accepted;
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          if (lastError.message.includes('base hash mismatch') || lastError.message.includes('lease')) throw lastError;
+          await catchUp().catch((): undefined => undefined);
         }
-      );
-      applyRemoteOperation(accepted);
-      return accepted;
+      }
+      throw lastError ?? new Error('Cloud operation failed after retries.');
     } finally {
       setState({ pendingOps: Math.max(0, syncState.pendingOps - 1) });
     }
@@ -372,8 +404,18 @@ export const createCloudWorkspaceFileAdapter = (relay: CloudWorkspaceRelayClient
   writeFile: async (path: string, content: string): Promise<CloudWorkspaceOperation> => {
     const relPath = normalizeCloudPath(path);
     return withCloudLease(relay, relPath, `${content.length} bytes`, async () => {
+      const current = relay.getManifest()?.files[relPath];
+      const baseHash = current && !current.deleted ? current.hash : null;
       const hash = await relay.uploadBlob(content);
-      return relay.appendOperation({ id: randomUUID(), type: 'file.write', path: relPath, hash, size: content.length });
+      return relay.appendOperation({
+        id: randomUUID(),
+        type: 'file.write',
+        path: relPath,
+        hash,
+        size: Buffer.byteLength(content, 'utf-8'),
+        baseHash,
+        encoding: 'utf8',
+      });
     });
   },
   editFile: async (path: string, oldText: string, newText: string): Promise<CloudWorkspaceOperation> => {
@@ -393,7 +435,9 @@ export const createCloudWorkspaceFileAdapter = (relay: CloudWorkspaceRelayClient
         oldText,
         newText,
         hash,
-        size: next.length,
+        size: Buffer.byteLength(next, 'utf-8'),
+        baseHash: relay.getManifest()?.files[relPath]?.hash ?? null,
+        encoding: 'utf8',
       });
     });
   },

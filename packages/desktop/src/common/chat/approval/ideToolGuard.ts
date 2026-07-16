@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -39,15 +39,8 @@ export const STRICT_IDE_CLAUDE_AGENT_DESCRIPTION =
  * tools (`ide_*`), the MTUI CLI, and the team coordination tools that also flow
  * through the MTUI gateway.
  */
-const ALLOWED_TOOL_PREFIXES = ['ide_', 'mtui', 'team_', 'db_'] as const;
-
-/**
- * IDE tools that are intentionally NOT exposed to agents as first-class choices.
- * They remain available to the renderer/router as internal compatibility
- * backends, but a direct MCP permission request for them is denied so agents use
- * semantic tools such as `ide_search` / `ide_context` instead.
- */
-const INTERNAL_ONLY_IDE_TOOLS = ['ide_grep', 'ide_glob'] as const;
+const ALLOWED_TOOL_PREFIXES = ['ide_', 'team_', 'db_'] as const;
+const ALLOWED_TOOL_NAMES = ['mtui', 'toolsearch'] as const;
 
 /** Common native tool names/titles that Strict IDE Mode must always block (case-insensitive after normalize). */
 const NATIVE_TOOL_MARKERS = [
@@ -84,6 +77,11 @@ const NATIVE_TOOL_MARKERS = [
   'search_file',
 ] as const;
 
+const isSafeMtuiShellCommand = (command: string | undefined): boolean => {
+  const value = command?.trim() ?? '';
+  return /^mtui(?:\.exe)?(?:\s|$)/i.test(value) && !/[;&|><`\r\n]|\$\(/.test(value);
+};
+
 const isNativeLikeTool = (rawName: string | undefined): boolean => {
   const name = normalize(rawName);
   if (!name) return false;
@@ -91,7 +89,10 @@ const isNativeLikeTool = (rawName: string | undefined): boolean => {
   // native, even though its name contains a substring like "search" (ide_search),
   // "read" (ide_read_file), "write" (team_write_file) or "edit" (team_edit_file).
   // Without this guard those allowed tools were wrongly flagged + blocked.
-  if (ALLOWED_TOOL_PREFIXES.some((prefix) => name === prefix || name.startsWith(prefix))) {
+  if (
+    ALLOWED_TOOL_NAMES.some((allowedName) => name === allowedName) ||
+    ALLOWED_TOOL_PREFIXES.some((prefix) => name.startsWith(prefix))
+  ) {
     return false;
   }
   // Use word-boundary-ish matching so a marker only matches as a whole token,
@@ -223,85 +224,54 @@ export type GuardPermissionOption = {
 /** Normalise an arbitrary identifier for prefix/exact matching. */
 const normalize = (value: string | undefined): string => (value ?? '').trim().toLowerCase();
 
-export const isInternalOnlyIdeTool = (rawName: string | undefined): boolean => {
-  const name = normalize(rawName);
-  return INTERNAL_ONLY_IDE_TOOLS.some((tool) => name === tool);
-};
-
 /**
  * Decide whether a tool name / identifier belongs to the allowed `ide_*` /
- * MTUI tooling. Matching is case-insensitive and prefix-based, but direct
- * requests for internal-only compatibility tools (`ide_grep`, `ide_glob`) are
- * rejected so agents cannot choose them over semantic repo intelligence tools.
+ * MTUI tooling. Matching is case-insensitive and prefix-based. Every `ide_*`
+ * tool advertised by the built-in MCP server is valid, including `ide_grep`
+ * and `ide_glob`.
  */
 export const isAllowedIdeTool = (rawName: string | undefined): boolean => {
   const name = normalize(rawName);
-  if (name.length === 0 || isInternalOnlyIdeTool(name)) return false;
-  return ALLOWED_TOOL_PREFIXES.some((prefix) => name === prefix || name.startsWith(prefix));
+  if (name.length === 0) return false;
+  return (
+    ALLOWED_TOOL_NAMES.some((allowedName) => name === allowedName) ||
+    ALLOWED_TOOL_PREFIXES.some((prefix) => name.startsWith(prefix))
+  );
 };
 
 /**
- * Extract every candidate identifier from a tool call that could reveal which
- * tool it is (explicit name, MCP server, title, or a leading shell token).
+ * Extract only fields that explicitly identify the requested tool. Permission
+ * metadata such as `kind`, commands, queries, paths, and actions describe what
+ * an already-identified tool will do and must not override its trusted identity.
  */
-const candidateNames = (toolCall: GuardToolCall | undefined): string[] => {
-  if (!toolCall) return [];
-  const names: string[] = [];
-  const push = (v: string | undefined): void => {
-    if (v && v.trim().length > 0) names.push(v.trim());
-  };
-  push(toolCall.raw_input?.tool_name);
-  push(toolCall.raw_input?.name);
-  push(toolCall.raw_input?.server);
-  push(toolCall.title);
-  push(toolCall.kind);
-  // Harvest ANY string values from raw_input for native detection (more aggressive).
-  // Many agents put command, path, action etc. here.
-  const raw = toolCall.raw_input;
-  if (raw && typeof raw === 'object') {
-    for (const val of Object.values(raw)) {
-      if (typeof val === 'string' && val.trim().length > 0) {
-        push(val);
-      }
-    }
-  }
-  return names;
-};
+const explicitToolNames = (toolCall: GuardToolCall): string[] =>
+  [toolCall.raw_input?.tool_name, toolCall.raw_input?.name, toolCall.title].filter(
+    (name): name is string => typeof name === 'string' && name.trim().length > 0
+  );
 
 /**
  * The core decision: should this tool call be ALLOWED under Strict IDE Mode?
  *
- * Defaults to DENY: a call is allowed only when at least one of its candidate
- * identifiers, or its MCP server, matches the IDE/MTUI whitelist. An unknown /
- * unidentifiable tool is denied — the safe default that guarantees the agent
- * cannot bypass the IDE tooling.
+ * An explicit IDE/MTUI gateway identity wins over generic permission metadata.
+ * Otherwise an explicitly native identity is denied, a trusted IDE MCP server is
+ * allowed, and unknown calls fail closed.
  */
 export const isToolCallAllowedInStrictMode = (toolCall: GuardToolCall | undefined): boolean => {
   if (!toolCall) return false;
 
+  // A native shell may act only as the transport for a single MTUI command.
+  // Shell chaining/substitution stays denied so Strict Mode cannot be bypassed.
+  if (isSafeMtuiShellCommand(toolCall.raw_input?.command)) return true;
+
+  const identities = explicitToolNames(toolCall);
+  const hasAllowedIdentity = identities.some((name) => isAllowedIdeTool(name));
+  const hasNativeIdentity = identities.some((name) => isNativeLikeTool(name));
+  if (hasNativeIdentity) return false;
+  if (hasAllowedIdentity) return true;
+  if (identities.length > 0) return false;
+
   const server = normalize(toolCall.raw_input?.server);
-  const names = candidateNames(toolCall);
-  if (names.some((name) => isInternalOnlyIdeTool(name))) {
-    return false;
-  }
-
-  // Explicitly force-deny anything that looks like a classic native tool
-  // (Glob, Bash, Read, Grep, etc.) even if server tag is present.
-  if (names.some((name) => isNativeLikeTool(name))) {
-    return false;
-  }
-
-  const isKnownIdeServer = server.length > 0 && ALLOWED_MCP_SERVERS.some((s) => server === s.toLowerCase());
-  if (isKnownIdeServer) {
-    // Server tag is a strong signal that this permission is for a tool served by
-    // our IDE plane. However, harden against leakage: only trust if we don't see native marker.
-    const hasNativeMarker = names.some((n) => isNativeLikeTool(n));
-    if (!hasNativeMarker) {
-      return true;
-    }
-  }
-
-  return names.some((name) => isAllowedIdeTool(name));
+  return server.length > 0 && ALLOWED_MCP_SERVERS.some((allowedServer) => server === allowedServer);
 };
 
 /**
@@ -341,9 +311,9 @@ export const buildRemapReason = (toolCall: GuardToolCall | undefined): string =>
   const toolLabel = stripWrapperPhrases(rawLabel) || rawLabel;
   const target = resolveRemapTarget(toolCall);
   if (target) {
-    return `🔁 Đã chuyển đổi theo Strict IDE Mode (từ "${toolLabel}" sang \`${target}\`)\nTool native bị phát hiện, đã tự động revert và chạy tool hệ thống. Kết quả đã gửi cho AI.`;
+    return `🚫 Strict IDE Mode đã chặn ${toolLabel} vì tool native không được phép trong workspace này. Hãy dùng \`${target}\` thay thế. Tool gốc không được chạy.`;
   }
-  return `cancelled: không được dùng tool native (không tìm thấy tool hệ thống tương ứng)`;
+  return '🚫 Strict IDE Mode đã chặn tool native vì không có ánh xạ an toàn. Hãy dùng tool ide_* phù hợp. Tool gốc không được chạy.';
 };
 
 /**

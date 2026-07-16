@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -97,7 +97,7 @@ import { ConversationHistoryProvider } from './hooks/context/ConversationHistory
 import HOC from './utils/ui/HOC';
 import type { BackendStartupFailureInfo } from '@/common/types/platform/electron';
 
-const AIONUI_DOWNLOAD_URL = 'https://www.aionui.com/';
+const TOMNI_DOWNLOAD_URL = 'https://github.com/VNDT1625/OmniAgent/';
 
 // Patch Korean locale with missing properties from English locale
 const koKRComplete = {
@@ -236,7 +236,7 @@ const BackendIncompleteInstallationScreen: React.FC = () => {
   const { openFeedback } = useFeedback();
 
   const handleDownload = () => {
-    window.open(AIONUI_DOWNLOAD_URL, '_blank', 'noopener,noreferrer');
+    window.open(TOMNI_DOWNLOAD_URL, '_blank', 'noopener,noreferrer');
   };
 
   const handleFeedback = () => {

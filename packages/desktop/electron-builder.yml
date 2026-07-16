@@ -109,9 +109,16 @@ extraResources:
     to: .
   - from: resources/app.png
     to: app.png
-  # aioncore binary (pre-compiled per platform/arch, ships its own bun runtime)
-  - from: resources/bundled-aioncore
-    to: bundled-aioncore
+
+  # MTUI policy/runtime binary, built for the target platform before packaging
+  - from: resources/binaries
+    to: binaries
+  # Source-built Tomny CLI used directly by the new core.
+  - from: resources/bundled-tomny-cli
+    to: bundled-tomny-cli
+  # Source-built Tomny Core compatibility runtime for REST, WebSocket, and services.
+  - from: resources/bundled-tomny-core
+    to: bundled-tomny-core
   - from: resources/hub
     to: hub
 win:

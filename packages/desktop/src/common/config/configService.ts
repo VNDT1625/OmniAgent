@@ -18,6 +18,15 @@ function getBaseUrl(): string {
   return `http://127.0.0.1:${port}`;
 }
 
+function configValuesEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  try {
+    return JSON.stringify(left) === JSON.stringify(right);
+  } catch {
+    return false;
+  }
+}
+
 async function fetchJson<T>(method: string, path: string, body?: unknown): Promise<T> {
   const url = `${getBaseUrl()}${path}`;
   const headers: Record<string, string> = {};
@@ -78,6 +87,23 @@ class ConfigServiceImpl {
 
   get<K extends ConfigKey>(key: K): ConfigKeyMap[K] | undefined {
     return this.cache.get(key) as ConfigKeyMap[K] | undefined;
+  }
+
+  async refresh<K extends ConfigKey>(key: K): Promise<ConfigKeyMap[K] | undefined> {
+    const data = await fetchJson<Record<string, unknown>>('GET', '/api/settings/client');
+    const nextValue = data?.[key] as ConfigKeyMap[K] | undefined;
+    const previousValue = this.get(key);
+
+    if (!configValuesEqual(previousValue, nextValue)) {
+      if (nextValue === undefined) {
+        this.cache.delete(key);
+      } else {
+        this.cache.set(key, nextValue);
+      }
+      this.notify(key, nextValue);
+    }
+
+    return nextValue;
   }
 
   async set<K extends ConfigKey>(key: K, value: ConfigKeyMap[K]): Promise<void> {

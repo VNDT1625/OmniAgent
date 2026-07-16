@@ -34,8 +34,8 @@ cd "$TEMP_DIR/aionui-web"
 #   ├── aionui-web           ← single compiled executable (no bin/, no dist/, no node_modules)
 #   ├── package.json         ← for version lookup
 #   ├── static/              ← SPA assets
-#   └── bundled-aioncore/<plat-arch>/...
-for dir in static bundled-aioncore; do
+#   └── bundled-tomny-core/<plat-arch>/...
+for dir in static bundled-tomny-core; do
   if [ ! -d "$dir" ]; then
     echo "❌ Missing $dir directory"
     exit 1
@@ -71,14 +71,14 @@ echo "✓ Version: $VERSION"
 # 5. Test backend binary
 echo ""
 echo "5. Checking backend binary..."
-BACKEND_DIR="bundled-aioncore/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/aarch64/arm64/; s/x86_64/x64/')"
-BACKEND_BINARY="$BACKEND_DIR/aioncore"
+BACKEND_DIR="bundled-tomny-core/$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/aarch64/arm64/; s/x86_64/x64/')"
+BACKEND_BINARY="$BACKEND_DIR/tomny-core"
 if [ ! -x "$BACKEND_BINARY" ]; then
   echo "❌ Backend binary missing or not executable: $BACKEND_BINARY"
   exit 1
 fi
-# aioncore has no --version flag. Read the pinned version from manifest.json
-# (which prepareAioncore writes at pack time) and use --help to confirm the
+# tomny-core has no --version flag. Read the pinned version from manifest.json
+# (which prepareTomnyCore writes at pack time) and use --help to confirm the
 # binary loads successfully on this platform's GLIBC / libstdc++ / etc.
 if [ -f "$BACKEND_DIR/manifest.json" ]; then
   BACKEND_VERSION=$(grep -o '"version"[[:space:]]*:[[:space:]]*"[^"]*"' "$BACKEND_DIR/manifest.json" | head -1 | sed 's/.*"\([^"]*\)"$/\1/')

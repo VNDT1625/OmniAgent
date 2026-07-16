@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -29,12 +29,17 @@ const OPTIONS: GuardPermissionOption[] = [
 ];
 
 describe('isAllowedIdeTool', () => {
-  it('allows public ide_*, mtui, team_, db_ tools and hides internal compatibility tools', () => {
+  it('allows every IDE tool advertised by the built-in MCP server', () => {
     expect(isAllowedIdeTool('ide_search')).toBe(true);
     expect(isAllowedIdeTool('IDE_Read')).toBe(true);
-    expect(isAllowedIdeTool('ide_grep')).toBe(false);
-    expect(isAllowedIdeTool('ide_glob')).toBe(false);
+    expect(isAllowedIdeTool('ide_grep')).toBe(true);
+    expect(isAllowedIdeTool('ide_glob')).toBe(true);
+  });
+
+  it('allows MTUI, team, and database gateway tools', () => {
     expect(isAllowedIdeTool('mtui')).toBe(true);
+    expect(isAllowedIdeTool('ToolSearch')).toBe(true);
+    expect(isAllowedIdeTool('toolsearch_extra')).toBe(false);
     expect(isAllowedIdeTool('team_write_file')).toBe(true);
     expect(isAllowedIdeTool('db_query')).toBe(true);
   });
@@ -54,14 +59,49 @@ describe('isToolCallAllowedInStrictMode', () => {
     expect(isToolCallAllowedInStrictMode({ raw_input: { server: 'aionui-ide' } })).toBe(true);
   });
 
-  it('denies direct internal-only tools even from the built-in IDE MCP server', () => {
-    expect(isToolCallAllowedInStrictMode({ raw_input: { server: 'aionui-ide', tool_name: 'ide_grep' } })).toBe(false);
-    expect(isToolCallAllowedInStrictMode({ raw_input: { server: 'aionui-ide', tool_name: 'ide_glob' } })).toBe(false);
+  it('allows ToolSearch so an agent can discover the provided IDE tools', () => {
+    expect(isToolCallAllowedInStrictMode({ title: 'ToolSearch' })).toBe(true);
+    expect(isToolCallAllowedInStrictMode({ raw_input: { tool_name: 'ToolSearch' } })).toBe(true);
   });
 
-  it('allows when any candidate name matches the whitelist', () => {
-    expect(isToolCallAllowedInStrictMode({ title: 'ide_map' })).toBe(true);
-    expect(isToolCallAllowedInStrictMode({ raw_input: { tool_name: 'mtui' } })).toBe(true);
+  it('allows advertised grep and glob tools from the built-in IDE MCP server', () => {
+    expect(isToolCallAllowedInStrictMode({ raw_input: { server: 'aionui-ide', tool_name: 'ide_grep' } })).toBe(true);
+    expect(isToolCallAllowedInStrictMode({ raw_input: { server: 'aionui-ide', tool_name: 'ide_glob' } })).toBe(true);
+  });
+
+  it('lets an explicit IDE identity override generic permission metadata', () => {
+    expect(isToolCallAllowedInStrictMode({ title: 'ide_search', kind: 'read', raw_input: { query: 'read' } })).toBe(
+      true
+    );
+    expect(
+      isToolCallAllowedInStrictMode({
+        raw_input: { tool_name: 'ide_command', command: 'mtui --json map intent read' },
+        kind: 'execute',
+      })
+    ).toBe(true);
+  });
+
+  it('lets explicit team and MTUI identities override generic native markers', () => {
+    expect(
+      isToolCallAllowedInStrictMode({ title: 'team_edit_file', kind: 'edit', raw_input: { action: 'edit' } })
+    ).toBe(true);
+    expect(isToolCallAllowedInStrictMode({ title: 'mtui', kind: 'execute', raw_input: { command: 'read' } })).toBe(
+      true
+    );
+  });
+
+  it('allows a native shell only as a safe MTUI transport', () => {
+    expect(isToolCallAllowedInStrictMode({ title: 'Bash', raw_input: { command: 'mtui --help' } })).toBe(true);
+    expect(
+      isToolCallAllowedInStrictMode({ title: 'Bash', raw_input: { command: 'mtui --json map intent "inspect repo"' } })
+    ).toBe(true);
+  });
+
+  it('denies MTUI shell commands with chaining or substitution', () => {
+    expect(isToolCallAllowedInStrictMode({ title: 'Bash', raw_input: { command: 'mtui --help && rm file' } })).toBe(
+      false
+    );
+    expect(isToolCallAllowedInStrictMode({ title: 'Bash', raw_input: { command: 'mtui read $(whoami)' } })).toBe(false);
   });
 
   it('denies a shell/edit tool', () => {
@@ -180,7 +220,8 @@ describe('buildRemapReason', () => {
     expect(msg).toContain('grep');
     expect(msg).toContain('ide_search');
     expect(msg).toContain('Strict IDE Mode');
-    expect(msg).toContain('chuyển');
+    expect(msg).toContain('Hãy dùng');
+    expect(msg).toContain('không được chạy');
   });
 
   it('falls back to a generic message for an unknown tool', () => {

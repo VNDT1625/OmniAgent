@@ -2674,6 +2674,7 @@ pub struct VerifyOptions {
     pub mode: String,
     pub program: String,
     pub args: Vec<String>,
+    pub cwd: Option<std::path::PathBuf>,
     pub spec: Option<String>,
     pub all: bool,
     pub profile: Option<String>,
@@ -2686,7 +2687,9 @@ pub struct VerifyResult {
     pub command: String,
     pub mode: String,
     pub program: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
+    pub cwd: String,
     pub risk_level: RiskLevel,
     pub passed: bool,
     pub exit_code: Option<i32>,
@@ -2743,6 +2746,7 @@ fn format_command_line(program: &str, args: &[String]) -> String {
 
 fn record_fallback_command_history(
     project_root: &Path,
+    cwd: &Path,
     command_line: &str,
     exit_code: i32,
     duration_ms: u128,
@@ -2754,7 +2758,7 @@ fn record_fallback_command_history(
         Ok(conn) => conn,
         Err(_) => return false,
     };
-    let cwd = project_root.display().to_string();
+    let cwd = cwd.display().to_string();
     crate::history::record_command(
         &conn,
         command_line,
@@ -2791,9 +2795,11 @@ pub fn run_verification(
     let started = std::time::Instant::now();
     let command_line = format_command_line(&options.program, &options.args);
     let risk_level = crate::safety::classify_command_risk(&command_line);
+    let execution_cwd = options.cwd.as_deref().unwrap_or(project_root);
+    let execution_cwd_string = execution_cwd.display().to_string();
     let output_result = std::process::Command::new(&options.program)
         .args(&options.args)
-        .current_dir(project_root)
+        .current_dir(execution_cwd)
         .output();
     let duration_ms = started.elapsed().as_millis();
     let (exit_code, passed, stdout, stderr) = match output_result {
@@ -2815,6 +2821,7 @@ pub fn run_verification(
     };
     let history_recorded = record_fallback_command_history(
         project_root,
+        execution_cwd,
         &command_line,
         exit_code.unwrap_or(-1),
         duration_ms,
@@ -2850,6 +2857,7 @@ pub fn run_verification(
         mode: options.mode,
         program: options.program,
         args: options.args,
+        cwd: execution_cwd_string,
         risk_level,
         passed,
         exit_code,
@@ -3102,8 +3110,17 @@ fn normalize_project_path_string(path: &Path) -> String {
 pub struct SearchResult {
     pub command: String,
     pub query: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub matches: Vec<SearchMatch>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub files: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub counts: Vec<SearchFileCount>,
     pub match_count: usize,
+    pub scanned_match_count: usize,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total_match_count: Option<usize>,
+    pub file_count: usize,
     pub limit: usize,
     pub truncated: bool,
 }
@@ -3114,13 +3131,182 @@ pub struct SearchMatch {
     pub line: usize,
     pub column: usize,
     pub preview: String,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub before: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub after: Vec<String>,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SearchFileCount {
+    pub file: String,
+    pub matching_lines: usize,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SearchOptions {
+    pub limit: usize,
+    pub regex: bool,
+    pub ignore_case: bool,
+    pub include_globs: Vec<String>,
+    pub exclude_globs: Vec<String>,
+    pub context: usize,
+    pub files_with_matches: bool,
+    pub count: bool,
+}
+
+fn compile_search_globs(patterns: &[String]) -> Result<Vec<glob::Pattern>, MtuiError> {
+    let mut compiled = Vec::new();
+    for pattern in patterns {
+        for expanded in expand_brace_glob(pattern) {
+            compiled.push(glob::Pattern::new(&expanded).map_err(|error| {
+                MtuiError::InvalidArgument {
+                    message: format!("Invalid glob `{pattern}`: {error}"),
+                    suggestion: "Use a valid glob such as `**/*.ts` or `**/*.{ts,tsx}`".to_string(),
+                }
+            })?);
+        }
+    }
+    Ok(compiled)
+}
+
+fn expand_brace_glob(pattern: &str) -> Vec<String> {
+    let Some(open) = pattern.find('{') else {
+        return vec![pattern.to_string()];
+    };
+    let Some(relative_close) = pattern[open + 1..].find('}') else {
+        return vec![pattern.to_string()];
+    };
+    let close = open + 1 + relative_close;
+    let alternatives = pattern[open + 1..close].split(',').collect::<Vec<_>>();
+    if alternatives.len() < 2 || alternatives.iter().any(|item| item.is_empty()) {
+        return vec![pattern.to_string()];
+    }
+
+    alternatives
+        .into_iter()
+        .flat_map(|alternative| {
+            let expanded = format!(
+                "{}{}{}",
+                &pattern[..open],
+                alternative,
+                &pattern[close + 1..]
+            );
+            expand_brace_glob(&expanded)
+        })
+        .collect()
+}
+
+fn glob_matches(pattern: &glob::Pattern, relative: &str) -> bool {
+    pattern.matches(relative)
+        || relative
+            .rsplit('/')
+            .next()
+            .map(|name| pattern.matches(name))
+            .unwrap_or(false)
+}
+
+fn search_path_allowed(
+    project_root: &Path,
+    path: &Path,
+    includes: &[glob::Pattern],
+    excludes: &[glob::Pattern],
+) -> bool {
+    let relative = display_project_path(project_root, path).replace('\\', "/");
+    (includes.is_empty()
+        || includes
+            .iter()
+            .any(|pattern| glob_matches(pattern, &relative)))
+        && !excludes
+            .iter()
+            .any(|pattern| glob_matches(pattern, &relative))
+}
+
+fn search_regex(query: &str, options: &SearchOptions) -> Result<regex::Regex, MtuiError> {
+    let expression = if options.regex {
+        query.to_string()
+    } else {
+        regex::escape(query)
+    };
+    regex::RegexBuilder::new(&expression)
+        .case_insensitive(options.ignore_case)
+        .build()
+        .map_err(|error| MtuiError::InvalidArgument {
+            message: format!("Invalid search expression: {error}"),
+            suggestion: "Fix the regular expression or omit --regex for literal search".to_string(),
+        })
+}
+
+fn search_one_file(
+    project_root: &Path,
+    path: &Path,
+    matcher: &regex::Regex,
+    options: &SearchOptions,
+) -> Result<(Vec<SearchMatch>, usize), MtuiError> {
+    let content = crate::safety::check_not_binary(path)?;
+    let text = String::from_utf8(content).map_err(|_| MtuiError::EncodingError {
+        message: format!("File is not valid UTF-8: {}", path.display()),
+        suggestion: "MTUI only searches UTF-8 text files".to_string(),
+    })?;
+    let lines = text.lines().collect::<Vec<_>>();
+    let display_path = display_project_path(project_root, path);
+    let mut matches = Vec::new();
+    let mut matching_lines = 0usize;
+
+    for (line_idx, line) in lines.iter().enumerate() {
+        let Some(found) = matcher.find(line) else {
+            continue;
+        };
+        matching_lines += 1;
+        if options.count || options.files_with_matches || matches.len() >= options.limit.max(1) {
+            continue;
+        }
+        let context_start = line_idx.saturating_sub(options.context);
+        let context_end = (line_idx + options.context + 1).min(lines.len());
+        matches.push(SearchMatch {
+            file: display_path.clone(),
+            line: line_idx + 1,
+            column: line[..found.start()].chars().count() + 1,
+            preview: search_preview(line, found.start(), found.end() - found.start()),
+            before: lines[context_start..line_idx]
+                .iter()
+                .map(|line| (*line).to_string())
+                .collect(),
+            after: lines[line_idx + 1..context_end]
+                .iter()
+                .map(|line| (*line).to_string())
+                .collect(),
+        });
+    }
+    Ok((matches, matching_lines))
+}
+
+#[allow(dead_code)]
 pub fn search(
     project_root: &Path,
     path: &Path,
     query: &str,
     limit: usize,
+    config: &crate::config::MtuiConfig,
+) -> Result<SearchResult, MtuiError> {
+    search_with_options(
+        project_root,
+        path,
+        query,
+        SearchOptions {
+            limit,
+            ..SearchOptions::default()
+        },
+        config,
+    )
+}
+
+pub fn search_with_options(
+    project_root: &Path,
+    path: &Path,
+    query: &str,
+    options: SearchOptions,
     _config: &crate::config::MtuiConfig,
 ) -> Result<SearchResult, MtuiError> {
     let search_path = if path.is_absolute() {
@@ -3136,90 +3322,70 @@ pub fn search(
         });
     }
 
-    let limit = limit.max(1);
+    let limit = options.limit.max(1);
+    let matcher = search_regex(query, &options)?;
+    let includes = compile_search_globs(&options.include_globs)?;
+    let excludes = compile_search_globs(&options.exclude_globs)?;
     let mut matches = Vec::new();
+    let mut files = Vec::new();
+    let mut counts = Vec::new();
+    let mut total_match_count = 0usize;
     let mut truncated = false;
 
-    if search_path.is_file() {
-        let content = crate::safety::check_not_binary(&search_path)?;
-        let text = String::from_utf8(content).map_err(|_| MtuiError::EncodingError {
-            message: "File is not valid UTF-8".to_string(),
-            suggestion: "MTUI only supports UTF-8 files".to_string(),
-        })?;
-
-        for (line_idx, line) in text.lines().enumerate() {
-            if let Some(col) = line.find(query) {
-                let preview = if line.len() > 200 {
-                    let start = col.saturating_sub(20);
-                    let end = (col + query.len() + 50).min(line.len());
-                    line[start..end].to_string()
-                } else {
-                    line.to_string()
-                };
-
-                matches.push(SearchMatch {
-                    file: search_path.display().to_string(),
-                    line: line_idx + 1,
-                    column: col + 1,
-                    preview,
-                });
-
-                if matches.len() >= limit {
-                    truncated = true;
-                    break;
-                }
-            }
-        }
-    } else if search_path.is_dir() {
-        for entry in walkdir::WalkDir::new(&search_path)
+    let candidate_paths = if search_path.is_file() {
+        vec![search_path.clone()]
+    } else {
+        walkdir::WalkDir::new(&search_path)
             .into_iter()
             .filter_entry(|entry| {
                 !entry.file_type().is_dir() || !should_skip_search_dir(entry.path())
             })
             .filter_map(|e| e.ok())
+            .filter(|entry| entry.file_type().is_file())
+            .map(|entry| entry.path().to_path_buf())
+            .collect::<Vec<_>>()
+    };
+
+    for entry_path in candidate_paths {
+        if should_skip_search_file(&entry_path)
+            || !search_path_allowed(project_root, &entry_path, &includes, &excludes)
         {
-            if !entry.file_type().is_file() {
-                continue;
+            continue;
+        }
+        let Ok((file_matches, matching_lines)) =
+            search_one_file(project_root, &entry_path, &matcher, &options)
+        else {
+            continue;
+        };
+        if matching_lines == 0 {
+            continue;
+        }
+        total_match_count += matching_lines;
+        let display_path = display_project_path(project_root, &entry_path);
+        if options.files_with_matches {
+            if files.len() >= limit {
+                truncated = true;
+                break;
             }
-            let entry_path = entry.path();
-
-            if should_skip_search_file(entry_path) {
-                continue;
+            files.push(display_path);
+        } else if options.count {
+            if counts.len() >= limit {
+                truncated = true;
+                break;
             }
-
-            let Ok(bytes) = std::fs::read(entry_path) else {
-                continue;
-            };
-            if crate::safety::is_binary(&bytes) {
-                continue;
+            counts.push(SearchFileCount {
+                file: display_path,
+                matching_lines,
+            });
+        } else {
+            let remaining = limit.saturating_sub(matches.len());
+            if matching_lines > file_matches.len()
+                || file_matches.len() > remaining
+                || (remaining == 0 && matching_lines > 0)
+            {
+                truncated = true;
             }
-
-            if let Ok(text) = String::from_utf8(bytes) {
-                for (line_idx, line) in text.lines().enumerate() {
-                    if let Some(col) = line.find(query) {
-                        let preview = if line.len() > 200 {
-                            let start = col.saturating_sub(20);
-                            let end = (col + query.len() + 50).min(line.len());
-                            line[start..end].to_string()
-                        } else {
-                            line.to_string()
-                        };
-
-                        matches.push(SearchMatch {
-                            file: entry_path.display().to_string(),
-                            line: line_idx + 1,
-                            column: col + 1,
-                            preview,
-                        });
-
-                        if matches.len() >= limit {
-                            truncated = true;
-                            break;
-                        }
-                    }
-                }
-            }
-
+            matches.extend(file_matches.into_iter().take(remaining));
             if matches.len() >= limit {
                 truncated = true;
                 break;
@@ -3227,15 +3393,53 @@ pub fn search(
         }
     }
 
-    let match_count = matches.len();
+    let file_count = if options.files_with_matches {
+        files.len()
+    } else if options.count {
+        counts.len()
+    } else {
+        matches
+            .iter()
+            .map(|item| item.file.as_str())
+            .collect::<std::collections::BTreeSet<_>>()
+            .len()
+    };
+    let returned_match_count = if options.files_with_matches || options.count {
+        total_match_count
+    } else {
+        matches.len()
+    };
     Ok(SearchResult {
         command: "search".to_string(),
         query: query.to_string(),
         matches,
-        match_count,
+        files,
+        counts,
+        match_count: returned_match_count,
+        scanned_match_count: total_match_count,
+        total_match_count: (!truncated).then_some(total_match_count),
+        file_count,
         limit,
         truncated,
     })
+}
+
+fn search_preview(line: &str, match_start: usize, query_len: usize) -> String {
+    if line.len() <= 200 {
+        return line.to_string();
+    }
+
+    let mut start = match_start.saturating_sub(20);
+    while start > 0 && !line.is_char_boundary(start) {
+        start -= 1;
+    }
+
+    let mut end = (match_start + query_len + 50).min(line.len());
+    while end > start && !line.is_char_boundary(end) {
+        end -= 1;
+    }
+
+    line[start..end].to_string()
 }
 
 fn should_skip_search_dir(path: &Path) -> bool {
@@ -3506,6 +3710,7 @@ mod tests {
                 mode: "run".to_string(),
                 program: program.display().to_string(),
                 args: vec!["--help".to_string()],
+                cwd: None,
                 spec: None,
                 all: false,
                 profile: None,
@@ -3524,6 +3729,41 @@ mod tests {
     }
 
     #[test]
+    fn run_verification_uses_requested_working_directory() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        let nested = temp.path().join("nested");
+        std::fs::create_dir_all(&nested).expect("create nested");
+
+        #[cfg(windows)]
+        let (program, args) = ("cmd".to_string(), vec!["/C".to_string(), "cd".to_string()]);
+        #[cfg(not(windows))]
+        let (program, args) = ("pwd".to_string(), Vec::new());
+
+        let result = run_verification(
+            temp.path(),
+            VerifyOptions {
+                mode: "run".to_string(),
+                program,
+                args,
+                cwd: Some(nested.clone()),
+                spec: None,
+                all: false,
+                profile: None,
+                max_lines: 80,
+                max_chars: 12000,
+            },
+        )
+        .expect("verification");
+
+        assert!(result.passed);
+        assert_eq!(result.cwd, nested.display().to_string());
+        let log = std::fs::read_to_string(&result.full_log_path).expect("verification log");
+        assert!(log
+            .to_lowercase()
+            .contains(&nested.display().to_string().to_lowercase()));
+    }
+
+    #[test]
     fn run_verification_returns_focused_fail_result() {
         let temp = tempfile::tempdir().expect("tempdir");
         let program = std::env::current_exe().expect("current exe");
@@ -3534,6 +3774,7 @@ mod tests {
                 mode: "run".to_string(),
                 program: program.display().to_string(),
                 args: vec!["--definitely-invalid-mtui-test-flag".to_string()],
+                cwd: None,
                 spec: None,
                 all: false,
                 profile: None,
@@ -3559,6 +3800,7 @@ mod tests {
                 mode: "fallback".to_string(),
                 program: "definitely-missing-mtui-program".to_string(),
                 args: vec![],
+                cwd: None,
                 spec: None,
                 all: false,
                 profile: None,
@@ -3585,6 +3827,7 @@ mod tests {
                 mode: "fallback".to_string(),
                 program: "Set-Content".to_string(),
                 args: vec!["src/a.ts".to_string(), "x".to_string()],
+                cwd: None,
                 spec: None,
                 all: false,
                 profile: None,

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -442,7 +442,8 @@ export const createCompanyConversation = (deps: CompanyConversationDeps): ICompa
     for (const p of participants) setStatus(runId, onEvent, p.id, 'idle');
 
     const signal = state.abort.signal;
-    const collectedReports: ConversationMessage[] = [];
+    const collectedReports: Array<ConversationMessage | undefined> = [];
+    collectedReports.length = reports.length;
 
     try {
       if (reports.length === 0) {
@@ -486,79 +487,87 @@ export const createCompanyConversation = (deps: CompanyConversationDeps): ICompa
       if (state.cancelled) throw new Error('cancelled');
       const directives = splitDirectives(directiveReply, reports.length);
 
-      // 2) Each report receives its directive, replies, asks permission if needed.
-      for (let i = 0; i < reports.length; i++) {
-        if (state.cancelled) throw new Error('cancelled');
-        const report = reports[i];
-        const directive = directives[i];
+      // 2) Independent direct reports execute concurrently. Result slots retain
+      // role order so the President receives a deterministic summary prompt.
+      await Promise.all(
+        reports.map(async (report, i) => {
+          if (state.cancelled) throw new Error('cancelled');
+          const directive = directives[i];
 
-        setStatus(runId, onEvent, president.id, 'speaking', { talkingToId: report.id, task: truncate(directive, 80) });
-        emitMessage(runId, onEvent, president.id, report.id, directive, 'directive');
+          setStatus(runId, onEvent, president.id, 'speaking', {
+            talkingToId: report.id,
+            task: truncate(directive, 80),
+          });
+          emitMessage(runId, onEvent, president.id, report.id, directive, 'directive');
 
-        setStatus(runId, onEvent, report.id, 'thinking', { talkingToId: president.id, task: truncate(directive, 80) });
-        const employeeReply = await withLease(() =>
-          deps.chat({
-            model: report.assignment?.model ?? model,
-            signal,
-            messages: [
-              { role: 'system', content: employeeSystemPrompt(companyName, toParticipant(report), rules) },
-              { role: 'user', content: `Directive from the President: ${directive}` },
-            ],
-          })
-        );
-        if (state.cancelled) throw new Error('cancelled');
-
-        const ask = parsePermissionAsk(employeeReply);
-        if (ask) {
-          // Pause this branch until the boss decides.
-          setStatus(runId, onEvent, report.id, 'awaiting-approval', {
+          setStatus(runId, onEvent, report.id, 'thinking', {
             talkingToId: president.id,
-            task: truncate(ask.what, 80),
+            task: truncate(directive, 80),
           });
-          const decision = await awaitPermission(runId, onEvent, {
-            id: newId('perm'),
-            fromId: report.id,
-            action: ask.what,
-            reason: ask.reason,
-            at: now(),
-          });
+          const employeeReply = await withLease(() =>
+            deps.chat({
+              model: report.assignment?.model ?? model,
+              signal,
+              messages: [
+                { role: 'system', content: employeeSystemPrompt(companyName, toParticipant(report), rules) },
+                { role: 'user', content: `Directive from the President: ${directive}` },
+              ],
+            })
+          );
           if (state.cancelled) throw new Error('cancelled');
 
-          if (decision.approved) {
-            const followUp = await withLease(() =>
-              deps.chat({
-                model: report.assignment?.model ?? model,
-                signal,
-                messages: [
-                  { role: 'system', content: employeeSystemPrompt(companyName, toParticipant(report), rules) },
-                  {
-                    role: 'user',
-                    content: `The President APPROVED "${ask.what}"${decision.note ? ` (note: ${decision.note})` : ''}. Carry it out and report the result in 2-4 sentences.`,
-                  },
-                ],
-              })
-            );
-            const report2 = emitMessage(runId, onEvent, report.id, president.id, followUp, 'report');
-            collectedReports.push(report2);
+          const ask = parsePermissionAsk(employeeReply);
+          if (ask) {
+            // Pause this branch until the boss decides.
+            setStatus(runId, onEvent, report.id, 'awaiting-approval', {
+              talkingToId: president.id,
+              task: truncate(ask.what, 80),
+            });
+            const decision = await awaitPermission(runId, onEvent, {
+              id: newId('perm'),
+              fromId: report.id,
+              action: ask.what,
+              reason: ask.reason,
+              at: now(),
+            });
+            if (state.cancelled) throw new Error('cancelled');
+
+            if (decision.approved) {
+              const followUp = await withLease(() =>
+                deps.chat({
+                  model: report.assignment?.model ?? model,
+                  signal,
+                  messages: [
+                    { role: 'system', content: employeeSystemPrompt(companyName, toParticipant(report), rules) },
+                    {
+                      role: 'user',
+                      content: `The President APPROVED "${ask.what}"${decision.note ? ` (note: ${decision.note})` : ''}. Carry it out and report the result in 2-4 sentences.`,
+                    },
+                  ],
+                })
+              );
+              const report2 = emitMessage(runId, onEvent, report.id, president.id, followUp, 'report');
+              collectedReports[i] = report2;
+            } else {
+              const denied = `Permission for "${ask.what}" was denied${decision.note ? ` (${decision.note})` : ''}. I will proceed without it or escalate.`;
+              const report2 = emitMessage(runId, onEvent, report.id, president.id, denied, 'report');
+              collectedReports[i] = report2;
+            }
+            setStatus(runId, onEvent, report.id, 'done');
           } else {
-            const denied = `Permission for "${ask.what}" was denied${decision.note ? ` (${decision.note})` : ''}. I will proceed without it or escalate.`;
-            const report2 = emitMessage(runId, onEvent, report.id, president.id, denied, 'report');
-            collectedReports.push(report2);
+            const msg = emitMessage(
+              runId,
+              onEvent,
+              report.id,
+              president.id,
+              truncate(employeeReply, MAX_REPLY_CHARS),
+              'report'
+            );
+            collectedReports[i] = msg;
+            setStatus(runId, onEvent, report.id, 'done');
           }
-          setStatus(runId, onEvent, report.id, 'done');
-        } else {
-          const msg = emitMessage(
-            runId,
-            onEvent,
-            report.id,
-            president.id,
-            truncate(employeeReply, MAX_REPLY_CHARS),
-            'report'
-          );
-          collectedReports.push(msg);
-          setStatus(runId, onEvent, report.id, 'done');
-        }
-      }
+        })
+      );
 
       // 3) President summarises the team's reports for the user.
       if (state.cancelled) throw new Error('cancelled');
@@ -569,7 +578,13 @@ export const createCompanyConversation = (deps: CompanyConversationDeps): ICompa
           signal,
           messages: [
             { role: 'system', content: presidentSystemPrompt(companyName, rules) },
-            { role: 'user', content: summaryPrompt(goal, collectedReports) },
+            {
+              role: 'user',
+              content: summaryPrompt(
+                goal,
+                collectedReports.filter((report): report is ConversationMessage => Boolean(report))
+              ),
+            },
           ],
         })
       );

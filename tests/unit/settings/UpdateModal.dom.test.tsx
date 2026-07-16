@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -134,6 +134,7 @@ describe('UpdateModal download flow', () => {
     mocks.ipcBridge.autoUpdate.check.invoke.mockResolvedValue({
       success: true,
       data: {
+        currentVersion: '2.1.10',
         updateInfo: {
           version: '2.1.12',
           releaseNotes: '',
@@ -150,12 +151,25 @@ describe('UpdateModal download flow', () => {
       expect(mocks.ipcBridge.autoUpdate.download.invoke).toHaveBeenCalledTimes(1);
     });
     expect(mocks.ipcBridge.update.download.invoke).not.toHaveBeenCalled();
+    expect(mocks.ipcBridge.update.check.invoke).not.toHaveBeenCalled();
   });
 
-  it('falls back to manual installer download when auto-update is not available', async () => {
+  it('does not let a manual release check override a successful up-to-date native check', async () => {
     mocks.ipcBridge.autoUpdate.check.invoke.mockResolvedValue({
       success: true,
-      data: {},
+      data: { currentVersion: '2.1.17' },
+    });
+
+    await openUpdateModal();
+
+    expect(await screen.findByText('update.upToDateTitle')).toBeDefined();
+    expect(mocks.ipcBridge.update.check.invoke).not.toHaveBeenCalled();
+  });
+
+  it('falls back to manual installer download when the native update check fails', async () => {
+    mocks.ipcBridge.autoUpdate.check.invoke.mockResolvedValue({
+      success: false,
+      msg: 'native metadata unavailable',
     });
 
     await openUpdateModal();

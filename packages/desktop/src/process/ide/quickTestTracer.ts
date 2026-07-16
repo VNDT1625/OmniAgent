@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -46,14 +46,53 @@
 /** The platform the trace was captured on. */
 export type TracePlatform = 'web' | 'android' | 'windows';
 
+/** How much of the runtime was observable for this session. */
+export type TraceEvidenceLevel = 'full' | 'accessibility' | 'runtime' | 'visual';
+
+/** Adapter and capabilities selected by the adaptive probe. */
+export type TraceEvidence = {
+  adapter: 'web-cdp' | 'native-accessibility' | 'native-log' | 'visual-fallback';
+  level: TraceEvidenceLevel;
+  capabilities: Array<'interaction' | 'network' | 'stack' | 'coverage' | 'screen'>;
+  noteKey?: 'full' | 'accessibility' | 'runtime' | 'visual';
+};
+
+/** A single frame captured from a runtime exception stack. */
+export type TraceStackFrame = {
+  functionName: string;
+  url?: string;
+  line?: number;
+  column?: number;
+};
+
 /** One recorded event in the trace. */
 export type TraceEvent =
   | { kind: 'click'; selector: string; text: string; at: number; coverage?: CoverageFunction[] }
   | { kind: 'input'; selector: string; value: string; at: number; coverage?: CoverageFunction[] }
   | { kind: 'navigate'; url: string; at: number }
-  | { kind: 'network'; method: string; url: string; status: number; error?: string; at: number }
+  | {
+      kind: 'network';
+      method: string;
+      url: string;
+      status: number;
+      error?: string;
+      requestId?: string;
+      resourceType?: string;
+      requestBody?: string;
+      responseHeaders?: Record<string, string>;
+      responseBody?: string;
+      at: number;
+    }
   | { kind: 'console'; level: 'log' | 'warn' | 'error'; message: string; at: number }
-  | { kind: 'exception'; message: string; stack?: string; url?: string; line?: number; at: number };
+  | {
+      kind: 'exception';
+      message: string;
+      stack?: string;
+      stackFrames?: TraceStackFrame[];
+      url?: string;
+      line?: number;
+      at: number;
+    };
 
 /** The full trace produced by one Quick Test session. */
 export type RuntimeTrace = {
@@ -76,6 +115,8 @@ export type RuntimeTrace = {
    * platform/Profiler did not provide coverage.
    */
   coverage?: CoverageFunction[];
+  /** Adaptive probe metadata describing the confidence and adapter used. */
+  evidence?: TraceEvidence;
 };
 
 // The rolling-buffer policy + error precedence live in `quickTestBuffer` so the
@@ -143,23 +184,94 @@ export type QuickTestTracer = {
 // CDP event → TraceEvent mapping
 // ---------------------------------------------------------------------------
 
+const truncatePayload = (value: string, max = 8192): string => (value.length > max ? `${value.slice(0, max)}…` : value);
+
+const SENSITIVE_FIELD = /(authorization|cookie|password|passwd|secret|token|api[-_]?key)/i;
+
+const sanitizePayload = (value: string): string => {
+  try {
+    const redact = (entry: unknown): unknown => {
+      if (Array.isArray(entry)) return entry.map(redact);
+      if (!entry || typeof entry !== 'object') return entry;
+      return Object.fromEntries(
+        Object.entries(entry as Record<string, unknown>).map(([key, child]) => [
+          key,
+          SENSITIVE_FIELD.test(key) ? '[REDACTED]' : redact(child),
+        ])
+      );
+    };
+    return truncatePayload(JSON.stringify(redact(JSON.parse(value)), null, 2));
+  } catch {
+    return truncatePayload(value.replace(/((?:password|passwd|secret|token|api[-_]?key)=)[^&\s]*/gi, '$1[REDACTED]'));
+  }
+};
+
+const headerMap = (value: unknown): Record<string, string> | undefined => {
+  if (!value || typeof value !== 'object') return undefined;
+  const result: Record<string, string> = {};
+  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+    if (typeof entry === 'string') result[key] = SENSITIVE_FIELD.test(key) ? '[REDACTED]' : entry;
+  }
+  return Object.keys(result).length > 0 ? result : undefined;
+};
+
+type NetworkRequestInfo = {
+  method: string;
+  url: string;
+  resourceType?: string;
+  requestBody?: string;
+};
+
 /** Map a CDP `Network.responseReceived` to a network TraceEvent. */
-const mapNetworkResponse = (params: Record<string, unknown>, now: number): TraceEvent | null => {
+const mapNetworkResponse = (
+  params: Record<string, unknown>,
+  now: number,
+  requestInfo?: NetworkRequestInfo
+): Extract<TraceEvent, { kind: 'network' }> | null => {
   const response = params.response as Record<string, unknown> | undefined;
   const request = params.request as Record<string, unknown> | undefined;
-  const url = (response?.url ?? request?.url ?? '') as string;
-  const method = (request?.method ?? 'GET') as string;
+  const url = (response?.url ?? request?.url ?? requestInfo?.url ?? '') as string;
+  const method = (request?.method ?? requestInfo?.method ?? 'GET') as string;
   const status = (response?.status ?? 0) as number;
   if (!url) return null;
-  return { kind: 'network', method, url, status, at: now };
+  const requestId = typeof params.requestId === 'string' ? params.requestId : undefined;
+  const requestBody =
+    typeof request?.postData === 'string' ? sanitizePayload(request.postData) : requestInfo?.requestBody;
+  const resourceType = typeof params.type === 'string' ? params.type : requestInfo?.resourceType;
+  return {
+    kind: 'network',
+    method,
+    url,
+    status,
+    requestId,
+    resourceType,
+    requestBody,
+    responseHeaders: headerMap(response?.headers),
+    at: now,
+  };
 };
 
 /** Map a CDP `Network.loadingFailed` to a network error TraceEvent. */
-const mapNetworkFailed = (params: Record<string, unknown>, now: number): TraceEvent | null => {
-  const url = (params.request as Record<string, unknown> | undefined)?.url as string | undefined;
+const mapNetworkFailed = (
+  params: Record<string, unknown>,
+  now: number,
+  requestInfo?: NetworkRequestInfo
+): Extract<TraceEvent, { kind: 'network' }> | null => {
+  const url = ((params.request as Record<string, unknown> | undefined)?.url as string | undefined) ?? requestInfo?.url;
   const error = (params.errorText ?? 'Network error') as string;
   if (!url) return null;
-  return { kind: 'network', method: 'GET', url, status: 0, error, at: now };
+  const requestId = typeof params.requestId === 'string' ? params.requestId : undefined;
+  return {
+    kind: 'network',
+    method: requestInfo?.method ?? 'GET',
+    url,
+    status: 0,
+    requestId,
+    requestBody: requestInfo?.requestBody,
+    resourceType: requestInfo?.resourceType,
+    error,
+    at: now,
+  };
 };
 
 /** Map a CDP `Runtime.consoleAPICalled` to a console TraceEvent. */
@@ -178,9 +290,23 @@ const mapException = (params: Record<string, unknown>, now: number): TraceEvent 
   const exception = detail.exception as Record<string, unknown> | undefined;
   const message = (exception?.description ?? detail.text ?? 'Uncaught exception') as string;
   const stack = (exception?.description ?? '') as string;
+  const stackTrace = (detail.stackTrace ?? exception?.stackTrace) as Record<string, unknown> | undefined;
+  const callFrames = Array.isArray(stackTrace?.callFrames) ? stackTrace.callFrames : [];
+  const stackFrames = callFrames
+    .map((frame) => {
+      if (!frame || typeof frame !== 'object') return null;
+      const item = frame as Record<string, unknown>;
+      return {
+        functionName: typeof item.functionName === 'string' && item.functionName ? item.functionName : '(anonymous)',
+        url: typeof item.url === 'string' && item.url ? item.url : undefined,
+        line: typeof item.lineNumber === 'number' ? item.lineNumber + 1 : undefined,
+        column: typeof item.columnNumber === 'number' ? item.columnNumber + 1 : undefined,
+      } satisfies TraceStackFrame;
+    })
+    .filter((frame): frame is NonNullable<typeof frame> => frame !== null);
   const url = (detail.url ?? '') as string;
   const line = (detail.lineNumber ?? 0) as number;
-  return { kind: 'exception', message, stack, url, line, at: now };
+  return { kind: 'exception', message, stack, stackFrames, url, line, at: now };
 };
 
 /**
@@ -225,6 +351,37 @@ const parseDomMarker = (message: string, at: number): TraceEvent | null => {
   return null;
 };
 
+const INTERACTION_BINDING = '__aionuiQuickTestEmit';
+
+const parseBindingInteraction = (
+  params: Record<string, unknown>,
+  at: number
+): Extract<TraceEvent, { kind: 'click' | 'input' }> | null => {
+  if (params.name !== INTERACTION_BINDING || typeof params.payload !== 'string') return null;
+  try {
+    const data = JSON.parse(params.payload) as Record<string, unknown>;
+    if (data.kind === 'click') {
+      return {
+        kind: 'click',
+        selector: String(data.selector ?? ''),
+        text: String(data.text ?? ''),
+        at,
+      };
+    }
+    if (data.kind === 'input') {
+      return {
+        kind: 'input',
+        selector: String(data.selector ?? ''),
+        value: String(data.value ?? ''),
+        at,
+      };
+    }
+  } catch {
+    // Ignore malformed/untrusted binding payloads.
+  }
+  return null;
+};
+
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
@@ -237,22 +394,76 @@ const parseDomMarker = (message: string, at: number): TraceEvent | null => {
  * the guard, so re-running this re-binds on the new page.
  */
 const DOM_LISTENER_SCRIPT = `
-        (function() {
-          if (window.__omniQtListening) return;
-          window.__omniQtListening = true;
-          document.addEventListener('click', function(e) {
-            var el = e.target;
-            var sel = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '') + (el.className ? '.' + el.className.split(' ').join('.') : '');
-            var text = (el.textContent || '').trim().slice(0, 80);
-            console.log('[omni-qt-click]' + JSON.stringify({ selector: sel, text: text }));
-          }, true);
-          document.addEventListener('change', function(e) {
-            var el = e.target;
-            var sel = el.tagName.toLowerCase() + (el.id ? '#' + el.id : '');
-            console.log('[omni-qt-input]' + JSON.stringify({ selector: sel, value: (el.value || '').slice(0, 80) }));
-          }, true);
-        })();
-      `;
+(function installAionUiQuickTestListeners() {
+  if (window.__aionuiQuickTestListeningV2) return true;
+  window.__aionuiQuickTestListeningV2 = true;
+
+  var lastInputValues = new WeakMap();
+
+  function eventElement(raw) {
+    var el = raw && raw.nodeType === 1 ? raw : raw && raw.parentElement;
+    if (!el) return null;
+    var interactive = el.closest && el.closest('button,a,input,select,textarea,[role],[data-testid]');
+    return interactive || el;
+  }
+
+  function safeToken(value) {
+    return String(value || '').replace(/[^a-zA-Z0-9_-]/g, '').trim();
+  }
+
+  function selector(el) {
+    var tag = String(el.tagName || 'element').toLowerCase();
+    if (el.id) return tag + '#' + safeToken(el.id);
+    var testId = el.getAttribute && el.getAttribute('data-testid');
+    if (testId) return tag + '[data-testid=' + safeToken(testId) + ']';
+    var name = el.getAttribute && el.getAttribute('name');
+    if (name) return tag + '[name=' + safeToken(name) + ']';
+    var classValue = el.getAttribute && el.getAttribute('class');
+    var classes = typeof classValue === 'string' ? classValue.trim().split(/\\s+/).filter(Boolean).slice(0, 3) : [];
+    return tag + (classes.length ? '.' + classes.map(safeToken).join('.') : '');
+  }
+
+  function emit(kind, data) {
+    var payload = JSON.stringify(Object.assign({ kind: kind }, data));
+    try {
+      if (typeof window.__aionuiQuickTestEmit === 'function') {
+        window.__aionuiQuickTestEmit(payload);
+        return;
+      }
+    } catch (_) {}
+    console.log((kind === 'click' ? '[omni-qt-click]' : '[omni-qt-input]') + JSON.stringify(data));
+  }
+
+  function recordInput(event) {
+    var el = eventElement(event.target);
+    if (!el) return;
+    var type = String(el.type || '').toLowerCase();
+    var value =
+      type === 'password'
+        ? '[redacted]'
+        : type === 'checkbox' || type === 'radio'
+          ? String(Boolean(el.checked))
+          : String(el.value || '').slice(0, 80);
+    if (lastInputValues.get(el) === value) return;
+    lastInputValues.set(el, value);
+    emit('input', { selector: selector(el), value: value });
+  }
+
+  document.addEventListener(
+    'click',
+    function (event) {
+      var el = eventElement(event.target);
+      if (!el) return;
+      var text = String(el.innerText || el.textContent || '').trim().slice(0, 80);
+      emit('click', { selector: selector(el), text: text });
+    },
+    true
+  );
+  document.addEventListener('input', recordInput, true);
+  document.addEventListener('change', recordInput, true);
+  return true;
+})();
+`;
 
 /**
  * Create a {@link QuickTestTracer} backed by the injected collaborators.
@@ -262,6 +473,8 @@ const DOM_LISTENER_SCRIPT = `
 export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTracer => {
   const clock = deps.now ?? (() => Date.now());
   let active = false;
+  let attachedWebContents: CdpWebContents | null = null;
+  let ownsDebugger = false;
   let rootPath = '';
   let startedAt = 0;
   // Monotonic count of every recorded event (never decreased by buffer
@@ -283,10 +496,27 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
   // Serialises per-interaction delta captures so their async assignments finish
   // (and the recorder's delta baseline stays consistent) before finalize.
   let coverageWork: Promise<unknown> = Promise.resolve();
+  let lastInteractionFingerprint = '';
+  let lastInteractionAt = 0;
+  const networkRequests = new Map<string, NetworkRequestInfo>();
+  const networkEvents = new Map<string, Extract<TraceEvent, { kind: 'network' }>>();
+  let networkWork: Promise<unknown> = Promise.resolve();
 
-  /** (Re-)inject the page-side DOM listeners. Fire-and-forget, never throws. */
-  const injectDomListeners = (wc: CdpWebContents): void => {
-    void wc.executeJavaScript(DOM_LISTENER_SCRIPT).catch((): void => undefined);
+  /** Install listeners in the current document, retrying short navigation races. */
+  const injectDomListeners = async (wc: CdpWebContents): Promise<void> => {
+    let lastError: unknown;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        // eslint-disable-next-line no-await-in-loop -- retries must be sequential across document replacement.
+        await wc.executeJavaScript(DOM_LISTENER_SCRIPT);
+        return;
+      } catch (error) {
+        lastError = error;
+        // eslint-disable-next-line no-await-in-loop -- wait before the next sequential injection attempt.
+        await new Promise<void>((resolve) => setTimeout(resolve, 40 * (attempt + 1)));
+      }
+    }
+    throw lastError instanceof Error ? lastError : new Error('Unable to install Quick Test interaction listeners.');
   };
 
   /**
@@ -313,9 +543,39 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
     deps.onEvent?.(event);
   };
 
+  const recordInteraction = (interaction: Extract<TraceEvent, { kind: 'click' | 'input' }>): void => {
+    const detail = interaction.kind === 'click' ? interaction.text : interaction.value;
+    const fingerprint = `${interaction.kind}\u0000${interaction.selector}\u0000${detail}`;
+    if (fingerprint === lastInteractionFingerprint && interaction.at - lastInteractionAt <= 50) return;
+    lastInteractionFingerprint = fingerprint;
+    lastInteractionAt = interaction.at;
+    capturePendingCoverage();
+    push(interaction);
+    pendingInteraction = interaction;
+  };
+
+  const releaseAttachedWebContents = async (): Promise<void> => {
+    const wc = attachedWebContents;
+    if (!wc) return;
+    await wc.debugger.sendCommand('Profiler.stopPreciseCoverage').catch((): void => undefined);
+    await wc.debugger.sendCommand('Profiler.disable').catch((): void => undefined);
+    try {
+      wc.debugger.removeAllListeners('message');
+      if (ownsDebugger) wc.debugger.detach();
+    } catch {
+      // The old tab may already have been destroyed or externally detached.
+    }
+    attachedWebContents = null;
+    ownsDebugger = false;
+  };
+
   const start = async (root: string): Promise<boolean> => {
-    if (active) return true;
     const wc = deps.getWebContents();
+    if (active && wc === attachedWebContents) return true;
+    if (active) {
+      active = false;
+      await releaseAttachedWebContents();
+    }
     if (!wc) return false; // native target — no CDP available
 
     rootPath = root;
@@ -327,15 +587,32 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
     coverageRecorder = null;
     pendingInteraction = null;
     coverageWork = Promise.resolve();
+    lastInteractionFingerprint = '';
+    lastInteractionAt = 0;
+    networkRequests.clear();
+    networkEvents.clear();
+    networkWork = Promise.resolve();
+    attachedWebContents = wc;
+    ownsDebugger = false;
     active = true;
 
     try {
       if (!wc.debugger.isAttached()) {
         wc.debugger.attach('1.3');
+        ownsDebugger = true;
       }
       await wc.debugger.sendCommand('Network.enable');
       await wc.debugger.sendCommand('Runtime.enable');
       await wc.debugger.sendCommand('Page.enable');
+      // A CDP binding is independent from the app's console implementation, so
+      // interaction delivery survives console.log overrides and log filtering.
+      await wc.debugger.sendCommand('Runtime.addBinding', { name: INTERACTION_BINDING }).catch((): void => undefined);
+      // Install before every future document's application code. This closes
+      // the navigation race where a user could click before executeJavaScript
+      // re-injected the listener after Page.frameNavigated.
+      await wc.debugger
+        .sendCommand('Page.addScriptToEvaluateOnNewDocument', { source: DOM_LISTENER_SCRIPT })
+        .catch((): void => undefined);
       // `Debugger.enable` is required for `Debugger.getScriptSource` (used by the
       // coverage recorder to turn function offsets into line numbers).
       await wc.debugger.sendCommand('Debugger.enable').catch((): void => undefined);
@@ -352,12 +629,56 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
       wc.debugger.on('message', (_evt, method, params) => {
         const now = clock();
         switch (method) {
-          case 'Network.responseReceived':
-            push(mapNetworkResponse(params, now));
+          case 'Network.requestWillBeSent': {
+            const requestId = typeof params.requestId === 'string' ? params.requestId : '';
+            const request = params.request as Record<string, unknown> | undefined;
+            const url = typeof request?.url === 'string' ? request.url : '';
+            if (requestId && url) {
+              networkRequests.set(requestId, {
+                method: typeof request?.method === 'string' ? request.method : 'GET',
+                url,
+                resourceType: typeof params.type === 'string' ? params.type : undefined,
+                requestBody: typeof request?.postData === 'string' ? sanitizePayload(request.postData) : undefined,
+              });
+            }
             break;
-          case 'Network.loadingFailed':
-            push(mapNetworkFailed(params, now));
+          }
+          case 'Network.responseReceived': {
+            const requestId = typeof params.requestId === 'string' ? params.requestId : '';
+            const event = mapNetworkResponse(params, now, networkRequests.get(requestId));
+            push(event);
+            if (event && requestId) networkEvents.set(requestId, event);
             break;
+          }
+          case 'Network.loadingFinished': {
+            const requestId = typeof params.requestId === 'string' ? params.requestId : '';
+            const event = networkEvents.get(requestId);
+            if (requestId && event) {
+              networkWork = networkWork
+                .then(() => wc.debugger.sendCommand('Network.getResponseBody', { requestId }))
+                .then((result) => {
+                  const body = (result as { body?: unknown }).body;
+                  if (typeof body === 'string') event.responseBody = sanitizePayload(body);
+                })
+                .catch((): void => undefined)
+                .finally(() => {
+                  networkEvents.delete(requestId);
+                  networkRequests.delete(requestId);
+                });
+            }
+            break;
+          }
+          case 'Network.loadingFailed': {
+            const requestId = typeof params.requestId === 'string' ? params.requestId : '';
+            push(mapNetworkFailed(params, now, networkRequests.get(requestId)));
+            networkRequests.delete(requestId);
+            break;
+          }
+          case 'Runtime.bindingCalled': {
+            const interaction = parseBindingInteraction(params, now);
+            if (interaction) recordInteraction(interaction);
+            break;
+          }
           case 'Runtime.consoleAPICalled': {
             // Console markers from our injected listener become typed DOM
             // events at record time (so they survive smart eviction + stream
@@ -369,9 +690,7 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
             // coverage delta accumulated since then to the PENDING interaction,
             // then make THIS interaction pending so the next delta lands on it.
             if (ev && (ev.kind === 'click' || ev.kind === 'input')) {
-              capturePendingCoverage();
-              push(ev);
-              pendingInteraction = ev;
+              recordInteraction(ev);
             } else {
               push(ev);
             }
@@ -389,7 +708,7 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
             push(nav);
             // A top-level navigation replaces the document, dropping our
             // listeners — re-inject so post-navigation clicks are captured.
-            if (nav) injectDomListeners(wc);
+            if (nav) void injectDomListeners(wc).catch((): void => undefined);
             break;
           }
           default:
@@ -399,9 +718,10 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
 
       // Inject a lightweight click/input listener into the page so DOM
       // interactions are captured without full JS coverage overhead.
-      injectDomListeners(wc);
+      await injectDomListeners(wc);
     } catch {
       active = false;
+      await releaseAttachedWebContents();
       return false;
     }
     return true;
@@ -415,6 +735,7 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
    * even when coverage never started (returns immediately).
    */
   const finalizeCoverage = async (): Promise<void> => {
+    await networkWork.catch((): void => undefined);
     if (!coverageRecorder) return;
     const recorder = coverageRecorder;
     // Attribute the final pending interaction's delta (the last click/input had
@@ -430,15 +751,17 @@ export const createQuickTestTracer = (deps: QuickTestTracerDeps): QuickTestTrace
   const stop = (): RuntimeTrace => {
     const stoppedAt = clock();
     active = false;
-    const wc = deps.getWebContents();
+    const wc = attachedWebContents;
     if (wc) {
       try {
         wc.debugger.removeAllListeners('message');
-        if (wc.debugger.isAttached()) wc.debugger.detach();
+        if (ownsDebugger) wc.debugger.detach();
       } catch {
         /* already detached — non-fatal */
       }
     }
+    attachedWebContents = null;
+    ownsDebugger = false;
 
     // Events are already fully typed (DOM markers parsed at record time), so
     // the trace is just a snapshot of the buffer.

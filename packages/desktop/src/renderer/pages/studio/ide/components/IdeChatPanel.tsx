@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -115,13 +115,27 @@ const IdeChatPanel: React.FC<IdeChatPanelProps> = ({ rootPath, activeFile, repoF
     setStrictMode(enabled);
   };
   useEffect(() => {
-    if (!strictMode) return;
-    for (const tab of chat.tabs) void enforceStrictIdeSessionMode(tab.id);
-  }, [chat.tabs, strictMode]);
+    if (!strictMode || !chat.activeId) return;
+    void enforceStrictIdeSessionMode(chat.activeId);
+  }, [chat.activeId, strictMode]);
   const activeMemId = useMemo(
     () => chat.tabs.find((tab) => tab.id === chat.activeId)?.memId ?? null,
     [chat.tabs, chat.activeId]
   );
+  const [activeConversationType, setActiveConversationType] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    if (!chat.activeId) {
+      setActiveConversationType(null);
+      return;
+    }
+    void getConversationOrNull(chat.activeId).then((conversation) => {
+      if (!cancelled) setActiveConversationType(conversation?.type ?? null);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [chat.activeId]);
 
   // Default tab: when no tab is open and at least one agent exists, do nothing
   // (the user explicitly picks). A click on "+" opens a tab with the chosen
@@ -305,7 +319,13 @@ const IdeChatPanel: React.FC<IdeChatPanelProps> = ({ rootPath, activeFile, repoF
         )}
       </div>
 
-      <MemorySessionDrawer memId={activeMemId} visible={memoryOpen} onClose={() => setMemoryOpen(false)} />
+      <MemorySessionDrawer
+        memId={activeMemId}
+        conversationId={chat.activeId}
+        conversationType={activeConversationType}
+        visible={memoryOpen}
+        onClose={() => setMemoryOpen(false)}
+      />
     </div>
   );
 };

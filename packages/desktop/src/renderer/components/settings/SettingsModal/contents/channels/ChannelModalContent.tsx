@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -10,11 +10,12 @@ import { channel, webui, type IWebUIStatus } from '@/common/adapter/ipcBridge';
 import { configService } from '@/common/config/configService';
 import AionScrollArea from '@/renderer/components/base/AionScrollArea';
 import { useModelProviderList } from '@/renderer/hooks/agent/useModelProviderList';
+import { useConfig } from '@/renderer/hooks/config/useConfig';
 import type { GoogleModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGoogleModelSelection';
 import { useGoogleModelSelection } from '@/renderer/pages/conversation/platforms/gemini/useGoogleModelSelection';
 import { Input, InputNumber, Message, Select, Switch } from '@arco-design/web-react';
 import { CheckOne } from '@icon-park/react';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsViewMode } from '../../settingsViewContext';
 import ChannelItem from './ChannelItem';
@@ -55,7 +56,10 @@ const BUILTIN_CHANNEL_TYPES = new Set(['telegram', 'lark', 'dingtalk', 'weixin',
  * TProviderWithModel and passing it as `initialModel` — this avoids triggering
  * the onSelectModel callback (and its toast) on mount.
  */
-const useChannelModelSelection = (configKey: ChannelModelConfigKey): GoogleModelSelection => {
+const useChannelModelSelection = (
+  configKey: ChannelModelConfigKey,
+  options: { refreshExternalChanges?: boolean } = {}
+): GoogleModelSelection => {
   const { t } = useTranslation();
 
   // Resolve persisted model into a full TProviderWithModel for initialModel.
@@ -63,57 +67,39 @@ const useChannelModelSelection = (configKey: ChannelModelConfigKey): GoogleModel
   // useGoogleModelSelection is deduplicated automatically.
   const { providers } = useModelProviderList();
   const [resolvedInitialModel, setResolvedInitialModel] = useState<TProviderWithModel | undefined>(undefined);
-  const [restored, setRestored] = useState(false);
-  const retryCountRef = useRef(0);
-
-  // Cap retries to prevent infinite re-runs when a saved provider ID is stale
-  // (e.g. provider deleted, or agent switched to a non-gemini backend).
-  // The Google Auth provider typically loads within 1-2 SWR cycles, so 5 is generous.
-  const MAX_RESTORE_RETRIES = 5;
+  const [savedModel] = useConfig(configKey);
 
   useEffect(() => {
-    if (restored || providers.length === 0) return;
+    if (!options.refreshExternalChanges) return;
 
-    const restore = async () => {
-      try {
-        const saved = configService.get(configKey) as { id: string; use_model: string } | undefined;
-        if (!saved?.id || !saved?.use_model) {
-          // Nothing saved — mark restored so we don't keep retrying
-          setRestored(true);
-          return;
-        }
-
-        const provider = providers.find((p) => p.id === saved.id);
-        if (!provider) {
-          retryCountRef.current += 1;
-          if (retryCountRef.current >= MAX_RESTORE_RETRIES) {
-            // Provider is permanently missing — give up to avoid infinite retries
-            setRestored(true);
-          }
-          // The Google Auth provider may load after API-key providers;
-          // leaving restored=false lets this effect re-run when providers update.
-          return;
-        }
-
-        // Google Auth provider's model array only contains top-level modes
-        // ('auto', 'auto-gemini-2.5', 'manual'), but sub-model values like
-        // 'gemini-2.5-flash' are also valid — skip strict membership check.
-        const isGoogleAuth = provider.platform?.toLowerCase().includes('gemini-with-google-auth');
-        if (isGoogleAuth || provider.models?.includes(saved.use_model)) {
-          setResolvedInitialModel({
-            ...provider,
-            use_model: saved.use_model,
-          } as TProviderWithModel);
-        }
-        setRestored(true);
-      } catch (error) {
-        console.error(`[ChannelSettings] Failed to restore model for ${configKey}:`, error);
-        setRestored(true);
-      }
+    const refresh = () => {
+      void configService
+        .refresh(configKey)
+        .catch((error) => console.warn(`[ChannelSettings] Failed to refresh ${configKey}:`, error));
     };
+    refresh();
+    const interval = globalThis.setInterval(refresh, 2000);
+    return () => globalThis.clearInterval(interval);
+  }, [configKey, options.refreshExternalChanges]);
 
-    void restore();
-  }, [configKey, providers, restored]);
+  useEffect(() => {
+    if (!savedModel?.id || !savedModel.use_model || providers.length === 0) {
+      setResolvedInitialModel(undefined);
+      return;
+    }
+
+    const provider = providers.find((item) => item.id === savedModel.id);
+    const isGoogleAuth = provider?.platform?.toLowerCase().includes('gemini-with-google-auth');
+    if (!provider || (!isGoogleAuth && !provider.models?.includes(savedModel.use_model))) {
+      setResolvedInitialModel(undefined);
+      return;
+    }
+
+    setResolvedInitialModel({
+      ...provider,
+      use_model: savedModel.use_model,
+    } as TProviderWithModel);
+  }, [providers, savedModel?.id, savedModel?.use_model]);
 
   // Only called on explicit user selection — not during restoration
   const onSelectModel = useCallback(
@@ -188,7 +174,9 @@ const ChannelModalContent: React.FC = () => {
   });
 
   // Model selection state — uses unified hook with configService persistence
-  const telegramModelSelection = useChannelModelSelection('assistant.telegram.defaultModel');
+  const telegramModelSelection = useChannelModelSelection('assistant.telegram.defaultModel', {
+    refreshExternalChanges: true,
+  });
   const larkModelSelection = useChannelModelSelection('assistant.lark.defaultModel');
   const dingtalkModelSelection = useChannelModelSelection('assistant.dingtalk.defaultModel');
   const weixinModelSelection = useChannelModelSelection('assistant.weixin.defaultModel');

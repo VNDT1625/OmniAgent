@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -29,6 +29,7 @@ import type { RepoGraph } from '@process/ide/repoGraph';
 import type { IdeWikiResult, WikiPlan, WikiPlanRequest, WikiSectionRequest } from '@process/ide/ideWikiBridge';
 import type {
   WikiBuildRequest,
+  WikiCancelRequest,
   WikiLoadRequest,
   WikiBuildProgress,
   PersistedWiki,
@@ -67,7 +68,13 @@ import type {
   KnowledgeRefreshFileRequest,
 } from '@process/ide/knowledgeGraphBridge';
 import type { QtStartRequest, QtStopResponse, QtEventEnvelope } from '@process/ide/quickTestBridge';
-import type { InspectPickRequest, InspectScreenshotResult } from '@process/ide/elementInspectorBridge';
+import type {
+  InspectPickRequest,
+  InspectScreenshotRequest,
+  InspectScreenshotResult,
+  InspectVideoResult,
+} from '@process/ide/elementInspectorBridge';
+import type { UiAuditReport } from '@process/ide/uiAuditEngine';
 import type { LocatedElement } from '@process/ide/elementInspectorLocator';
 
 /** Extract plain text content from a `ide.read-file` result (supports both legacy string and the current ReadFileData shape). */
@@ -144,6 +151,7 @@ const IDE_CHANNELS = {
   wikiPlan: 'ide.wiki-plan',
   wikiSection: 'ide.wiki-section',
   wikiBuild: 'ide.wiki-build',
+  wikiCancel: 'ide.wiki-cancel',
   wikiLoad: 'ide.wiki-load',
   wikiProgress: 'ide.wiki-progress',
   listDir: 'ide.list-dir',
@@ -174,6 +182,9 @@ const IDE_CHANNELS = {
   inspectPick: 'ide.inspect-pick',
   inspectCancel: 'ide.inspect-cancel',
   inspectScreenshot: 'ide.inspect-screenshot',
+  inspectVideoStart: 'ide.inspect-video-start',
+  inspectVideoStop: 'ide.inspect-video-stop',
+  inspectAudit: 'ide.ui-audit',
   qrPlan: 'ide.qr-plan',
   qrSave: 'ide.qr-save',
   qrClear: 'ide.qr-clear',
@@ -216,6 +227,7 @@ const WIKI_SECTION_TIMEOUT_MS = 120000;
 const WIKI_BUILD_TIMEOUT_MS = 1800000;
 /** Timeout (ms) for a filesystem op (Node fs round-trip; fast). */
 const FILE_OP_TIMEOUT_MS = 15000;
+const UI_AUDIT_TIMEOUT_MS = 60000;
 /** Timeout (ms) for an inline completion (a provider call; must feel snappy). */
 const INLINE_COMPLETE_TIMEOUT_MS = 8000;
 /** Timeout (ms) for a full knowledge-graph build (scan + many sequential model calls). */
@@ -232,6 +244,7 @@ const channels = {
   wikiPlan: bridge.buildProvider<IdeWikiResult<WikiPlan>, WikiPlanRequest>(IDE_CHANNELS.wikiPlan),
   wikiSection: bridge.buildProvider<IdeWikiResult<string>, WikiSectionRequest>(IDE_CHANNELS.wikiSection),
   wikiBuild: bridge.buildProvider<IdeWikiResult<PersistedWiki>, WikiBuildRequest>(IDE_CHANNELS.wikiBuild),
+  wikiCancel: bridge.buildProvider<IdeWikiResult<boolean>, WikiCancelRequest>(IDE_CHANNELS.wikiCancel),
   wikiLoad: bridge.buildProvider<IdeWikiResult<PersistedWiki | null>, WikiLoadRequest>(IDE_CHANNELS.wikiLoad),
   wikiProgress: bridge.buildEmitter<WikiBuildProgress>(IDE_CHANNELS.wikiProgress),
   listDir: bridge.buildProvider<IdeFileResult<IdeDirEntry[]>, ListDirRequest>(IDE_CHANNELS.listDir),
@@ -269,9 +282,16 @@ const channels = {
     IDE_CHANNELS.inspectPick
   ),
   inspectCancel: bridge.buildProvider<UnderstandResult<boolean>, InspectPickRequest>(IDE_CHANNELS.inspectCancel),
-  inspectScreenshot: bridge.buildProvider<UnderstandResult<InspectScreenshotResult | null>, InspectPickRequest>(
+  inspectScreenshot: bridge.buildProvider<UnderstandResult<InspectScreenshotResult | null>, InspectScreenshotRequest>(
     IDE_CHANNELS.inspectScreenshot
   ),
+  inspectVideoStart: bridge.buildProvider<UnderstandResult<InspectVideoResult>, InspectPickRequest>(
+    IDE_CHANNELS.inspectVideoStart
+  ),
+  inspectVideoStop: bridge.buildProvider<UnderstandResult<InspectVideoResult>, InspectPickRequest>(
+    IDE_CHANNELS.inspectVideoStop
+  ),
+  inspectAudit: bridge.buildProvider<UnderstandResult<UiAuditReport>, InspectPickRequest>(IDE_CHANNELS.inspectAudit),
   qrPlan: bridge.buildProvider<RunTargetResult<RunPlanResponse>, RunPlanRequest>(IDE_CHANNELS.qrPlan),
   qrSave: bridge.buildProvider<RunTargetResult<RepoRunConfigs>, RunSaveRequest>(IDE_CHANNELS.qrSave),
   qrClear: bridge.buildProvider<RunTargetResult<RepoRunConfigs>, RunClearRequest>(IDE_CHANNELS.qrClear),
@@ -363,6 +383,9 @@ export const ideClient = {
    */
   wikiBuild: (request: WikiBuildRequest): Promise<IdeWikiResult<PersistedWiki>> =>
     invokeWithTimeout(IDE_CHANNELS.wikiBuild, () => channels.wikiBuild.invoke(request), WIKI_BUILD_TIMEOUT_MS),
+  /** Cancel the active durable-wiki build for a repo, if one exists. */
+  wikiCancel: (rootPath: string): Promise<IdeWikiResult<boolean>> =>
+    invokeWithTimeout(IDE_CHANNELS.wikiCancel, () => channels.wikiCancel.invoke({ rootPath }), FILE_OP_TIMEOUT_MS),
   /** Load the previously-built, persisted wiki for a repo (or null when absent). */
   wikiLoad: (rootPath: string): Promise<IdeWikiResult<PersistedWiki | null>> =>
     invokeWithTimeout(IDE_CHANNELS.wikiLoad, () => channels.wikiLoad.invoke({ rootPath }), FILE_OP_TIMEOUT_MS),
@@ -540,11 +563,36 @@ export const ideClient = {
       FILE_OP_TIMEOUT_MS
     ),
   /** Capture the inspected tab as a PNG saved into the repo (for a vision agent). */
-  inspectScreenshot: (rootPath: string, tabId?: string): Promise<UnderstandResult<InspectScreenshotResult | null>> =>
+  inspectScreenshot: (
+    rootPath: string,
+    mode: InspectScreenshotRequest['mode'],
+    tabId?: string
+  ): Promise<UnderstandResult<InspectScreenshotResult | null>> =>
     invokeWithTimeout(
       IDE_CHANNELS.inspectScreenshot,
-      () => channels.inspectScreenshot.invoke({ rootPath, tabId }),
+      () => channels.inspectScreenshot.invoke({ rootPath, mode, tabId }),
       FILE_OP_TIMEOUT_MS
+    ),
+  /** Start recording the embedded web tab to an MP4 in the repo. */
+  inspectVideoStart: (rootPath: string, tabId: string): Promise<UnderstandResult<InspectVideoResult>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.inspectVideoStart,
+      () => channels.inspectVideoStart.invoke({ rootPath, tabId }),
+      FILE_OP_TIMEOUT_MS
+    ),
+  /** Stop and finalise the active embedded-tab recording. */
+  inspectVideoStop: (rootPath: string, tabId: string): Promise<UnderstandResult<InspectVideoResult>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.inspectVideoStop,
+      () => channels.inspectVideoStop.invoke({ rootPath, tabId }),
+      FILE_OP_TIMEOUT_MS
+    ),
+  /** Run deterministic UI quality rules against the current embedded page. */
+  inspectAudit: (rootPath: string, tabId: string): Promise<UnderstandResult<UiAuditReport>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.inspectAudit,
+      () => channels.inspectAudit.invoke({ rootPath, tabId }),
+      UI_AUDIT_TIMEOUT_MS
     ),
   /**
    * Quick-Run: derive the mechanical run plan from the repo's persisted run data
@@ -757,7 +805,14 @@ export type {
 } from '@process/ide/wiki/wikiBuildBridge';
 export type { IdeDirEntry, IdeFileChangeEvent, IdeFileResult } from '@process/ide/ideFileBridge';
 export type { QtStopResponse, QtEventEnvelope } from '@process/ide/quickTestBridge';
-export type { RuntimeTrace, TraceEvent, TracePlatform } from '@process/ide/quickTestTracer';
+export type {
+  RuntimeTrace,
+  TraceEvent,
+  TraceEvidence,
+  TracePlatform,
+  TraceStackFrame,
+} from '@process/ide/quickTestTracer';
+export type { UiAuditCategory, UiAuditFinding, UiAuditReport, UiAuditSeverity } from '@process/ide/uiAuditEngine';
 export type {
   RunPlanResponse,
   RunPlanSource,
@@ -766,7 +821,14 @@ export type {
   RunTargetResult,
 } from '@process/ide/runTarget/runTargetBridge';
 export type { RepoRunConfigs, SavedRunConfig } from '@process/ide/runTarget/runConfigStore';
-export type { RunPlan, RunCandidate, RunPlatform, PlatformSupport } from '@process/ide/runTarget/runTargetPlanner';
+export type {
+  RunPlan,
+  RunCandidate,
+  RunPlatform,
+  RunService,
+  RunServiceKind,
+  PlatformSupport,
+} from '@process/ide/runTarget/runTargetPlanner';
 export type { GitChange, IdeGitResult } from '@process/ide/ideGitBridge';
 export type { CommandResult, IdeCommandResult, RunCommandRequest };
 export type {

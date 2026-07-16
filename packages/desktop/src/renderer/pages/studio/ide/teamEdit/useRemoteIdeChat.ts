@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -21,6 +21,8 @@ import {
 import { getConversationOrNull } from '@/renderer/pages/conversation/utils/conversationCache';
 import type { PeerConnection } from './useTeamCollab';
 
+type RemoteIdeConnection = Omit<PeerConnection, 'peerCapabilities'>;
+
 export type RemoteIdeChatTab = { id: string; title: string };
 
 export type RemoteIdeChatLauncher =
@@ -40,9 +42,9 @@ export type UseRemoteIdeChat = {
 const STORAGE_PREFIX = 'studio.ide.remoteChatTabs.';
 const MAX_TABS = 8;
 
-const storageKey = (peer: PeerConnection): string => `${STORAGE_PREFIX}${peer.baseUrl}|${peer.repoName}`;
+const storageKey = (peer: RemoteIdeConnection): string => `${STORAGE_PREFIX}${peer.baseUrl}|${peer.repoName}`;
 
-const readStoredTabs = (peer: PeerConnection): RemoteIdeChatTab[] => {
+const readStoredTabs = (peer: RemoteIdeConnection): RemoteIdeChatTab[] => {
   try {
     const raw = localStorage.getItem(storageKey(peer));
     const parsed = raw ? (JSON.parse(raw) as unknown) : null;
@@ -58,7 +60,7 @@ const readStoredTabs = (peer: PeerConnection): RemoteIdeChatTab[] => {
   }
 };
 
-const writeStoredTabs = (peer: PeerConnection, tabs: RemoteIdeChatTab[]): void => {
+const writeStoredTabs = (peer: RemoteIdeConnection, tabs: RemoteIdeChatTab[]): void => {
   try {
     localStorage.setItem(storageKey(peer), JSON.stringify(tabs));
   } catch {
@@ -66,8 +68,8 @@ const writeStoredTabs = (peer: PeerConnection, tabs: RemoteIdeChatTab[]): void =
   }
 };
 
-const buildRemoteRules = (peer: PeerConnection): string => {
-  const cloudPeer = peer as PeerConnection & { relayBaseUrl?: string; workspaceId?: string };
+const buildRemoteRules = (peer: RemoteIdeConnection): string => {
+  const cloudPeer = peer as RemoteIdeConnection & { relayBaseUrl?: string; workspaceId?: string };
   const isCloud = typeof cloudPeer.relayBaseUrl === 'string' && cloudPeer.relayBaseUrl.length > 0;
   return [
     isCloud
@@ -92,7 +94,7 @@ const buildRemoteRules = (peer: PeerConnection): string => {
   ].join('\n');
 };
 
-export const useRemoteIdeChat = (peer: PeerConnection): UseRemoteIdeChat => {
+export const useRemoteIdeChat = (peer: RemoteIdeConnection): UseRemoteIdeChat => {
   const [tabs, setTabs] = useState<RemoteIdeChatTab[]>(() => readStoredTabs(peer));
   const [activeId, setActiveId] = useState<string | null>(() => readStoredTabs(peer)[0]?.id ?? null);
   const [creating, setCreating] = useState(false);

@@ -1,12 +1,12 @@
 {
   "name": "omni-agentic",
-  "version": "2.1.16",
+  "version": "0.0.0",
   "description": "Tomni Agentic desktop AI agent interface.",
   "keywords": [],
   "license": "Apache-2.0",
   "author": {
     "name": "Tomni Agentic",
-    "email": "service@aionui.com"
+    "email": "VNDT1625@users.noreply.github.com"
   },
   "workspaces": [
     "packages/*"
@@ -73,7 +73,9 @@
     "prepare": "husky",
     "postinstall": "node scripts/postinstall.js",
     "test:bun": "bun test packages/desktop/src/process/services/database/drivers/*.bun.test.ts",
-    "omni:rescue:local": "node scripts/omni-mcp-sidecar.cjs rescue --local"
+    "omni:rescue:local": "node scripts/omni-mcp-sidecar.cjs rescue --local",
+    "prepare:tomny": "node packages/shared-scripts/src/prepare-tomny-cli-cli.js",
+    "prepare:core": "node packages/shared-scripts/src/prepare-tomny-core-cli.js"
   },
   "dependencies": {
     "@agentclientprotocol/claude-agent-acp": "0.33.1",
@@ -279,12 +281,15 @@
   "engines": {
     "node": ">=22 <25"
   },
-  "aioncoreVersion": "v0.1.16",
   "electronRebuild": {
     "electronVersion": "^37.3.1"
   },
   "patchedDependencies": {
     "7zip-bin@5.2.0": "patches/7zip-bin@5.2.0.patch"
   },
-  "productName": "Tomni Agentic"
+  "productName": "Tomni Agentic",
+  "tomnyCliCommit": "cb4a10fdbaa0e4d5c5e767b96081cc21eb476a2a",
+  "tomnyCliVersion": "v0.2.4",
+  "tomnyCoreCommit": "36938554bc4dca870141d37fc0ac63e2038ff4c0",
+  "tomnyCoreVersion": "v0.1.16"
 }

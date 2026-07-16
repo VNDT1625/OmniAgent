@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -23,6 +23,12 @@ import { initializeProcess } from './process';
 import { startBackendOrExit } from './process/startup/backendStartup';
 import { classifyBackendStartupFailure } from './process/startup/backendStartupFailure';
 import { installQuitCleanup } from './process/startup/quitCleanup';
+import {
+  prepareTelegramRemoteSecret,
+  startTelegramRemoteTunnel,
+  stopTelegramRemoteTunnel,
+  syncTelegramRemoteLanguage,
+} from './process/startup/telegramRemoteStartup';
 import { ProcessConfig } from './process/utils/initStorage';
 import type { BackendStartupFailureInfo } from './common/types/platform/electron';
 import { registerWindowMaximizeListeners } from '@process/bridge';
@@ -290,6 +296,15 @@ function markBackendReady(backendPort: number, source: string): void {
   console.log(`[AionUi] ${source} ready (port=${backendPort})`);
   exposeBackendPort(backendPort);
   registerCronResumeBridge(backendPort);
+  void ProcessConfig.get('language')
+    .then((language) => startTelegramRemoteTunnel(backendPort, language ?? 'en-US'))
+    .then((result) => {
+      if ('url' in result) {
+        console.log('[TelegramRemote] secure Mini App tunnel ready');
+        return;
+      }
+      console.warn(`[TelegramRemote] direct control unavailable (${result.reason})`, result.detail ?? '');
+    });
   backendStartedOk = true;
   backendStartupFailed = false;
   backendStartupFailureInfo = null;
@@ -539,6 +554,7 @@ const handleAppReady = async (): Promise<void> => {
   // Start aioncore only after initializeProcess(). initStorage may open
   // the legacy Electron SQLite catalog for a one-shot v26 migration and must
   // close it before the backend touches the same file.
+  prepareTelegramRemoteSecret();
   const backendStartup = await startBackendOrExit({
     startBackend: async () => {
       const { getDataPath } = await import('./process/utils/utils');
@@ -755,8 +771,9 @@ const handleAppReady = async (): Promise<void> => {
     }
 
     // 监听语言变更，刷新托盘菜单文案 / Listen for language changes to refresh tray menu labels
-    onLanguageChanged(() => {
+    onLanguageChanged((language) => {
       void refreshTrayMenu();
+      void syncTelegramRemoteLanguage(language);
     });
 
     if (!isE2ETestMode) {
@@ -870,7 +887,10 @@ installQuitCleanup({
   },
   // Stop aioncore subprocess — backend shutdown kills all agent children
   // transitively (no separate frontend workerTaskManager remains).
-  stopBackend: () => backendManager.stop(),
+  stopBackend: () => {
+    stopTelegramRemoteTunnel();
+    return backendManager.stop();
+  },
   destroyPetWindow: async () => {
     const { destroyPetWindow } = await import('./process/pet/petManager');
     destroyPetWindow();

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -26,7 +26,11 @@ import { WebLinksAddon } from '@xterm/addon-web-links';
 import type { TerminalSession } from '@process/terminal/terminalTypes';
 import { buildXtermTheme } from './xtermTheme';
 import { findMtuiStaleConfirmation } from '../constants';
+
+import { parseShellIntegration } from '../shellIntegrationParser';
 import { registerFileLinks } from './terminalFileLinks';
+
+import { applyTerminalInput } from './terminalInput';
 import type { PendingRemap } from '../useTerminalIntelligence';
 import '@xterm/xterm/css/xterm.css';
 
@@ -39,7 +43,7 @@ type TerminalViewProps = {
   onKill?: () => void;
   onOpenPath?: (path: string, line?: number, column?: number) => void;
   ghostFor?: (line: string) => string | null;
-  onCommandFinished?: (commandLine: string, exitCode: number, cwd?: string) => void;
+  onCommandFinished?: (commandLine: string, exitCode: number, cwd?: string, durationMs?: number) => void;
   pendingRemap?: PendingRemap | null;
   onDismissRemap?: () => void;
   autoConfirm?: boolean;
@@ -70,8 +74,10 @@ const TerminalView: React.FC<TerminalViewProps> = ({
   onClear,
   onKill,
   onOpenPath,
-  pendingRemap: _pendingRemap,
-  onDismissRemap: _onDismissRemap,
+  ghostFor,
+  onCommandFinished,
+  pendingRemap,
+  onDismissRemap,
   visible = true,
 }) => {
   const { t } = useTranslation();
@@ -86,6 +92,12 @@ const TerminalView: React.FC<TerminalViewProps> = ({
   const onOpenPathRef = useRef(onOpenPath);
   const lastSizeRef = useRef<{ cols: number; rows: number } | null>(null);
 
+  const commandLineRef = useRef('');
+  const commandCwdRef = useRef<string | undefined>(undefined);
+  const commandStartedAtRef = useRef<number | null>(null);
+  const onCommandFinishedRef = useRef(onCommandFinished);
+  const [currentInput, setCurrentInput] = useState('');
+
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [matchInfo, setMatchInfo] = useState<{ current: number; total: number } | null>(null);
@@ -95,6 +107,10 @@ const TerminalView: React.FC<TerminalViewProps> = ({
   onInputRef.current = onInput;
   onResizeRef.current = onResize;
   onOpenPathRef.current = onOpenPath;
+
+  onCommandFinishedRef.current = onCommandFinished;
+
+  const ghostTail = useMemo(() => ghostFor?.(currentInput) ?? null, [currentInput, ghostFor]);
 
   const isRunning = session?.status === 'running';
   const staleNotice = useMemo(() => findMtuiStaleConfirmation(buffer), [buffer]);
@@ -151,7 +167,10 @@ const TerminalView: React.FC<TerminalViewProps> = ({
       lastSizeRef.current = { cols, rows };
       onResizeRef.current?.(cols, rows);
     });
-    const inputSub = term.onData((data) => onInputRef.current(data));
+    const inputSub = term.onData((data) => {
+      setCurrentInput((line) => applyTerminalInput(line, data));
+      onInputRef.current(data);
+    });
     const searchSub = search.onDidChangeResults((result) => {
       if (!result || result.resultCount === 0) {
         setMatchInfo(result ? { current: 0, total: 0 } : null);
@@ -167,7 +186,7 @@ const TerminalView: React.FC<TerminalViewProps> = ({
     ro.observe(host);
     const raf = requestAnimationFrame(() => {
       fitNow();
-      writeTerminalBuffer(term!, bufferRef.current);
+      writeTerminalBuffer(term!, parseShellIntegration(bufferRef.current).clean);
       writtenBufferRef.current = bufferRef.current;
       term!.focus();
     });
@@ -206,10 +225,32 @@ const TerminalView: React.FC<TerminalViewProps> = ({
     if (buffer === written) return;
 
     if (buffer.startsWith(written)) {
-      writeTerminalBuffer(term, buffer.slice(written.length));
+      const parsed = parseShellIntegration(buffer.slice(written.length));
+      writeTerminalBuffer(term, parsed.clean);
+      for (const event of parsed.events) {
+        if (event.kind === 'command-line') {
+          commandLineRef.current = event.commandLine;
+        } else if (event.kind === 'cwd') {
+          commandCwdRef.current = event.cwd;
+        } else if (event.kind === 'command-start') {
+          commandStartedAtRef.current = performance.now();
+        } else if (event.kind === 'command-end') {
+          const durationMs =
+            commandStartedAtRef.current === null
+              ? 0
+              : Math.max(0, Math.round(performance.now() - commandStartedAtRef.current));
+          const commandLine = commandLineRef.current.trim();
+          if (commandLine.length > 0) {
+            onCommandFinishedRef.current?.(commandLine, event.exitCode, commandCwdRef.current, durationMs);
+          }
+          commandLineRef.current = '';
+          commandStartedAtRef.current = null;
+          setCurrentInput('');
+        }
+      }
     } else {
       term.reset();
-      writeTerminalBuffer(term, buffer);
+      writeTerminalBuffer(term, parseShellIntegration(buffer).clean);
     }
     writtenBufferRef.current = buffer;
     requestAnimationFrame(runFit);
@@ -256,6 +297,21 @@ const TerminalView: React.FC<TerminalViewProps> = ({
     },
     [searchTerm]
   );
+
+  const acceptGhost = useCallback((): void => {
+    if (!ghostTail) return;
+    onInputRef.current(ghostTail);
+    setCurrentInput((line) => line + ghostTail);
+    termRef.current?.focus();
+  }, [ghostTail]);
+
+  const runSuggestedRepair = useCallback((): void => {
+    if (!pendingRemap) return;
+    onInputRef.current(`${pendingRemap.replacementCommand}\r`);
+    setCurrentInput('');
+    onDismissRemap?.();
+    termRef.current?.focus();
+  }, [onDismissRemap, pendingRemap]);
 
   const copyStaleAcceptCommand = useCallback((): void => {
     if (!staleNotice) return;
@@ -323,7 +379,6 @@ const TerminalView: React.FC<TerminalViewProps> = ({
           ) : null}
         </div>
       </div>
-
       {searchOpen ? (
         <div className='shrink-0 flex items-center gap-8px px-12px py-6px b-b-1 b-b-solid border-b-1 bg-fill-2'>
           <Search theme='outline' size={13} className='text-t-tertiary shrink-0' />
@@ -363,14 +418,44 @@ const TerminalView: React.FC<TerminalViewProps> = ({
           />
         </div>
       ) : null}
-
       <div
         className='flex-1 min-h-0 min-w-0 overflow-hidden px-8px py-6px'
         onMouseDown={() => termRef.current?.focus()}
       >
         <div ref={hostRef} className='terminal-xterm-host h-full w-full' />
       </div>
-
+      ﻿{' '}
+      {ghostTail && currentInput ? (
+        <Button
+          size='mini'
+          type='text'
+          className='!absolute left-12px bottom-12px z-10 max-w-[calc(100%-24px)] !rd-6px !b-1 !b-solid !border-b-1 !bg-popup !px-8px !py-5px !h-auto !text-left !text-11px !font-mono shadow-sm'
+          onClick={acceptGhost}
+          aria-label={t('terminal.view.suggestionAccept')}
+        >
+          <span className='text-t-secondary'>{currentInput}</span>
+          <span className='text-t-tertiary'>{ghostTail}</span>
+          <span className='ml-8px text-primary'>{t('terminal.view.suggestionHint')}</span>
+        </Button>
+      ) : null}
+      {pendingRemap ? (
+        <div className='absolute left-12px right-12px bottom-12px z-20 rd-8px bg-popup b-1 b-solid border-b-1 shadow-md p-10px flex items-center justify-between gap-12px'>
+          <div className='min-w-0 flex flex-col gap-2px'>
+            <span className='text-12px font-600 text-t-primary'>{t('terminal.view.smartFixTitle')}</span>
+            <span className='text-11px text-t-tertiary truncate'>
+              {t('terminal.view.smartFixBody', { command: pendingRemap.replacementCommand })}
+            </span>
+          </div>
+          <div className='shrink-0 flex items-center gap-6px'>
+            <Button size='mini' type='text' onClick={onDismissRemap}>
+              {t('terminal.view.smartFixDismiss')}
+            </Button>
+            <Button size='mini' type='primary' onClick={runSuggestedRepair}>
+              {t('terminal.view.smartFixRun')}
+            </Button>
+          </div>
+        </div>
+      ) : null}
       {staleNotice ? (
         <div className='absolute left-12px right-12px bottom-12px z-20 rd-8px bg-popup b-1 b-solid border-b-1 shadow-md p-10px flex flex-col gap-8px'>
           <div className='flex items-start justify-between gap-12px'>
@@ -400,7 +485,6 @@ const TerminalView: React.FC<TerminalViewProps> = ({
           ) : null}
         </div>
       ) : null}
-
       {initError ? (
         <div className='absolute inset-0 flex-center flex-col gap-8px bg-fill-1 text-center px-16px'>
           <span className='size-40px flex-center rd-full bg-fill-2 text-danger'>

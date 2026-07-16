@@ -1,7 +1,7 @@
 import React from 'react';
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  *
  * Unit tests for AssistantEditDrawer component (A7 in N4a).

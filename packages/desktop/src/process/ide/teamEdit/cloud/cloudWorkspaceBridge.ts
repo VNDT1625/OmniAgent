@@ -1,12 +1,12 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
 /** Renderer-facing IPC bridge for cloud-authoritative IDE workspaces. */
 
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { promises as fsp } from 'node:fs';
 import * as path from 'node:path';
 import { bridge } from '@office-ai/platform';
@@ -24,6 +24,8 @@ import {
 } from '@/common/adapter/cloudWorkspaceMapper';
 import type { ISessionMcpServer } from '@/common/config/storage';
 import { createCloudWorkspaceFileAdapter, createCloudWorkspaceRelayClient } from './cloudWorkspaceRelay';
+import { createCloudWorkspaceReplica, type CloudWorkspaceReplica } from './cloudReplicaService';
+import type { ReplicaConflictResolution, ReplicaSyncStatus } from './cloudReplicaTypes';
 import { clearRemoteIdeMcpSession, ensureCloudIdeMcpRegistered, type RemoteIdeMcpBackend } from '../remoteIdeMcp';
 import { resolveWithinRepo, type TeamTreeEntry } from '../teamSessionHost';
 
@@ -41,6 +43,8 @@ export const CLOUD_WORKSPACE_CHANNELS = {
   publishStatus: 'ide.cloud-workspace-publish-status',
   pull: 'ide.cloud-workspace-pull',
   pullStatus: 'ide.cloud-workspace-pull-status',
+  replicaSync: 'ide.cloud-workspace-replica-sync',
+  replicaResolve: 'ide.cloud-workspace-replica-resolve',
   event: 'ide.cloud-workspace-event',
 } as const;
 
@@ -51,6 +55,7 @@ export type CloudWorkspaceConnectRequest = {
   workspaceId: string;
   token: string;
   displayName?: string;
+  localRootPath?: string;
 };
 
 export type CloudWorkspaceSessionData = {
@@ -60,6 +65,7 @@ export type CloudWorkspaceSessionData = {
   workspacePath: string;
   cachePath: string;
   remoteMcpServer: ISessionMcpServer;
+  replica?: ReplicaSyncStatus;
 };
 
 export type CloudWorkspaceStatusData = {
@@ -71,6 +77,7 @@ export type CloudWorkspaceStatusData = {
   cachePath?: string;
   remoteMcpServer?: ISessionMcpServer;
   publishProgress?: CloudWorkspacePublishProgress;
+  replica?: ReplicaSyncStatus;
 };
 export type CloudWorkspaceStatusRequest = { workspaceId?: string; publishRootPath?: string };
 
@@ -122,6 +129,11 @@ export type CloudWorkspaceEvent =
       leases: CloudWorkspaceFileLease[];
     }
   | {
+      kind: 'replica';
+      workspaceId: string;
+      replica: ReplicaSyncStatus;
+    }
+  | {
       kind: 'error';
       workspaceId: string;
       error: string;
@@ -133,6 +145,7 @@ type ActiveCloudWorkspace = CloudWorkspaceSessionData & {
   adapter: ReturnType<typeof createCloudWorkspaceFileAdapter>;
   cacheSeq?: number;
   syncingCache?: boolean;
+  replicaService?: CloudWorkspaceReplica;
 };
 
 export const cloudWorkspaceChannels = {
@@ -175,6 +188,13 @@ export const cloudWorkspaceChannels = {
   pullStatus: bridge.buildProvider<CloudWorkspaceResult<CloudWorkspacePullProgress>, { workspaceId: string }>(
     CLOUD_WORKSPACE_CHANNELS.pullStatus
   ),
+  replicaSync: bridge.buildProvider<CloudWorkspaceResult<ReplicaSyncStatus>, { workspaceId: string }>(
+    CLOUD_WORKSPACE_CHANNELS.replicaSync
+  ),
+  replicaResolve: bridge.buildProvider<
+    CloudWorkspaceResult<ReplicaSyncStatus>,
+    { workspaceId: string; conflictId: string; resolution: ReplicaConflictResolution; mergedContent?: string }
+  >(CLOUD_WORKSPACE_CHANNELS.replicaResolve),
   event: bridge.buildEmitter<CloudWorkspaceEventEnvelope>(CLOUD_WORKSPACE_CHANNELS.event),
 };
 
@@ -297,14 +317,13 @@ const publishLocalWorkspace = async (
         return;
       }
       const content = bytes.toString('utf-8');
-      const hash = await session.relay.uploadBlob(content);
-      await session.relay.appendOperation({
-        id: randomUUID(),
-        type: 'file.write',
-        path: relPath,
-        hash,
-        size: content.length,
-      });
+      const hash = createHash('sha256').update(content, 'utf-8').digest('hex');
+      const current = session.relay.getManifest()?.files[relPath];
+      if (current && !current.deleted && current.hash === hash && (current.encoding ?? 'utf8') === 'utf8') {
+        progress.skipped += 1;
+        return;
+      }
+      await session.adapter.writeFile(relPath, content);
       progress.uploaded += 1;
       progress.totalBytes += bytes.byteLength;
     } catch (error) {
@@ -352,24 +371,26 @@ const pullCloudWorkspace = async (
   const manifest = session.relay.getManifest() ?? session.manifest;
   const files = Object.values(manifest.files)
     .filter((file) => !file.deleted)
-    .map((file) => normalizeCloudPath(file.path))
-    .toSorted((a, b) => a.localeCompare(b));
+    .map((file) => ({ path: normalizeCloudPath(file.path), encoding: file.encoding }))
+    .toSorted((a, b) => a.path.localeCompare(b.path));
   progress.totalDiscovered = files.length;
 
   try {
     await fsp.mkdir(rootPath, { recursive: true });
-    for (const relPath of files) {
+    for (const file of files) {
+      const relPath = file.path;
       progress.currentPath = relPath;
       try {
         const content = await session.adapter.readFile(relPath);
+        const bytes = Buffer.from(content, file.encoding === 'base64' ? 'base64' : 'utf-8');
         const abs = resolveWithinRepo(rootPath, relPath);
         // Sequential by design: pull should stay predictable and avoid relay bursts.
         // eslint-disable-next-line no-await-in-loop
         await fsp.mkdir(path.dirname(abs), { recursive: true });
         // eslint-disable-next-line no-await-in-loop
-        await fsp.writeFile(abs, content, 'utf-8');
+        await fsp.writeFile(abs, bytes);
         progress.uploaded += 1;
-        progress.totalBytes += Buffer.byteLength(content, 'utf-8');
+        progress.totalBytes += bytes.byteLength;
       } catch (error) {
         progress.failed += 1;
         if (progress.errors.length < 20) progress.errors.push({ path: relPath, error: toError(error) });
@@ -479,17 +500,19 @@ const syncCloudCache = async (session: ActiveCloudWorkspace): Promise<void> => {
     const files = Object.values(manifest.files)
       .filter((file) => !file.deleted)
       .filter((file) => previous.files[normalizeCloudPath(file.path)]?.hash !== file.hash)
-      .map((file) => normalizeCloudPath(file.path))
-      .toSorted((a, b) => a.localeCompare(b));
-    for (const relPath of files) {
+      .map((file) => ({ path: normalizeCloudPath(file.path), encoding: file.encoding }))
+      .toSorted((a, b) => a.path.localeCompare(b.path));
+    for (const file of files) {
+      const relPath = file.path;
       const abs = resolveWithinRepo(session.cachePath, relPath);
       // Sequential by design: sync should be steady and not fan out relay reads.
       // eslint-disable-next-line no-await-in-loop
       await fsp.mkdir(path.dirname(abs), { recursive: true });
       // eslint-disable-next-line no-await-in-loop
       const content = await session.adapter.readFile(relPath);
+      const bytes = Buffer.from(content, file.encoding === 'base64' ? 'base64' : 'utf-8');
       // eslint-disable-next-line no-await-in-loop
-      await fsp.writeFile(abs, content, 'utf-8');
+      await fsp.writeFile(abs, bytes);
     }
     session.manifest = manifest;
     session.cacheSeq = manifest.seq;
@@ -508,6 +531,7 @@ const wireRelayEvents = (session: ActiveCloudWorkspace): void => {
         manifest: session.relay.getManifest() ?? session.manifest,
       },
     });
+    if (state.state === 'connected') session.replicaService?.scheduleSync();
     if (state.leases.length > 0) {
       cloudWorkspaceChannels.event.emit({
         event: { kind: 'leases', workspaceId: session.config.workspaceId, leases: state.leases },
@@ -515,6 +539,7 @@ const wireRelayEvents = (session: ActiveCloudWorkspace): void => {
     }
   });
   session.relay.on('operation', (operation, manifest) => {
+    session.replicaService?.scheduleSync();
     void syncCloudCache(session).catch((): undefined => undefined);
     cloudWorkspaceChannels.event.emit({
       event: { kind: 'operation', workspaceId: session.config.workspaceId, operation, manifest },
@@ -530,8 +555,9 @@ const wireRelayEvents = (session: ActiveCloudWorkspace): void => {
 const normalizeConnectRequest = (req: CloudWorkspaceConnectRequest): CloudWorkspaceRelayConfig => {
   const workspaceId = req.workspaceId.trim();
   const token = req.token.trim();
-  if (!workspaceId) throw new Error('workspaceId is required.');
-  if (!token) throw new Error('token is required.');
+  if (workspaceId.length < 16 || workspaceId.length > 128 || !/^[A-Za-z0-9_-]+$/.test(workspaceId))
+    throw new Error('workspaceId must be 16-128 characters using only letters, numbers, _ or -.');
+  if (token.length < 32) throw new Error('token must be at least 32 characters.');
   return {
     relayBaseUrl: normalizeRelayBaseUrl(req.relayBaseUrl),
     workspaceId,
@@ -543,10 +569,12 @@ const normalizeConnectRequest = (req: CloudWorkspaceConnectRequest): CloudWorksp
 
 export function registerCloudWorkspaceBridge(): void {
   cloudWorkspaceChannels.connect.provider(async (req): Promise<CloudWorkspaceResult<CloudWorkspaceSessionData>> => {
+    let connecting: ActiveCloudWorkspace | undefined;
     try {
       const config = normalizeConnectRequest(req);
       const existing = sessions.get(config.workspaceId);
       if (existing) {
+        existing.replicaService?.stop();
         existing.relay.close();
         clearRemoteIdeMcpSession(existing.config.relayBaseUrl, existing.config.token);
       }
@@ -571,11 +599,34 @@ export function registerCloudWorkspaceBridge(): void {
         remoteMcpServer: remoteIde.server,
       };
       const active: ActiveCloudWorkspace = { ...data, relay, adapter };
+      connecting = active;
       wireRelayEvents(active);
       sessions.set(config.workspaceId, active);
+      if (req.localRootPath?.trim()) {
+        active.replicaService = createCloudWorkspaceReplica({
+          workspaceId: config.workspaceId,
+          rootPath: req.localRootPath,
+          dataPath: path.join(remoteIde.workspacePath, 'replica-data'),
+          relay,
+          onStatus: (replica) => {
+            active.replica = replica;
+            cloudWorkspaceChannels.event.emit({
+              event: { kind: 'replica', workspaceId: config.workspaceId, replica },
+            });
+          },
+        });
+        active.replica = await active.replicaService.start();
+        data.replica = active.replica;
+      }
       await syncCloudCache(active);
       return { ok: true, data };
     } catch (error) {
+      if (connecting) {
+        connecting.replicaService?.stop();
+        connecting.relay.close();
+        sessions.delete(connecting.config.workspaceId);
+        clearRemoteIdeMcpSession(connecting.config.relayBaseUrl, connecting.config.token);
+      }
       return { ok: false, error: toError(error) };
     }
   });
@@ -584,6 +635,7 @@ export function registerCloudWorkspaceBridge(): void {
     try {
       const session = sessions.get(req.workspaceId);
       if (session) {
+        session.replicaService?.stop();
         session.relay.close();
         clearRemoteIdeMcpSession(session.config.relayBaseUrl, session.config.token);
         sessions.delete(req.workspaceId);
@@ -618,6 +670,7 @@ export function registerCloudWorkspaceBridge(): void {
           cachePath: session.cachePath,
           remoteMcpServer: session.remoteMcpServer,
           publishProgress,
+          replica: session.replicaService?.getStatus(),
         },
       };
     } catch (error) {
@@ -748,6 +801,29 @@ export function registerCloudWorkspaceBridge(): void {
           done: false,
           totalDiscovered: 0,
         },
+      };
+    } catch (error) {
+      return { ok: false, error: toError(error) };
+    }
+  });
+
+  cloudWorkspaceChannels.replicaSync.provider(async (req): Promise<CloudWorkspaceResult<ReplicaSyncStatus>> => {
+    try {
+      const replica = requireSession(req.workspaceId).replicaService;
+      if (!replica) throw new Error('Cloud workspace is not bound to a local replica.');
+      return { ok: true, data: await replica.synchronize() };
+    } catch (error) {
+      return { ok: false, error: toError(error) };
+    }
+  });
+
+  cloudWorkspaceChannels.replicaResolve.provider(async (req): Promise<CloudWorkspaceResult<ReplicaSyncStatus>> => {
+    try {
+      const replica = requireSession(req.workspaceId).replicaService;
+      if (!replica) throw new Error('Cloud workspace is not bound to a local replica.');
+      return {
+        ok: true,
+        data: await replica.resolveConflict(req.conflictId, req.resolution, req.mergedContent),
       };
     } catch (error) {
       return { ok: false, error: toError(error) };

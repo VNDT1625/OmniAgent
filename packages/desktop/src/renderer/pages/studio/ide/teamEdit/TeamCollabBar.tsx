@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -26,9 +26,11 @@ import { useTranslation } from 'react-i18next';
 import type { TeamRole, UseTeamCollab } from './useTeamCollab';
 import type { UseCloudWorkspace } from './cloud/useCloudWorkspace';
 
+const DEFAULT_CLOUD_RELAY_URL = 'https://aionui-cloud-relay.omniagentic.workers.dev';
+
 type TeamCollabBarProps = {
-  /** Whether a folder is open (publishing needs one). */
-  hasFolder: boolean;
+  /** Local working tree bound to the collaboration session. */
+  rootPath: string | null;
   /** The team-collab controller from {@link useTeamCollab}. */
   collab: UseTeamCollab;
   /** Cloud-authoritative workspace controller. */
@@ -44,7 +46,8 @@ const useCopy = (): ((text: string, toast: string) => void) => {
     );
 };
 
-const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab, cloud }) => {
+const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ rootPath, collab, cloud }) => {
+  const hasFolder = Boolean(rootPath);
   const { t } = useTranslation();
   const copy = useCopy();
   const [modal, setModal] = useState<null | 'publish' | 'join' | 'cloud'>(null);
@@ -52,12 +55,14 @@ const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab, cloud 
   // Publish form.
   const [password, setPassword] = useState('123456');
   const [online, setOnline] = useState(false);
+  const [allowWrites, setAllowWrites] = useState(true);
+  const [allowDatabase, setAllowDatabase] = useState(false);
   // Join form.
   const [joinUrl, setJoinUrl] = useState('');
   const [joinPassword, setJoinPassword] = useState('123456');
   const [joinName, setJoinName] = useState('');
   // Cloud form.
-  const [relayBaseUrl, setRelayBaseUrl] = useState('');
+  const [relayBaseUrl, setRelayBaseUrl] = useState(DEFAULT_CLOUD_RELAY_URL);
   const [workspaceId, setWorkspaceId] = useState('');
   const [cloudToken, setCloudToken] = useState('');
   const [displayName, setDisplayName] = useState('');
@@ -67,7 +72,7 @@ const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab, cloud 
       Message.warning(t('ide.teamCollab.weakPassword'));
       return;
     }
-    const ok = await collab.publish(password, online);
+    const ok = await collab.publish(password, online, allowWrites, allowDatabase);
     if (ok) setModal(null);
   };
 
@@ -80,8 +85,25 @@ const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab, cloud 
     if (ok) setModal(null);
   };
 
+  const generateCloudCredentials = (): void => {
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+    setWorkspaceId(crypto.randomUUID());
+    setCloudToken([...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join(''));
+  };
+
   const doCloudConnect = async (): Promise<void> => {
-    const ok = await cloud.connect(relayBaseUrl, workspaceId, cloudToken, displayName || t('ide.team.you'));
+    if (workspaceId.trim().length < 16 || cloudToken.length < 32) {
+      Message.warning(t('ide.cloudWorkspace.strongCredentialsRequired'));
+      return;
+    }
+    const ok = await cloud.connect(
+      relayBaseUrl,
+      workspaceId,
+      cloudToken,
+      displayName || t('ide.team.you'),
+      rootPath ?? undefined
+    );
     if (ok) setModal(null);
   };
 
@@ -97,7 +119,8 @@ const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab, cloud 
           />
         ) : collab.role === 'peer' && collab.peer ? (
           <span className='text-12px text-t-secondary truncate'>
-            {t('ide.teamCollab.joinedRepo', { repo: collab.peer.repoName })} · {t('ide.teamCollab.readOnlyNote')}
+            {t('ide.teamCollab.joinedRepo', { repo: collab.peer.repoName })} ·{' '}
+            {t(collab.peer.peerCapabilities.write ? 'ide.teamCollab.readWriteNote' : 'ide.teamCollab.fileReadOnlyNote')}
           </span>
         ) : cloud.connected && cloud.session ? (
           <span className='text-12px text-t-secondary truncate'>
@@ -134,7 +157,10 @@ const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab, cloud 
             size='mini'
             icon={<Cloudy theme='outline' size={13} />}
             loading={cloud.busy}
-            onClick={() => setModal('cloud')}
+            onClick={() => {
+              if (!workspaceId || !cloudToken) generateCloudCredentials();
+              setModal('cloud');
+            }}
           >
             {t('ide.cloudWorkspace.connect')}
           </Button>
@@ -179,6 +205,20 @@ const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab, cloud 
             </span>
             <Switch checked={online} onChange={setOnline} />
           </div>
+          <div className='flex items-center justify-between gap-16px'>
+            <span className='flex flex-col'>
+              <span className='text-13px text-t-primary'>{t('ide.teamCollab.allowWrites')}</span>
+              <span className='text-11px text-t-tertiary'>{t('ide.teamCollab.allowWritesHint')}</span>
+            </span>
+            <Switch checked={allowWrites} onChange={setAllowWrites} />
+          </div>
+          <div className='flex items-center justify-between gap-16px'>
+            <span className='flex flex-col'>
+              <span className='text-13px text-t-primary'>{t('ide.teamCollab.allowDatabase')}</span>
+              <span className='text-11px text-t-tertiary'>{t('ide.teamCollab.allowDatabaseHint')}</span>
+            </span>
+            <Switch checked={allowDatabase} onChange={setAllowDatabase} />
+          </div>
           {collab.error ? <span className='text-12px text-danger'>{collab.error}</span> : null}
         </div>
       </Modal>
@@ -218,6 +258,12 @@ const TeamCollabBar: React.FC<TeamCollabBarProps> = ({ hasFolder, collab, cloud 
               placeholder={t('ide.cloudWorkspace.tokenPlaceholder')}
             />
           </label>
+          <div className='flex items-center justify-between gap-12px'>
+            <span className='text-11px text-t-tertiary'>{t('ide.cloudWorkspace.securityHint')}</span>
+            <Button size='mini' onClick={generateCloudCredentials}>
+              {t('ide.cloudWorkspace.generateCredentials')}
+            </Button>
+          </div>
           <label className='flex flex-col gap-4px'>
             <span className='text-12px text-t-secondary'>{t('ide.cloudWorkspace.displayName')}</span>
             <Input

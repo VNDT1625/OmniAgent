@@ -309,12 +309,21 @@ pub fn search(projection: &Projection, query: &SearchQuery, now_ms: f64) -> Vec<
         .entries
         .iter()
         .filter(|entry| entry.status != "archived")
-        .filter(|entry| query.kind.as_ref().map(|k| &entry.kind == k).unwrap_or(true))
+        .filter(|entry| {
+            query
+                .kind
+                .as_ref()
+                .map(|k| &entry.kind == k)
+                .unwrap_or(true)
+        })
         .filter(|entry| {
             query.tags.is_empty() || {
                 let entry_tags: std::collections::HashSet<String> =
                     entry.tags.iter().map(|t| t.to_lowercase()).collect();
-                query.tags.iter().any(|t| entry_tags.contains(&t.to_lowercase()))
+                query
+                    .tags
+                    .iter()
+                    .any(|t| entry_tags.contains(&t.to_lowercase()))
             }
         })
         .map(|entry| {
@@ -386,7 +395,11 @@ fn append_line(path: &Path, line: &str) -> Result<(), MtuiError> {
 }
 
 /// Queue a draft (already shaped as the inbox item's `draft`) into inbox.jsonl.
-pub fn queue_add(project_root: &Path, draft: &serde_json::Value, now_iso: &str) -> Result<PathBuf, MtuiError> {
+pub fn queue_add(
+    project_root: &Path,
+    draft: &serde_json::Value,
+    now_iso: &str,
+) -> Result<PathBuf, MtuiError> {
     let dir = ensure_dir(project_root)?;
     let path = dir.join(INBOX_FILE);
     let item = serde_json::json!({ "receivedAt": now_iso, "draft": draft });
@@ -494,7 +507,10 @@ mod tests {
             built_at: 0,
             entries: vec![
                 entry("low", "completely unrelated electron wayland issue"),
-                entry("high", "vitest mock not applied hoist vi.mock vitest bun run test test-failure"),
+                entry(
+                    "high",
+                    "vitest mock not applied hoist vi.mock vitest bun run test test-failure",
+                ),
             ],
         };
         let now = chrono::DateTime::parse_from_rfc3339("2026-06-09T00:00:00.000Z")
@@ -502,7 +518,10 @@ mod tests {
             .timestamp_millis() as f64;
         let results = search(&projection, &query(), now);
         assert_eq!(results[0].entry_id, "high");
-        assert!(results[0].why_relevant.iter().any(|w| w == "Same framework"));
+        assert!(results[0]
+            .why_relevant
+            .iter()
+            .any(|w| w == "Same framework"));
     }
 
     #[test]

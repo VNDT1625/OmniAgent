@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -21,7 +21,7 @@ import type { PetSize } from '@process/pet/petTypes';
 // Keep-awake power blocker state
 let _keepAwakeBlockerId: number | null = null;
 
-type LanguageChangeListener = () => void;
+type LanguageChangeListener = (language: string) => void;
 let _languageChangeListener: LanguageChangeListener | null = null;
 
 /**
@@ -53,7 +53,7 @@ export function initSystemSettingsBridge(): void {
     // Broadcast to all renderers FIRST (desktop + WebUI) for real-time sync.
     // This must happen before the potentially slow main-process i18n switch.
     ipcBridge.systemSettings.languageChanged.emit({ language });
-    _languageChangeListener?.();
+    _languageChangeListener?.(language);
 
     // Update main process i18n (non-blocking – don't let a hang here block the provider)
     changeLanguage(language).catch((error) => {

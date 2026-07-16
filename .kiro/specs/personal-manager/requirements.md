@@ -1,7 +1,7 @@
 # Requirements Document
 
 > **Tính năng:** **Manager** — Personal Manager (Tasks + Note + Schedule, có AI hỗ trợ).
-> **Dự án:** Tomni Agentic (fork của [AionUi](https://github.com/iOfficeAI/AionUi), iOfficeAI, Apache-2.0).
+> **Dự án:** Tomni Agentic (fork của [AionUi](https://github.com/VNDT1625/OmniAgent), VNDT1625, Apache-2.0).
 > **Tính năng:** **Manager** — một "ứng dụng trong ứng dụng" gồm ba phần: Nhiệm vụ (Tasks), Ghi chú (Note),
 > và Lịch trình cá nhân (Schedule), có AI hỗ trợ tạo/quản lý/tối ưu.
 

@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -43,10 +43,14 @@ import { findFirstError, isErrorEvent, pushBounded } from './quickTestBuffer';
  * layer supplies a real implementation, the tests a fake.
  */
 export type NativeLogStream = {
+  /** PID of the launched native target, when the opener owns the process. */
+  processId?: number;
   /** Register a listener for each emitted log line. */
   onLine: (listener: (line: string) => void) => void;
   /** Register a listener for the stream ending (process exit / adb detach). */
   onClose: (listener: (info: { code: number | null }) => void) => void;
+  /** Optional structured UI events supplied by an accessibility adapter. */
+  onInteraction?: (listener: (event: Extract<TraceEvent, { kind: 'click' | 'input' }>) => void) => void;
   /** Stop the stream and release the underlying process/handle. */
   close: () => void;
 };
@@ -96,6 +100,8 @@ export type QuickTestNativeTracer = {
   recordedCount: () => number;
   /** The events collected so far (live view for streaming to the renderer). */
   currentEvents: () => TraceEvent[];
+  /** Whether the active stream supplied structured accessibility interactions. */
+  hasStructuredInteractions: () => boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -158,6 +164,7 @@ export const createQuickTestNativeTracer = (deps: QuickTestNativeTracerDeps): Qu
   let errorSeen = false;
   let stream: NativeLogStream | null = null;
   const events: TraceEvent[] = [];
+  let structuredInteractions = false;
 
   const push = (event: TraceEvent | null): void => {
     if (!event || !active) return;
@@ -181,9 +188,11 @@ export const createQuickTestNativeTracer = (deps: QuickTestNativeTracerDeps): Qu
     recorded = 0;
     errorSeen = false;
     stream = opened;
+    structuredInteractions = Boolean(opened.onInteraction);
     active = true;
 
     opened.onLine((line) => push(mapNativeLogLine(line, clock())));
+    opened.onInteraction?.((event) => push(event));
     opened.onClose(({ code }) => {
       if (active && code != null && code !== 0) {
         push({ kind: 'exception', message: `Process exited with code ${code}`, at: clock() });
@@ -203,6 +212,7 @@ export const createQuickTestNativeTracer = (deps: QuickTestNativeTracerDeps): Qu
       }
       stream = null;
     }
+    structuredInteractions = false;
     const typed = [...events];
     return { platform, rootPath, events: typed, firstError: findFirstError(typed), startedAt, stoppedAt };
   };
@@ -214,6 +224,7 @@ export const createQuickTestNativeTracer = (deps: QuickTestNativeTracerDeps): Qu
     hasError: () => errorSeen,
     recordedCount: () => recorded,
     currentEvents: () => [...events],
+    hasStructuredInteractions: () => structuredInteractions,
   };
 };
 

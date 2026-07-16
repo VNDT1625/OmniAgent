@@ -48,7 +48,7 @@ Display: "Bumping AionUi: {current} → {target}"
 **Skip entirely if `--skip-core` is set.**
 
 ```bash
-gh release view --repo iOfficeAI/AionCore --json tagName,body
+gh release view --repo VNDT1625/OmniAgent --json tagName,body
 ```
 
 - If `--core <version>` provided → use that tag instead of latest
@@ -60,7 +60,7 @@ gh release view --repo iOfficeAI/AionCore --json tagName,body
 **Skip if `--skip-core`.**
 
 ```bash
-gh release view <tag> --repo iOfficeAI/AionCore --json assets --jq '.assets[].name'
+gh release view <tag> --repo VNDT1625/OmniAgent --json assets --jq '.assets[].name'
 ```
 
 Verify all 7 expected assets exist:
@@ -119,7 +119,7 @@ Prepend the new entry in this format:
 ```markdown
 # Changelog
 
-## [{target}](https://github.com/iOfficeAI/AionUi/compare/v{previous}...v{target}) ({date YYYY-MM-DD})
+## [{target}](https://github.com/VNDT1625/OmniAgent/compare/v{previous}...v{target}) ({date YYYY-MM-DD})
 
 ### Desktop
 
@@ -131,7 +131,7 @@ Prepend the new entry in this format:
 
 - **thinking:** add streaming indicator (#3015)
 
-### Core ([{core tag}](https://github.com/iOfficeAI/AionCore/releases/tag/{core tag}))
+### Core ([{core tag}](https://github.com/VNDT1625/OmniAgent/releases/tag/{core tag}))
 
 #### Bug Fixes
 

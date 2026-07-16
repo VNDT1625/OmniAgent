@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/v/release/iOfficeAI/Omni?style=flat-square&color=32CD32" alt="Version">
+  <img src="https://img.shields.io/github/v/release/VNDT1625/Omni?style=flat-square&color=32CD32" alt="Version">
   &nbsp;
   <img src="https://img.shields.io/badge/license-Apache--2.0-32CD32?style=flat-square&logo=apache&logoColor=white" alt="License">
   &nbsp;
@@ -24,7 +24,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/⬇️%20立即下载-最新版本-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="下载最新版本" height="50">
   </a>
 </p>
@@ -86,13 +86,13 @@ Omni 自带完整的 AI Agent。不像其他工具需要你手动安装各种 CL
 
 ### **办公助手（PPT / Word / Excel）**
 
-想把文档/表格直接交给 Agent？Omni 内置 **[OfficeCLI](https://github.com/iOfficeAI/OfficeCli)**，让 PPT（Morph 转场）、Word（`.docx`）与 Excel（`.xlsx/.xlsm/.csv`）从需求到可交付结果更高效、更稳定。
+想把文档/表格直接交给 Agent？Omni 内置 **[OfficeCLI](https://github.com/VNDT1625/OfficeCli)**，让 PPT（Morph 转场）、Word（`.docx`）与 Excel（`.xlsx/.xlsm/.csv`）从需求到可交付结果更高效、更稳定。
 三类助手对应各自的文件工作流：生成的成稿可直接编辑、可复用。
 
 #### **PPT 助手**
 
 > **输出：可编辑 Morph PPT（`.pptx`）**
-> 页间转场连贯、风格统一；底层由 [OfficeCLI](https://github.com/iOfficeAI/OfficeCli) 驱动。
+> 页间转场连贯、风格统一；底层由 [OfficeCLI](https://github.com/VNDT1625/OfficeCli) 驱动。
 
 <table>
   <tr>
@@ -108,7 +108,7 @@ Omni 自带完整的 AI Agent。不像其他工具需要你手动安装各种 CL
 #### **Word 助手**
 
 > **输出：可编辑 Word（`.docx`）**
-> 支持论文/写作的结构、段落与格式组织；底层由 [OfficeCLI](https://github.com/iOfficeAI/OfficeCli) 驱动。
+> 支持论文/写作的结构、段落与格式组织；底层由 [OfficeCLI](https://github.com/VNDT1625/OfficeCli) 驱动。
 
 <table>
   <tr>
@@ -124,7 +124,7 @@ Omni 自带完整的 AI Agent。不像其他工具需要你手动安装各种 CL
 #### **Excel 助手**
 
 > **输出：可直接复算的 Excel（`.xlsx/.xlsm/.csv`）**
-> 用 `xlsx` 生成/更新表格，自动美化并完成数据分析；底层由 [OfficeCLI](https://github.com/iOfficeAI/OfficeCli) 驱动。
+> 用 `xlsx` 生成/更新表格，自动美化并完成数据分析；底层由 [OfficeCLI](https://github.com/VNDT1625/OfficeCli) 驱动。
 
 <table>
   <tr>
@@ -288,7 +288,7 @@ _你的 24/7 AI 助手 — 手机、平板、电脑，随时随地都能用。_
 
 <p align="center"><em>远程监管你的 Agent — Claude、Gemini、Codex，浏览器或手机即可远程控制与查看，如同 Claude Code remote。</em></p>
 
-> [远程互联网访问教程](https://github.com/iOfficeAI/Omni/wiki/Remote-Internet-Access-Guide-Chinese)
+> [远程互联网访问教程](https://github.com/VNDT1625/Omni/wiki/Remote-Internet-Access-Guide-Chinese)
 
 ## ✨ Cowork 演示
 
@@ -447,7 +447,7 @@ _想生成图片、编辑图片、识别图片？Gemini 驱动的 AI 图像功�
 
 </details>
 
-> [图像生成模型配置指南](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide)
+> [图像生成模型配置指南](https://github.com/VNDT1625/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide)
 
 ---
 
@@ -607,7 +607,7 @@ Omni 是一个**免费开源的 Multi-AI Agent 桌面应用**。相比只能在 
 ### 安装
 
 <p>
-  <a href="https://github.com/iOfficeAI/Omni/releases">
+  <a href="https://github.com/VNDT1625/Omni/releases">
     <img src="https://img.shields.io/badge/下载-最新版本-32CD32?style=for-the-badge&logo=github&logoColor=white" alt="下载最新版本" height="50">
   </a>
 </p>
@@ -634,23 +634,23 @@ brew install omni
 
 **🚀 快速开始**
 
-- [📖 完整安装指南](https://github.com/iOfficeAI/Omni/wiki/Getting-Started) — 从下载到配置，一步步教你
-- [⚙️ LLM 配置指南](https://github.com/iOfficeAI/Omni/wiki/LLM-Configuration) — 多平台 AI 模型怎么配置
-- [🤖 多 Agent 模式设置](https://github.com/iOfficeAI/Omni/wiki/ACP-Setup) — 把终端 AI Agent 集成进来
-- [🔌 MCP 工具配置](https://github.com/iOfficeAI/Omni/wiki/MCP-Configuration-Guide) — 模型上下文协议服务器设置
-- [🌐 WebUI 配置指南](https://github.com/iOfficeAI/Omni/wiki/WebUI-Configuration-Guide) — WebUI 完整设置教程
+- [📖 完整安装指南](https://github.com/VNDT1625/Omni/wiki/Getting-Started) — 从下载到配置，一步步教你
+- [⚙️ LLM 配置指南](https://github.com/VNDT1625/Omni/wiki/LLM-Configuration) — 多平台 AI 模型怎么配置
+- [🤖 多 Agent 模式设置](https://github.com/VNDT1625/Omni/wiki/ACP-Setup) — 把终端 AI Agent 集成进来
+- [🔌 MCP 工具配置](https://github.com/VNDT1625/Omni/wiki/MCP-Configuration-Guide) — 模型上下文协议服务器设置
+- [🌐 WebUI 配置指南](https://github.com/VNDT1625/Omni/wiki/WebUI-Configuration-Guide) — WebUI 完整设置教程
 
 **🎯 使用场景**
 
-- [📁 文件管理](https://github.com/iOfficeAI/Omni/wiki/file-management) — 让 AI 帮你整理文件
-- [📊 Excel 处理](https://github.com/iOfficeAI/Omni/wiki/excel-processing) — AI 驱动的数据处理
-- [🎨 图像生成](https://github.com/iOfficeAI/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide) — AI 图像生成
-- [📚 更多使用场景](https://github.com/iOfficeAI/Omni/wiki/Use-Cases-Overview)
+- [📁 文件管理](https://github.com/VNDT1625/Omni/wiki/file-management) — 让 AI 帮你整理文件
+- [📊 Excel 处理](https://github.com/VNDT1625/Omni/wiki/excel-processing) — AI 驱动的数据处理
+- [🎨 图像生成](https://github.com/VNDT1625/Omni/wiki/Omni-Image-Generation-Tool-Model-Configuration-Guide) — AI 图像生成
+- [📚 更多使用场景](https://github.com/VNDT1625/Omni/wiki/Use-Cases-Overview)
 
 **❓ 支持与帮助**
 
-- [❓ FAQ](https://github.com/iOfficeAI/Omni/wiki/FAQ) — 常见问题和解决方案
-- [🔧 配置与使用教程](https://github.com/iOfficeAI/Omni/wiki/Configuration-Guides) — 完整配置文档
+- [❓ FAQ](https://github.com/VNDT1625/Omni/wiki/FAQ) — 常见问题和解决方案
+- [🔧 配置与使用教程](https://github.com/VNDT1625/Omni/wiki/Configuration-Guides) — 完整配置文档
 
 </details>
 
@@ -666,9 +666,9 @@ brew install omni
   </a>
 </p>
 
-- [GitHub Discussions](https://github.com/iOfficeAI/Omni/discussions) — 分享想法，交流使用技巧
-- [报告问题](https://github.com/iOfficeAI/Omni/issues) — 遇到 bug 或有新功能想法？告诉我们
-- [发布更新](https://github.com/iOfficeAI/Omni/releases) — 获取最新版本
+- [GitHub Discussions](https://github.com/VNDT1625/Omni/discussions) — 分享想法，交流使用技巧
+- [报告问题](https://github.com/VNDT1625/Omni/issues) — 遇到 bug 或有新功能想法？告诉我们
+- [发布更新](https://github.com/VNDT1625/Omni/releases) — 获取最新版本
 - [Discord 社区](https://discord.gg/2QAwJn7Egx) — 英语社区
 - [微信群](../../resources/wx-9.png) — 中文社区
 
@@ -719,10 +719,10 @@ bun run test       # 运行单元测试
 </tr>
 <tr>
 <td width="170" align="center">
-  <a href="https://atomgit.com/iOfficeAI/Omni" target="_blank">AtomGit</a>
+  <a href="https://atomgit.com/VNDT1625/Omni" target="_blank">AtomGit</a>
 </td>
 <td>
-  <a href="https://atomgit.com/iOfficeAI/Omni" target="_blank">AtomGit</a> — 面向全球开发者的开源社区与代码托管平台。Omni 已在 AtomGit 上线，欢迎访问。
+  <a href="https://atomgit.com/VNDT1625/Omni" target="_blank">AtomGit</a> — 面向全球开发者的开源社区与代码托管平台。Omni 已在 AtomGit 上线，欢迎访问。
 </td>
 </tr>
 </table>
@@ -738,16 +738,16 @@ bun run test       # 运行单元测试
 ## 贡献者
 
 <p align="center">
-  <a href="https://github.com/iOfficeAI/Omni/graphs/contributors">
-    <img src="https://contrib.rocks/image?repo=iOfficeAI/Omni&max=100" alt="Contributors" />
+  <a href="https://github.com/VNDT1625/Omni/graphs/contributors">
+    <img src="https://contrib.rocks/image?repo=VNDT1625/Omni&max=100" alt="Contributors" />
   </a>
 </p>
 
 ## Star 历史
 
 <p align="center">
-  <a href="https://www.star-history.com/#iOfficeAI/omni&Date" target="_blank">
-    <img src="https://api.star-history.com/svg?repos=iOfficeAI/omni&type=Date" alt="Star History" width="600">
+  <a href="https://www.star-history.com/#VNDT1625/omni&Date" target="_blank">
+    <img src="https://api.star-history.com/svg?repos=VNDT1625/omni&type=Date" alt="Star History" width="600">
   </a>
 </p>
 
@@ -755,6 +755,6 @@ bun run test       # 运行单元测试
 
 **如果觉得不错，给我们点个 Star 吧**
 
-[报告 Bug](https://github.com/iOfficeAI/Omni/issues) · [请求功能](https://github.com/iOfficeAI/Omni/issues)
+[报告 Bug](https://github.com/VNDT1625/Omni/issues) · [请求功能](https://github.com/VNDT1625/Omni/issues)
 
 </div>

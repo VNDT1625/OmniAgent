@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -15,8 +15,9 @@ import {
   type CloudWorkspaceSessionData,
 } from './cloudWorkspaceClient';
 import type { PeerConnection } from '../useTeamCollab';
+import type { ReplicaConflictResolution, ReplicaSyncStatus } from '@process/ide/teamEdit/cloud/cloudReplicaTypes';
 
-export type CloudWorkspaceConnection = PeerConnection & {
+export type CloudWorkspaceConnection = Omit<PeerConnection, 'peerCapabilities'> & {
   relayBaseUrl: string;
   workspaceId: string;
   cachePath?: string;
@@ -27,19 +28,32 @@ export type UseCloudWorkspace = {
   session: CloudWorkspaceConnection | null;
   manifest: CloudWorkspaceManifest | null;
   state: CloudWorkspaceSyncState | null;
+  replica: ReplicaSyncStatus | null;
   busy: boolean;
   publishing: boolean;
   pulling: boolean;
   publishProgress: CloudWorkspacePublishProgress | null;
   pullProgress: CloudWorkspacePullProgress | null;
   error: string | null;
-  connect: (relayBaseUrl: string, workspaceId: string, token: string, displayName?: string) => Promise<boolean>;
+  connect: (
+    relayBaseUrl: string,
+    workspaceId: string,
+    token: string,
+    displayName?: string,
+    localRootPath?: string
+  ) => Promise<boolean>;
   disconnect: () => Promise<void>;
   publishLocal: (rootPath: string) => Promise<boolean>;
   pullCloud: (rootPath: string) => Promise<boolean>;
   claimFile: (relPath: string, intent?: string) => Promise<boolean>;
   releaseFile: (relPath: string) => Promise<void>;
   refreshStatus: () => Promise<void>;
+  syncNow: () => Promise<boolean>;
+  resolveConflict: (
+    conflictId: string,
+    resolution: ReplicaConflictResolution,
+    mergedContent?: string
+  ) => Promise<boolean>;
 };
 
 const toConnection = (data: CloudWorkspaceSessionData): CloudWorkspaceConnection => ({
@@ -57,6 +71,7 @@ export const useCloudWorkspace = (): UseCloudWorkspace => {
   const [session, setSession] = useState<CloudWorkspaceConnection | null>(null);
   const [manifest, setManifest] = useState<CloudWorkspaceManifest | null>(null);
   const [state, setState] = useState<CloudWorkspaceSyncState | null>(null);
+  const [replica, setReplica] = useState<ReplicaSyncStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [pulling, setPulling] = useState(false);
@@ -80,6 +95,7 @@ export const useCloudWorkspace = (): UseCloudWorkspace => {
       setSession(null);
       setManifest(null);
       setState(null);
+      setReplica(null);
       return;
     }
     setSession({
@@ -94,6 +110,7 @@ export const useCloudWorkspace = (): UseCloudWorkspace => {
     });
     setManifest(data.data.manifest ?? null);
     setState(data.data.state ?? null);
+    setReplica(data.data.replica ?? null);
   }, []);
 
   const refreshStatus = useCallback(async (): Promise<void> => {
@@ -136,6 +153,11 @@ export const useCloudWorkspace = (): UseCloudWorkspace => {
         if (event.manifest) setManifest(event.manifest);
         return;
       }
+      if (event.kind === 'replica') {
+        setReplica(event.replica);
+        return;
+      }
+
       if (event.kind === 'error') {
         setError(event.error);
       }
@@ -143,12 +165,24 @@ export const useCloudWorkspace = (): UseCloudWorkspace => {
   }, [scheduleRefresh, session]);
 
   const connect = useCallback(
-    async (relayBaseUrl: string, workspaceId: string, token: string, displayName?: string): Promise<boolean> => {
+    async (
+      relayBaseUrl: string,
+      workspaceId: string,
+      token: string,
+      displayName?: string,
+      localRootPath?: string
+    ): Promise<boolean> => {
       if (busy) return false;
       setBusy(true);
       setError(null);
       try {
-        const res = await cloudWorkspaceClient.connect({ relayBaseUrl, workspaceId, token, displayName });
+        const res = await cloudWorkspaceClient.connect({
+          relayBaseUrl,
+          workspaceId,
+          token,
+          displayName,
+          localRootPath,
+        });
         if (!aliveRef.current) return res.ok;
         if (res.ok === false) {
           setError(res.error);
@@ -157,6 +191,7 @@ export const useCloudWorkspace = (): UseCloudWorkspace => {
         setSession(toConnection(res.data));
         setManifest(res.data.manifest);
         setState(res.data.state);
+        setReplica(res.data.replica ?? null);
         return true;
       } catch (err) {
         if (aliveRef.current) setError(err instanceof Error ? err.message : String(err));
@@ -175,6 +210,7 @@ export const useCloudWorkspace = (): UseCloudWorkspace => {
     setSession(null);
     setManifest(null);
     setState(null);
+    setReplica(null);
   }, [session]);
 
   const publishLocal = useCallback(
@@ -259,6 +295,41 @@ export const useCloudWorkspace = (): UseCloudWorkspace => {
       await refreshStatus();
     },
     [refreshStatus, session]
+  );
+
+  const syncNow = useCallback(async (): Promise<boolean> => {
+    if (!session) return false;
+    const res = await cloudWorkspaceClient.replicaSync(session.workspaceId).catch((err): null => {
+      if (aliveRef.current) setError(err instanceof Error ? err.message : String(err));
+      return null;
+    });
+    if (!res) return false;
+    if (res.ok === false) {
+      setError(res.error);
+      return false;
+    }
+    setReplica(res.data);
+    return true;
+  }, [session]);
+
+  const resolveConflict = useCallback(
+    async (conflictId: string, resolution: ReplicaConflictResolution, mergedContent?: string): Promise<boolean> => {
+      if (!session) return false;
+      const res = await cloudWorkspaceClient
+        .replicaResolve(session.workspaceId, conflictId, resolution, mergedContent)
+        .catch((err): null => {
+          if (aliveRef.current) setError(err instanceof Error ? err.message : String(err));
+          return null;
+        });
+      if (!res) return false;
+      if (res.ok === false) {
+        setError(res.error);
+        return false;
+      }
+      setReplica(res.data);
+      return true;
+    },
+    [session]
   );
 
   useEffect(() => {
@@ -352,6 +423,7 @@ export const useCloudWorkspace = (): UseCloudWorkspace => {
       session,
       manifest,
       state,
+      replica,
       busy,
       publishing,
       pulling,
@@ -365,11 +437,14 @@ export const useCloudWorkspace = (): UseCloudWorkspace => {
       claimFile,
       releaseFile,
       refreshStatus,
+      syncNow,
+      resolveConflict,
     }),
     [
       session,
       manifest,
       state,
+      replica,
       busy,
       publishing,
       pulling,
@@ -383,6 +458,8 @@ export const useCloudWorkspace = (): UseCloudWorkspace => {
       claimFile,
       releaseFile,
       refreshStatus,
+      syncNow,
+      resolveConflict,
     ]
   );
 };

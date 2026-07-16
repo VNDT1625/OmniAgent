@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -117,8 +117,16 @@ const withTimeout = <T>(channel: string, call: () => Promise<T>, timeoutMs = OP_
 /** Timeout-guarded team-collab invokers for the renderer. */
 export const teamCollabClient = {
   /** HOST: publish the open repo as a team session (LAN or, when `online`, WAN). */
-  publish: (rootPath: string, password: string, online: boolean): Promise<TeamCollabResult<TeamPublishData>> =>
-    withTimeout(TEAM_COLLAB_CHANNELS.publish, () => channels.publish.invoke({ rootPath, password, online })),
+  publish: (
+    rootPath: string,
+    password: string,
+    online: boolean,
+    allowWrites: boolean,
+    allowDatabase: boolean
+  ): Promise<TeamCollabResult<TeamPublishData>> =>
+    withTimeout(TEAM_COLLAB_CHANNELS.publish, () =>
+      channels.publish.invoke({ rootPath, password, online, allowWrites, allowDatabase })
+    ),
   /** HOST: stop sharing. */
   unpublish: (rootPath: string): Promise<TeamCollabResult<boolean>> =>
     withTimeout(TEAM_COLLAB_CHANNELS.unpublish, () => channels.unpublish.invoke({ rootPath }), 15000),

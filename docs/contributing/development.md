@@ -11,7 +11,7 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/iOfficeAI/AionUi.git
+git clone https://github.com/VNDT1625/OmniAgent.git
 cd AionUi
 
 # Install dependencies

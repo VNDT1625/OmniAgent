@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -82,7 +82,7 @@ export const classifyModelError = (error: unknown): 'no-model' | 'error' => {
  * Resolves the provider lazily (per call) so a model added after startup is
  * picked up without a restart. Throws on failure; callers wrap into a result.
  */
-const runProviderChat = async (model: string, messages: IdeChatMessage[]): Promise<string> => {
+const runProviderChat = async (model: string, messages: IdeChatMessage[], signal?: AbortSignal): Promise<string> => {
   const providers = (await httpRequest<IProvider[]>('GET', '/api/providers').catch(() => [] as IProvider[])) || [];
   const selected = pickForModel(providers, model);
   if (!selected) {
@@ -96,6 +96,7 @@ const runProviderChat = async (model: string, messages: IdeChatMessage[]): Promi
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
     body: JSON.stringify({ model: selected.model, messages, stream: false }),
+    signal,
   });
 
   if (!response.ok) {
@@ -115,6 +116,6 @@ const runProviderChat = async (model: string, messages: IdeChatMessage[]): Promi
  * Run one IDE completion, routing a `cli:<agentId>` model id to a CLI agent
  * (Claude Code, Codex, Gemini CLI…) and any other model id to the provider path.
  */
-export const runIdeChat = async (model: string, messages: IdeChatMessage[]): Promise<string> => {
-  return runAgentChatMessages((m, msgs) => runProviderChat(m, msgs as IdeChatMessage[]), model, messages, undefined);
+export const runIdeChat = async (model: string, messages: IdeChatMessage[], signal?: AbortSignal): Promise<string> => {
+  return runAgentChatMessages((m, msgs, s) => runProviderChat(m, msgs as IdeChatMessage[], s), model, messages, signal);
 };

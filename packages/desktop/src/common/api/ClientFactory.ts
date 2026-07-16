@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -76,7 +76,7 @@ export class ClientFactory {
           baseURL: base_url,
           timeout: options.timeout,
           defaultHeaders: {
-            'HTTP-Referer': 'https://aionui.com',
+            'HTTP-Referer': 'https://github.com/VNDT1625/OmniAgent',
             'X-Title': 'AionUi',
           },
           ...(options.baseConfig as OpenAIClientConfig),
@@ -127,7 +127,7 @@ export class ClientFactory {
           baseURL: base_url,
           timeout: options.timeout,
           defaultHeaders: {
-            'HTTP-Referer': 'https://aionui.com',
+            'HTTP-Referer': 'https://github.com/VNDT1625/OmniAgent',
             'X-Title': 'AionUi',
           },
           ...(options.baseConfig as OpenAIClientConfig),

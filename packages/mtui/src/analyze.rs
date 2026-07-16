@@ -23,6 +23,40 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct FileTreeStat {
+    pub path: String,
+    pub bytes: u64,
+    pub lines: usize,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ExtensionStat {
+    pub extension: String,
+    pub files: usize,
+    pub bytes: u64,
+    pub lines: usize,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StatsResult {
+    pub command: String,
+    pub target: String,
+    pub direct_children: usize,
+    pub total_files: usize,
+    pub total_directories: usize,
+    pub total_bytes: u64,
+    pub total_lines: usize,
+    pub truncated: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub extensions: Vec<ExtensionStat>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub largest_files: Vec<FileTreeStat>,
+}
+
 /// How costly an engine is to run, so the host can warn before enabling.
 #[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "lowercase")]
@@ -108,6 +142,155 @@ fn is_ignored_dir(name: &str) -> bool {
     )
 }
 
+fn display_relative(project_root: &Path, path: &Path) -> String {
+    let canonical_root =
+        std::fs::canonicalize(project_root).unwrap_or_else(|_| project_root.to_path_buf());
+    let canonical_path = std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    let displayed = canonical_path
+        .strip_prefix(&canonical_root)
+        .unwrap_or(&canonical_path)
+        .to_string_lossy()
+        .replace('\\', "/");
+    if displayed.is_empty() {
+        ".".to_string()
+    } else {
+        displayed
+    }
+}
+
+fn count_text_lines(path: &Path) -> usize {
+    let Ok(bytes) = std::fs::read(path) else {
+        return 0;
+    };
+    if bytes.contains(&0) {
+        return 0;
+    }
+    if bytes.is_empty() {
+        return 0;
+    }
+    bytes.iter().filter(|byte| **byte == b'\n').count()
+        + usize::from(bytes.last().copied() != Some(b'\n'))
+}
+
+pub fn run_stats(
+    project_root: &Path,
+    target: &Path,
+    max_files: usize,
+    largest: usize,
+) -> Result<StatsResult, MtuiError> {
+    let resolved = if target.is_absolute() {
+        target.to_path_buf()
+    } else {
+        project_root.join(target)
+    };
+    if !resolved.exists() {
+        return Err(MtuiError::FileNotFound {
+            message: format!("Path not found: {}", target.display()),
+            suggestion: "Check the path and try again".to_string(),
+        });
+    }
+
+    let direct_children = if resolved.is_dir() {
+        std::fs::read_dir(&resolved)
+            .map(|entries| entries.count())
+            .unwrap_or(0)
+    } else {
+        1
+    };
+    let mut total_files = 0usize;
+    let mut total_directories = 0usize;
+    let mut total_bytes = 0u64;
+    let mut total_lines = 0usize;
+    let mut truncated = false;
+    let mut extension_map: BTreeMap<String, ExtensionStat> = BTreeMap::new();
+    let mut file_stats = Vec::new();
+
+    for entry in walkdir::WalkDir::new(&resolved)
+        .into_iter()
+        .filter_entry(|entry| {
+            !entry.file_type().is_dir()
+                || entry.path() == resolved
+                || entry
+                    .file_name()
+                    .to_str()
+                    .map(|name| !is_ignored_dir(name))
+                    .unwrap_or(true)
+        })
+        .filter_map(Result::ok)
+    {
+        if entry.path() == resolved && entry.file_type().is_dir() {
+            continue;
+        }
+        if entry.file_type().is_dir() {
+            total_directories += 1;
+            continue;
+        }
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        if total_files >= max_files.max(1) {
+            truncated = true;
+            break;
+        }
+
+        let bytes = entry.metadata().map(|metadata| metadata.len()).unwrap_or(0);
+        let lines = count_text_lines(entry.path());
+        let extension = entry
+            .path()
+            .extension()
+            .and_then(|value| value.to_str())
+            .map(|value| value.to_ascii_lowercase())
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "[none]".to_string());
+        let extension_entry = extension_map
+            .entry(extension.clone())
+            .or_insert(ExtensionStat {
+                extension,
+                files: 0,
+                bytes: 0,
+                lines: 0,
+            });
+        extension_entry.files += 1;
+        extension_entry.bytes += bytes;
+        extension_entry.lines += lines;
+        total_files += 1;
+        total_bytes += bytes;
+        total_lines += lines;
+        file_stats.push(FileTreeStat {
+            path: display_relative(project_root, entry.path()),
+            bytes,
+            lines,
+        });
+    }
+
+    let mut extensions = extension_map.into_values().collect::<Vec<_>>();
+    extensions.sort_by(|a, b| {
+        b.files
+            .cmp(&a.files)
+            .then_with(|| a.extension.cmp(&b.extension))
+    });
+    file_stats.sort_by(|a, b| {
+        b.lines
+            .cmp(&a.lines)
+            .then_with(|| b.bytes.cmp(&a.bytes))
+            .then_with(|| a.path.cmp(&b.path))
+    });
+    file_stats.truncate(largest);
+
+    Ok(StatsResult {
+        command: "stats".to_string(),
+        target: display_relative(project_root, &resolved),
+        direct_children,
+        total_files,
+        total_directories,
+        total_bytes,
+        total_lines,
+        truncated,
+        extensions,
+        largest_files: file_stats,
+    })
+}
+
 /// Map a lowercase file extension to a canonical language id, or `None` when the
 /// extension is not a code/markup file we care to analyze.
 pub fn classify_language(ext: &str) -> Option<&'static str> {
@@ -150,7 +333,11 @@ pub fn classify_language(ext: &str) -> Option<&'static str> {
 /// The threshold logic keeps heavy LSP engines opt-in and only worth suggesting
 /// when the language is clearly present (≥ 5 files or ≥ 5% of the repo).
 pub fn recommend_engine(language: &str, count: usize, total: usize) -> Engine {
-    let share = if total > 0 { (count as f64) * 100.0 / (total as f64) } else { 0.0 };
+    let share = if total > 0 {
+        (count as f64) * 100.0 / (total as f64)
+    } else {
+        0.0
+    };
     let well_represented = count >= 5 || share >= 5.0;
 
     match language {
@@ -228,7 +415,12 @@ pub fn build_result(counts: BTreeMap<String, usize>, built_at: u64) -> AnalyzeRe
                 0.0
             };
             let engine = recommend_engine(&language, file_count, total);
-            LanguageEntry { language, file_count, share_percent: share, engine }
+            LanguageEntry {
+                language,
+                file_count,
+                share_percent: share,
+                engine,
+            }
         })
         .collect();
     // Sort by file count desc, then language id asc for stable ordering.
@@ -237,7 +429,11 @@ pub fn build_result(counts: BTreeMap<String, usize>, built_at: u64) -> AnalyzeRe
             .cmp(&a.file_count)
             .then_with(|| a.language.cmp(&b.language))
     });
-    let dominant: Vec<String> = languages.iter().take(5).map(|entry| entry.language.clone()).collect();
+    let dominant: Vec<String> = languages
+        .iter()
+        .take(5)
+        .map(|entry| entry.language.clone())
+        .collect();
     AnalyzeResult {
         command: "analyze".to_string(),
         built_at,
@@ -288,7 +484,9 @@ pub fn run(project_root: &Path, max_files: usize) -> Result<AnalyzeResult, MtuiE
             .and_then(|ext| ext.to_str())
             .map(|ext| ext.to_ascii_lowercase());
         let Some(ext) = ext else { continue };
-        let Some(language) = classify_language(&ext) else { continue };
+        let Some(language) = classify_language(&ext) else {
+            continue;
+        };
         *counts.entry(language.to_string()).or_insert(0) += 1;
         scanned += 1;
         if scanned >= max_files {
@@ -325,7 +523,11 @@ pub fn checker_for_ext(ext: &str) -> Option<Checker> {
         "ts" | "tsx" | "js" | "jsx" | "mjs" | "cjs" => Checker {
             language: "typescript".to_string(),
             tool: "oxlint".to_string(),
-            args: vec!["--format".to_string(), "unix".to_string(), "{path}".to_string()],
+            args: vec![
+                "--format".to_string(),
+                "unix".to_string(),
+                "{path}".to_string(),
+            ],
             auto_run: true,
         },
         "py" | "pyw" => Checker {
@@ -421,7 +623,10 @@ pub fn parse_issue_line(line: &str, tool: &str) -> Option<Issue> {
 
 /// Parse all diagnostic lines from a checker's stdout/stderr blob.
 pub fn parse_issues(output: &str, tool: &str) -> Vec<Issue> {
-    output.lines().filter_map(|line| parse_issue_line(line, tool)).collect()
+    output
+        .lines()
+        .filter_map(|line| parse_issue_line(line, tool))
+        .collect()
 }
 
 fn build_command(checker: &Checker, target: &str) -> String {
@@ -499,7 +704,11 @@ fn run_checker(project_root: &Path, checker: &Checker, target: &str) -> CheckerR
 /// Error-check a target path (file or directory; defaults to the repo root).
 /// Collects unique checkers by extension, runs the light ones, and suggests the
 /// heavy ones. Pure-ish: spawns only known linter binaries that are present.
-pub fn run_check(project_root: &Path, target: Option<&str>, max_files: usize) -> Result<CheckResult, MtuiError> {
+pub fn run_check(
+    project_root: &Path,
+    target: Option<&str>,
+    max_files: usize,
+) -> Result<CheckResult, MtuiError> {
     let target_str = target.unwrap_or(".").to_string();
     let target_path = if Path::new(&target_str).is_absolute() {
         std::path::PathBuf::from(&target_str)
@@ -617,7 +826,10 @@ mod tests {
         assert_eq!(result.languages[0].language, "typescript");
         assert_eq!(result.languages[0].share_percent, 75.0);
         assert_eq!(result.languages[1].language, "rust");
-        assert_eq!(result.dominant, vec!["typescript".to_string(), "rust".to_string()]);
+        assert_eq!(
+            result.dominant,
+            vec!["typescript".to_string(), "rust".to_string()]
+        );
     }
 
     #[test]
@@ -645,7 +857,10 @@ mod tests {
     fn checker_for_ext_marks_project_wide_checkers_suggest_only() {
         let rs = checker_for_ext("rs").unwrap();
         assert_eq!(rs.tool, "cargo");
-        assert!(!rs.auto_run, "cargo check is project-wide; must be suggest-only");
+        assert!(
+            !rs.auto_run,
+            "cargo check is project-wide; must be suggest-only"
+        );
         let go = checker_for_ext("go").unwrap();
         assert!(!go.auto_run);
     }
@@ -685,5 +900,36 @@ mod tests {
         let issues = parse_issues(blob, "oxlint");
         assert_eq!(issues.len(), 2);
         assert_eq!(issues[1].file, "src/b.ts");
+    }
+
+    #[test]
+    fn stats_reports_structure_lines_extensions_and_largest_files() {
+        let temp = tempfile::tempdir().expect("tempdir");
+        std::fs::write(temp.path().join("small.ts"), "one\n").expect("small");
+        std::fs::create_dir_all(temp.path().join("src")).expect("src");
+        std::fs::write(
+            temp.path().join("src").join("large.ts"),
+            "one\ntwo\nthree\n",
+        )
+        .expect("large");
+        std::fs::create_dir_all(temp.path().join("node_modules")).expect("node_modules");
+        std::fs::write(
+            temp.path().join("node_modules").join("ignored.js"),
+            "ignored\n",
+        )
+        .expect("ignored");
+
+        let result = run_stats(temp.path(), temp.path(), 100, 10).expect("stats");
+
+        assert_eq!(result.target, ".");
+        assert_eq!(result.direct_children, 3);
+        assert_eq!(result.total_files, 2);
+        assert_eq!(result.total_directories, 1);
+        assert_eq!(result.total_lines, 4);
+        assert_eq!(result.extensions[0].extension, "ts");
+        assert_eq!(result.extensions[0].files, 2);
+        assert!(result.largest_files[0].path.ends_with("src/large.ts"));
+        assert_eq!(result.largest_files[0].lines, 3);
+        assert!(!result.truncated);
     }
 }

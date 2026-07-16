@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -27,6 +27,7 @@ import {
   type IdeDirEntry,
   type QuickTestRunner,
   type DbAgentService,
+  type ExperienceAgentService,
 } from './ideServer';
 import { createQuickTestService } from '../quickTestService';
 import { openNativeLogStream } from '../quickTestNativeStream';
@@ -38,6 +39,8 @@ import { runMtuiInRoot } from '@process/terminal/mtuiBridge';
 import { runCommand } from '../command/commandRunner';
 import type { CdpWebContents } from '../quickTestTracer';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { getExperienceServiceForRoot, getExperienceWorkflowForRoot } from '@process/experience/experienceBridge';
+
 import type { ToolGuard } from './ideServerToolGuard';
 
 const DEFAULT_SCAN_FILES = 4000;
@@ -512,12 +515,67 @@ const nativeToolGuard: ToolGuard = (toolName) => {
   return { allow: true };
 };
 
-export const buildIdeServer = (): McpServer =>
-  createIdeServer({
-    ide: getIdeMcpService(),
-    quickTest: getQuickTestRunner(),
-    db: getDbService() as DbAgentService,
-    memory: getSessionMemoryStore(),
-    teamEdit: getTeamEditService(),
-    toolGuard: nativeToolGuard,
-  });
+const experienceAgentService: ExperienceAgentService = {
+  search: async (projectRoot, query, options) => {
+    const service = await getExperienceServiceForRoot(projectRoot);
+    await service.drainInbox();
+    return service.search(query, options);
+  },
+  record: async (projectRoot, draft) => {
+    const result = await (await getExperienceServiceForRoot(projectRoot)).record(draft);
+    return { action: result.action, entryId: result.entry.id };
+  },
+  recordFeedback: async (projectRoot, entryId, helped) =>
+    (await getExperienceServiceForRoot(projectRoot)).recordFeedback(entryId, helped),
+  verifyOutcome: async (projectRoot, episode, outcome) => {
+    const service = await getExperienceServiceForRoot(projectRoot);
+    await service.drainInbox();
+    const workflow = await getExperienceWorkflowForRoot(projectRoot);
+    const result = await workflow.onVerifyOutcome(episode, service.projectId, outcome);
+    // Keep the first failure only in the bounded AionRS session ExpBase. Once
+    // the same verification fails again, persist a compact repo lesson. The
+    // capture service deduplicates close matches, preventing log/data growth.
+    if (outcome === 'failed' && result.decision.failureCount >= 2) {
+      const symptom = (episode.errorText ?? episode.errorMessages?.[0] ?? episode.command ?? 'verification failed')
+        .replace(/\s+/g, ' ')
+        .slice(0, 280);
+      await service.record({
+        kind: 'failed_attempt',
+        symptoms: { summary: symptom },
+        context: {
+          files: episode.files,
+          commands: episode.command ? [episode.command] : undefined,
+          frameworks: episode.frameworks,
+          packages: episode.packages,
+          errorCategory: episode.errorCategory,
+        },
+        lesson:
+          'This verification failure repeated. Do not retry the same command or approach without inspecting new evidence.',
+        tags: ['auto', 'repeat-failure'],
+        confidence: 0.3,
+      });
+    }
+    return result;
+  },
+};
+
+export const buildIdeServer = (): McpServer => {
+  const ide = getIdeMcpService();
+  try {
+    return createIdeServer({
+      ide,
+      quickTest: getQuickTestRunner(),
+      db: getDbService() as DbAgentService,
+      memory: getSessionMemoryStore(),
+      experience: experienceAgentService,
+      teamEdit: getTeamEditService(),
+      toolGuard: nativeToolGuard,
+    });
+  } catch (error) {
+    // Optional IDE capabilities must not prevent the SSE handshake and block
+    // every chat turn. Keep the core repo/MTUI tools available and preserve the
+    // original error in logs so the failing extension can be repaired.
+    console.error('[IdeMCP] Full server build failed; starting core IDE tools only:', error);
+    return createIdeServer({ ide, toolGuard: nativeToolGuard });
+  }
+};

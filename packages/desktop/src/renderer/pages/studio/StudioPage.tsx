@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -19,9 +19,9 @@
  * Renderer-only.
  */
 
-import React, { Suspense, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { isStarred, toggleStarred } from './studioStorage';
+import { getLastStudioView, isStarred, setLastStudioView, toggleStarred } from './studioStorage';
 import StudioDashboard from './components/StudioDashboard';
 import StudioEditorView from './components/StudioEditorView';
 import StudioPeerView from './components/StudioPeerView';
@@ -54,13 +54,20 @@ const StudioPage: React.FC = () => {
   // the Office-editor MCP server can drive whichever Office editor is open.
   useEditorToolsProvider();
 
-  const [view, setView] = useState<StudioView>(() =>
-    routeState?.studioView === 'music' && MUSIC_STUDIO_ENABLED ? { mode: 'music' } : { mode: 'dashboard' }
-  );
+  const [view, setView] = useState<StudioView>(() => {
+    if (routeState?.studioView === 'music' && MUSIC_STUDIO_ENABLED) return { mode: 'music' };
+
+    const lastView = getLastStudioView();
+    return lastView.mode === 'music' && !MUSIC_STUDIO_ENABLED ? { mode: 'dashboard' } : lastView;
+  });
   // Files with a live (kept-alive) editor. Order doesn't matter; presence does.
-  const [openFiles, setOpenFiles] = useState<string[]>([]);
+  const [openFiles, setOpenFiles] = useState<string[]>(() => (view.mode === 'editor' ? [view.filePath] : []));
   // Bump to force a re-read of the starred flag after toggling from the editor.
   const [, setStarTick] = useState(0);
+
+  useEffect(() => {
+    if (view.mode !== 'peer') setLastStudioView(view);
+  }, [view]);
 
   const handleStar = (filePath: string): void => {
     toggleStarred(filePath);

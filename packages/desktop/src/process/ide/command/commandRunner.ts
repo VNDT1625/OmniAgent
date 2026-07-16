@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -40,6 +40,7 @@
  */
 
 import { spawn } from 'node:child_process';
+import { isDirectWriteCommand } from '@process/terminal/mtuiPolicy';
 
 /** Captured result of one command invocation. */
 export type CommandResult = {
@@ -182,6 +183,16 @@ export const runCommand = async (
   const trimmed = command?.trim();
   if (!trimmed) {
     return { code: -1, stdout: '', stderr: 'An empty command was provided.', timedOut: false, durationMs: 0 };
+  }
+  if (isDirectWriteCommand(trimmed)) {
+    return {
+      code: -1,
+      stdout: '',
+      stderr:
+        'Strict MTUI Mode blocked this direct file-write command. Use `mtui --json edit`, `mtui --json new`, or `mtui --json apply-patch` through ide_command instead.',
+      timedOut: false,
+      durationMs: 0,
+    };
   }
   return spawnFn(trimmed, {
     cwd: opts?.cwd?.trim() || root,

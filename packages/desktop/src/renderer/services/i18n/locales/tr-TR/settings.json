@@ -805,6 +805,11 @@
     "revokeFailed": "Failed to revoke user",
     "copyCode": "Copy pairing code",
     "agentDescTelegram": "Telegram sohbetleri icin kullanilir",
+    "permissionMode": "İzin Modu",
+    "permissionModeDescTelegram": "Telegram araçların dosyaları düzenlemeden veya komut çalıştırmadan önce onay isteyip istemeyeceğini seçin",
+    "permissionModeSaved": "İzin modu kaydedildi",
+    "permissionModeSaveFailed": "İzin modu kaydedilemedi",
+    "permissionModeUnavailable": "Bu Agent izin modları sunmuyor",
     "autoFollowCliModel": "CLI calisirken modeli otomatik olarak takip et",
     "agentSwitched": "Agent basariyla degistirildi",
     "modelSwitched": "Model basariyla degistirildi"

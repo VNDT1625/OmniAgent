@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -77,6 +77,7 @@ const streamFromProcess = (proc: ChildProcess): NativeLogStream => {
   });
 
   return {
+    processId: proc.pid,
     onLine: (listener) => lineListeners.push(listener),
     onClose: (listener) => closeListeners.push(listener),
     close: () => {
@@ -86,6 +87,65 @@ const streamFromProcess = (proc: ChildProcess): NativeLogStream => {
         /* already gone */
       }
     },
+  };
+};
+
+/** Attach a Windows UI Automation poller to a process-backed native stream. */
+const attachWindowsAccessibilityProbe = (stream: NativeLogStream): void => {
+  if (process.platform !== 'win32' || !stream.processId) return;
+  let listener: ((event: Extract<import('./quickTestTracer').TraceEvent, { kind: 'click' | 'input' }>) => void) | null =
+    null;
+  let previous = '';
+  let polling = false;
+  const powershell = `
+    Add-Type -AssemblyName UIAutomationClient;
+    Add-Type -AssemblyName UIAutomationTypes;
+    $e = [System.Windows.Automation.AutomationElement]::FocusedElement;
+    if ($null -eq $e) { exit 0 }
+    $c = $e.Current;
+    if ($c.ProcessId -ne ${stream.processId}) { exit 0 }
+    $value = '';
+    try {
+      $p = $e.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern);
+      $value = [string]$p.Current.Value;
+    } catch {}
+    [Console]::WriteLine((@{ processId=$c.ProcessId; name=$c.Name; automationId=$c.AutomationId; controlType=$c.ControlType.ProgrammaticName; value=$value } | ConvertTo-Json -Compress));
+  `;
+  const poll = async (): Promise<void> => {
+    if (polling || !listener) return;
+    polling = true;
+    try {
+      const { stdout } = await execFileAsync(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', powershell],
+        { timeout: 3000, windowsHide: true }
+      );
+      const line = stdout.trim().split(/\r?\n/).pop() ?? '';
+      if (!line) return;
+      const item = JSON.parse(line) as { name?: string; automationId?: string; controlType?: string; value?: string };
+      const selector = item.automationId || item.name || item.controlType || 'windows.focused';
+      const signature = `${selector}|${item.controlType ?? ''}|${item.value ?? ''}`;
+      if (signature === previous) return;
+      previous = signature;
+      if (item.value && /edit|text|combo/i.test(item.controlType ?? '')) {
+        listener({ kind: 'input', selector: `uia:${selector}`, value: item.value, at: Date.now() });
+      } else {
+        listener({ kind: 'click', selector: `uia:${selector}`, text: item.name ?? '', at: Date.now() });
+      }
+    } catch {
+      // UI Automation is optional; runtime log tracing continues when it is unavailable.
+    } finally {
+      polling = false;
+    }
+  };
+  stream.onInteraction = (next) => {
+    listener = next;
+  };
+  const timer = setInterval(() => void poll(), 700);
+  const close = stream.close;
+  stream.close = () => {
+    clearInterval(timer);
+    close();
   };
 };
 
@@ -101,7 +161,71 @@ const openAndroidStream = async (target: string): Promise<NativeLogStream | null
 
   const proc = spawn(adb.path, ['-s', serial, 'logcat', '-v', 'brief'], { stdio: ['ignore', 'pipe', 'pipe'] });
   if (!proc.pid) return null;
-  return streamFromProcess(proc);
+  const stream = streamFromProcess(proc);
+  let interactionListener:
+    | ((event: Extract<import('./quickTestTracer').TraceEvent, { kind: 'click' | 'input' }>) => void)
+    | null = null;
+  let previousFocused = '';
+  let previousInput = '';
+  let polling = false;
+  const readUiSnapshot = async (): Promise<{
+    focused: string;
+    input: { selector: string; value: string } | null;
+  } | null> => {
+    try {
+      const { stdout } = await execFileAsync(
+        adb.path!,
+        ['-s', serial!, 'exec-out', 'uiautomator', 'dump', '/dev/tty'],
+        { timeout: 3500, maxBuffer: 2 * 1024 * 1024 }
+      );
+      const nodes = stdout.match(/<node\b[^>]*>/g) ?? [];
+      let focused = '';
+      let input: { selector: string; value: string } | null = null;
+      for (const node of nodes) {
+        const attr = (name: string): string => node.match(new RegExp(`${name}="([^"]*)"`))?.[1] ?? '';
+        const selector = attr('resource-id') || attr('class') || attr('content-desc') || 'android.node';
+        const text = attr('text');
+        const focusedOrSelected = attr('focused') === 'true' || attr('selected') === 'true';
+        if (focusedOrSelected) focused = `${selector}|${text}|${attr('bounds')}`;
+        if (/edittext|textfield/i.test(attr('class')) && attr('focused') === 'true') input = { selector, value: text };
+      }
+      return { focused, input };
+    } catch {
+      return null;
+    }
+  };
+  const poll = async (): Promise<void> => {
+    if (polling) return;
+    polling = true;
+    const snapshot = await readUiSnapshot();
+    polling = false;
+    if (!snapshot || !interactionListener) return;
+    if (snapshot.input && snapshot.input.value !== previousInput) {
+      previousInput = snapshot.input.value;
+      interactionListener({
+        kind: 'input',
+        selector: snapshot.input.selector,
+        value: snapshot.input.value,
+        at: Date.now(),
+      });
+      return;
+    }
+    if (snapshot.focused && snapshot.focused !== previousFocused) {
+      previousFocused = snapshot.focused;
+      const [selector, text] = snapshot.focused.split('|');
+      interactionListener({ kind: 'click', selector, text, at: Date.now() });
+    }
+  };
+  stream.onInteraction = (listener) => {
+    interactionListener = listener;
+  };
+  const timer = setInterval(() => void poll(), 700);
+  const close = stream.close;
+  stream.close = () => {
+    clearInterval(timer);
+    close();
+  };
+  return stream;
 };
 
 /** Launch a Windows `.exe` and stream its stdout/stderr. */
@@ -113,7 +237,9 @@ const openWindowsStream = async (target: string): Promise<NativeLogStream | null
   // `spawn` reports launch failures asynchronously via the 'error' event; pid is
   // set synchronously when the OS accepted the spawn.
   if (!proc.pid) return null;
-  return streamFromProcess(proc);
+  const stream = streamFromProcess(proc);
+  attachWindowsAccessibilityProbe(stream);
+  return stream;
 };
 
 /**

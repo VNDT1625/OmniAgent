@@ -1,6 +1,6 @@
 /**
  * @license
- * Copyright 2025 AionUi (aionui.com)
+ * Copyright 2025 AionUi (github.com/VNDT1625/OmniAgent)
  * SPDX-License-Identifier: Apache-2.0
  */
 
@@ -147,6 +147,37 @@ describe('normalizeAgentStreamError', () => {
 });
 
 describe('transformMessage', () => {
+  it('preserves whitespace-only stream chunks between Markdown tokens and table rows', () => {
+    const chunks = [
+      '`text`',
+      ' ',
+      '**50**',
+      '\n\n',
+      '| ID | Name |',
+      '\n',
+      '| --- | --- |',
+      '\n',
+      '| 51 | ScamAdviser |',
+    ];
+    let list: TMessage[] = [];
+
+    for (const data of chunks) {
+      list = composeMessage(
+        transformMessage({
+          type: 'content',
+          data,
+          msg_id: 'markdown-stream-1',
+          conversation_id: CONVERSATION_ID,
+        }),
+        list
+      );
+    }
+
+    expect(list).toHaveLength(1);
+    expect(list[0].type).toBe('text');
+    if (list[0].type !== 'text') throw new Error('expected text message');
+    expect(list[0].content.content).toBe('`text` **50**\n\n| ID | Name |\n| --- | --- |\n| 51 | ScamAdviser |');
+  });
   it('returns undefined for hidden system stream messages', () => {
     const message: IResponseMessage = {
       type: 'system',
