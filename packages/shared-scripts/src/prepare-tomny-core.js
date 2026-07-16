@@ -1,8 +1,8 @@
 /**
  * Build and stage the source-owned Tomny Core compatibility runtime.
  *
- * The binary is compiled from a pinned MIT-licensed AionCore source revision,
- * branded and packaged as Tomny Core. No downloaded AionCore executable is
+ * The binary is compiled from a pinned MIT-licensed Tomny Core source revision,
+ * branded and packaged as Tomny Core. No downloaded third-party executable is
  * used at build time or runtime.
  */
 
