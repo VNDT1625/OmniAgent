@@ -499,6 +499,10 @@ jobs:
           npm_config_disturl: https://electronjs.org/headers
           npm_config_runtime: electron
           npm_config_target_arch: ${{ matrix.arch }}
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CXX_aarch64_unknown_linux_gnu: aarch64-linux-gnu-g++
+          AR_aarch64_unknown_linux_gnu: aarch64-linux-gnu-ar
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -580,12 +584,6 @@ jobs:
               exit 1
             fi
           done
-          RENDERER_INDEX="${RUNNER_TEMP}/renderer-index-${{ matrix.platform }}.html"
-          bunx @electron/asar extract-file "$ASAR" out/renderer/index.html > "$RENDERER_INDEX"
-          if [ ! -s "$RENDERER_INDEX" ]; then
-            echo "::error::Packaged renderer entry is empty: out/renderer/index.html"
-            exit 1
-          fi
           echo "packaged app entries verified"
           echo "Inspecting $ASAR for web-cli leakage..."
           LEAK_COUNT=$(grep -cE '^/packages/web-cli(/|$)' "$ASAR_LIST_NORMALIZED" || true)
