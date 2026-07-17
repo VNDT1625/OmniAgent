@@ -5,10 +5,12 @@
  */
 
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { access, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { promisify } from 'node:util';
-import type { CoreAdapterDefinition, DetectedCoreTarget, ExecutableResolver } from './coreAdapter';
+import type { CoreAdapterDefinition, DetectedCoreTarget, ExecutableResolver } from './adapters';
+import { AdapterCatalogStore, createEd25519CatalogVerifier } from './catalog';
 
 const execFileAsync = promisify(execFile);
 
@@ -136,7 +138,9 @@ const isAdapterDefinition = (value: unknown): value is CoreAdapterDefinition => 
   return (
     typeof candidate.id === 'string' &&
     typeof candidate.name === 'string' &&
-    ['tomny-json-stream', 'codex-app-server', 'acp', 'openclaw-gateway'].includes(candidate.protocol ?? '') &&
+    ['tomny-json-stream', 'codex-app-server', 'acp', 'openclaw-gateway', 'tomny-remote-v1'].includes(
+      candidate.protocol ?? ''
+    ) &&
     Array.isArray(candidate.candidates) &&
     candidate.candidates.every((item) => typeof item === 'string') &&
     Array.isArray(candidate.args) &&
@@ -151,16 +155,41 @@ const isAdapterDefinition = (value: unknown): value is CoreAdapterDefinition => 
  * adapters are appended, allowing CLI command changes without rebuilding Tomny Core.
  */
 export const loadCoreAdapterDefinitions = async (
-  catalogPath = process.env.TOMNY_CORE_ADAPTER_CATALOG
+  catalogPath = process.env.TOMNY_CORE_ADAPTER_CATALOG,
+  publicKey = process.env.TOMNY_CORE_ADAPTER_CATALOG_PUBLIC_KEY
 ): Promise<CoreAdapterDefinition[]> => {
   if (!catalogPath) return CORE_ADAPTER_DEFINITIONS;
-  const parsed: unknown = JSON.parse(await readFile(catalogPath, 'utf8'));
-  if (!Array.isArray(parsed) || !parsed.every(isAdapterDefinition)) {
-    throw new Error(`Invalid Tomny Core adapter catalog: ${catalogPath}`);
+  if (!publicKey?.trim()) {
+    throw new Error('TOMNY_CORE_ADAPTER_CATALOG_PUBLIC_KEY is required for an external adapter catalog.');
+  }
+  const catalog = await new AdapterCatalogStore(catalogPath).load({
+    coreVersion: process.env.TOMNY_CORE_VERSION,
+    requireSignature: true,
+    verifySignature: createEd25519CatalogVerifier(publicKey),
+  });
+  const catalogDefinitions = catalog?.definitions;
+  if (!Array.isArray(catalogDefinitions) || !catalogDefinitions.every(isAdapterDefinition)) {
+    throw new Error(`Invalid or unsigned Tomny Core adapter catalog: ${catalogPath}`);
   }
   const definitions = new Map(CORE_ADAPTER_DEFINITIONS.map((definition) => [definition.id, definition]));
-  for (const definition of parsed) definitions.set(definition.id, definition);
+  for (const definition of catalogDefinitions) definitions.set(definition.id, definition);
   return [...definitions.values()];
+};
+
+const verifyBundledTomnyCli = async (binaryPath: string): Promise<boolean> => {
+  if (!binaryPath.split(path.sep).includes('bundled-tomny-cli')) return true;
+  try {
+    const manifest = JSON.parse(await readFile(path.join(path.dirname(binaryPath), 'manifest.json'), 'utf8')) as {
+      binarySha256?: unknown;
+    };
+    if (typeof manifest.binarySha256 !== 'string' || !/^[a-f0-9]{64}$/u.test(manifest.binarySha256)) return false;
+    const actual = createHash('sha256')
+      .update(await readFile(binaryPath))
+      .digest('hex');
+    return actual === manifest.binarySha256;
+  } catch {
+    return false;
+  }
 };
 
 /** Resolve the first executable without invoking aioncore or its HTTP detector. */
@@ -171,7 +200,7 @@ export const resolveExecutableOnPath: ExecutableResolver = async (candidates) =>
       try {
         if (path.isAbsolute(candidate)) {
           await access(candidate);
-          return candidate;
+          return (await verifyBundledTomnyCli(candidate)) ? candidate : null;
         }
         const { stdout } = await execFileAsync(probe, [candidate], { windowsHide: true, timeout: 2500 });
         const paths = stdout

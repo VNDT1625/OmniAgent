@@ -186,6 +186,8 @@ export type GenerateScenarioRequest = {
    * navigate here instead of a placeholder like example.com.
    */
   appUrl?: string;
+  /** Optional absolute project workspace used by direct CLI generation. */
+  workspace?: string;
   /**
    * Optional progress sink. Called with each phase update (preparing → thinking
    * → parsing → done) so the caller can surface a live status bar instead of a
@@ -221,6 +223,7 @@ export const createScenarioGenerator = (): IScenarioGenerator => {
     platform,
     model,
     appUrl,
+    workspace,
     onProgress,
   }: GenerateScenarioRequest): Promise<GeneratedScenario> => {
     // Surface a terminal `error` phase if anything below throws, so the UI's
@@ -296,7 +299,8 @@ export const createScenarioGenerator = (): IScenarioGenerator => {
         () => providerRun(model ?? ''),
         model ?? '',
         [{ role: 'user', content: prompt }],
-        undefined
+        undefined,
+        { workspace, surface: 'testing', permissionMode: 'read-only' }
       );
     } catch (error) {
       throw fail(error instanceof Error ? error.message : 'Generation failed.');

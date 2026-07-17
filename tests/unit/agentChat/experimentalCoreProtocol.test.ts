@@ -8,8 +8,9 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   mapAcpSessionModels,
   resolveAcpPermission,
-} from '../../../packages/desktop/src/process/experimentalCore/acpCoreAdapter';
-import { codexSandboxForPermission } from '../../../packages/desktop/src/process/experimentalCore/codexAppServerAdapter';
+  runAcpWithRetry,
+} from '../../../packages/desktop/src/process/experimentalCore/adapters/acpCoreAdapter';
+import { codexSandboxForPermission } from '../../../packages/desktop/src/process/experimentalCore/adapters/codexAppServerAdapter';
 import {
   buildExperimentalSessionKey,
   classifyExperimentalTarget,
@@ -114,6 +115,31 @@ describe('experimental core protocol', () => {
     expect(buildExperimentalSessionKey({ targetId: 'a|b', workspace: 'c', modelKey: '' })).not.toBe(
       buildExperimentalSessionKey({ targetId: 'a', workspace: 'b|c', modelKey: '' })
     );
+  });
+
+  it('keeps a Kiro ACP turn logical while retrying a transient provider failure', async () => {
+    vi.useFakeTimers();
+    const emit = vi.fn();
+    const operation = vi
+      .fn<() => Promise<void>>()
+      .mockRejectedValueOnce(Object.assign(new Error('RESOURCE_EXHAUSTED'), { status: 429 }))
+      .mockResolvedValue(undefined);
+    const input = {
+      signal: new AbortController().signal,
+      target: { name: 'Kiro' },
+      emit,
+    } as Parameters<typeof runAcpWithRetry>[0];
+    const pending = runAcpWithRetry(input, operation);
+
+    await vi.advanceTimersByTimeAsync(1_000);
+    await expect(pending).resolves.toBeUndefined();
+    expect(operation).toHaveBeenCalledTimes(2);
+    expect(emit).toHaveBeenNthCalledWith(1, { type: 'delta', text: '', mode: 'replace' });
+    expect(emit).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ type: 'status', text: expect.stringContaining('Kiro') })
+    );
+    vi.useRealTimers();
   });
 
   it('maps ACP session model capabilities without guessing unavailable models', () => {

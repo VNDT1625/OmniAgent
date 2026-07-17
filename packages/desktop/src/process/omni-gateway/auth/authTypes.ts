@@ -11,8 +11,7 @@
  *  - `oauth`  — OAuth 2.1 + PKCE (works with the ChatGPT MCP connector and any
  *               RFC 9728 / RFC 8414 capable client).
  *  - `bearer` — the long-standing short-TTL Bearer token (unchanged behaviour).
- *  - `none`   — no authentication; every request is accepted (ephemeral, opt-in
- *               only, intended for throwaway local demos behind the tunnel).
+ *  - `none`   — legacy persisted value; runtime hardens it to short-TTL Bearer auth.
  *  - `mixed`  — accept EITHER a valid OAuth access token OR the Bearer token.
  *
  * Per-tool permissions let the user allow/deny individual gateway tools

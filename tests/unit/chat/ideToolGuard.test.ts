@@ -6,8 +6,8 @@
 
 /**
  * Unit tests for the PURE Strict IDE Mode tool guard. These lock the core
- * decision: under Strict IDE Mode every non-`ide_*` tool call is denied, and
- * the whitelist (ide_/mtui/team_/db_ + the IDE MCP servers) is allowed. Default
+ * decision: under Strict IDE Mode native repo tools are denied, while the
+ * IDE/MTUI/team/database/browser gateway allowlist remains available. Default
  * is DENY so an unidentifiable tool can never slip through.
  */
 
@@ -31,9 +31,15 @@ const OPTIONS: GuardPermissionOption[] = [
 describe('isAllowedIdeTool', () => {
   it('allows every IDE tool advertised by the built-in MCP server', () => {
     expect(isAllowedIdeTool('ide_search')).toBe(true);
+
+    expect(isAllowedIdeTool('tomny_search')).toBe(true);
+    expect(isAllowedIdeTool('tomny_team_edit')).toBe(true);
     expect(isAllowedIdeTool('IDE_Read')).toBe(true);
     expect(isAllowedIdeTool('ide_grep')).toBe(true);
     expect(isAllowedIdeTool('ide_glob')).toBe(true);
+    expect(isAllowedIdeTool('ide_quick_test_list')).toBe(true);
+    expect(isAllowedIdeTool('ide_quick_test_run')).toBe(true);
+    expect(isAllowedIdeTool('ide_quick_test_cancel')).toBe(true);
   });
 
   it('allows MTUI, team, and database gateway tools', () => {
@@ -42,6 +48,13 @@ describe('isAllowedIdeTool', () => {
     expect(isAllowedIdeTool('toolsearch_extra')).toBe(false);
     expect(isAllowedIdeTool('team_write_file')).toBe(true);
     expect(isAllowedIdeTool('db_query')).toBe(true);
+  });
+
+  it('allows browser tools without opening native repository access', () => {
+    expect(isAllowedIdeTool('browser_open')).toBe(true);
+    expect(isAllowedIdeTool('browser_click')).toBe(true);
+    expect(isAllowedIdeTool('editor_write')).toBe(false);
+    expect(isAllowedIdeTool('Bash')).toBe(false);
   });
 
   it('denies a backend native tool', () => {
@@ -57,6 +70,12 @@ describe('isAllowedIdeTool', () => {
 describe('isToolCallAllowedInStrictMode', () => {
   it('allows when the MCP server is the built-in IDE plane', () => {
     expect(isToolCallAllowedInStrictMode({ raw_input: { server: 'aionui-ide' } })).toBe(true);
+  });
+
+  it('allows Browser-Control while keeping unrelated MCP servers denied', () => {
+    expect(isToolCallAllowedInStrictMode({ title: 'browser_open' })).toBe(true);
+    expect(isToolCallAllowedInStrictMode({ raw_input: { server: 'aionui-browser-control' } })).toBe(true);
+    expect(isToolCallAllowedInStrictMode({ raw_input: { server: 'untrusted-tools' } })).toBe(false);
   });
 
   it('allows ToolSearch so an agent can discover the provided IDE tools', () => {
@@ -183,29 +202,29 @@ describe('evaluateStrictModeConfirmation (aionrs legacy shape)', () => {
 });
 
 describe('resolveRemapTarget', () => {
-  it('maps grep/rg → ide_search', () => {
-    expect(resolveRemapTarget({ title: 'grep' })).toBe('ide_search');
-    expect(resolveRemapTarget({ raw_input: { command: 'rg -n foo src/' } })).toBe('ide_search');
+  it('maps grep/rg → tomny_search', () => {
+    expect(resolveRemapTarget({ title: 'grep' })).toBe('tomny_search');
+    expect(resolveRemapTarget({ raw_input: { command: 'rg -n foo src/' } })).toBe('tomny_search');
   });
 
-  it('maps glob/find/ls → ide_glob', () => {
-    expect(resolveRemapTarget({ title: 'Glob' })).toBe('ide_glob');
-    expect(resolveRemapTarget({ raw_input: { command: 'find . -name "*.ts"' } })).toBe('ide_glob');
+  it('maps glob/find/ls → tomny_glob', () => {
+    expect(resolveRemapTarget({ title: 'Glob' })).toBe('tomny_glob');
+    expect(resolveRemapTarget({ raw_input: { command: 'find . -name "*.ts"' } })).toBe('tomny_glob');
   });
 
-  it('maps bash/shell → ide_command', () => {
-    expect(resolveRemapTarget({ title: 'Bash' })).toBe('ide_command');
-    expect(resolveRemapTarget({ raw_input: { command: 'bash -c "echo hi"' } })).toBe('ide_command');
+  it('maps bash/shell → tomny_command', () => {
+    expect(resolveRemapTarget({ title: 'Bash' })).toBe('tomny_command');
+    expect(resolveRemapTarget({ raw_input: { command: 'bash -c "echo hi"' } })).toBe('tomny_command');
   });
 
-  it('maps cat/read → ide_read_file and a path-qualified binary', () => {
-    expect(resolveRemapTarget({ raw_input: { command: '/usr/bin/cat file.txt' } })).toBe('ide_read_file');
-    expect(resolveRemapTarget({ title: 'Read' })).toBe('ide_read_file');
+  it('maps cat/read → tomny_read and a path-qualified binary', () => {
+    expect(resolveRemapTarget({ raw_input: { command: '/usr/bin/cat file.txt' } })).toBe('tomny_read');
+    expect(resolveRemapTarget({ title: 'Read' })).toBe('tomny_read');
   });
 
-  it('maps write/edit → team_* tools', () => {
-    expect(resolveRemapTarget({ title: 'Write' })).toBe('team_write_file');
-    expect(resolveRemapTarget({ title: 'Edit' })).toBe('team_edit_file');
+  it('maps write/edit → tomny_team_* tools', () => {
+    expect(resolveRemapTarget({ title: 'Write' })).toBe('tomny_team_write');
+    expect(resolveRemapTarget({ title: 'Edit' })).toBe('tomny_team_edit');
   });
 
   it('returns null for an unknown tool', () => {
@@ -218,7 +237,7 @@ describe('buildRemapReason', () => {
   it('produces the mandatory-remap message for a known tool', () => {
     const msg = buildRemapReason({ title: 'grep' });
     expect(msg).toContain('grep');
-    expect(msg).toContain('ide_search');
+    expect(msg).toContain('tomny_search');
     expect(msg).toContain('Strict IDE Mode');
     expect(msg).toContain('Hãy dùng');
     expect(msg).toContain('không được chạy');
@@ -231,11 +250,11 @@ describe('buildRemapReason', () => {
 });
 
 describe('evaluateStrictModePermission — remap reason', () => {
-  it('denies grep and the reason points at ide_search', () => {
+  it('denies grep and the reason points at tomny_search', () => {
     const d = evaluateStrictModePermission(true, { title: 'grep' }, [
       { option_id: 'reject', name: 'Reject', kind: 'reject_once' },
     ]);
     expect(d.deny).toBe(true);
-    expect(d.reason).toContain('ide_search');
+    expect(d.reason).toContain('tomny_search');
   });
 });

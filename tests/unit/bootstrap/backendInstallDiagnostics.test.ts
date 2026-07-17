@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { collectBackendInstallDiagnostics } from '@/process/startup/backendInstallDiagnostics';
-import { appendAutoUpdateDiagnosticEvent } from '@/process/services/autoUpdateDiagnostics';
+import { appendAutoUpdateDiagnosticEvent } from '@/process/services/diagnostics/autoUpdateDiagnostics';
 
 describe('collectBackendInstallDiagnostics', () => {
   it('records packaged runtime manifest and missing backend binary metadata', () => {

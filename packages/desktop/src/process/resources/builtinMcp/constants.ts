@@ -126,8 +126,8 @@ export function isBuiltinManagerTransport(transport?: {
 }
 
 // --- Scheduled Tasks (Cron) — Agent-plane MCP server ------------------------
-// The Cron capability lives in aioncore (HTTP `/api/cron/*`) and the existing
-// `cron.*` IPC bridge already wraps it. To give an AGENT the same scheduling
+// The Cron capability lives in Tomny Core's durable scheduledTasks service.
+// The typed `cron.*` IPC bridge and agent MCP share that same scheduling
 // power the UI has, we host an in-process SSE MCP server (mirroring the Testing
 // / Browser-Control servers, which also drive live Main-process state) instead
 // of a standalone stdio child — the standalone process cannot reach the live

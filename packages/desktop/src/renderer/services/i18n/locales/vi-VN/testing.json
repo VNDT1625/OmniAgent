@@ -104,14 +104,12 @@
     "selectTarget": "Chọn đích AI",
     "noTargets": "Không phát hiện agent nào có thể chạy.",
     "empty": "Chọn một agent và gửi câu hỏi để xem luồng phản hồi đã chuẩn hóa.",
-    "selectModel": "Ch\u1ecdn m\u00f4 h\u00ecnh",
-    "agentDefault": "M\u1eb7c \u0111\u1ecbnh c\u1ee7a agent",
-
+    "selectModel": "Chọn mô hình",
+    "agentDefault": "Mặc định của agent",
     "selectWorkspace": "Chọn workspace",
     "workspacePlaceholder": "Đường dẫn thư mục workspace",
     "recentWorkspaces": "Workspace gần đây",
     "chooseWorkspace": "Chọn workspace khác",
-
     "permissionReadOnly": "Chỉ đọc",
     "permissionWorkspaceWrite": "Ghi trong workspace",
     "permissionFullAccess": "Toàn quyền",
@@ -125,19 +123,17 @@
     "allowOnce": "Cho phép một lần",
     "deny": "Từ chối",
     "unknownTool": "Tool không xác định",
-
-    "newSession": "Phi?n tr? chuy?n m?i",
-    "forkSession": "T?o nh?nh",
-    "sessionForked": "?? t?o m?t nh?nh tr? chuy?n ??c l?p.",
+    "newSession": "Phiên trò chuyện mới",
+    "forkSession": "Tạo nhánh",
+    "sessionForked": "Đã tạo một nhánh trò chuyện độc lập.",
     "sessionStatus": {
-      "idle": "S?n s?ng",
-      "running": "?ang ch?y",
-      "completed": "Ho?n t?t",
-      "interrupted": "B? gi?n ?o?n - c? th? ti?p t?c",
-      "error": "L?i - c? th? ti?p t?c",
-      "cancelled": "?? h?y"
+      "idle": "Sẵn sàng",
+      "running": "Đang chạy",
+      "completed": "Hoàn tất",
+      "interrupted": "Bị gián đoạn - có thể tiếp tục",
+      "error": "Lỗi - có thể tiếp tục",
+      "cancelled": "Đã hủy"
     },
-
     "promptPlaceholder": "Hỏi AI đã chọn...",
     "ready": "Sẵn sàng",
     "connecting": "Đang kết nối tới agent...",
@@ -155,6 +151,14 @@
       "remote": "Remote"
     },
     "bridgeUnavailable": "Core Test không nhận được phản hồi từ tiến trình chính. Hãy khởi động lại ứng dụng desktop để nạp bridge mới.",
-    "retry": "Thử lại"
+    "retry": "Thử lại",
+    "thinking": "Đang nghĩ",
+    "running": "Đang chạy",
+    "viewSteps": "Xem bước",
+    "hideSteps": "Ẩn bước",
+    "toolRunning": "{{tool}} đang chạy",
+    "toolCompleted": "{{tool}} hoàn tất",
+    "toolFailed": "{{tool}} lỗi",
+    "toolWorkspace": "Workspace: {{workspace}}"
   }
 }

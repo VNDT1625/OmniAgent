@@ -20,7 +20,7 @@ import { app } from 'electron';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { z } from 'zod';
-import { mcpService } from '@/common/adapter/ipcBridge';
+import { getMcpRegistry } from '@process/resources/mcpRegistry';
 import type { IMcpServer, ISessionMcpServer } from '@/common/config/storage';
 import { teamRemoteClient } from './teamRemoteClient';
 import type { TeamTreeEntry } from './teamSessionHost';
@@ -943,12 +943,12 @@ export const ensureRemoteIdeMcpRegistered = async (
   const description =
     'Built-in remote IDE tools for a joined team workspace. Proxies file/search/edit operations to the host queue.';
   const original_json = JSON.stringify({ mcpServers: { [REMOTE_IDE_MCP_NAME]: { url: endpoint.url } } }, null, 2);
-  const existing = (await mcpService.listServers.invoke()) ?? [];
+  const existing = (await getMcpRegistry().list()) ?? [];
   const current = existing.find((server) => server.name === REMOTE_IDE_MCP_NAME);
   if (!current) {
-    const imported = await mcpService.batchImportServers.invoke({
-      servers: [{ name: REMOTE_IDE_MCP_NAME, description, enabled: false, builtin: true, transport, original_json }],
-    });
+    const imported = await getMcpRegistry().importMany([
+      { name: REMOTE_IDE_MCP_NAME, description, enabled: false, builtin: true, transport, original_json },
+    ]);
     const added = imported.find((server) => server.name === REMOTE_IDE_MCP_NAME);
     if (!added) throw new Error('Remote IDE MCP catalog import did not return the server.');
     return { workspacePath, server: toSessionServer(added) };
@@ -956,10 +956,7 @@ export const ensureRemoteIdeMcpRegistered = async (
   const sameUrl = current.transport.type === 'sse' && current.transport.url === endpoint.url;
   const updated = sameUrl
     ? current
-    : await mcpService.updateServer.invoke({
-        id: current.id,
-        data: { transport, original_json, builtin: true, description },
-      });
+    : await getMcpRegistry().update(current.id, { transport, original_json, builtin: true, description });
   return { workspacePath, server: toSessionServer(updated) };
 };
 
@@ -973,12 +970,12 @@ export const ensureCloudIdeMcpRegistered = async (
   const description =
     'Built-in cloud IDE tools for an AionUi cloud workspace. Proxies file/search/edit operations to the relay.';
   const original_json = JSON.stringify({ mcpServers: { [REMOTE_IDE_MCP_NAME]: { url: endpoint.url } } }, null, 2);
-  const existing = (await mcpService.listServers.invoke()) ?? [];
+  const existing = (await getMcpRegistry().list()) ?? [];
   const current = existing.find((server) => server.name === REMOTE_IDE_MCP_NAME);
   if (!current) {
-    const imported = await mcpService.batchImportServers.invoke({
-      servers: [{ name: REMOTE_IDE_MCP_NAME, description, enabled: false, builtin: true, transport, original_json }],
-    });
+    const imported = await getMcpRegistry().importMany([
+      { name: REMOTE_IDE_MCP_NAME, description, enabled: false, builtin: true, transport, original_json },
+    ]);
     const added = imported.find((server) => server.name === REMOTE_IDE_MCP_NAME);
     if (!added) throw new Error('Cloud IDE MCP catalog import did not return the server.');
     return { workspacePath, server: toSessionServer(added) };
@@ -986,10 +983,7 @@ export const ensureCloudIdeMcpRegistered = async (
   const sameUrl = current.transport.type === 'sse' && current.transport.url === endpoint.url;
   const updated = sameUrl
     ? current
-    : await mcpService.updateServer.invoke({
-        id: current.id,
-        data: { transport, original_json, builtin: true, description },
-      });
+    : await getMcpRegistry().update(current.id, { transport, original_json, builtin: true, description });
   return { workspacePath, server: toSessionServer(updated) };
 };
 

@@ -38,7 +38,7 @@
  */
 
 import { app } from 'electron';
-import { mcpService } from '@/common/adapter/ipcBridge';
+import { getMcpRegistry } from '@process/resources/mcpRegistry';
 import type { IMcpServerTransportStdio } from '@/common/config/storage';
 import { BUILTIN_MANAGER_NAME, MANAGER_DATA_DIR_ENV_KEY } from '../resources/builtinMcp/constants';
 import { getBuiltinMcpScriptPath } from '../utils/initStorage';
@@ -96,24 +96,22 @@ export const ensureManagerMcpRegistered = async (): Promise<boolean> => {
       2
     );
 
-    const existing = (await mcpService.listServers.invoke()) ?? [];
+    const existing = (await getMcpRegistry().list()) ?? [];
     const current = existing.find((server) => server.name === BUILTIN_MANAGER_NAME);
 
     if (!current) {
-      await mcpService.batchImportServers.invoke({
-        servers: [
-          {
-            name: BUILTIN_MANAGER_NAME,
-            description: MANAGER_MCP_DESCRIPTION,
-            // Available but not auto-attached: opt a chat in via the MCP picker
-            // / "Super" surface. Default-off avoids surprising every new chat.
-            enabled: false,
-            builtin: true,
-            transport,
-            original_json,
-          },
-        ],
-      });
+      await getMcpRegistry().importMany([
+        {
+          name: BUILTIN_MANAGER_NAME,
+          description: MANAGER_MCP_DESCRIPTION,
+          // Available but not auto-attached: opt a chat in via the MCP picker
+          // / "Super" surface. Default-off avoids surprising every new chat.
+          enabled: false,
+          builtin: true,
+          transport,
+          original_json,
+        },
+      ]);
       console.log(`[ManagerMCP] Registered "${BUILTIN_MANAGER_NAME}".`);
       return true;
     }
@@ -122,10 +120,7 @@ export const ensureManagerMcpRegistered = async (): Promise<boolean> => {
     // (e.g. after an app update relocated the unpacked bundle).
     const stale = current.transport.type !== 'stdio' || !isSameStdioTransport(current.transport, transport);
     if (stale) {
-      await mcpService.updateServer.invoke({
-        id: current.id,
-        data: { transport, original_json, builtin: true },
-      });
+      await getMcpRegistry().update(current.id, { transport, original_json, builtin: true });
       console.log(`[ManagerMCP] Refreshed "${BUILTIN_MANAGER_NAME}" transport.`);
     }
     return true;

@@ -36,6 +36,7 @@ export type ExperimentalSessionIdentity = {
   workspace: string;
   modelKey?: string;
   permissionMode?: ExperimentalPermissionMode;
+  surface?: string;
 };
 
 /** Build an unambiguous identity for a reusable transport session. */
@@ -46,6 +47,7 @@ export const buildExperimentalSessionKey = (identity: ExperimentalSessionIdentit
     identity.workspace.trim(),
     identity.modelKey ?? '',
     identity.permissionMode ?? 'workspace-write',
+    identity.surface ?? 'chat',
   ]);
 
 /** A normalized response fragment, independent from aioncore wire details. */

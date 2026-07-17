@@ -32,6 +32,10 @@ export const buildIdeMemorySection = (sessionId: string): string =>
     '  user gave you for THIS session only). It stays in RAM, is never written to disk, and is wiped on',
     '  close.',
     '- `ide_memory_status` — check how full the memory is; `ide_memory_forget` — drop a stale note.',
+    '- `ide_secret_context_list` — inspect repository secret aliases only when a task needs credentials.',
+    '  Values are opaque: use their environment-variable alias in code/config. If the local user explicitly asks',
+    '  to view an alias, reply exactly as `ALIAS is {{secret:ALIAS}}` (for example `TEST is {{secret:TEST}}`).',
+    '  This is a local-render marker that provides Reveal UI; you never receive, print, request, or infer its value.',
     '',
     'The memory auto-summarises older notes when it grows large, so prefer many small notes over one',
     'giant one, and rely on it to keep your working context short.',
@@ -79,7 +83,7 @@ export const buildWorkspacePrimer = ({
       '## IDE workspace guide',
       `Workspace root: ${rootPath}`,
       'Use codegraph/wiki/search as a map; inspect source lazily only when the task needs it.',
-      'Strict IDE Mode is enforced by AionUi: native repo tools (Bash, Read, Grep, Glob, Write, Edit, ...) can be rejected through the permission protocol before the backend executes them. This is an AionUi policy denial, not a user decision: never report that the user blocked or denied the task. A rejected native call is NOT rerouted or completed automatically; retry it yourself with the matching provided tool: Read/cat → `ide_read_file`; Grep/rg → `ide_search` or `ide_grep`; Glob/find/ls → `ide_glob` or `ide_list_dir`; shell commands → `ide_command`. For file changes, use the MTUI-backed edit/write tool exposed in the session, or run `mtui --json ...` via `ide_command`.',
+      'Strict IDE Mode is enforced by Tomny: native repo tools (Bash, Read, Grep, Glob, Write, Edit, ...) can be rejected through the permission protocol before the backend executes them. This is a core policy denial, not a user decision: never report that the user blocked or denied the task. Retry with the matching neutral tool: Read/cat → `tomny_read`; Grep/rg → `tomny_search`; Glob/find/ls → `tomny_glob`; shell commands → `tomny_command`; partial edits → `tomny_team_edit`; full writes → `tomny_team_write`. Prefer `tomny_context`, `tomny_map`, and `tomny_analyze` before broad reads. The legacy `ide_*` and `team_*` names remain compatibility aliases.',
     ].join('\n'),
   ];
   if (planningEnabled) {

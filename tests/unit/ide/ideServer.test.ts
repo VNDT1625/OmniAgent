@@ -13,7 +13,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
-import { createIdeServer, type IdeMcpService, type IdeServerDeps } from '@/process/ide/mcp/ideServer';
+import {
+  createIdeServer,
+  type IdeMcpService,
+  type IdeServerDeps,
+  type QuickTestScenarioAgentService,
+} from '@/process/ide/mcp/ideServer';
 import { startIdeMcpHost } from '@/process/ide/mcp/ideMcpHost';
 import { buildIdeServer } from '@/process/ide/mcp/ideMcpWiring';
 import { createSessionMemoryStore } from '@/process/ide/memory/sessionMemoryStore';
@@ -47,6 +52,11 @@ const makeService = (overrides: Partial<IdeMcpService> = {}): IdeMcpService => (
   context: vi.fn(async () => ({ summary: 'context candidates' })),
   map: vi.fn(async () => ({ summary: 'map summary' })),
   analyze: vi.fn(async () => ({ summary: 'analyze summary' })),
+  analyzeImage: vi.fn(async () => ({
+    json: { schemaVersion: 1, image: { width: 10, height: 20 } },
+    semanticText: 'Image: 10x20',
+    mockUi: '[image]\n[/image]',
+  })),
   compact: vi.fn(async () => ({ summary: 'compacted log' })),
   runCommand: vi.fn(async () => ({ code: 0, stdout: 'ok', stderr: '', timedOut: false, durationMs: 5 })),
   ...overrides,
@@ -85,6 +95,43 @@ describe('IDE MCP SSE host failures', () => {
 
 const makeDeps = (overrides: Partial<IdeMcpService> = {}): IdeServerDeps => ({ ide: makeService(overrides) });
 
+const makeQuickTestScenarios = (): QuickTestScenarioAgentService => ({
+  list: vi.fn(async () => ({
+    scenarios: [{ id: 'scenario-1', name: 'Login', platform: 'web', stepCount: 2, createdAt: 100 }],
+    total: 1,
+  })),
+  describe: vi.fn(async () => ({
+    id: 'scenario-1',
+    name: 'Login',
+    platform: 'web',
+    stepCount: 2,
+    createdAt: 100,
+    rootPath: '/repo',
+    steps: [{ id: 'step-1', kind: 'navigate', url: 'http://localhost:3000' }],
+  })),
+  run: vi.fn(async () => ({
+    runId: 'run-1',
+    scenarioId: 'scenario-1',
+    status: 'queued',
+    queuedAt: 200,
+  })),
+  status: vi.fn(async () => ({
+    runId: 'run-1',
+    scenarioId: 'scenario-1',
+    status: 'passed',
+    queuedAt: 200,
+    finishedAt: 300,
+  })),
+  cancel: vi.fn(async () => ({
+    runId: 'run-1',
+    scenarioId: 'scenario-1',
+    status: 'cancelled',
+    queuedAt: 200,
+    finishedAt: 250,
+  })),
+  compare: vi.fn(async () => ({ baselineRunId: 'run-bad', currentRunId: 'run-fixed', newErrors: [] })),
+});
+
 /** Connect a client to the server over a linked in-memory transport pair. */
 const connect = async (deps: IdeServerDeps) => {
   const server = createIdeServer(deps);
@@ -104,8 +151,14 @@ describe('ideServer', () => {
   it('exposes the expected ide_* tool set', async () => {
     const client = await connect(makeDeps());
     const { tools } = await client.listTools();
-    expect(tools.map((t) => t.name).toSorted()).toEqual([
+    expect(
+      tools
+        .map((tool) => tool.name)
+        .filter((name) => name.startsWith('ide_'))
+        .toSorted()
+    ).toEqual([
       'ide_analyze',
+      'ide_analyze_image',
       'ide_command',
       'ide_compact',
       'ide_compass',
@@ -122,6 +175,50 @@ describe('ideServer', () => {
       'ide_search',
       'ide_summary',
     ]);
+  });
+
+  it('exposes the neutral tomny_* tool layer and routes aliases to IDE services', async () => {
+    const deps = makeDeps();
+    const client = await connect(deps);
+    const names = (await client.listTools()).tools
+      .map((tool) => tool.name)
+      .filter((name) => name.startsWith('tomny_'))
+      .toSorted();
+
+    expect(names).toEqual([
+      'tomny_analyze',
+      'tomny_analyze_image',
+      'tomny_command',
+      'tomny_compact',
+      'tomny_context',
+      'tomny_glob',
+      'tomny_map',
+      'tomny_read',
+      'tomny_search',
+      'tomny_visual_analyze',
+    ]);
+
+    const read = await client.callTool({
+      name: 'tomny_read',
+      arguments: { filePath: '/repo/src/a.ts', all: null, maxLines: 20 },
+    });
+    expect(deps.ide.readFile).toHaveBeenCalledWith('/repo/src/a.ts', {
+      all: undefined,
+      from: undefined,
+      to: undefined,
+      maxLines: 20,
+      maxBytes: undefined,
+      lineNumbers: undefined,
+    });
+    expect(textOf(read)).toContain('file contents');
+  });
+
+  it('returns a clear tool error when a required Tomny argument is null', async () => {
+    const client = await connect(makeDeps());
+    const result = await client.callTool({ name: 'tomny_read', arguments: { filePath: null } });
+
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain('filePath is required');
   });
 
   it('exposes ide_quick_test when a Quick Test runner is injected', async () => {
@@ -145,6 +242,111 @@ describe('ideServer', () => {
     });
     expect(textOf(result)).toContain('src/a.ts');
     expect(textOf(result)).toContain('"eventCount": 0');
+  });
+
+  it('exposes all saved Quick Test scenario tools only when their service is injected', async () => {
+    const client = await connect({ ide: makeService(), quickTestScenarios: makeQuickTestScenarios() });
+    const names = (await client.listTools()).tools.map((tool) => tool.name);
+
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'ide_quick_test_list',
+        'ide_quick_test_describe',
+        'ide_quick_test_run',
+        'ide_quick_test_status',
+        'ide_quick_test_cancel',
+        'ide_quick_test_compare',
+      ])
+    );
+  });
+
+  it('starts a saved scenario with bounded defaults and ephemeral input overrides', async () => {
+    const quickTestScenarios = makeQuickTestScenarios();
+    const client = await connect({ ide: makeService(), quickTestScenarios });
+    const result = await client.callTool({
+      name: 'ide_quick_test_run',
+      arguments: {
+        rootPath: '/repo',
+        scenarioId: 'scenario-1',
+        inputOverrides: { 'step-password': 'secret-from-memory' },
+      },
+    });
+
+    expect(quickTestScenarios.run).toHaveBeenCalledWith({
+      rootPath: '/repo',
+      scenarioId: 'scenario-1',
+      tabId: undefined,
+      mode: { kind: 'full' },
+      timeoutMs: 120_000,
+      inputOverrides: { 'step-password': 'secret-from-memory' },
+    });
+    expect(JSON.parse(textOf(result))).toMatchObject({ ok: true, data: { status: 'queued' } });
+    expect(textOf(result)).not.toContain('secret-from-memory');
+  });
+
+  it('routes saved-scenario status, cancellation and comparison by run id', async () => {
+    const quickTestScenarios = makeQuickTestScenarios();
+    const client = await connect({ ide: makeService(), quickTestScenarios });
+
+    await client.callTool({ name: 'ide_quick_test_status', arguments: { rootPath: '/repo', runId: 'run-1' } });
+    await client.callTool({ name: 'ide_quick_test_cancel', arguments: { rootPath: '/repo', runId: 'run-1' } });
+    await client.callTool({
+      name: 'ide_quick_test_compare',
+      arguments: { rootPath: '/repo', baselineRunId: 'run-bad', currentRunId: 'run-fixed' },
+    });
+
+    expect(quickTestScenarios.status).toHaveBeenCalledWith({ rootPath: '/repo', runId: 'run-1' });
+    expect(quickTestScenarios.cancel).toHaveBeenCalledWith({ rootPath: '/repo', runId: 'run-1' });
+    expect(quickTestScenarios.compare).toHaveBeenCalledWith({
+      rootPath: '/repo',
+      baselineRunId: 'run-bad',
+      currentRunId: 'run-fixed',
+    });
+  });
+
+  it('returns a structured MCP error when saved-scenario execution fails', async () => {
+    const quickTestScenarios = makeQuickTestScenarios();
+    quickTestScenarios.describe = vi.fn(async () => {
+      throw new Error('Scenario was not found.');
+    });
+    const client = await connect({ ide: makeService(), quickTestScenarios });
+    const result = await client.callTool({
+      name: 'ide_quick_test_describe',
+      arguments: { rootPath: '/repo', scenarioId: 'missing' },
+    });
+
+    expect((result as { isError?: boolean }).isError).toBe(true);
+    expect(JSON.parse(textOf(result))).toEqual({
+      ok: false,
+      error: { code: 'quick_test_error', message: 'Scenario was not found.' },
+    });
+  });
+
+  it('does not execute a saved scenario when the external tool guard denies it', async () => {
+    const quickTestScenarios = makeQuickTestScenarios();
+    const toolGuard = vi.fn(() => ({ allow: false as const, reason: 'Quick Test execution is not allowed.' }));
+    const client = await connect({ ide: makeService(), quickTestScenarios, toolGuard });
+    const result = await client.callTool({
+      name: 'ide_quick_test_run',
+      arguments: { rootPath: '/repo', scenarioId: 'scenario-1', sessionId: 'session-1' },
+    });
+
+    expect((result as { isError?: boolean }).isError).toBe(true);
+    expect(toolGuard).toHaveBeenCalledWith('ide_quick_test_run', expect.objectContaining({ sessionId: 'session-1' }));
+    expect(quickTestScenarios.run).not.toHaveBeenCalled();
+  });
+
+  it('rejects oversized saved-scenario input overrides before invoking the runner', async () => {
+    const quickTestScenarios = makeQuickTestScenarios();
+    const client = await connect({ ide: makeService(), quickTestScenarios });
+    const inputOverrides = Object.fromEntries(Array.from({ length: 51 }, (_, index) => [`step-${index}`, 'value']));
+    const result = await client.callTool({
+      name: 'ide_quick_test_run',
+      arguments: { rootPath: '/repo', scenarioId: 'scenario-1', inputOverrides },
+    });
+
+    expect((result as { isError?: boolean }).isError).toBe(true);
+    expect(quickTestScenarios.run).not.toHaveBeenCalled();
   });
 
   it('ide_list_dir renders dirs and files', async () => {
@@ -171,6 +373,20 @@ describe('ideServer', () => {
     expect(textOf(result)).toContain('file contents');
   });
 
+  it('ide_analyze_image runs only when the agent explicitly calls the VisualArtifact tool', async () => {
+    const deps = makeDeps();
+    const client = await connect(deps);
+    const result = await client.callTool({
+      name: 'ide_analyze_image',
+      arguments: { filePath: '/repo/screen.png', mimeType: 'image/png' },
+    });
+    expect(deps.ide.analyzeImage).toHaveBeenCalledWith('/repo/screen.png', 'image/png');
+    const text = textOf(result);
+    expect(text).toContain('semanticText');
+    expect(text).toContain('Image: 10x20');
+    expect(text).toContain('mockUi');
+  });
+
   it('ide_command runs a command and renders status + output', async () => {
     const deps = makeDeps();
     const client = await connect(deps);
@@ -194,6 +410,72 @@ describe('ideServer', () => {
       arguments: { rootPath: '/repo', command: 'sleep 999' },
     });
     expect(textOf(result)).toContain('TIMED OUT');
+  });
+
+  it('injects a Secret Context alias only into the child environment and redacts its output', async () => {
+    const deps = makeDeps({
+      runCommand: vi.fn(async () => ({
+        code: 0,
+        stdout: 'token=top-secret-value',
+        stderr: '',
+        timedOut: false,
+        durationMs: 1,
+      })),
+    });
+    const repoSecrets = {
+      list: vi.fn(async () => []),
+      declare: vi.fn(async () => ({
+        alias: 'PAYMENTS_API_KEY',
+        description: 'Payments',
+        status: 'needs_value' as const,
+        updatedAt: 1,
+      })),
+      resolveEnvironment: vi.fn(async () => ({ PAYMENTS_API_KEY: 'top-secret-value' })),
+      redact: vi.fn((text: string, values: Record<string, string>) =>
+        text.replace(values.PAYMENTS_API_KEY, '[REDACTED]')
+      ),
+    };
+    deps.repoSecrets = repoSecrets;
+    const client = await connect(deps);
+    const result = await client.callTool({
+      name: 'ide_command',
+      arguments: { rootPath: '/repo', command: 'node smoke.js', secretAliases: ['PAYMENTS_API_KEY'] },
+    });
+    expect(repoSecrets.resolveEnvironment).toHaveBeenCalledWith('/repo', ['PAYMENTS_API_KEY']);
+    expect(deps.ide.runCommand).toHaveBeenCalledWith('/repo', 'node smoke.js', {
+      cwd: undefined,
+      timeoutMs: undefined,
+      env: { PAYMENTS_API_KEY: 'top-secret-value' },
+    });
+    expect(textOf(result)).toContain('[REDACTED]');
+    expect(textOf(result)).not.toContain('top-secret-value');
+  });
+
+  it('guides the agent to return a local-render marker without exposing a Secret Context value', async () => {
+    const repoSecrets = {
+      list: vi.fn(async () => [
+        { alias: 'TEST', description: 'Test fixture', status: 'set' as const, updatedAt: 1 },
+      ]),
+      declare: vi.fn(async () => ({
+        alias: 'TEST',
+        description: 'Test fixture',
+        status: 'needs_value' as const,
+        updatedAt: 1,
+      })),
+      resolveEnvironment: vi.fn(async () => ({ TEST: 'actual-secret-value' })),
+      redact: vi.fn((text: string) => text),
+    };
+    const client = await connect({ ide: makeService(), repoSecrets });
+
+    const result = await client.callTool({
+      name: 'ide_secret_context_list',
+      arguments: { repository: '/repo' },
+    });
+
+    const output = textOf(result);
+    expect(output).toContain('TEST');
+    expect(output).toContain('{{secret:TEST}}');
+    expect(output).not.toContain('actual-secret-value');
   });
 
   it('exposes db_* tools when a Database accessor is injected and describes a table fully', async () => {
@@ -294,8 +576,23 @@ describe('ideServer', () => {
         'team_edit_file',
         'team_release_file',
         'team_status',
+        'tomny_team_claim',
+        'tomny_team_write',
+        'tomny_team_edit',
+        'tomny_team_release',
+        'tomny_team_status',
       ])
     );
+
+    const tomnyStatus = await client.callTool({ name: 'tomny_team_status', arguments: { rootPath: '/repo' } });
+    expect(textOf(tomnyStatus)).toContain('Agent A');
+
+    const tomnyEdit = await client.callTool({
+      name: 'tomny_team_edit',
+      arguments: { rootPath: '/repo', agentId: 'agent-a', relPath: 'src/a.ts', oldText: 'before', newText: null },
+    });
+    expect(editReplace).toHaveBeenCalledWith('/repo', 'agent-a', 'src/a.ts', 'before', '');
+    expect(textOf(tomnyEdit)).toContain('Edited src/a.ts');
 
     const claimed = await client.callTool({
       name: 'team_claim_file',

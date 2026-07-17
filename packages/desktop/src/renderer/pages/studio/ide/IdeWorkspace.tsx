@@ -178,6 +178,7 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
   const collab = useTeamCollab(ide.rootPath);
   const cloud = useCloudWorkspace();
   const [mode, setMode] = useState<IdeMode>('files');
+  const [activityRailVisible, setActivityRailVisible] = useState(true);
   const [joinCollabOpen, setJoinCollabOpen] = useState(false);
   const [connectCloudOpen, setConnectCloudOpen] = useState(false);
   const [quickTestCompact, setQuickTestCompact] = useState(false);
@@ -714,6 +715,7 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
         onCloseFolder={requestCloseFolder}
         onRescan={() => void ide.rescan()}
         rescanning={ide.scanStatus === 'scanning'}
+        onShowActivityRail={activityRailVisible ? undefined : () => setActivityRailVisible(true)}
       />
       {cloud.connected && cloud.session ? (
         <CloudMountedBar
@@ -730,11 +732,21 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
       <div className='flex-1 min-h-0 flex relative'>
         <nav
           className={
-            mode === 'quicktest' && quickTestCompact
+            !activityRailVisible || (mode === 'quicktest' && quickTestCompact)
               ? 'w-0 overflow-hidden shrink-0 flex flex-col items-center gap-6px py-12px border-r-0 border-b-1'
               : 'w-60px shrink-0 flex flex-col items-center gap-6px py-12px border-r border-b-1'
           }
         >
+          <Tooltip content={t('ide.quicktest.hideIdeSidebars')} position='right'>
+            <Button
+              type='text'
+              size='mini'
+              aria-label={t('ide.quicktest.hideIdeSidebars')}
+              icon={<Close theme='outline' size={15} />}
+              className='!text-t-secondary shrink-0'
+              onClick={() => setActivityRailVisible(false)}
+            />
+          </Tooltip>
           <ActivityItem
             icon={<Code theme='outline' size={20} />}
             label={t('ide.mode.files')}
@@ -817,8 +829,8 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
             onClick={() => setMode('expbase')}
           />
         </nav>
-
         {/* Mode body. Files keeps editors mounted; others render on demand. */}
+
         <div className='flex-1 min-w-0 min-h-0 relative'>
           <div className='absolute inset-0 flex' style={{ display: mode === 'files' ? 'flex' : 'none' }}>
             <FilesPane ide={ide} editorFs={editorFs} onOpenFile={openFile} />
@@ -906,7 +918,7 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
                     emitter.emit('ide.hook.askAgent', { rootPath: root, prompt, hookName: 'Quick Test' });
                   }, 250);
                 }}
-                onAskAboutElement={(prompt) => {
+                onAskAboutElement={(prompt, filePaths) => {
                   const root = ide.rootPath;
                   if (!root) return;
                   // Inspect → design/change request. The brief (renderElementBrief)
@@ -915,7 +927,12 @@ const IdeWorkspace: React.FC<IdeWorkspaceProps> = ({ onBack }) => {
                   // new Chat tab via the same askAgent event the trace flow uses.
                   setMode('chat');
                   setTimeout(() => {
-                    emitter.emit('ide.hook.askAgent', { rootPath: root, prompt, hookName: 'Inspect Element' });
+                    emitter.emit('ide.hook.askAgent', {
+                      rootPath: root,
+                      prompt,
+                      hookName: 'Inspect Element',
+                      filePaths,
+                    });
                   }, 250);
                 }}
               />
@@ -1080,6 +1097,7 @@ const Header: React.FC<{
   onPickFolder: () => void;
   onCloseFolder?: () => void;
   onRescan: (() => void) | null;
+  onShowActivityRail?: () => void;
 }> = ({
   rootName,
   statsLine,
@@ -1091,6 +1109,7 @@ const Header: React.FC<{
   onPickFolder,
   onCloseFolder,
   onRescan,
+  onShowActivityRail,
 }) => {
   const { t } = useTranslation();
   return (
@@ -1109,6 +1128,18 @@ const Header: React.FC<{
           />
         ) : null}
       </span>
+      {onShowActivityRail ? (
+        <Tooltip content={t('ide.quicktest.showIdeSidebars')} position='br'>
+          <Button
+            type='text'
+            size='mini'
+            aria-label={t('ide.quicktest.showIdeSidebars')}
+            icon={<Right theme='outline' size={15} />}
+            className='!text-t-secondary'
+            onClick={onShowActivityRail}
+          />
+        </Tooltip>
+      ) : null}
       {statsLine}
       <div className='flex-1' />
       {onReview && changeCount && changeCount > 0 ? (

@@ -1,6 +1,7 @@
 import classNames from 'classnames';
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import type { NavigateOptions } from 'react-router-dom';
 import { usePreviewContext } from '@renderer/pages/conversation/Preview/context/PreviewContext';
 import { cleanupSiderTooltips, getSiderTooltipProps } from '@renderer/utils/ui/siderTooltip';
 import { useAuth } from '@renderer/hooks/context/AuthContext';
@@ -32,6 +33,20 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
   const { pathname, search, hash } = location;
 
   const navigate = useNavigate();
+  const navigateWithFeedback = layout?.navigateWithFeedback;
+  const navigateTopLevel = useCallback(
+    (to: string, options?: NavigateOptions): void => {
+      if (navigateWithFeedback) {
+        navigateWithFeedback(to, options);
+        return;
+      }
+
+      Promise.resolve(navigate(to, options)).catch((error) => {
+        console.error('Navigation failed:', error);
+      });
+    },
+    [navigate, navigateWithFeedback]
+  );
   const { closePreview } = usePreviewContext();
   const { logout, status } = useAuth();
   const { theme, setTheme } = useThemeContext();
@@ -54,9 +69,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     blurActiveElement();
     closePreview();
     setIsBatchMode(false);
-    Promise.resolve(navigate('/guid', { state: { resetAssistant: true } })).catch((error) => {
-      console.error('Navigation failed:', error);
-    });
+    navigateTopLevel('/guid', { state: { resetAssistant: true } });
     if (onSessionClick) {
       onSessionClick();
     }
@@ -67,13 +80,9 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     blurActiveElement();
     if (isSettings) {
       const target = lastNonSettingsPathRef.current || '/guid';
-      Promise.resolve(navigate(target)).catch((error) => {
-        console.error('Navigation failed:', error);
-      });
+      navigateTopLevel(target);
     } else {
-      Promise.resolve(navigate('/settings/model')).catch((error) => {
-        console.error('Navigation failed:', error);
-      });
+      navigateTopLevel('/settings/model');
     }
     if (onSessionClick) {
       onSessionClick();
@@ -92,9 +101,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     blurActiveElement();
     closePreview();
     setIsBatchMode(false);
-    Promise.resolve(navigate('/scheduled')).catch((error) => {
-      console.error('Navigation failed:', error);
-    });
+    navigateTopLevel('/scheduled');
     if (onSessionClick) {
       onSessionClick();
     }
@@ -105,9 +112,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     blurActiveElement();
     closePreview();
     setIsBatchMode(false);
-    Promise.resolve(navigate('/studio')).catch((error) => {
-      console.error('Navigation failed:', error);
-    });
+    navigateTopLevel('/studio');
     if (onSessionClick) {
       onSessionClick();
     }
@@ -118,9 +123,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     blurActiveElement();
     closePreview();
     setIsBatchMode(false);
-    Promise.resolve(navigate('/manager')).catch((error) => {
-      console.error('Navigation failed:', error);
-    });
+    navigateTopLevel('/manager');
     if (onSessionClick) {
       onSessionClick();
     }
@@ -165,7 +168,7 @@ const Sider: React.FC<SiderProps> = ({ onSessionClick, collapsed = false }) => {
     cleanupSiderTooltips();
     blurActiveElement();
     closePreview();
-    Promise.resolve(navigate(path)).catch(console.error);
+    navigateTopLevel(path);
     if (onSessionClick) onSessionClick();
   };
 

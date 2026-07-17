@@ -5,6 +5,8 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createDirectCliAgentDriver, resolveDirectCliWorkspace } from '@process/services/agentChat/directCliAgent';
+import type { CoreAdapter, DetectedCoreTarget } from '@process/experimentalCore/adapters';
 import {
   createCliAgentDriver,
   flattenMessagesToPrompt,
@@ -73,6 +75,73 @@ describe('flattenMessagesToPrompt', () => {
   });
 });
 
+describe('createDirectCliAgentDriver', () => {
+  const directTarget: DetectedCoreTarget = {
+    id: 'codex',
+    name: 'Codex',
+    protocol: 'codex-app-server',
+    candidates: ['codex'],
+    args: ['app-server'],
+    detail: 'direct',
+    runnable: true,
+    detected: true,
+    available: true,
+    command: 'codex.exe',
+  };
+
+  it('runs a CLI through its direct adapter without a conversation backend', async () => {
+    const adapter: CoreAdapter = {
+      protocol: 'codex-app-server',
+      listModels: vi.fn(async () => []),
+      run: vi.fn(async (input) => {
+        input.emit({ type: 'delta', text: 'direct ', mode: 'append' });
+        input.emit({ type: 'delta', text: 'answer', mode: 'append' });
+      }),
+      dispose: vi.fn(async () => undefined),
+    };
+    const resolveWorkspace = vi.fn(async () => 'C:/workspace');
+    const context = { workspace: 'C:/selected', surface: 'ide', permissionMode: 'workspace-write' } as const;
+    const driver = createDirectCliAgentDriver(
+      {
+        detectTargets: vi.fn(async () => [directTarget]),
+        adapters: [adapter],
+        resolveWorkspace,
+        createSessionId: () => 'direct-session',
+      },
+      context
+    );
+
+    await expect(
+      driver.run({ agentId: 'codex', modelId: 'gpt', messages: [{ role: 'user', content: 'hello' }] })
+    ).resolves.toBe('direct answer');
+    expect(adapter.run).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sessionId: 'direct-session',
+        target: directTarget,
+        workspace: 'C:/workspace',
+        modelKey: 'gpt',
+        permissionMode: 'workspace-write',
+        surface: 'ide',
+      })
+    );
+    expect(resolveWorkspace).toHaveBeenCalledWith(context);
+  });
+
+  it('rejects a relative workspace instead of resolving it against process cwd', async () => {
+    await expect(resolveDirectCliWorkspace({ workspace: 'relative/path' })).rejects.toThrow(/absolute path/i);
+  });
+
+  it('fails clearly when detection has no direct target', async () => {
+    const driver = createDirectCliAgentDriver({
+      detectTargets: vi.fn(async () => []),
+      adapters: [],
+      resolveWorkspace: vi.fn(async () => 'C:/workspace'),
+    });
+    await expect(driver.run({ agentId: 'ghost', messages: [{ role: 'user', content: 'hello' }] })).rejects.toThrow(
+      /no direct Tomny Core target/i
+    );
+  });
+});
 describe('createCliAgentDriver', () => {
   const baseDeps = (over: Partial<CliAgentDriverDeps>): CliAgentDriverDeps => ({
     createConversation: vi.fn(async () => ({ conversationId: 'c1', owned: true })),

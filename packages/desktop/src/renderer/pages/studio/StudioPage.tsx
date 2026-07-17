@@ -26,6 +26,7 @@ import StudioDashboard from './components/StudioDashboard';
 import StudioEditorView from './components/StudioEditorView';
 import StudioPeerView from './components/StudioPeerView';
 import { useEditorToolsProvider } from './editorToolsProvider';
+import { useMakeVideoAgentHarness } from './makevideo/makeVideoAgentHarness';
 import type { CollabJoinData } from '@renderer/pages/editor/adapters/collabClient';
 import { MUSIC_STUDIO_ENABLED } from '@/common/config/constants';
 
@@ -53,6 +54,7 @@ const StudioPage: React.FC = () => {
   // Register the Main→Renderer editor-tools provider once for the Studio app, so
   // the Office-editor MCP server can drive whichever Office editor is open.
   useEditorToolsProvider();
+  useMakeVideoAgentHarness();
 
   const [view, setView] = useState<StudioView>(() => {
     if (routeState?.studioView === 'music' && MUSIC_STUDIO_ENABLED) return { mode: 'music' };

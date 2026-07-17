@@ -26,7 +26,7 @@
  */
 
 import { app } from 'electron';
-import { mcpService } from '@/common/adapter/ipcBridge';
+import { getMcpRegistry } from '@process/resources/mcpRegistry';
 import type { IMcpServerTransportStdio } from '@/common/config/storage';
 import { BUILTIN_SYSTEM_NAME, SYSTEM_SNAPSHOT_DIR_ENV_KEY } from '../resources/builtinMcp/constants';
 import { getBuiltinMcpScriptPath } from '../utils/initStorage';
@@ -79,29 +79,27 @@ export const ensureSystemInfoMcpRegistered = async (): Promise<boolean> => {
       2
     );
 
-    const existing = (await mcpService.listServers.invoke()) ?? [];
+    const existing = (await getMcpRegistry().list()) ?? [];
     const current = existing.find((server) => server.name === BUILTIN_SYSTEM_NAME);
 
     if (!current) {
-      await mcpService.batchImportServers.invoke({
-        servers: [
-          {
-            name: BUILTIN_SYSTEM_NAME,
-            description: SYSTEM_MCP_DESCRIPTION,
-            enabled: false,
-            builtin: true,
-            transport,
-            original_json,
-          },
-        ],
-      });
+      await getMcpRegistry().importMany([
+        {
+          name: BUILTIN_SYSTEM_NAME,
+          description: SYSTEM_MCP_DESCRIPTION,
+          enabled: false,
+          builtin: true,
+          transport,
+          original_json,
+        },
+      ]);
       console.log(`[SystemMCP] Registered "${BUILTIN_SYSTEM_NAME}".`);
       return true;
     }
 
     const stale = current.transport.type !== 'stdio' || !isSameStdioTransport(current.transport, transport);
     if (stale) {
-      await mcpService.updateServer.invoke({ id: current.id, data: { transport, original_json, builtin: true } });
+      await getMcpRegistry().update(current.id, { transport, original_json, builtin: true });
       console.log(`[SystemMCP] Refreshed "${BUILTIN_SYSTEM_NAME}" transport.`);
     }
     return true;

@@ -22,6 +22,7 @@
  */
 
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import * as path from 'node:path';
 import { z } from 'zod';
 import { createIdeServer, type IdeServerDeps } from '@process/ide/mcp/ideServer';
 import type { ToolGuard, ToolGuardResult } from '@process/ide/mcp/ideServerToolGuard';
@@ -38,7 +39,7 @@ export const OMNI_IDE_SERVER_NAME = 'aionui-omni-ide';
 
 /** Cross-tool guidance returned in the MCP server's `instructions` field. */
 export const OMNI_IDE_SERVER_INSTRUCTIONS =
-  'This server exposes Tomni Agentic IDE tools. Before calling any ide_/team_/db_ tool, ' +
+  'This server exposes Tomni Agentic IDE tools. Before calling any tomny_/ide_/team_/db_ tool, ' +
   'call omni_bootstrap_session (with an EMPTY {} arguments object) to receive the active ' +
   'workspace guide, project rules, session id, and allowed-tool list. Pass the returned ' +
   'sessionId as the `sessionId` argument on every subsequent tool call. Do not send optional ' +
@@ -79,10 +80,11 @@ export type OmniIdeResolvedAllowlist = {
 };
 
 const hasOptionalToolDeps = (toolName: string, ideDeps: Omit<IdeServerDeps, 'toolGuard'>): boolean => {
-  if (toolName.startsWith('team_')) return ideDeps.teamEdit !== undefined;
+  if (toolName.startsWith('team_') || toolName.startsWith('tomny_team_')) return ideDeps.teamEdit !== undefined;
   if (toolName.startsWith('db_')) return ideDeps.db !== undefined;
   if (toolName.startsWith('ide_memory_')) return ideDeps.memory !== undefined;
   if (toolName === 'ide_quick_test') return ideDeps.quickTest !== undefined;
+  if (toolName.startsWith('ide_quick_test_')) return ideDeps.quickTestScenarios !== undefined;
   if (
     toolName === 'import_artifact_text' ||
     toolName === 'apply_artifact_edit' ||
@@ -135,7 +137,7 @@ const registerOmniTools = (server: McpServer, deps: OmniIdeProfileDeps): void =>
   server.tool(
     'omni_bootstrap_session',
     `Bind this MCP session to the AionUi workspace and receive the active guide, project rules,
-session id, and allowed-tool list. CALL THIS FIRST — every other ide_/team_/db_ tool is gated
+session id, and allowed-tool list. CALL THIS FIRST — every other tomny_/ide_/team_/db_ tool is gated
 until you have a sessionId from this call and pass it back as the sessionId argument.
 
 IMPORTANT: call this with an EMPTY arguments object {} (pass NO arguments). Only include the
@@ -145,7 +147,7 @@ block tool calls that carry unnecessary optional fields, so the empty-payload fo
 reliable.
 
 The returned activeGuide explains how the workspace expects you to work (Strict IDE Mode,
-semantic ide_* tools, team_* writes). Read it before acting.`,
+semantic tomny_* tools, including lease-guarded team writes). Read it before acting.`,
     {
       planningEnabled: z
         .boolean()
@@ -231,6 +233,11 @@ after a settings flip.`,
   );
 };
 
+const normalizeWorkspaceRoot = (rootPath: string): string => {
+  const resolved = path.resolve(rootPath);
+  return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+};
+
 /** Per-call guard: refuses tool calls until bootstrap + allowlist hold. */
 const evaluateExternalTool = (toolName: string, args: unknown, deps: OmniIdeProfileDeps): ToolGuardResult => {
   if (toolName.startsWith('omni_')) return { allow: true };
@@ -251,10 +258,11 @@ const evaluateExternalTool = (toolName: string, args: unknown, deps: OmniIdeProf
     return { allow: false, reason: `Tool "${toolName}" is not exposed by the External MCP Gateway.` };
   }
 
-  // 1b) External (public-tunnel) sessions use the SAME allowlist as local —
-  //     this MCP only ever calls the same in-app IDE tools the local agent
-  //     uses, and the user explicitly enables Web Access. The only gating
-  //     left is the dangerous flag below, identical to the local plane.
+  // 1b) A public tunnel may inspect saved scenarios, but replay controls can
+  //     mutate the tested application and therefore stay local-only.
+  if (deps.mode === 'external' && (toolName === 'ide_quick_test_run' || toolName === 'ide_quick_test_cancel')) {
+    return { allow: false, reason: `Tool ${toolName} is not exposed over the public External MCP tunnel.` };
+  }
 
   // 2) Caller must pass sessionId as an argument (zod has already validated it
   //    if present; here we treat missing/empty as "not bootstrapped").
@@ -276,6 +284,20 @@ const evaluateExternalTool = (toolName: string, args: unknown, deps: OmniIdeProf
   const session = deps.state.getSession(sessionId);
   if (!session) {
     return { allow: false, reason: 'Unknown or expired sessionId. Call omni_bootstrap_session again.' };
+  }
+
+  const requestedRoot =
+    args &&
+    typeof args === 'object' &&
+    'rootPath' in args &&
+    typeof (args as { rootPath?: unknown }).rootPath === 'string'
+      ? (args as { rootPath: string }).rootPath.trim()
+      : '';
+  if (requestedRoot && normalizeWorkspaceRoot(requestedRoot) !== normalizeWorkspaceRoot(session.rootPath)) {
+    return {
+      allow: false,
+      reason: 'The requested rootPath does not match the workspace bound to this MCP session.',
+    };
   }
 
   // 3) A per-tool explicit ALLOW bypasses the dangerous-tools gate — the user

@@ -26,6 +26,28 @@
 /** Canonical name of the built-in Browser-Control MCP server (mirror constant). */
 export const BROWSER_CONTROL_MCP_NAME = 'aionui-browser-control';
 
+/** Versioned Quick Test guidance, also appended when upgrading an older Super conversation. */
+export const SUPER_QUICK_TEST_RULES = [
+  'Quick Test (autonomous E2E after coding): `quick_test_discover`, `quick_test_start`,',
+  '`quick_test_observe`, `quick_test_status`, `quick_test_save`, `quick_test_replay`,',
+  '`quick_test_audit`, `quick_test_capture`, `quick_test_stop`, `quick_test_close`.',
+  '- For a repo you just changed, call `quick_test_discover` first. Inspect every detected service,',
+  '  command, working directory and URL before choosing frontend-only, full stack, or explicit services.',
+  '- Call `quick_test_start` to launch the selected services in owned terminal sessions and open the',
+  '  detected app URL in the same live browser surface the user sees in this chat.',
+  '- Call `quick_test_observe` before interacting. Then use the normal `browser_*` tools with the',
+  '  returned `tabId` to exercise the app while Quick Test records DOM actions, console/network',
+  '  failures, screenshots and code evidence.',
+  '- Read `quick_test_status`; use `quick_test_audit` for deterministic design/accessibility findings',
+  '  and `quick_test_capture` for viewport or full-page visual evidence. Save useful completed paths with',
+  '  `quick_test_save`. Use',
+  '  `quick_test_stop` to stop owned services but keep the browser for inspection, or `quick_test_close`',
+  '  to close the entire test session.',
+  '- On later fixes, prefer `quick_test_replay` with the saved test id. Replay performs the recorded',
+  '  workflow automatically, so do not manually repeat browser actions unless replay evidence says the',
+  '  workflow itself is stale.',
+];
+
 /** The Super standing-instructions block appended to a conversation's rules. */
 export const SUPER_BROWSER_RULES = [
   '## Super capabilities (Super is ON)',
@@ -41,6 +63,8 @@ export const SUPER_BROWSER_RULES = [
   '`editor_list`. `editor_open` shows a file as a live editor frame in the chat; `editor_write`',
   'replaces the whole file and the frame updates live. Use these to show and work on a document/code',
   'file the user should see — a browser frame and an editor frame can run at the same time.',
+  '',
+  ...SUPER_QUICK_TEST_RULES,
   '',
   'ALWAYS research before you act:',
   '- Before opening anything, call `browser_research` FIRST (a HIDDEN background search) to find the',
@@ -71,8 +95,24 @@ export const SUPER_BROWSER_RULES = [
  */
 export const withSuperBrowserRules = (existingRules?: string): string => {
   const base = (existingRules ?? '').trim();
-  if (base.includes('Super capabilities (Super is ON)')) return base; // already present
+  if (base.includes('Super capabilities (Super is ON)')) {
+    return base.includes('quick_test_discover') ? base : `${base}\n\n${SUPER_QUICK_TEST_RULES.join('\n')}`;
+  }
   return base.length > 0 ? `${base}\n\n${SUPER_BROWSER_RULES}` : SUPER_BROWSER_RULES;
+};
+
+/** Remove the app-owned Super guidance while preserving every other rules block. */
+export const withoutSuperBrowserRules = (existingRules?: string): string => {
+  let base = (existingRules ?? '').trim();
+  const heading = '## Super capabilities (Super is ON)';
+  const start = base.indexOf(heading);
+  if (start >= 0) {
+    const nextHeading = base.indexOf('\n## ', start + heading.length);
+    const end = nextHeading >= 0 ? nextHeading + 1 : base.length;
+    base = `${base.slice(0, start)}${base.slice(end)}`.trim();
+  }
+  const upgrade = SUPER_QUICK_TEST_RULES.join('\n');
+  return base.replace(upgrade, '').trim();
 };
 
 /** Canonical name of the built-in IDE MCP server (mirror constant). */

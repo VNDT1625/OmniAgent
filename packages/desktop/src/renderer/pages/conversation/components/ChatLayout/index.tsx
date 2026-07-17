@@ -60,13 +60,6 @@ const ChatLayout: React.FC<{
   onRenameTitle?: (new_name: string) => Promise<boolean>;
   /** Optional override for the leading icon shown before the title (e.g. team Peoples icon) */
   headerLeading?: React.ReactNode;
-  /**
-   * Optional overlay rendered INSIDE the chat content column (the centered area
-   * where messages live), absolutely positioned within it. Used by the Super
-   * live-browser frames so they sit "in the conversation" rather than glued to
-   * the window's right edge.
-   */
-  chatColumnOverlay?: React.ReactNode;
 }> = (props) => {
   const { conversation_id, workspacePath, isTemporaryWorkspace } = props;
   const { backend, presetAssistant, agent_name, workspaceEnabled = true, workspacePreferenceKey } = props;
@@ -290,15 +283,9 @@ const ChatLayout: React.FC<{
                 if (window.innerWidth < 768 && !rightSiderCollapsed) setRightSiderCollapsed(true);
               }}
             >
-              <ArcoLayout.Content className='flex flex-col flex-1 bg-1 overflow-hidden'>
+              <ArcoLayout.Content className='flex flex-col flex-1 min-h-0 bg-1 overflow-hidden'>
                 {props.children}
               </ArcoLayout.Content>
-              {/* Super live-browser/editor frames: rendered INSIDE the chat
-                  column and absolutely positioned within it (see JSDoc on
-                  chatColumnOverlay), so they read like an in-conversation block
-                  (same width as the message area) instead of a separate docked
-                  column that squeezes the chat. */}
-              {props.chatColumnOverlay}
             </div>
             {/* Preview panel - conditionally rendered */}
             {isPreviewOpen && (

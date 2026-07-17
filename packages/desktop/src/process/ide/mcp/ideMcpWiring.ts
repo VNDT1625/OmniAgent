@@ -26,20 +26,38 @@ import {
   type IdeMtuiResult,
   type IdeDirEntry,
   type QuickTestRunner,
+  type QuickTestScenarioAgentService,
+  type QuickTestScenarioRunStatus,
   type DbAgentService,
   type ExperienceAgentService,
 } from './ideServer';
 import { createQuickTestService } from '../quickTestService';
+
+import {
+  QuickTestScenarioRunner,
+  loadSavedQuickTestScenario,
+  type ScenarioRunSnapshot,
+  type ScenarioRuntimeEvidence,
+} from './quickTestScenarioRunner';
+import type { ReplayScenario, ReplayStep } from '../quickTestReplay';
+import { getBrowserServices } from '@process/browser/browserBridge';
 import { openNativeLogStream } from '../quickTestNativeStream';
+import { createNativeQuickTestReplayAdapter } from '@process/testing/engines/nativeQuickTestReplayAdapter';
 import { loadGraph } from '../quickTestBridgeHelpers';
 import { getDbService } from '../db/dbWiring';
 import { getSessionMemoryStore } from '../memory/sessionMemoryStore';
+import { getRepoSecretStore } from '../memory/repoSecretStore';
 import { getTeamEditService } from '../teamEdit/teamEditService';
 import { runMtuiInRoot } from '@process/terminal/mtuiBridge';
 import { runCommand } from '../command/commandRunner';
-import type { CdpWebContents } from '../quickTestTracer';
+import { createQuickTestTracer, type CdpWebContents } from '../quickTestTracer';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { getExperienceServiceForRoot, getExperienceWorkflowForRoot } from '@process/experience/experienceBridge';
+import {
+  analyzeVisualArtifact,
+  renderVisualArtifactMockUi,
+  renderVisualArtifactSemanticText,
+} from '@process/visualArtifact';
 
 import type { ToolGuard } from './ideServerToolGuard';
 
@@ -431,6 +449,16 @@ export const getIdeMcpService = (): IdeMcpService => ({
     return { summary: mtuiSummaryText(result, 'summary', 'output') };
   },
 
+  // --- analyzeImage: explicit VisualArtifact tool -------------------------
+  analyzeImage: async (filePath, mimeType) => {
+    const artifact = await analyzeVisualArtifact(filePath, { mimeType });
+    return {
+      json: artifact,
+      semanticText: renderVisualArtifactSemanticText(artifact),
+      mockUi: renderVisualArtifactMockUi(artifact),
+    };
+  },
+
   // --- compact -------------------------------------------------------------
   compact: async (rootPath, input, profile, maxLines) => {
     const args = ['compact'];
@@ -445,9 +473,256 @@ export const getIdeMcpService = (): IdeMcpService => ({
 
   // --- runCommand: guarded arbitrary shell execution -----------------------
   runCommand: async (rootPath, command, opts) => {
-    return runCommand(command, rootPath, { cwd: opts?.cwd, timeoutMs: opts?.timeoutMs });
+    return runCommand(command, rootPath, { cwd: opts?.cwd, timeoutMs: opts?.timeoutMs, env: opts?.env });
   },
 });
+
+// ---------------------------------------------------------------------------
+// Saved Quick Test scenarios (agent plane)
+// ---------------------------------------------------------------------------
+type ScenarioAssetFile = {
+  scenarios?: Array<{ id?: unknown }>;
+};
+
+const publicReplayStep = (step: ReplayStep): Record<string, unknown> => {
+  if (step.kind === 'navigate') return { id: step.id, kind: step.kind, url: step.url };
+  if (step.kind === 'click') return { id: step.id, kind: step.kind, selector: step.selector };
+  return { id: step.id, kind: step.kind, selector: step.selector, redacted: step.redacted };
+};
+
+const scenarioSummary = (scenario: ReplayScenario) => ({
+  id: scenario.id,
+  name: scenario.name,
+  platform: scenario.platform,
+  ...(scenario.target ? { target: scenario.target } : {}),
+  stepCount: scenario.steps.length,
+  createdAt: scenario.createdAt,
+});
+
+const normalizeScenarioStatus = (snapshot: ScenarioRunSnapshot): QuickTestScenarioRunStatus => {
+  const status = snapshot.status === 'timed-out' ? 'failed' : snapshot.status;
+  if (snapshot.status === 'running') {
+    return {
+      runId: snapshot.runId,
+      scenarioId: snapshot.testId,
+      status,
+      queuedAt: snapshot.startedAt,
+      startedAt: snapshot.startedAt,
+    };
+  }
+  return {
+    runId: snapshot.runId,
+    scenarioId: snapshot.testId,
+    status,
+    queuedAt: snapshot.startedAt,
+    startedAt: snapshot.startedAt,
+    finishedAt: snapshot.finishedAt,
+    ...(snapshot.failedStep === null ? {} : { failedStepIndex: snapshot.failedStep }),
+    ...(snapshot.reason ? { error: snapshot.reason } : {}),
+    result: {
+      durationMs: snapshot.durationMs,
+      actionCount: snapshot.actions.length,
+      actions: snapshot.actions,
+      timedOut: snapshot.status === 'timed-out',
+    },
+    evidence: snapshot.evidence,
+    assessment: { ...snapshot.assessment },
+  };
+};
+
+const getQuickTestWindow = (): import('electron').BrowserWindow | null => {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { BrowserWindow } = require('electron') as typeof import('electron');
+    return BrowserWindow.getFocusedWindow();
+  } catch {
+    return null;
+  }
+};
+
+let savedScenarioRunner: QuickTestScenarioRunner | undefined;
+
+const getSavedScenarioRunner = (): QuickTestScenarioRunner => {
+  if (savedScenarioRunner) return savedScenarioRunner;
+  savedScenarioRunner = new QuickTestScenarioRunner({
+    createAdapter: async ({ rootPath, runId, scenario, target, tabId }) => {
+      if (scenario.platform !== 'web') {
+        return createNativeQuickTestReplayAdapter({ rootPath, runId, scenario, target });
+      }
+      const viewManager = getBrowserServices(getQuickTestWindow).viewManager;
+      let effectiveTabId = tabId;
+      let ownsTab = false;
+      if (!effectiveTabId) {
+        const initialUrl = scenario.steps.find(
+          (step): step is Extract<ReplayStep, { kind: 'navigate' }> => step.kind === 'navigate'
+        )?.url;
+        effectiveTabId = viewManager.createTab({
+          ...(initialUrl ? { url: initialUrl } : {}),
+          bounds: { x: 0, y: 0, width: 1280, height: 720 },
+          visible: false,
+          background: true,
+        });
+        ownsTab = true;
+      }
+      const resolvedTabId = effectiveTabId;
+      const contents = viewManager.getWebContents(resolvedTabId);
+      if (!contents) throw new Error('The Quick Test browser tab is unavailable.');
+
+      const tracer = createQuickTestTracer({
+        getWebContents: () => contents as unknown as CdpWebContents,
+      });
+      const tracing = await tracer.start(rootPath);
+      if (!tracing) throw new Error('The Quick Test browser could not start runtime tracing.');
+      let traceCollected = false;
+      const collectTraceEvidence = async (): Promise<ScenarioRuntimeEvidence> => {
+        if (traceCollected) {
+          return { consoleErrors: [], networkFailures: [], attachments: [], relatedFiles: [] };
+        }
+        traceCollected = true;
+        await tracer.finalizeCoverage();
+        const trace = tracer.stop();
+        const consoleErrors = trace.events.flatMap((event) => {
+          if (event.kind === 'exception') return [event.message];
+          if (event.kind === 'console' && event.level === 'error') return [event.message];
+          return [];
+        });
+        const networkFailures = trace.events.flatMap((event) =>
+          event.kind === 'network' && (event.status >= 400 || event.error)
+            ? [`${event.method} ${event.url} — ${event.error ?? event.status}`]
+            : []
+        );
+        const relatedFiles = [...new Set((trace.coverage ?? []).map((entry) => entry.file))];
+        return { consoleErrors, networkFailures, attachments: [], relatedFiles };
+      };
+
+      return {
+        navigate: (url) => viewManager.loadURL(resolvedTabId, url),
+        click: async (selector) => {
+          await contents.executeJavaScript(`(() => {
+            const element = document.querySelector(${JSON.stringify(selector)});
+            if (!(element instanceof HTMLElement)) throw new Error('Replay element was not found.');
+            element.scrollIntoView({ block: 'center', inline: 'center' });
+            element.click();
+          })()`);
+        },
+        input: async (selector, value) => {
+          await contents.executeJavaScript(`(() => {
+            const element = document.querySelector(${JSON.stringify(selector)});
+            if (!(element instanceof HTMLInputElement || element instanceof HTMLTextAreaElement || element instanceof HTMLSelectElement)) {
+              throw new Error('Replay input was not found.');
+            }
+            const prototype = element instanceof HTMLTextAreaElement
+              ? HTMLTextAreaElement.prototype
+              : element instanceof HTMLSelectElement
+                ? HTMLSelectElement.prototype
+                : HTMLInputElement.prototype;
+            const setter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+            if (setter) setter.call(element, ${JSON.stringify(value)});
+            else element.value = ${JSON.stringify(value)};
+            element.dispatchEvent(new Event('input', { bubbles: true }));
+            element.dispatchEvent(new Event('change', { bubbles: true }));
+          })()`);
+        },
+        collectEvidence: collectTraceEvidence,
+        dispose: async () => {
+          if (tracer.isActive()) {
+            await tracer.finalizeCoverage().catch((): void => undefined);
+            tracer.stop();
+          }
+          if (ownsTab) viewManager.destroyTab(resolvedTabId);
+        },
+      };
+    },
+  });
+  return savedScenarioRunner;
+};
+
+const assertRunRoot = (snapshot: ScenarioRunSnapshot, rootPath: string): void => {
+  if (path.resolve(snapshot.rootPath) !== path.resolve(rootPath)) {
+    throw new Error('The Quick Test run belongs to a different workspace.');
+  }
+};
+
+export const getQuickTestScenarioAgentService = (): QuickTestScenarioAgentService => {
+  const runner = getSavedScenarioRunner();
+  return {
+    list: async ({ rootPath, platform, limit }) => {
+      const assetPath = path.join(path.resolve(rootPath), '.omni', 'quick-test', 'assets.json');
+      const parsed = JSON.parse(await fsp.readFile(assetPath, 'utf8')) as ScenarioAssetFile;
+      const ids = Array.isArray(parsed.scenarios)
+        ? parsed.scenarios.map((item) => (typeof item?.id === 'string' ? item.id : '')).filter((id) => id.length > 0)
+        : [];
+      const scenarios: ReplayScenario[] = [];
+      for (const id of ids) {
+        try {
+          // eslint-disable-next-line no-await-in-loop -- each stored scenario is independently validated.
+          const scenario = await loadSavedQuickTestScenario(rootPath, id);
+          if (!platform || scenario.platform === platform) scenarios.push(scenario);
+        } catch {
+          // Ignore malformed entries while keeping the remaining library usable.
+        }
+      }
+      return { scenarios: scenarios.slice(0, limit).map(scenarioSummary), total: scenarios.length };
+    },
+    describe: async ({ rootPath, scenarioId }) => {
+      const scenario = await loadSavedQuickTestScenario(rootPath, scenarioId);
+      return {
+        ...scenarioSummary(scenario),
+        rootPath: path.resolve(rootPath),
+        steps: scenario.steps.map(publicReplayStep),
+      };
+    },
+    run: async ({ rootPath, scenarioId, target, tabId, mode, timeoutMs, inputOverrides }) =>
+      normalizeScenarioStatus(
+        await runner.start({
+          rootPath,
+          testId: scenarioId,
+          target,
+          tabId,
+          mode,
+          timeoutMs,
+          inputOverrides,
+        })
+      ),
+    status: async ({ rootPath, runId }) => {
+      const snapshot = runner.get(runId);
+      if (!snapshot) throw new Error(`Quick Test run ${runId} was not found.`);
+      assertRunRoot(snapshot, rootPath);
+      return normalizeScenarioStatus(snapshot);
+    },
+    cancel: async ({ rootPath, runId }) => {
+      const snapshot = runner.get(runId);
+      if (!snapshot) throw new Error(`Quick Test run ${runId} was not found.`);
+      assertRunRoot(snapshot, rootPath);
+      if (snapshot.status === 'running') runner.cancel(runId);
+      return normalizeScenarioStatus(await runner.wait(runId));
+    },
+    compare: async ({ rootPath, baselineRunId, currentRunId }) => {
+      const baseline = runner.get(baselineRunId);
+      const current = runner.get(currentRunId);
+      if (!baseline || baseline.status === 'running') throw new Error('The baseline Quick Test run is not complete.');
+      if (!current || current.status === 'running') throw new Error('The current Quick Test run is not complete.');
+      assertRunRoot(baseline, rootPath);
+      assertRunRoot(current, rootPath);
+      return {
+        baselineRunId,
+        currentRunId,
+        baselineStatus: baseline.status,
+        currentStatus: current.status,
+        fixed: baseline.status !== 'passed' && current.status === 'passed',
+        durationDeltaMs: current.durationMs - baseline.durationMs,
+        failedStepChanged: baseline.failedStep !== current.failedStep,
+        baselineError: baseline.reason,
+        currentError: current.reason,
+        actionCountDelta: current.actions.length - baseline.actions.length,
+        evidence: {
+          baseline: baseline.evidence,
+          current: current.evidence,
+        },
+      };
+    },
+  };
+};
 
 // ---------------------------------------------------------------------------
 // Quick Test runner
@@ -509,7 +784,10 @@ const nativeToolGuard: ToolGuard = (toolName) => {
   if (NATIVE_TOOL_DENYLIST.has(normalized)) {
     return {
       allow: false,
-      reason: 'Native tool "' + toolName + '" is blocked in IDE workspaces. Use ide_* / team_* / db_* tools instead.',
+      reason:
+        'Native tool "' +
+        toolName +
+        '" is blocked in IDE workspaces. Use tomny_* tools instead (ide_* / team_* remain compatibility aliases).',
     };
   }
   return { allow: true };
@@ -565,8 +843,11 @@ export const buildIdeServer = (): McpServer => {
     return createIdeServer({
       ide,
       quickTest: getQuickTestRunner(),
+
+      quickTestScenarios: getQuickTestScenarioAgentService(),
       db: getDbService() as DbAgentService,
       memory: getSessionMemoryStore(),
+      repoSecrets: getRepoSecretStore(),
       experience: experienceAgentService,
       teamEdit: getTeamEditService(),
       toolGuard: nativeToolGuard,

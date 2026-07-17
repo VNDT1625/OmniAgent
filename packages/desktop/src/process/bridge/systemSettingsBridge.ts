@@ -17,6 +17,7 @@ import { getPlatformServices } from '@/common/platform';
 import { ProcessConfig } from '@process/utils/initStorage';
 import { changeLanguage } from '@process/services/i18n';
 import type { PetSize } from '@process/pet/petTypes';
+import { setCloseToTrayEnabled } from '@process/utils/tray';
 
 // Keep-awake power blocker state
 let _keepAwakeBlockerId: number | null = null;
@@ -36,6 +37,36 @@ export function initSystemSettingsBridge(): void {
   // Set "keep awake" — toggle prevent-display-sleep blocker.
   // getKeepAwake is served by the backend via HTTP; only the setter remains
   // because it drives the local power.preventDisplaySleep blocker.
+﻿  ipcBridge.systemSettings.getCloseToTray.provider(async () => {
+    return (await ProcessConfig.get('system.closeToTray')) ?? false;
+  });
+
+  ipcBridge.systemSettings.setCloseToTray.provider(async ({ enabled }) => {
+    await ProcessConfig.set('system.closeToTray', enabled);
+    setCloseToTrayEnabled(enabled);
+  });
+
+  ipcBridge.systemSettings.getNotificationEnabled.provider(async () => {
+    return (await ProcessConfig.get('system.notificationEnabled')) ?? true;
+  });
+
+  ipcBridge.systemSettings.setNotificationEnabled.provider(async ({ enabled }) => {
+    await ProcessConfig.set('system.notificationEnabled', enabled);
+  });
+
+  ipcBridge.systemSettings.getCronNotificationEnabled.provider(async () => {
+    return (await ProcessConfig.get('system.cronNotificationEnabled')) ?? false;
+  });
+
+  ipcBridge.systemSettings.setCronNotificationEnabled.provider(async ({ enabled }) => {
+    await ProcessConfig.set('system.cronNotificationEnabled', enabled);
+  });
+
+  ipcBridge.systemSettings.getKeepAwake.provider(async () => {
+    return (await ProcessConfig.get('system.keepAwake')) ?? false;
+  });
+
+
   ipcBridge.systemSettings.setKeepAwake.provider(async ({ enabled }) => {
     await ProcessConfig.set('system.keepAwake', enabled);
     const power = getPlatformServices().power;
@@ -47,6 +78,23 @@ export function initSystemSettingsBridge(): void {
     }
   });
 
+﻿  ipcBridge.systemSettings.getSaveUploadToWorkspace.provider(async () => {
+    return (await ProcessConfig.get('upload.saveToWorkspace')) ?? false;
+  });
+
+  ipcBridge.systemSettings.setSaveUploadToWorkspace.provider(async ({ enabled }) => {
+    await ProcessConfig.set('upload.saveToWorkspace', enabled);
+  });
+
+  ipcBridge.systemSettings.getAutoPreviewOfficeFiles.provider(async () => {
+    return (await ProcessConfig.get('system.autoPreviewOfficeFiles')) ?? true;
+  });
+
+  ipcBridge.systemSettings.setAutoPreviewOfficeFiles.provider(async ({ enabled }) => {
+    await ProcessConfig.set('system.autoPreviewOfficeFiles', enabled);
+  });
+
+
   // 语言变更通知，同步主进程 i18n 并通知托盘重建
   // Language change notification, sync main process i18n and notify tray rebuild
   ipcBridge.systemSettings.changeLanguage.provider(async ({ language }) => {
@@ -54,6 +102,9 @@ export function initSystemSettingsBridge(): void {
     // This must happen before the potentially slow main-process i18n switch.
     ipcBridge.systemSettings.languageChanged.emit({ language });
     _languageChangeListener?.(language);
+﻿
+    await ProcessConfig.set('language', language);
+
 
     // Update main process i18n (non-blocking – don't let a hang here block the provider)
     changeLanguage(language).catch((error) => {

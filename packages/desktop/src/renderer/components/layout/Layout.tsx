@@ -8,12 +8,15 @@ import { ipcBridge } from '@/common';
 import { TEAM_MODE_ENABLED } from '@/common/config/constants';
 import { configService } from '@/common/config/configService';
 import type { ICssTheme } from '@/common/config/storage';
+import AppLoader from '@/renderer/components/layout/AppLoader';
 import PwaPullToRefresh from '@/renderer/components/layout/PwaPullToRefresh';
+import { scheduleNavigationAfterPaint } from '@/renderer/components/layout/routeTransition';
 import Titlebar from '@/renderer/components/layout/Titlebar';
 import { Layout as ArcoLayout } from '@arco-design/web-react';
 import classNames from 'classnames';
 import React, { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import type { NavigateOptions, To } from 'react-router-dom';
 import { LayoutContext } from '@renderer/hooks/context/LayoutContext';
 import { NavigationHistoryProvider } from '@renderer/hooks/context/NavigationHistoryContext';
 import { useDeepLink } from '@renderer/hooks/system/useDeepLink';
@@ -111,6 +114,7 @@ const Layout: React.FC<{
   );
   const [customCss, setCustomCss] = useState<string>('');
   const [shouldMountUpdateModal, setShouldMountUpdateModal] = useState(false);
+  const [routeTransitioning, setRouteTransitioning] = useState(false);
   const { onClick } = useDebug();
   const { contextHolder: directorySelectionContextHolder } = useDirectorySelection();
   useDeepLink();
@@ -121,6 +125,7 @@ const Layout: React.FC<{
   const workspaceAvailable =
     location.pathname.startsWith('/conversation/') || (TEAM_MODE_ENABLED && location.pathname.startsWith('/team/'));
   const collapsedRef = useRef(collapsed);
+  const cancelPendingNavigationRef = useRef<(() => void) | null>(null);
   const lastCssRef = useRef('');
   const lastUiCssUpdateAtRef = useRef(0);
   const dragStateRef = useRef<{ active: boolean; startX: number; startWidth: number }>({
@@ -128,6 +133,36 @@ const Layout: React.FC<{
     startX: 0,
     startWidth: DEFAULT_SIDER_WIDTH,
   });
+
+  const navigateWithFeedback = useCallback(
+    (to: To, options?: NavigateOptions): void => {
+      const currentPath = `${location.pathname}${location.search}${location.hash}`;
+      if (typeof to === 'string' && to === currentPath) {
+        void navigate(to, options);
+        return;
+      }
+
+      cancelPendingNavigationRef.current?.();
+      setRouteTransitioning(true);
+      cancelPendingNavigationRef.current = scheduleNavigationAfterPaint(() => {
+        cancelPendingNavigationRef.current = null;
+        void navigate(to, options);
+      });
+    },
+    [location.hash, location.pathname, location.search, navigate]
+  );
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => setRouteTransitioning(false));
+    return () => window.cancelAnimationFrame(frame);
+  }, [location.key]);
+
+  useEffect(
+    () => () => {
+      cancelPendingNavigationRef.current?.();
+    },
+    []
+  );
 
   const loadAndHealCustomCss = useCallback(async () => {
     try {
@@ -370,6 +405,21 @@ const Layout: React.FC<{
     : DEFAULT_SIDER_WIDTH;
   useEffect(() => {
     collapsedRef.current = collapsed;
+    // A native WebContentsView floats outside the DOM. Collapsing the app
+    // sidebar can move its host without changing that host's own dimensions,
+    // so ResizeObserver alone does not run and the native view keeps stale
+    // coordinates. Signal the existing native-surface resize listeners after
+    // layout commit and once more when the sider transition settles.
+    const notifyNativeSurfaces = (): void => {
+      window.dispatchEvent(new Event('resize'));
+    };
+    const frame = window.requestAnimationFrame(notifyNativeSurfaces);
+    const siderElement = document.querySelector('.layout-sider');
+    siderElement?.addEventListener('transitionend', notifyNativeSurfaces);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      siderElement?.removeEventListener('transitionend', notifyNativeSurfaces);
+    };
   }, [collapsed]);
 
   const beginSiderResizeDrag = useCallback(
@@ -436,7 +486,14 @@ const Layout: React.FC<{
       };
 
   return (
-    <LayoutContext.Provider value={{ isMobile, siderCollapsed: collapsed, setSiderCollapsed: setCollapsed }}>
+    <LayoutContext.Provider
+      value={{
+        isMobile,
+        siderCollapsed: collapsed,
+        setSiderCollapsed: setCollapsed,
+        navigateWithFeedback,
+      }}
+    >
       <NavigationHistoryProvider>
         <div className='app-shell flex flex-col size-full min-h-0'>
           <Titlebar workspaceAvailable={workspaceAvailable} />
@@ -531,7 +588,7 @@ const Layout: React.FC<{
             </ArcoLayout.Sider>
 
             <ArcoLayout.Content
-              className={'bg-1 layout-content flex flex-col min-h-0'}
+              className={'relative bg-1 layout-content flex flex-col min-h-0'}
               onClick={() => {
                 if (isMobile && !collapsed) setCollapsed(true);
               }}
@@ -543,6 +600,7 @@ const Layout: React.FC<{
                   : undefined
               }
             >
+              {routeTransitioning && <AppLoader overlay />}
               <Outlet />
               {directorySelectionContextHolder}
               <PwaPullToRefresh />

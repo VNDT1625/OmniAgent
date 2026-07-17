@@ -16,7 +16,7 @@
  * Process boundary: Main-process (Node.js) module — no DOM APIs.
  */
 
-import { mcpService } from '@/common/adapter/ipcBridge';
+import { getMcpRegistry } from '@process/resources/mcpRegistry';
 import { BUILTIN_MUSIC_NAME } from './musicMcpServer';
 import { startMusic } from './musicMcpWiring';
 
@@ -32,29 +32,27 @@ export const ensureMusicMcpRegistered = async (): Promise<boolean> => {
     const transport = { type: 'sse' as const, url: host.url };
     const original_json = JSON.stringify({ mcpServers: { [BUILTIN_MUSIC_NAME]: { url: host.url } } }, null, 2);
 
-    const existing = (await mcpService.listServers.invoke()) ?? [];
+    const existing = (await getMcpRegistry().list()) ?? [];
     const current = existing.find((server) => server.name === BUILTIN_MUSIC_NAME);
 
     if (!current) {
-      await mcpService.batchImportServers.invoke({
-        servers: [
-          {
-            name: BUILTIN_MUSIC_NAME,
-            description: MUSIC_MCP_DESCRIPTION,
-            enabled: false,
-            builtin: true,
-            transport,
-            original_json,
-          },
-        ],
-      });
+      await getMcpRegistry().importMany([
+        {
+          name: BUILTIN_MUSIC_NAME,
+          description: MUSIC_MCP_DESCRIPTION,
+          enabled: false,
+          builtin: true,
+          transport,
+          original_json,
+        },
+      ]);
       console.log(`[MusicMCP] Registered "${BUILTIN_MUSIC_NAME}" at ${host.url}.`);
       return true;
     }
 
     const sameUrl = current.transport.type === 'sse' && current.transport.url === host.url;
     if (!sameUrl) {
-      await mcpService.updateServer.invoke({ id: current.id, data: { transport, original_json, builtin: true } });
+      await getMcpRegistry().update(current.id, { transport, original_json, builtin: true });
       console.log(`[MusicMCP] Updated "${BUILTIN_MUSIC_NAME}" URL → ${host.url}.`);
     }
     return true;

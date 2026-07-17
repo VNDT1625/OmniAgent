@@ -9,12 +9,14 @@ import type { IConversationMcpStatus, IProvider, TChatConversation, TProviderWit
 import { uuid } from '@/common/utils';
 import addChatIcon from '@/renderer/assets/icons/add-chat.svg';
 import { CronJobManager } from '@/renderer/pages/cron';
+import { ensureBrowserControlSession } from '@/renderer/hooks/mcp/catalog';
+
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { usePresetAssistantInfo, resolveAssistantConfigId } from '@/renderer/hooks/agent/usePresetAssistantInfo';
 import { iconColors } from '@/renderer/styles/colors';
 import { Button, Dropdown, Menu, Tooltip, Typography } from '@arco-design/web-react';
 import { History } from '@icon-park/react';
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
@@ -188,7 +190,6 @@ const AionrsConversationPanel: React.FC<{
       ?.is_temporary_workspace,
     backend: 'aionrs' as const,
     presetAssistant: presetAssistantInfo ? { ...presetAssistantInfo, id: aionrsAssistantId } : undefined,
-    chatColumnOverlay: <ConversationWatchOverlay conversationId={conversation.id} />,
   };
 
   return (
@@ -205,6 +206,7 @@ const AionrsConversationPanel: React.FC<{
           (conversation.extra as { mcp_statuses?: IConversationMcpStatus[] } | undefined)?.mcp_statuses
         }
         agent_name={presetAssistantInfo?.name}
+        beforeSendBox={<ConversationWatchOverlay conversationId={conversation.id} />}
       />
     </ChatLayout>
   );
@@ -229,6 +231,16 @@ const ChatConversation: React.FC<{
 
   const isAionrsConversation = conversation?.type === 'aionrs';
 
+  // Heal an already-enabled Browser-Control MCP snapshot when a chat mounts.
+  // Its SSE URL is ephemeral and may be stale after an app restart; missing
+  // entries remain opt-in through the Super control, and custom MCPs are untouched.
+  useEffect(() => {
+    if (!conversation?.id) return;
+    void ensureBrowserControlSession(conversation.id).catch(() => {
+      // Browser availability is optional; the chat remains usable without it.
+    });
+  }, [conversation?.id]);
+
   // 使用统一的 Hook 获取预设助手信息（ACP/Codex 会话）
   // Use unified hook for preset assistant info (ACP/Codex conversations)
   const acpConversation = isAionrsConversation ? undefined : conversation;
@@ -252,6 +264,7 @@ const ChatConversation: React.FC<{
             agent_name={assistantDisplayName}
             cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
             hideSendBox={hideSendBox}
+            beforeSendBox={<ConversationWatchOverlay conversationId={conversation.id} />}
             loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
             loadedMcpServers={(conversation.extra as { mcp_servers?: string[] } | undefined)?.mcp_servers}
             loadedMcpStatuses={
@@ -275,6 +288,7 @@ const ChatConversation: React.FC<{
             agent_name={assistantDisplayName}
             cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
             hideSendBox={hideSendBox}
+            beforeSendBox={<ConversationWatchOverlay conversationId={conversation.id} />}
             loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
             loadedMcpServers={(conversation.extra as { mcp_servers?: string[] } | undefined)?.mcp_servers}
             loadedMcpStatuses={
@@ -291,6 +305,7 @@ const ChatConversation: React.FC<{
             backend='codex'
             agent_name={assistantDisplayName}
             hideSendBox={hideSendBox}
+            beforeSendBox={<ConversationWatchOverlay conversationId={conversation.id} />}
             loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
             loadedMcpServers={(conversation.extra as { mcp_servers?: string[] } | undefined)?.mcp_servers}
             loadedMcpStatuses={
@@ -305,6 +320,7 @@ const ChatConversation: React.FC<{
             conversation_id={conversation.id}
             workspace={conversation.extra?.workspace}
             cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
+            beforeSendBox={<ConversationWatchOverlay conversationId={conversation.id} />}
             loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
           />
         );
@@ -315,6 +331,7 @@ const ChatConversation: React.FC<{
             conversation_id={conversation.id}
             workspace={conversation.extra?.workspace}
             cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
+            beforeSendBox={<ConversationWatchOverlay conversationId={conversation.id} />}
             loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
           />
         );
@@ -325,6 +342,7 @@ const ChatConversation: React.FC<{
             conversation_id={conversation.id}
             workspace={conversation.extra?.workspace}
             cron_job_id={(conversation.extra as { cron_job_id?: string })?.cron_job_id}
+            beforeSendBox={<ConversationWatchOverlay conversationId={conversation.id} />}
             loadedSkills={(conversation.extra as { skills?: string[] } | undefined)?.skills}
           />
         );
@@ -437,7 +455,6 @@ const ChatConversation: React.FC<{
         (conversation?.extra as { is_temporary_workspace?: boolean } | undefined)?.is_temporary_workspace
       }
       conversation_id={conversation?.id}
-      chatColumnOverlay={<ConversationWatchOverlay conversationId={conversation?.id} />}
     >
       {conversationNode}
     </ChatLayout>

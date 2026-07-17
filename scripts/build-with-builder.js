@@ -14,6 +14,7 @@ const { execSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { generateReleaseProvenance } = require('../packages/shared-scripts/src/release-provenance.js');
 
 // DMG retry logic for macOS: detects DMG creation failures by checking artifacts
 // (.app exists but .dmg missing) and retries only the DMG step using
@@ -622,6 +623,9 @@ try {
     }
   }
 
+  const provenance = generateReleaseProvenance({ rootDir: path.resolve(__dirname, '..'), outDir });
+  console.log('🔐 Build manifest: ' + provenance.manifestPath);
+  console.log('📋 CycloneDX SBOM: ' + provenance.sbomPath);
   console.log('✅ Build completed!');
 } catch (error) {
   console.error('❌ Build failed:', error.message);

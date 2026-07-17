@@ -9,8 +9,7 @@
  * 3.11). Produces a {@link GenerateFn} that asks the user's configured
  * provider/model to design a company from a free-text description.
  *
- * The provider list (with a usable `api_key`) is read from aioncore
- * (`GET /api/providers`). The chat call is issued **directly** against the
+ * The provider list (with a usable `api_key`) is read from the native Tomny provider store. The chat call is issued **directly** against the
  * provider's OpenAI-compatible `/chat/completions` endpoint via `fetch`, rather
  * than through `ClientFactory` — the shared `OpenAIRotatingClient` passes the
  * key as `api_key` (snake_case) instead of the SDK's required `apiKey`
@@ -26,7 +25,7 @@
  * Process boundary: Main-process (Node.js) module. No DOM APIs.
  */
 
-import { httpRequest } from '@/common/adapter/httpBridge';
+import { getReadyProviderStore } from '@process/services/tomnyProviderBridge';
 import type { IProvider } from '@/common/config/storage';
 import type { GenerateFn } from './companyConfig';
 
@@ -94,7 +93,7 @@ const firstApiKey = (apiKeys: string): string =>
  * structure with a "powered by" hint (display only).
  */
 export const resolveCompanyModelId = async (): Promise<string | undefined> => {
-  const providers = (await httpRequest<IProvider[]>('GET', '/api/providers').catch(() => [] as IProvider[])) || [];
+  const providers = await (await getReadyProviderStore()).list();
   return pickProviderModel(providers)?.model;
 };
 
@@ -108,7 +107,7 @@ export const resolveCompanyModelId = async (): Promise<string | undefined> => {
  */
 export const createCompanyGenerator = (): GenerateFn => {
   return async (prompt: string): Promise<string> => {
-    const providers = (await httpRequest<IProvider[]>('GET', '/api/providers').catch(() => [] as IProvider[])) || [];
+    const providers = await (await getReadyProviderStore()).list();
     const selected = pickProviderModel(providers);
     if (!selected) {
       throw new Error('No usable model is configured. Open Settings → Model and add a provider/model, then try again.');

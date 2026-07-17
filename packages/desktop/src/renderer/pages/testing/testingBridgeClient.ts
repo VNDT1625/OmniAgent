@@ -131,6 +131,7 @@ export type GenerateTestRequest = {
   platform: TestingPlatform;
   model?: string;
   appUrl?: string;
+  workspace?: string;
 };
 
 /** Result of generation: an editable scenario draft (mirrors testingBridge.GenerateTestResult). */

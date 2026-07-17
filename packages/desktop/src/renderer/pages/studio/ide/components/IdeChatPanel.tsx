@@ -184,7 +184,13 @@ const IdeChatPanel: React.FC<IdeChatPanelProps> = ({ rootPath, activeFile, repoF
     'ide.hook.askAgent',
     (payload) => {
       if (!rootPath || payload.rootPath !== rootPath) return;
-      const fill = (): void => addToSendBox(payload.prompt);
+      const fill = (): void => {
+        const mentions = Array.from(new Set(payload.filePaths ?? []))
+          .filter(Boolean)
+          .map((filePath) => `@${filePath}`)
+          .join(' ');
+        addToSendBox(mentions ? `${mentions}\n\n${payload.prompt}` : payload.prompt);
+      };
       if (chat.activeId) {
         fill();
         return;
@@ -323,6 +329,7 @@ const IdeChatPanel: React.FC<IdeChatPanelProps> = ({ rootPath, activeFile, repoF
         memId={activeMemId}
         conversationId={chat.activeId}
         conversationType={activeConversationType}
+        repository={rootPath}
         visible={memoryOpen}
         onClose={() => setMemoryOpen(false)}
       />

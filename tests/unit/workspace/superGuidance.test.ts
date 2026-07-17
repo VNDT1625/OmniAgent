@@ -13,6 +13,7 @@ import {
   BROWSER_CONTROL_MCP_NAME,
   SUPER_BROWSER_RULES,
   withSuperBrowserRules,
+  withoutSuperBrowserRules,
 } from '@/renderer/pages/conversation/hooks/superGuidance';
 
 describe('superGuidance', () => {
@@ -26,6 +27,14 @@ describe('superGuidance', () => {
     expect(SUPER_BROWSER_RULES).toContain('browser_research');
     expect(SUPER_BROWSER_RULES).toContain('editor_open');
     expect(SUPER_BROWSER_RULES).toContain('editor_write');
+    expect(SUPER_BROWSER_RULES).toContain('quick_test_discover');
+    expect(SUPER_BROWSER_RULES).toContain('quick_test_start');
+    expect(SUPER_BROWSER_RULES).toContain('quick_test_observe');
+    expect(SUPER_BROWSER_RULES).toContain('quick_test_save');
+    expect(SUPER_BROWSER_RULES).toContain('quick_test_replay');
+    expect(SUPER_BROWSER_RULES).toContain('quick_test_audit');
+    expect(SUPER_BROWSER_RULES).toContain('quick_test_capture');
+    expect(SUPER_BROWSER_RULES).toMatch(/frontend-only, full stack, or explicit services/i);
     expect(SUPER_BROWSER_RULES).toMatch(/never spawn sub-agents/i);
     expect(SUPER_BROWSER_RULES).toMatch(/start/);
   });
@@ -45,5 +54,20 @@ describe('superGuidance', () => {
     const twice = withSuperBrowserRules(once);
     expect(twice).toBe(once.trim());
     expect(twice.match(/Super capabilities \(Super is ON\)/g)?.length).toBe(1);
+  });
+
+  it('removes only Super guidance when the capability is disabled', () => {
+    const other = '## Other capability\n\nKeep this.';
+    const enabled = `${withSuperBrowserRules('User rule.')}\n\n${other}`;
+
+    expect(withoutSuperBrowserRules(enabled)).toBe(`User rule.\n\n${other}`);
+  });
+
+  it('upgrades older Super rules with Quick Test guidance once', () => {
+    const legacy = '## Super capabilities (Super is ON)\n\nUse browser_open.';
+    const upgraded = withSuperBrowserRules(legacy);
+
+    expect(upgraded).toContain('quick_test_discover');
+    expect(withSuperBrowserRules(upgraded)).toBe(upgraded);
   });
 });

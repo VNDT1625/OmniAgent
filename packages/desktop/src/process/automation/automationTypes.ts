@@ -33,6 +33,7 @@ export type WorkflowNodeKind =
   | 'action.set'
   | 'action.code'
   | 'action.filesystem'
+  | 'action.n8n'
   // --- Control flow (interpreted by the engine, not the executor map) ---
   | 'control.if'
   | 'control.switch'
@@ -212,6 +213,20 @@ export type FilesystemNodeConfig = {
   path: string;
   /** Content for write/append (supports `{{input}}`). */
   content?: string;
+};
+
+/** Config for an `action.n8n` node. */
+export type N8nNodeConfig = {
+  /** Production or test webhook URL exposed by n8n. */
+  webhookUrl: string;
+  /** Webhook HTTP method. Defaults to POST. */
+  method?: 'GET' | 'POST';
+  /** Optional headers; credentials should normally be supplied through credentialId. */
+  headers?: Record<string, string>;
+  /** Optional payload template. When omitted, the previous node output is sent. */
+  payload?: unknown;
+  /** Request timeout in milliseconds. Defaults to 30 seconds. */
+  timeoutMs?: number;
 };
 
 // ---------------------------------------------------------------------------

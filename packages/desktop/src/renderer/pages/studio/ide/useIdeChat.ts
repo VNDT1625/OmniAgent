@@ -45,7 +45,12 @@ import {
 } from '@/renderer/pages/conversation/platforms/strictIdeModeGuard';
 
 import { ensureBackendMcpCatalog, toSessionMcpServer } from '@/renderer/hooks/mcp/catalog';
-import { IDE_MCP_NAME, withIdeMemoryRules, withIdeToolRules } from '@/renderer/pages/conversation/hooks/superGuidance';
+import {
+  BROWSER_CONTROL_MCP_NAME,
+  IDE_MCP_NAME,
+  withIdeMemoryRules,
+  withIdeToolRules,
+} from '@/renderer/pages/conversation/hooks/superGuidance';
 import { buildWorkspacePrimer as buildWorkspacePrimerShared } from '@process/ide/workspacePrimer';
 import type { ISessionMcpServer, TChatConversation } from '@/common/config/storage';
 import { ideClient } from './ideClient';
@@ -249,20 +254,37 @@ const buildWorkspacePrimer = (
  * Attaching it to an IDE chat tab is what actually gives the agent the `ide_*`
  * repo-intelligence tools AND the `ide_memory_*` session-memory tools.
  */
-const resolveIdeMcp = async (): Promise<ISessionMcpServer> => {
+type IdeMcpCatalog = {
+  ideServer: ISessionMcpServer;
+  browserServer?: ISessionMcpServer;
+};
+
+const resolveIdeMcpCatalog = async (): Promise<IdeMcpCatalog> => {
   const { allServers } = await ensureBackendMcpCatalog();
   const server = allServers.find((candidate) => candidate.name === IDE_MCP_NAME);
   if (!server) throw new Error(`Required MCP server ${IDE_MCP_NAME} is unavailable`);
-  return toSessionMcpServer(server);
+  const browserServer = allServers.find((candidate) => candidate.name === BROWSER_CONTROL_MCP_NAME);
+  return {
+    ideServer: toSessionMcpServer(server),
+    ...(browserServer ? { browserServer: toSessionMcpServer(browserServer) } : {}),
+  };
 };
 
 /** Replace managed MCP snapshots while retaining unrelated and cloud servers. */
 export const mergeIdeSessionMcpServers = (
   existing: readonly ISessionMcpServer[],
   ideServer: ISessionMcpServer,
-  cloudServer?: ISessionMcpServer | null
+  cloudServer?: ISessionMcpServer | null,
+  browserServer?: ISessionMcpServer
 ): ISessionMcpServer[] => {
-  const managed = cloudServer && cloudServer.name !== ideServer.name ? [ideServer, cloudServer] : [ideServer];
+  // Studio IDE conversations always receive the live Browser-Control snapshot.
+  // The IDE is an agentic work surface: browser_* tools are expected alongside
+  // repo intelligence, while Strict Mode separately guards native repo access.
+  const managed = [
+    ideServer,
+    ...(cloudServer && cloudServer.name !== ideServer.name ? [cloudServer] : []),
+    ...(browserServer ? [browserServer] : []),
+  ];
   const managedNames = new Set(managed.map((server) => server.name));
   return [...existing.filter((server) => !managedNames.has(server.name)), ...managed];
 };
@@ -272,7 +294,8 @@ const refreshConversationMcpServers = async (
   conversation: TChatConversation,
   ideServer: ISessionMcpServer,
   memoryId: string,
-  cloudServer?: ISessionMcpServer | null
+  cloudServer?: ISessionMcpServer | null,
+  browserServer?: ISessionMcpServer
 ): Promise<void> => {
   const extra = (conversation.extra ?? {}) as TChatConversation['extra'] & {
     session_mcp_servers?: ISessionMcpServer[];
@@ -280,7 +303,7 @@ const refreshConversationMcpServers = async (
     ide_memory_id?: string;
   };
   const existing = Array.isArray(extra.session_mcp_servers) ? extra.session_mcp_servers : [];
-  const refreshed = mergeIdeSessionMcpServers(existing, ideServer, cloudServer);
+  const refreshed = mergeIdeSessionMcpServers(existing, ideServer, cloudServer, browserServer);
   const surfaceCurrent = extra.surface === 'ide' && extra.ide_memory_id === memoryId;
   if (surfaceCurrent && JSON.stringify(existing) === JSON.stringify(refreshed)) return;
 
@@ -339,8 +362,8 @@ export const useIdeChat = (rootPath: string | null, options: IdeChatOptions = {}
     setPlanningEnabledState(readPlanningEnabled(rootPath));
     const persisted = readPersistedTabs(rootPath);
     let cancelled = false;
-    void Promise.all([resolveIdeMcp(), ipcBridge.database.getUserConversations.invoke({ limit: 200 })])
-      .then(async ([ideServer, result]) => {
+    void Promise.all([resolveIdeMcpCatalog(), ipcBridge.database.getUserConversations.invoke({ limit: 200 })])
+      .then(async ([mcpCatalog, result]) => {
         const discovered = (result?.items ?? [])
           .filter((conversation) => isConversationForIdeWorkspace(conversation, rootPath))
           .map((conversation): PersistedTab => {
@@ -362,9 +385,10 @@ export const useIdeChat = (rootPath: string | null, options: IdeChatOptions = {}
           entries.map(({ conversation, index }) =>
             refreshConversationMcpServers(
               conversation,
-              ideServer,
+              mcpCatalog.ideServer,
               ids[index]?.memId ?? newMemId(),
-              options.cloudWorkspace?.remoteMcpServer ?? null
+              options.cloudWorkspace?.remoteMcpServer ?? null,
+              mcpCatalog.browserServer
             )
           )
         );
@@ -462,12 +486,17 @@ export const useIdeChat = (rootPath: string | null, options: IdeChatOptions = {}
         // ─────────────────────────────────────────────────────────────────────
         // The IDE MCP is mandatory for Studio chat: creating a session without it
         // would leave Strict Mode no valid replacement tools.
-        const ideServer = await resolveIdeMcp();
+        const mcpCatalog = await resolveIdeMcpCatalog();
         const cloudServer = options.cloudWorkspace?.remoteMcpServer ?? null;
         const existing = Array.isArray(params.extra.selected_session_mcp_servers)
           ? params.extra.selected_session_mcp_servers
           : [];
-        params.extra.selected_session_mcp_servers = mergeIdeSessionMcpServers(existing, ideServer, cloudServer);
+        params.extra.selected_session_mcp_servers = mergeIdeSessionMcpServers(
+          existing,
+          mcpCatalog.ideServer,
+          cloudServer,
+          mcpCatalog.browserServer
+        );
         params.extra.surface = 'ide';
         params.extra.surface_version = 1;
         params.extra.ide_memory_id = memId;

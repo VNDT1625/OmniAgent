@@ -136,7 +136,13 @@ const ARCH_LAYERS: readonly ArchLayer[] = ['api', 'service', 'data', 'ui', 'util
 /** Injected collaborators for {@link createKnowledgeGraphBuilder}. */
 export type KnowledgeGraphBuilderDeps = {
   /** Single-shot model call returning the raw completion text. */
-  chat: (model: string, system: string, user: string, signal?: AbortSignal) => Promise<string>;
+  chat: (
+    model: string,
+    system: string,
+    user: string,
+    signal?: AbortSignal,
+    execution?: { workspace: string }
+  ) => Promise<string>;
   /** File discovery: returns each repo file's relative path + text content. */
   collectFiles: (rootPath: string) => Promise<Array<{ relPath: string; content: string }>>;
   /** Clock (injected for deterministic tests); defaults to `Date.now`. */
@@ -1738,7 +1744,8 @@ export const createKnowledgeGraphBuilder = (deps: KnowledgeGraphBuilderDeps): Kn
             model,
             MODULE_SYSTEM_PROMPT,
             buildModuleSummaryUser(batch, nodes, moduleEdges, contentByPath, summaryCap, lang),
-            controller.signal
+            controller.signal,
+            { workspace: rootPath }
           ),
           new Promise<never>((_resolve, reject) => {
             timeoutId = setTimeout(() => {
@@ -1812,7 +1819,8 @@ export const createKnowledgeGraphBuilder = (deps: KnowledgeGraphBuilderDeps): Kn
           model,
           OVERVIEW_SYSTEM_PROMPT,
           buildOverviewUser(nodes, modules, contentByPath, lang),
-          ctx?.signal
+          ctx?.signal,
+          { workspace: rootPath }
         );
         overview = parseOverview(reply, new Set(nodes.map((n) => n.id))) ?? undefined;
       } catch {

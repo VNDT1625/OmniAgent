@@ -368,7 +368,7 @@ export const getBrowserServices = (getWindow: () => BrowserWindow | null | undef
   // agent (Claude Code, Codex, Gemini CLI…) instead of an API-key provider —
   // letting the web agent run on an OAuth/subscription CLI. Normal model ids
   // delegate to the provider chat unchanged.
-  const chat = withCliAgent(createProviderChat());
+  const chat = withCliAgent(createProviderChat(), undefined, { surface: 'browser', permissionMode: 'read-only' });
 
   // Map-reduce summariser over the same provider chat — long pages/transcripts
   // are summarised in full instead of being truncated at 4000 chars. A large

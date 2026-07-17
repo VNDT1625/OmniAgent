@@ -1,4 +1,5 @@
 import FlexFullContainer from '@/renderer/components/layout/FlexFullContainer';
+import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { isElectronDesktop, resolveExtensionAssetUrl } from '@/renderer/utils/platform';
 import { type IExtensionSettingsTab } from '@/common/adapter/ipcBridge';
 import { useExtI18n } from '@/renderer/hooks/system/useExtI18n';
@@ -86,6 +87,7 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
   collapsed = false,
   tooltipEnabled = false,
 }) => {
+  const layout = useLayoutContext();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { pathname } = useLocation();
@@ -257,7 +259,12 @@ const SettingsSider: React.FC<{ collapsed?: boolean; tooltipEnabled?: boolean }>
                   }
                 )}
                 onClick={() => {
-                  Promise.resolve(navigate(`/settings/${item.path}`, { replace: true })).catch((error) => {
+                  const target = `/settings/${item.path}`;
+                  if (layout?.navigateWithFeedback) {
+                    layout.navigateWithFeedback(target, { replace: true });
+                    return;
+                  }
+                  Promise.resolve(navigate(target, { replace: true })).catch((error) => {
                     console.error('Navigation failed:', error);
                   });
                 }}

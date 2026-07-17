@@ -25,6 +25,14 @@ export type UiAuditReport = {
   elementCount: number;
   findings: UiAuditFinding[];
   categoryScores: Record<UiAuditCategory, number>;
+  metrics?: {
+    visibleElementCount: number;
+    textElementCount: number;
+    interactiveElementCount: number;
+    fontFamilyCount: number;
+    fontSizeCount: number;
+  };
+  ruleCounts?: Record<string, number>;
   truncated?: boolean;
 };
 
@@ -78,13 +86,16 @@ const UI_AUDIT_SCRIPT = `
       return n.nodeType === 3 && Boolean(text && text.trim());
     })
   );
+  const visibleElements = all.filter(visible);
+  const fontFamilies = new Set(textNodes.map(el => getComputedStyle(el).fontFamily).filter(Boolean));
+  const fontSizes = new Set(textNodes.map(el => Number.parseFloat(getComputedStyle(el).fontSize).toFixed(1)).filter(Boolean));
   textNodes.forEach(el => {
     const s=getComputedStyle(el), fg=rgba(s.color), bg=background(el), fs=parseFloat(s.fontSize), fw=parseInt(s.fontWeight)||400;
     if (fg && bg) { const cr=ratio(fg,bg), large=fs>=24 || (fs>=18.66 && fw>=700), min=large?3:4.5; if (cr < min) add(el,'contrast.minimum','contrast',cr<2?'serious':'moderate','Text contrast is below WCAG AA.',cr.toFixed(2)+':1',min+':1'); }
     if (fs < 12) add(el,'typography.minimum-size','typography','moderate','Rendered text is smaller than 12px.',fs.toFixed(1)+'px','>= 12px');
     const lh=parseFloat(s.lineHeight); if (Number.isFinite(lh) && lh/fs < 1.2) add(el,'typography.line-height','typography','moderate','Line height is too tight for reliable reading.',(lh/fs).toFixed(2),'>= 1.2');
   });
-  all.filter(visible).forEach(el => {
+  visibleElements.forEach(el => {
     const r=el.getBoundingClientRect();
     if (r.right > window.innerWidth + 1 || r.left < -1) add(el,'layout.viewport-overflow','layout','serious','Element extends outside the horizontal viewport.',Math.round(r.left)+'..'+Math.round(r.right),'0..'+window.innerWidth);
   });
@@ -100,17 +111,39 @@ const UI_AUDIT_SCRIPT = `
   });
   const ids = new Map(); all.forEach(el => { if (el.id) { if (ids.has(el.id)) add(el,'accessibility.duplicate-id','accessibility','serious','Duplicate id breaks label and accessibility references.',el.id,'Unique id'); else ids.set(el.id,el); } });
   let lastHeading=0; document.querySelectorAll('h1,h2,h3,h4,h5,h6').forEach(el => { const level=Number(el.tagName[1]); if (lastHeading && level>lastHeading+1) add(el,'accessibility.heading-order','accessibility','moderate','Heading level skips part of the hierarchy.','H'+lastHeading+' → H'+level,'No skipped level'); lastHeading=level; });
+  if (!document.documentElement.lang.trim()) add(document.documentElement,'accessibility.document-language','accessibility','serious','Document language is not declared.','','html[lang]');
+  if (!document.title.trim()) add(document.head || document.documentElement,'accessibility.page-title','accessibility','serious','Page has no descriptive title.','','Non-empty document title');
+  if (fontFamilies.size > 4) add(document.documentElement,'typography.family-sprawl','typography','moderate','The page uses too many font families to maintain a coherent type system.',String(fontFamilies.size),'<= 4 font families');
+  if (fontSizes.size > 12) add(document.documentElement,'typography.scale-sprawl','typography','minor','The page uses an unusually fragmented font-size scale.',String(fontSizes.size),'<= 12 font sizes');
+  if (document.documentElement.scrollWidth > window.innerWidth + 1) add(document.documentElement,'layout.document-overflow','layout','serious','The document creates horizontal scrolling.',String(document.documentElement.scrollWidth)+'px','<= '+window.innerWidth+'px');
   const weights={critical:12,serious:7,moderate:3,minor:1};
   const categories=['contrast','typography','accessibility','layout','interaction'];
-  const categoryScores={}; categories.forEach(c => { categoryScores[c]=Math.max(0,100-findings.filter(f=>f.category===c).reduce((n,f)=>n+weights[f.severity],0)); });
+  const ruleCounts={}; findings.forEach(f => { ruleCounts[f.ruleId]=(ruleCounts[f.ruleId]||0)+1; });
+  const categoryScores={}; categories.forEach(c => {
+    const grouped={}; findings.filter(f=>f.category===c).forEach(f => {
+      grouped[f.ruleId]=(grouped[f.ruleId]||0)+weights[f.severity];
+    });
+    const penalty=Object.values(grouped).reduce((n,value)=>n+Math.min(25,Number(value)),0);
+    categoryScores[c]=Math.max(0,100-penalty);
+  });
   const score=Math.round(categories.reduce((n,c)=>n+categoryScores[c],0)/categories.length);
   return { score, auditedAt:Date.now(), url:location.href, elementCount:allElements.length, findings, categoryScores,
+    metrics: { visibleElementCount:visibleElements.length, textElementCount:textNodes.length,
+      interactiveElementCount:interactive.length, fontFamilyCount:fontFamilies.size, fontSizeCount:fontSizes.size }, ruleCounts,
     truncated: allElements.length > all.length || findings.length >= MAX_FINDINGS };
 })()
 `;
 
 export const runUiAudit = async (webContents: CdpWebContents): Promise<UiAuditReport> => {
   const result = await webContents.executeJavaScript(UI_AUDIT_SCRIPT);
-  if (!result || typeof result !== 'object') throw new Error('UI audit did not return a report.');
+  if (
+    !result ||
+    typeof result !== 'object' ||
+    typeof (result as Partial<UiAuditReport>).score !== 'number' ||
+    !Array.isArray((result as Partial<UiAuditReport>).findings) ||
+    !(result as Partial<UiAuditReport>).categoryScores
+  ) {
+    throw new Error('UI audit did not return a valid report.');
+  }
   return result as UiAuditReport;
 };

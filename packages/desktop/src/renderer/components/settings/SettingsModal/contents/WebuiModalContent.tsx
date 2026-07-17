@@ -183,8 +183,10 @@ const WebuiModalContent: React.FC = () => {
           allowRemote: prev?.allowRemote ?? false,
           localUrl: data.localUrl ?? `http://localhost:${data.port ?? WEBUI_DEFAULT_PORT}`,
           networkUrl: data.networkUrl,
-          lanIP: prev?.lanIP,
-          initialPassword: prev?.initialPassword,
+          lanIP: data.lanIP ?? prev?.lanIP,
+          candidateLanIPs: data.candidateLanIPs ?? prev?.candidateLanIPs,
+          publicUrl: data.publicUrl ?? prev?.publicUrl,
+          initialPassword: data.initialPassword ?? prev?.initialPassword,
         }));
         if (data.networkUrl) {
           const match = data.networkUrl.match(/http:\/\/([^:]+):/);
@@ -227,11 +229,12 @@ const WebuiModalContent: React.FC = () => {
     const currentIP = getLocalIP();
     const currentPort = status?.port || port;
     const useRemote = status?.running ? status.allowRemote : allowRemotePreference;
+    if (useRemote && status?.publicUrl) return status.publicUrl;
     if (useRemote && currentIP) {
       return `http://${currentIP}:${currentPort}`;
     }
     return `http://localhost:${currentPort}`;
-  }, [allowRemotePreference, getLocalIP, status?.allowRemote, status?.port, status?.running, port]);
+  }, [allowRemotePreference, getLocalIP, status?.allowRemote, status?.port, status?.publicUrl, status?.running, port]);
 
   // 启动/停止 WebUI / Start/Stop WebUI
   const handleToggle = async (enabled: boolean) => {
@@ -269,8 +272,10 @@ const WebuiModalContent: React.FC = () => {
           port,
           allowRemote: allowRemotePreference,
           localUrl,
-          networkUrl: allowRemotePreference && responseIP ? `http://${responseIP}:${port}` : undefined,
+          networkUrl: startResult.networkUrl,
           lanIP: responseIP,
+          candidateLanIPs: startResult.candidateLanIPs,
+          publicUrl: startResult.publicUrl,
           initialPassword: responsePassword || cachedPassword || prev?.initialPassword,
         }));
 
@@ -330,8 +335,10 @@ const WebuiModalContent: React.FC = () => {
           port,
           allowRemote: checked,
           localUrl: `http://localhost:${port}`,
-          networkUrl: checked && responseIP ? `http://${responseIP}:${port}` : undefined,
+          networkUrl: startResult.networkUrl,
           lanIP: responseIP,
+          candidateLanIPs: startResult.candidateLanIPs,
+          publicUrl: startResult.publicUrl,
           initialPassword: responsePassword || cachedPassword || prev?.initialPassword,
         }));
 

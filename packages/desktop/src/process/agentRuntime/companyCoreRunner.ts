@@ -7,6 +7,7 @@ import {
 } from '@process/company/companyConversation';
 import { toStructureSpec } from '@process/company/companyConfig';
 import { getResourceCoordinator } from '@process/resource/resourceCoordinator';
+import type { OrchestrationProposal } from './orchestrationCapability';
 
 export type CompanyCoreRunnerEvent =
   | { type: 'status'; text: string }
@@ -22,6 +23,7 @@ export type CompanyCoreRunInput = {
 };
 
 export type CompanyCoreRunner = {
+  create(proposal: OrchestrationProposal): Promise<string>;
   run(input: CompanyCoreRunInput): Promise<string>;
 };
 
@@ -34,6 +36,33 @@ const statusText = (event: Extract<ConversationEvent, { type: 'status' }>): stri
 export const createCompanyCoreRunner = (
   services: Pick<CompanyServices, 'configStore' | 'buildStructure'> = getCompanyServices()
 ): CompanyCoreRunner => ({
+  async create(proposal) {
+    if (proposal.kind !== 'company') throw new Error('Only Company proposals can be persisted as a company.');
+    const slug =
+      proposal.name
+        .toLowerCase()
+        .replace(/[^a-z0-9_-]+/gu, '-')
+        .replace(/^-+|-+$/gu, '')
+        .slice(0, 36) || 'company';
+    const companyId = `${slug}-${Date.now().toString(36)}`;
+    await services.configStore.save(companyId, {
+      companyId,
+      name: proposal.name,
+      description: proposal.reason,
+      rules: [
+        'Agents may communicate only within the approved role graph.',
+        'Keep work within the shared token budget and report evidence to the President.',
+      ],
+      divisions: proposal.roles.map((role) => ({
+        divisionId: role.id,
+        name: role.name,
+        headName: role.name,
+        workerCount: 1,
+        responsibilities: role.responsibility,
+      })),
+    });
+    return companyId;
+  },
   async run(input) {
     const config = await services.configStore.load(input.companyId);
     const structure = services.buildStructure(toStructureSpec(config));

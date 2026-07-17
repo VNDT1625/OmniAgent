@@ -75,6 +75,42 @@ import type {
   InspectVideoResult,
 } from '@process/ide/elementInspectorBridge';
 import type { UiAuditReport } from '@process/ide/uiAuditEngine';
+import type {
+  ArchiveRunRequest,
+  CompareRunsRequest,
+  CompareVisualRequest,
+  QuickTestAssetState,
+  RemoveAssetRequest,
+  ReplayScenarioRequest,
+  SaveBaselineRequest,
+  SaveScenarioRequest,
+  StoredQuickTestRun,
+} from '@process/ide/quickTestAssetBridge';
+import type { ReplayRunResult, ReplayScenario } from '@process/ide/quickTestReplay';
+import type { QuickTestRunDiff } from '@process/ide/quickTestRunCompare';
+import type { VisualBaseline, VisualComparisonResult } from '@process/ide/quickTestVisualRegression';
+import type {
+  ApplyRetentionRequest,
+  EditScenarioRequest,
+  EditScenarioResult,
+  EnvironmentRequest,
+  ExportReportRequest,
+  ExportReportResult,
+  ListMocksRequest,
+  MockRuleState,
+  ObservabilityRequest,
+  ObservabilityResult,
+  ReliabilityRequest,
+  ReliabilityResult,
+  RemoveMockRequest,
+  RepeatReplayRequest,
+  RepeatReplayResult,
+  RetentionRequest,
+  SaveMockRequest,
+} from '@process/ide/quickTestInsightsBridge';
+import type { ApiMockRule } from '@process/services/quick-test/observability';
+import type { EnvironmentSnapshot } from '@process/services/quick-test/reliability';
+import type { RetentionCleanupPlan } from '@process/services/quick-test/workflow';
 import type { LocatedElement } from '@process/ide/elementInspectorLocator';
 
 /** Extract plain text content from a `ide.read-file` result (supports both legacy string and the current ReadFileData shape). */
@@ -131,7 +167,14 @@ import type {
   IdeMemoryRequest,
   IdeMemoryRememberRequest,
   IdeMemoryRecordableKind,
+  RepoSecretDeclareRequest,
+  RepoSecretListRequest,
+  RepoSecretRemoveRequest,
+  RepoSecretRevealRequest,
+  RepoSecretRenderMarkersRequest,
+  RepoSecretSaveRequest,
 } from '@process/ide/memory/ideMemoryBridge';
+import type { RepoSecretContext, RepoSecretMarkerRender } from '@process/ide/memory/repoSecretStore';
 import type { SuperMemorySnapshot, RememberResult } from '@process/ide/memory/sessionMemoryStore';
 import type { IdeCommandResult, RunCommandRequest } from '@process/ide/command/commandBridge';
 import type { CommandResult } from '@process/ide/command/commandRunner';
@@ -179,6 +222,25 @@ const IDE_CHANNELS = {
   qtStart: 'ide.qt-start',
   qtStop: 'ide.qt-stop',
   qtEvent: 'ide.qt-event',
+  qtAssetsList: 'ide.qt-assets-list',
+  qtAssetsArchiveRun: 'ide.qt-assets-archive-run',
+  qtAssetsSaveScenario: 'ide.qt-assets-save-scenario',
+  qtAssetsReplay: 'ide.qt-assets-replay',
+  qtAssetsCompareRuns: 'ide.qt-assets-compare-runs',
+  qtAssetsSaveBaseline: 'ide.qt-assets-save-baseline',
+  qtAssetsCompareVisual: 'ide.qt-assets-compare-visual',
+  qtAssetsRemove: 'ide.qt-assets-remove',
+  qtInsightsObservability: 'ide.qt-insights-observability',
+  qtInsightsReliability: 'ide.qt-insights-reliability',
+  qtInsightsEnvironment: 'ide.qt-insights-environment',
+  qtInsightsRepeatReplay: 'ide.qt-insights-repeat-replay',
+  qtInsightsListMocks: 'ide.qt-insights-list-mocks',
+  qtInsightsSaveMock: 'ide.qt-insights-save-mock',
+  qtInsightsRemoveMock: 'ide.qt-insights-remove-mock',
+  qtInsightsExportReport: 'ide.qt-insights-export-report',
+  qtInsightsPreviewCleanup: 'ide.qt-insights-preview-cleanup',
+  qtInsightsApplyCleanup: 'ide.qt-insights-apply-cleanup',
+  qtInsightsEditScenario: 'ide.qt-insights-edit-scenario',
   inspectPick: 'ide.inspect-pick',
   inspectCancel: 'ide.inspect-cancel',
   inspectScreenshot: 'ide.inspect-screenshot',
@@ -213,6 +275,12 @@ const IDE_CHANNELS = {
   memorySnapshot: 'ide.memory-snapshot',
   memoryClear: 'ide.memory-clear',
   memoryRemember: 'ide.memory-remember',
+  repoSecretList: 'ide.repo-secret-list',
+  repoSecretSave: 'ide.repo-secret-save',
+  repoSecretDeclare: 'ide.repo-secret-declare',
+  repoSecretRemove: 'ide.repo-secret-remove',
+  repoSecretReveal: 'ide.repo-secret-reveal',
+  repoSecretRenderMarkers: 'ide.repo-secret-render-markers',
   runCommand: 'ide.run-command',
   mtuiPolicyCheck: 'terminal.mtui-policy-check',
 } as const;
@@ -278,6 +346,61 @@ const channels = {
   qtStart: bridge.buildProvider<UnderstandResult<boolean>, QtStartRequest>(IDE_CHANNELS.qtStart),
   qtStop: bridge.buildProvider<UnderstandResult<QtStopResponse>, void>(IDE_CHANNELS.qtStop),
   qtEvent: bridge.buildEmitter<QtEventEnvelope>(IDE_CHANNELS.qtEvent),
+  qtAssetsList: bridge.buildProvider<UnderstandResult<QuickTestAssetState>, { rootPath: string }>(
+    IDE_CHANNELS.qtAssetsList
+  ),
+  qtAssetsArchiveRun: bridge.buildProvider<UnderstandResult<StoredQuickTestRun>, ArchiveRunRequest>(
+    IDE_CHANNELS.qtAssetsArchiveRun
+  ),
+  qtAssetsSaveScenario: bridge.buildProvider<UnderstandResult<ReplayScenario>, SaveScenarioRequest>(
+    IDE_CHANNELS.qtAssetsSaveScenario
+  ),
+  qtAssetsReplay: bridge.buildProvider<UnderstandResult<ReplayRunResult>, ReplayScenarioRequest>(
+    IDE_CHANNELS.qtAssetsReplay
+  ),
+  qtAssetsCompareRuns: bridge.buildProvider<UnderstandResult<QuickTestRunDiff>, CompareRunsRequest>(
+    IDE_CHANNELS.qtAssetsCompareRuns
+  ),
+  qtAssetsSaveBaseline: bridge.buildProvider<UnderstandResult<VisualBaseline>, SaveBaselineRequest>(
+    IDE_CHANNELS.qtAssetsSaveBaseline
+  ),
+  qtAssetsCompareVisual: bridge.buildProvider<UnderstandResult<VisualComparisonResult>, CompareVisualRequest>(
+    IDE_CHANNELS.qtAssetsCompareVisual
+  ),
+  qtAssetsRemove: bridge.buildProvider<UnderstandResult<boolean>, RemoveAssetRequest>(IDE_CHANNELS.qtAssetsRemove),
+  qtInsightsObservability: bridge.buildProvider<UnderstandResult<ObservabilityResult>, ObservabilityRequest>(
+    IDE_CHANNELS.qtInsightsObservability
+  ),
+  qtInsightsReliability: bridge.buildProvider<UnderstandResult<ReliabilityResult>, ReliabilityRequest>(
+    IDE_CHANNELS.qtInsightsReliability
+  ),
+  qtInsightsEnvironment: bridge.buildProvider<UnderstandResult<EnvironmentSnapshot>, EnvironmentRequest>(
+    IDE_CHANNELS.qtInsightsEnvironment
+  ),
+  qtInsightsRepeatReplay: bridge.buildProvider<UnderstandResult<RepeatReplayResult>, RepeatReplayRequest>(
+    IDE_CHANNELS.qtInsightsRepeatReplay
+  ),
+  qtInsightsListMocks: bridge.buildProvider<UnderstandResult<MockRuleState>, ListMocksRequest>(
+    IDE_CHANNELS.qtInsightsListMocks
+  ),
+  qtInsightsSaveMock: bridge.buildProvider<UnderstandResult<ApiMockRule>, SaveMockRequest>(
+    IDE_CHANNELS.qtInsightsSaveMock
+  ),
+  qtInsightsRemoveMock: bridge.buildProvider<UnderstandResult<boolean>, RemoveMockRequest>(
+    IDE_CHANNELS.qtInsightsRemoveMock
+  ),
+  qtInsightsExportReport: bridge.buildProvider<UnderstandResult<ExportReportResult>, ExportReportRequest>(
+    IDE_CHANNELS.qtInsightsExportReport
+  ),
+  qtInsightsPreviewCleanup: bridge.buildProvider<UnderstandResult<RetentionCleanupPlan>, RetentionRequest>(
+    IDE_CHANNELS.qtInsightsPreviewCleanup
+  ),
+  qtInsightsApplyCleanup: bridge.buildProvider<UnderstandResult<RetentionCleanupPlan>, ApplyRetentionRequest>(
+    IDE_CHANNELS.qtInsightsApplyCleanup
+  ),
+  qtInsightsEditScenario: bridge.buildProvider<UnderstandResult<EditScenarioResult>, EditScenarioRequest>(
+    IDE_CHANNELS.qtInsightsEditScenario
+  ),
   inspectPick: bridge.buildProvider<UnderstandResult<LocatedElement | null>, InspectPickRequest>(
     IDE_CHANNELS.inspectPick
   ),
@@ -331,6 +454,25 @@ const channels = {
   memoryRemember: bridge.buildProvider<IdeMemoryResult<RememberResult>, IdeMemoryRememberRequest>(
     IDE_CHANNELS.memoryRemember
   ),
+  repoSecretList: bridge.buildProvider<IdeMemoryResult<RepoSecretContext[]>, RepoSecretListRequest>(
+    IDE_CHANNELS.repoSecretList
+  ),
+  repoSecretSave: bridge.buildProvider<IdeMemoryResult<RepoSecretContext>, RepoSecretSaveRequest>(
+    IDE_CHANNELS.repoSecretSave
+  ),
+  repoSecretDeclare: bridge.buildProvider<IdeMemoryResult<RepoSecretContext>, RepoSecretDeclareRequest>(
+    IDE_CHANNELS.repoSecretDeclare
+  ),
+  repoSecretRemove: bridge.buildProvider<IdeMemoryResult<boolean>, RepoSecretRemoveRequest>(
+    IDE_CHANNELS.repoSecretRemove
+  ),
+  repoSecretReveal: bridge.buildProvider<IdeMemoryResult<string>, RepoSecretRevealRequest>(
+    IDE_CHANNELS.repoSecretReveal
+  ),
+  repoSecretRenderMarkers: bridge.buildProvider<
+    IdeMemoryResult<RepoSecretMarkerRender>,
+    RepoSecretRenderMarkersRequest
+  >(IDE_CHANNELS.repoSecretRenderMarkers),
   runCommand: bridge.buildProvider<IdeCommandResult<CommandResult>, RunCommandRequest>(IDE_CHANNELS.runCommand),
 };
 
@@ -543,6 +685,108 @@ export const ideClient = {
   /** Subscribe to live Quick Test trace events. Returns an unsubscribe fn. */
   onQtEvent: (listener: (event: QtEventEnvelope['event']) => void): (() => void) =>
     channels.qtEvent.on((envelope) => listener(envelope.event)),
+  qtAssetsList: (rootPath: string): Promise<UnderstandResult<QuickTestAssetState>> =>
+    invokeWithTimeout(IDE_CHANNELS.qtAssetsList, () => channels.qtAssetsList.invoke({ rootPath }), FILE_OP_TIMEOUT_MS),
+  qtAssetsArchiveRun: (request: ArchiveRunRequest): Promise<UnderstandResult<StoredQuickTestRun>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtAssetsArchiveRun,
+      () => channels.qtAssetsArchiveRun.invoke(request),
+      FILE_OP_TIMEOUT_MS
+    ),
+  qtAssetsSaveScenario: (request: SaveScenarioRequest): Promise<UnderstandResult<ReplayScenario>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtAssetsSaveScenario,
+      () => channels.qtAssetsSaveScenario.invoke(request),
+      FILE_OP_TIMEOUT_MS
+    ),
+  qtAssetsReplay: (request: ReplayScenarioRequest): Promise<UnderstandResult<ReplayRunResult>> =>
+    invokeWithTimeout(IDE_CHANNELS.qtAssetsReplay, () => channels.qtAssetsReplay.invoke(request), UI_AUDIT_TIMEOUT_MS),
+  qtAssetsCompareRuns: (request: CompareRunsRequest): Promise<UnderstandResult<QuickTestRunDiff>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtAssetsCompareRuns,
+      () => channels.qtAssetsCompareRuns.invoke(request),
+      FILE_OP_TIMEOUT_MS
+    ),
+  qtAssetsSaveBaseline: (request: SaveBaselineRequest): Promise<UnderstandResult<VisualBaseline>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtAssetsSaveBaseline,
+      () => channels.qtAssetsSaveBaseline.invoke(request),
+      FILE_OP_TIMEOUT_MS
+    ),
+  qtAssetsCompareVisual: (request: CompareVisualRequest): Promise<UnderstandResult<VisualComparisonResult>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtAssetsCompareVisual,
+      () => channels.qtAssetsCompareVisual.invoke(request),
+      UI_AUDIT_TIMEOUT_MS
+    ),
+  qtAssetsRemove: (request: RemoveAssetRequest): Promise<UnderstandResult<boolean>> =>
+    invokeWithTimeout(IDE_CHANNELS.qtAssetsRemove, () => channels.qtAssetsRemove.invoke(request), FILE_OP_TIMEOUT_MS),
+  qtInsightsObservability: (request: ObservabilityRequest): Promise<UnderstandResult<ObservabilityResult>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtInsightsObservability,
+      () => channels.qtInsightsObservability.invoke(request),
+      UI_AUDIT_TIMEOUT_MS
+    ),
+  qtInsightsReliability: (request: ReliabilityRequest): Promise<UnderstandResult<ReliabilityResult>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtInsightsReliability,
+      () => channels.qtInsightsReliability.invoke(request),
+      FILE_OP_TIMEOUT_MS
+    ),
+  qtInsightsEnvironment: (request: EnvironmentRequest): Promise<UnderstandResult<EnvironmentSnapshot>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtInsightsEnvironment,
+      () => channels.qtInsightsEnvironment.invoke(request),
+      FILE_OP_TIMEOUT_MS
+    ),
+  qtInsightsRepeatReplay: (request: RepeatReplayRequest): Promise<UnderstandResult<RepeatReplayResult>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtInsightsRepeatReplay,
+      () => channels.qtInsightsRepeatReplay.invoke(request),
+      5 * 60_000
+    ),
+  qtInsightsListMocks: (request: ListMocksRequest): Promise<UnderstandResult<MockRuleState>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtInsightsListMocks,
+      () => channels.qtInsightsListMocks.invoke(request),
+      FILE_OP_TIMEOUT_MS
+    ),
+  qtInsightsSaveMock: (request: SaveMockRequest): Promise<UnderstandResult<ApiMockRule>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtInsightsSaveMock,
+      () => channels.qtInsightsSaveMock.invoke(request),
+      FILE_OP_TIMEOUT_MS
+    ),
+  qtInsightsRemoveMock: (request: RemoveMockRequest): Promise<UnderstandResult<boolean>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtInsightsRemoveMock,
+      () => channels.qtInsightsRemoveMock.invoke(request),
+      FILE_OP_TIMEOUT_MS
+    ),
+  qtInsightsExportReport: (request: ExportReportRequest): Promise<UnderstandResult<ExportReportResult>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtInsightsExportReport,
+      () => channels.qtInsightsExportReport.invoke(request),
+      FILE_OP_TIMEOUT_MS
+    ),
+  qtInsightsPreviewCleanup: (request: RetentionRequest): Promise<UnderstandResult<RetentionCleanupPlan>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtInsightsPreviewCleanup,
+      () => channels.qtInsightsPreviewCleanup.invoke(request),
+      FILE_OP_TIMEOUT_MS
+    ),
+  qtInsightsApplyCleanup: (request: ApplyRetentionRequest): Promise<UnderstandResult<RetentionCleanupPlan>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtInsightsApplyCleanup,
+      () => channels.qtInsightsApplyCleanup.invoke(request),
+      FILE_OP_TIMEOUT_MS
+    ),
+  qtInsightsEditScenario: (request: EditScenarioRequest): Promise<UnderstandResult<EditScenarioResult>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.qtInsightsEditScenario,
+      () => channels.qtInsightsEditScenario.invoke(request),
+      FILE_OP_TIMEOUT_MS
+    ),
   /**
    * Element inspector (additive, CDP-free visual picker): arm the page-side
    * picker and resolve with the clicked element mapped to its component +
@@ -777,6 +1021,56 @@ export const ideClient = {
       () => channels.memoryRemember.invoke({ sessionId, text, kind: opts?.kind, pinned: opts?.pinned }),
       FILE_OP_TIMEOUT_MS
     ),
+  /** List metadata-only repository Secret Context entries. */
+  repoSecretList: (repository: string): Promise<IdeMemoryResult<RepoSecretContext[]>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.repoSecretList,
+      () => channels.repoSecretList.invoke({ repository }),
+      FILE_OP_TIMEOUT_MS
+    ),
+  /** Store a value in the OS-encrypted repository vault; response is metadata only. */
+  repoSecretSave: (
+    repository: string,
+    alias: string,
+    description: string,
+    value: string
+  ): Promise<IdeMemoryResult<RepoSecretContext>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.repoSecretSave,
+      () => channels.repoSecretSave.invoke({ repository, alias, description, value }),
+      FILE_OP_TIMEOUT_MS
+    ),
+  /** Register a metadata-only alias, used by an agent before the user supplies its value. */
+  repoSecretDeclare: (
+    repository: string,
+    alias: string,
+    description: string
+  ): Promise<IdeMemoryResult<RepoSecretContext>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.repoSecretDeclare,
+      () => channels.repoSecretDeclare.invoke({ repository, alias, description }),
+      FILE_OP_TIMEOUT_MS
+    ),
+  repoSecretRemove: (repository: string, alias: string): Promise<IdeMemoryResult<boolean>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.repoSecretRemove,
+      () => channels.repoSecretRemove.invoke({ repository, alias }),
+      FILE_OP_TIMEOUT_MS
+    ),
+  /** Explicit local-user action; never exposed to the agent/MCP protocol. */
+  repoSecretReveal: (repository: string, alias: string): Promise<IdeMemoryResult<string>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.repoSecretReveal,
+      () => channels.repoSecretReveal.invoke({ repository, alias }),
+      FILE_OP_TIMEOUT_MS
+    ),
+  /** Expands `{{secret:ALIAS}}` only after an explicit local renderer request. */
+  repoSecretRenderMarkers: (repository: string, text: string): Promise<IdeMemoryResult<RepoSecretMarkerRender>> =>
+    invokeWithTimeout(
+      IDE_CHANNELS.repoSecretRenderMarkers,
+      () => channels.repoSecretRenderMarkers.invoke({ repository, text }),
+      FILE_OP_TIMEOUT_MS
+    ),
   /** Run a guarded shell command via the Main-process IDE command bridge. */
   runCommand: (
     rootPath: string,
@@ -813,6 +1107,22 @@ export type {
   TraceStackFrame,
 } from '@process/ide/quickTestTracer';
 export type { UiAuditCategory, UiAuditFinding, UiAuditReport, UiAuditSeverity } from '@process/ide/uiAuditEngine';
+export type { QuickTestAssetState, StoredQuickTestRun } from '@process/ide/quickTestAssetBridge';
+export type { ReplayRunResult, ReplayScenario } from '@process/ide/quickTestReplay';
+export type { QuickTestRunDiff } from '@process/ide/quickTestRunCompare';
+export type { VisualBaseline, VisualComparisonResult } from '@process/ide/quickTestVisualRegression';
+export type {
+  EditScenarioRequest,
+  EditScenarioResult,
+  EnvironmentSnapshot,
+  ExportReportResult,
+  MockRuleState,
+  ObservabilityResult,
+  ReliabilityResult,
+  RepeatReplayResult,
+  RetentionCleanupPlan,
+};
+export type { ApiMockRule } from '@process/services/quick-test/observability';
 export type {
   RunPlanResponse,
   RunPlanSource,

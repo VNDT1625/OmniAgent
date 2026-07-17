@@ -12,6 +12,11 @@ import { findDeclarations, findReferences } from '../nav/symbolNav';
 import { grepText } from '../search/grepCore';
 import { createTeamEditService } from '../teamEdit/teamEditService';
 import {
+  analyzeVisualArtifact,
+  renderVisualArtifactMockUi,
+  renderVisualArtifactSemanticText,
+} from '@process/visualArtifact';
+import {
   createIdeServer,
   type GitAgentService,
   type IdeMcpService,
@@ -266,6 +271,15 @@ export const createNodeIdeMcpService = (): IdeMcpService => ({
       summary: `Files: ${files.length}\n${languages.map(([ext, count]) => `${ext}: ${count}`).join('\n')}`,
       stale: true,
       details: { target: target ?? '.', languages },
+    };
+  },
+
+  analyzeImage: async (filePath, mimeType) => {
+    const artifact = await analyzeVisualArtifact(filePath, { mimeType });
+    return {
+      json: artifact,
+      semanticText: renderVisualArtifactSemanticText(artifact),
+      mockUi: renderVisualArtifactMockUi(artifact),
     };
   },
 

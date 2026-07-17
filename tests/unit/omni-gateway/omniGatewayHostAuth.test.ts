@@ -8,7 +8,7 @@
  * rejected with 401 vs. accepted (any non-401 status) under each auth mode:
  *   - the LOCAL bearer is ALWAYS accepted (never broken by Web mode),
  *   - `bearer` accepts the external token only,
- *   - `none` accepts everything,
+ *   - legacy `none` is hardened to the short-TTL external bearer,
  *   - `oauth` accepts a valid OAuth token only,
  *   - `mixed` accepts either,
  *   - the OAuth/discovery handler is mounted ahead of the auth gate.
@@ -53,6 +53,7 @@ const start = async (opts: {
           return false;
         }
       : undefined,
+    isOriginAllowed: (origin) => origin === 'https://chat.openai.com',
     buildIdeServer: () => buildServer(),
   });
   current = { host, port: host.port };
@@ -164,10 +165,11 @@ describe('omniGatewayHost — multi-mode auth gate', () => {
     expect(await postMcp(port, undefined)).toBe(401);
   });
 
-  it('none mode: every request is accepted even without a bearer', async () => {
+  it('hardens legacy none mode so a short-TTL external token is still mandatory', async () => {
     const { port } = await start({ mode: 'none' });
-    expect(await postMcp(port, undefined)).not.toBe(401);
-    expect(await postMcp(port, 'whatever')).not.toBe(401);
+    expect(await postMcp(port, undefined)).toBe(401);
+    expect(await postMcp(port, 'whatever')).toBe(401);
+    expect(await postMcp(port, EXTERNAL)).not.toBe(401);
   });
 
   it('oauth mode: only a valid OAuth token passes; the external bearer does NOT', async () => {
@@ -207,17 +209,40 @@ describe('omniGatewayHost — multi-mode auth gate', () => {
     const { port } = await start({ mode: 'oauth' });
     const response = await optionsMcp(port);
     expect(response.code).toBe(204);
-    expect(response.headers['access-control-allow-origin']).toBe('*');
+    expect(response.headers['access-control-allow-origin']).toBe('https://chat.openai.com');
     expect(String(response.headers['access-control-allow-headers'])).toContain('authorization');
     expect(String(response.headers['access-control-allow-headers'])).toContain('mcp-session-id');
     expect(String(response.headers['access-control-expose-headers'])).toContain('mcp-session-id');
+  });
+
+  it('rejects untrusted browser origins before authentication', async () => {
+    const { port } = await start({ mode: 'bearer' });
+    const response = await new Promise<GatewayResponse>((resolve, reject) => {
+      const request = http.request(
+        {
+          host: '127.0.0.1',
+          port,
+          path: '/ide/mcp',
+          method: 'OPTIONS',
+          headers: { origin: 'https://evil.example', 'access-control-request-method': 'POST' },
+        },
+        (res) => {
+          res.resume();
+          res.on('end', () => resolve({ code: res.statusCode ?? 0, headers: res.headers }));
+        }
+      );
+      request.on('error', reject);
+      request.end();
+    });
+    expect(response.code).toBe(403);
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
   });
 
   it('keeps CORS headers on /ide/mcp auth failures', async () => {
     const { port } = await start({ mode: 'bearer' });
     const response = await postMcpWithHeaders(port);
     expect(response.code).toBe(401);
-    expect(response.headers['access-control-allow-origin']).toBe('*');
+    expect(response.headers['access-control-allow-origin']).toBeUndefined();
     expect(String(response.headers['access-control-expose-headers'])).toContain('mcp-session-id');
   });
 

@@ -1,0 +1,196 @@
+import type { SurfaceManifest, SurfacePermissionMode } from './types';
+
+const ALL_PERMISSION_MODES: SurfacePermissionMode[] = ['read-only', 'workspace-write', 'full-access'];
+const BASE_CONTEXT = ['agent', 'personal', 'conversation', 'surface'] as const;
+
+export const BUILTIN_SURFACE_MANIFESTS: SurfaceManifest[] = [
+  {
+    schemaVersion: 1,
+    id: 'chat',
+    label: 'Chat',
+    description: 'Transport-neutral conversational surface without a required live application harness.',
+    source: { kind: 'builtin', id: 'tomny-core' },
+    priority: 0,
+    context: {
+      required: [...BASE_CONTEXT],
+      includeOpaqueSecretHandles: false,
+      maxCharacters: 12_000,
+    },
+    permissions: {
+      minimumMode: 'read-only',
+      allowedModes: [...ALL_PERMISSION_MODES],
+      requireExplicitGrant: false,
+    },
+    capabilities: [],
+  },
+  {
+    schemaVersion: 1,
+    id: 'ide',
+    label: 'IDE',
+    description: 'Coding harness backed by the live workspace, repository intelligence and Tomny IDE tools.',
+    source: { kind: 'builtin', id: 'tomny-core' },
+    priority: 100,
+    context: {
+      required: [...BASE_CONTEXT, 'workspace'],
+      includeOpaqueSecretHandles: false,
+      maxCharacters: 12_000,
+    },
+    permissions: {
+      minimumMode: 'workspace-write',
+      allowedModes: ['workspace-write', 'full-access'],
+      requiredScopes: ['workspace.read', 'workspace.write'],
+      requireExplicitGrant: true,
+    },
+    capabilities: [
+      {
+        id: 'surface.ide',
+        label: 'Tomny IDE tools',
+        kind: 'mcp',
+        providerId: 'builtin.ide',
+        serverName: 'aionui-ide',
+        toolPatterns: ['ide_*', 'tomny_*', 'terminal_*', 'git_*', 'team_*', 'db_*', 'exp_*'],
+        minimumPermissionMode: 'workspace-write',
+        requiredPermissionScopes: ['workspace.read', 'workspace.write'],
+        requireExplicitGrant: true,
+      },
+    ],
+    fallbackSurfaceIds: ['chat'],
+  },
+  {
+    schemaVersion: 1,
+    id: 'browser',
+    label: 'Browser',
+    description: 'Live embedded-browser research, interaction and Quick Test harness.',
+    source: { kind: 'builtin', id: 'tomny-core' },
+    priority: 90,
+    context: {
+      required: [...BASE_CONTEXT],
+      includeOpaqueSecretHandles: true,
+      allowedSecretCapabilities: ['browser.secret_type'],
+      maxCharacters: 12_000,
+    },
+    permissions: {
+      minimumMode: 'full-access',
+      allowedModes: ['full-access'],
+      requiredScopes: ['browser.control'],
+      requireExplicitGrant: true,
+    },
+    capabilities: [
+      {
+        id: 'surface.browser',
+        label: 'Browser Control tools',
+        kind: 'mcp',
+        providerId: 'builtin.browser-control',
+        serverName: 'aionui-browser-control',
+        toolPatterns: ['browser_*', 'quick_test_*', 'extract_content', 'editor_*'],
+        minimumPermissionMode: 'full-access',
+        requiredPermissionScopes: ['browser.control'],
+        requireExplicitGrant: true,
+      },
+    ],
+    fallbackSurfaceIds: ['chat'],
+  },
+  {
+    schemaVersion: 1,
+    id: 'office',
+    label: 'Office',
+    description: 'Live document, spreadsheet and presentation editing harness.',
+    source: { kind: 'builtin', id: 'tomny-core' },
+    priority: 80,
+    context: {
+      required: [...BASE_CONTEXT, 'workspace'],
+      includeOpaqueSecretHandles: false,
+      maxCharacters: 12_000,
+    },
+    permissions: {
+      minimumMode: 'workspace-write',
+      allowedModes: ['workspace-write', 'full-access'],
+      requiredScopes: ['office.read', 'office.write'],
+      requireExplicitGrant: true,
+    },
+    capabilities: [
+      {
+        id: 'surface.office',
+        label: 'Office Editor tools',
+        kind: 'mcp',
+        providerId: 'builtin.office-editor',
+        serverName: 'aionui-office-editor',
+        toolPatterns: ['office_*'],
+        minimumPermissionMode: 'workspace-write',
+        requiredPermissionScopes: ['office.read', 'office.write'],
+        requireExplicitGrant: true,
+      },
+    ],
+    fallbackSurfaceIds: ['chat'],
+  },
+  {
+    schemaVersion: 1,
+    id: 'make-film',
+    label: 'Make Film',
+    description: 'Agent-driven film, image, narration, video-clip and final-export production surface.',
+    source: { kind: 'builtin', id: 'tomny-core' },
+    priority: 75,
+    context: {
+      required: [...BASE_CONTEXT, 'workspace'],
+      includeOpaqueSecretHandles: true,
+      allowedSecretCapabilities: ['make-film.provider'],
+      maxCharacters: 12_000,
+    },
+    permissions: {
+      minimumMode: 'workspace-write',
+      allowedModes: ['workspace-write', 'full-access'],
+      requiredScopes: ['make-film.read', 'make-film.write'],
+      requireExplicitGrant: true,
+    },
+    capabilities: [
+      {
+        id: 'surface.make-film',
+        label: 'Make Film tools',
+        kind: 'mcp',
+        providerId: 'builtin.make-film',
+        serverName: 'aionui-make-film',
+        toolPatterns: ['make_film_*', 'image_*', 'video_*'],
+        minimumPermissionMode: 'workspace-write',
+        requiredPermissionScopes: ['make-film.read', 'make-film.write'],
+        requireExplicitGrant: true,
+      },
+    ],
+    fallbackSurfaceIds: ['chat'],
+  },
+  {
+    schemaVersion: 1,
+    id: 'music',
+    label: 'Music',
+    description: 'Music production harness sharing the active project and audio analysis engine.',
+    source: { kind: 'builtin', id: 'tomny-core' },
+    priority: 70,
+    context: {
+      required: [...BASE_CONTEXT, 'workspace'],
+      includeOpaqueSecretHandles: false,
+      maxCharacters: 12_000,
+    },
+    permissions: {
+      minimumMode: 'workspace-write',
+      allowedModes: ['workspace-write', 'full-access'],
+      requiredScopes: ['music.read', 'music.write'],
+      requireExplicitGrant: true,
+    },
+    capabilities: [
+      {
+        id: 'surface.music',
+        label: 'Music tools',
+        kind: 'mcp',
+        providerId: 'builtin.music',
+        serverName: 'aionui-music',
+        toolPatterns: ['music_*'],
+        minimumPermissionMode: 'workspace-write',
+        requiredPermissionScopes: ['music.read', 'music.write'],
+        requireExplicitGrant: true,
+      },
+    ],
+    fallbackSurfaceIds: ['chat'],
+  },
+];
+
+/** Return detached manifests so plugin wiring cannot mutate the built-in policy constants. */
+export const createBuiltinSurfaceManifests = (): SurfaceManifest[] => structuredClone(BUILTIN_SURFACE_MANIFESTS);

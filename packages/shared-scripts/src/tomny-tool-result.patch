@@ -1,0 +1,144 @@
+diff --git a/crates/aion-agent/src/orchestration.rs b/crates/aion-agent/src/orchestration.rs
+index ddf8b32..7d08237 100644
+--- a/crates/aion-agent/src/orchestration.rs
++++ b/crates/aion-agent/src/orchestration.rs
+@@ -280,6 +280,33 @@ pub async fn execute_tool_calls_with_approval(
+                     modifiers.push(None);
+                     continue;
+                 }
++                Ok(ToolApprovalResult::Provided {
++                    content,
++                    is_error,
++                    tool_name,
++                }) => {
++                    let status = if is_error {
++                        ToolStatus::Error
++                    } else {
++                        ToolStatus::Success
++                    };
++                    let _ = writer.emit(&ProtocolEvent::ToolResult {
++                        msg_id: msg_id.to_string(),
++                        call_id: id.clone(),
++                        tool_name: tool_name.unwrap_or_else(|| name.clone()),
++                        status,
++                        output: content.clone(),
++                        output_type: OutputType::Text,
++                        metadata: None,
++                    });
++                    results.push(ContentBlock::ToolResult {
++                        tool_use_id: id.clone(),
++                        content,
++                        is_error,
++                    });
++                    modifiers.push(None);
++                    continue;
++                }
+                 Err(_) => {
+                     // Channel dropped — client disconnected
+                     return Err(ExecutionControl::Quit);
+diff --git a/crates/aion-cli/src/json_stream/dispatch.rs b/crates/aion-cli/src/json_stream/dispatch.rs
+index f7261aa..31c294a 100644
+--- a/crates/aion-cli/src/json_stream/dispatch.rs
++++ b/crates/aion-cli/src/json_stream/dispatch.rs
+@@ -33,6 +33,21 @@ pub(super) fn handle(cmd: ProtocolCommand, engine: &mut AgentEngine, ctx: &Strea
+             ctx.approval_manager
+                 .resolve(&call_id, ToolApprovalResult::Denied { reason });
+         }
++        ProtocolCommand::ToolResult {
++            call_id,
++            content,
++            tool_name,
++            is_error,
++        } => {
++            ctx.approval_manager.resolve(
++                &call_id,
++                ToolApprovalResult::Provided {
++                    content,
++                    is_error,
++                    tool_name,
++                },
++            );
++        }
+         ProtocolCommand::InitHistory { text } => {
+             tracing::debug!(target: "aion_protocol", chars = text.len(), "InitHistory received");
+         }
+diff --git a/crates/aion-cli/src/json_stream/message.rs b/crates/aion-cli/src/json_stream/message.rs
+index 5493c9e..346968e 100644
+--- a/crates/aion-cli/src/json_stream/message.rs
++++ b/crates/aion-cli/src/json_stream/message.rs
+@@ -72,6 +72,12 @@ pub(super) async fn handle(
+                         ProtocolCommand::ToolDeny { call_id, reason } => {
+                             ctx.approval_manager.resolve(&call_id, ToolApprovalResult::Denied { reason });
+                         }
++                        ProtocolCommand::ToolResult { call_id, content, tool_name, is_error } => {
++                            ctx.approval_manager.resolve(
++                                &call_id,
++                                ToolApprovalResult::Provided { content, is_error, tool_name },
++                            );
++                        }
+                         ProtocolCommand::Stop => {
+                             stopped = true;
+                             break;
+diff --git a/crates/aion-protocol/src/approval.rs b/crates/aion-protocol/src/approval.rs
+index 862ecc0..196f6b8 100644
+--- a/crates/aion-protocol/src/approval.rs
++++ b/crates/aion-protocol/src/approval.rs
+@@ -10,7 +10,14 @@ use crate::events::ToolCategory;
+ /// Result of a tool approval request
+ pub enum ToolApprovalResult {
+     Approved,
+-    Denied { reason: String },
++    Denied {
++        reason: String,
++    },
++    Provided {
++        content: String,
++        is_error: bool,
++        tool_name: Option<String>,
++    },
+ }
+ 
+ struct PendingApproval {
+diff --git a/crates/aion-protocol/src/commands.rs b/crates/aion-protocol/src/commands.rs
+index 4129391..4a116bb 100644
+--- a/crates/aion-protocol/src/commands.rs
++++ b/crates/aion-protocol/src/commands.rs
+@@ -24,6 +24,14 @@ pub enum ProtocolCommand {
+         #[serde(default)]
+         reason: String,
+     },
++    ToolResult {
++        call_id: String,
++        content: String,
++        #[serde(default)]
++        tool_name: Option<String>,
++        #[serde(default)]
++        is_error: bool,
++    },
+     InitHistory {
+         text: String,
+     },
+diff --git a/crates/aion-protocol/tests/commands_test.rs b/crates/aion-protocol/tests/commands_test.rs
+index 406a641..026877e 100644
+--- a/crates/aion-protocol/tests/commands_test.rs
++++ b/crates/aion-protocol/tests/commands_test.rs
+@@ -77,3 +77,19 @@ fn deserializes_tool_deny_reason(#[case] json: &str, #[case] expected_reason: &s
+         other => panic!("expected ToolDeny, got {other:?}"),
+     }
+ }
++
++#[test]
++fn deserializes_tool_result_with_optional_translated_name() {
++    let json = r#"{"type":"tool_result","call_id":"c1","content":"ok","tool_name":"tomny_read"}"#;
++    let cmd: ProtocolCommand = serde_json::from_str(json).expect("tool result should deserialize");
++
++    assert_eq!(
++        cmd,
++        ProtocolCommand::ToolResult {
++            call_id: "c1".to_string(),
++            content: "ok".to_string(),
++            tool_name: Some("tomny_read".to_string()),
++            is_error: false,
++        }
++    );
++}

@@ -293,6 +293,32 @@ const nodeStoreDeps = (): RunConfigStoreDeps => ({
   isNotFound: isFileNotFound,
 });
 
+/** Resolve the same mechanical Quick-Run plan used by the UI, for agent services. */
+export const resolveRunPlanResponse = async (rootPathInput: string): Promise<RunPlanResponse> => {
+  const rootPath = rootPathInput.trim();
+  if (!rootPath) throw new Error('A folder path is required.');
+  const [{ files, existing }, graph, repoConfigs] = await Promise.all([
+    readRepoManifests(rootPath),
+    loadGraph(rootPath).catch((): null => null),
+    loadRepoRunConfigs(nodeStoreDeps(), rootPath).catch((): RepoRunConfigs => ({ version: 1, rootPath, configs: [] })),
+  ]);
+  return {
+    plan: planRunTargets({ runbook: graph?.runbook, files, existing }),
+    saved: repoConfigs.configs,
+    source: {
+      graphLoaded: graph !== null,
+      graphHasRunbook: Boolean(
+        graph?.runbook &&
+        ((graph.runbook.commands?.length ?? 0) > 0 ||
+          (graph.runbook.ports?.length ?? 0) > 0 ||
+          (graph.runbook.env?.length ?? 0) > 0)
+      ),
+      runbookCommandCount: graph?.runbook?.commands?.length ?? 0,
+      manifestFileCount: files.size,
+    },
+  };
+};
+
 /**
  * Register the Quick-Run IPC handlers. Idempotent. Called once during
  * Main-process bootstrap. Pure mechanical reads — never calls a model.
@@ -302,32 +328,7 @@ export function registerRunTargetBridge(): void {
     try {
       const rootPath = req.rootPath?.trim();
       if (!rootPath) return { ok: false, error: 'A folder path is required.' };
-      const [{ files, existing }, graph, repoConfigs] = await Promise.all([
-        readRepoManifests(rootPath),
-        loadGraph(rootPath).catch((): null => null),
-        loadRepoRunConfigs(nodeStoreDeps(), rootPath).catch(
-          (): RepoRunConfigs => ({ version: 1, rootPath, configs: [] })
-        ),
-      ]);
-      const plan = planRunTargets({ runbook: graph?.runbook, files, existing });
-      return {
-        ok: true,
-        data: {
-          plan,
-          saved: repoConfigs.configs,
-          source: {
-            graphLoaded: graph !== null,
-            graphHasRunbook: Boolean(
-              graph?.runbook &&
-              ((graph.runbook.commands?.length ?? 0) > 0 ||
-                (graph.runbook.ports?.length ?? 0) > 0 ||
-                (graph.runbook.env?.length ?? 0) > 0)
-            ),
-            runbookCommandCount: graph?.runbook?.commands?.length ?? 0,
-            manifestFileCount: files.size,
-          },
-        },
-      };
+      return { ok: true, data: await resolveRunPlanResponse(rootPath) };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }

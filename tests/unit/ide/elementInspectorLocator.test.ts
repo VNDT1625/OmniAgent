@@ -11,7 +11,7 @@
 import { access, mkdir, mkdtemp, rm, utimes, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { pruneInspectEvidence, resolveFullPageSize } from '@/process/ide/elementInspectorBridge';
 import {
   locateElement,
@@ -20,6 +20,7 @@ import {
   type PickedElement,
 } from '@/process/ide/elementInspectorLocator';
 import type { KnowledgeGraph } from '@/process/ide/understandTypes';
+import { captureAtIntrinsicZoom, capturePageViewportPng } from '@/process/testing/engines/ffmpegVideoBackend';
 
 const node = (id: string, layer: 'ui' | 'api' | 'service' | 'util' = 'ui', summary = '') => ({
   id,
@@ -120,10 +121,30 @@ describe('locateElement', () => {
     expect(located.line).toBeNull();
   });
 
-  it('handles a null graph gracefully (no crash, none)', () => {
+  it('handles a null graph gracefully when no source metadata exists', () => {
     const located = locateElement(makeElement(), null);
     expect(located.resolvedBy).toBe('none');
     expect(located.file).toBeNull();
+  });
+
+  it('keeps an exact workspace-relative fiber source when the graph is unavailable', () => {
+    const located = locateElement(
+      makeElement({ source: { fileName: 'C:/repo/src/pages/Hero.tsx', lineNumber: 42 } }),
+      null,
+      'C:/repo'
+    );
+    expect(located.resolvedBy).toBe('fiber-source');
+    expect(located.file).toBe('src/pages/Hero.tsx');
+    expect(located.line).toBe(42);
+  });
+
+  it('accepts one exact component symbol as a strong graph match', () => {
+    const located = locateElement(
+      makeElement({ componentName: 'Hero', selector: 'main > div', text: '', id: undefined, classes: [] }),
+      graph
+    );
+    expect(located.resolvedBy).toBe('token-match');
+    expect(located.file).toBe('src/pages/Hero.tsx');
   });
 });
 
@@ -189,6 +210,82 @@ describe('resolveFullPageSize', () => {
       width: 1440,
       height: 6000,
     });
+  });
+});
+
+describe('captureAtIntrinsicZoom', () => {
+  it('temporarily resets preview zoom and restores it after capture', async () => {
+    const zooms: number[] = [];
+    const contents = { getZoomFactor: () => 0.5, setZoomFactor: (factor: number) => zooms.push(factor) };
+
+    await expect(captureAtIntrinsicZoom(contents as never, async () => 'captured')).resolves.toBe('captured');
+    expect(zooms).toEqual([1, 0.5]);
+  });
+
+  it('restores preview zoom when capture fails', async () => {
+    const zooms: number[] = [];
+    const contents = { getZoomFactor: () => 0.6, setZoomFactor: (factor: number) => zooms.push(factor) };
+
+    await expect(
+      captureAtIntrinsicZoom(contents as never, async () => {
+        throw new Error('capture failed');
+      })
+    ).rejects.toThrow('capture failed');
+    expect(zooms).toEqual([1, 0.6]);
+  });
+});
+
+describe('capturePageViewportPng', () => {
+  it('captures CSS page pixels through CDP instead of the preview-card bitmap', async () => {
+    const sendCommand = vi.fn(async (method: string) => {
+      if (method === 'Page.getLayoutMetrics') {
+        return { cssVisualViewport: { pageX: 12, pageY: 34, clientWidth: 1100.8, clientHeight: 700.9 } };
+      }
+      if (method === 'Page.captureScreenshot') return { data: Buffer.from('page-png').toString('base64') };
+      return {};
+    });
+    const capturePage = vi.fn();
+    let attached = false;
+    const attach = vi.fn(() => {
+      attached = true;
+    });
+    const detach = vi.fn(() => {
+      attached = false;
+    });
+    const contents = {
+      debugger: { isAttached: () => attached, attach, detach, sendCommand },
+      capturePage,
+    };
+
+    await expect(capturePageViewportPng(contents as never)).resolves.toEqual(Buffer.from('page-png'));
+    expect(capturePage).not.toHaveBeenCalled();
+    expect(sendCommand).toHaveBeenCalledWith(
+      'Page.captureScreenshot',
+      expect.objectContaining({
+        clip: { x: 12, y: 34, width: 1100, height: 700, scale: 1 },
+      })
+    );
+    expect(attach).toHaveBeenCalledWith('1.3');
+    expect(detach).toHaveBeenCalledOnce();
+  });
+
+  it('falls back to Electron capture when CDP capture is unavailable', async () => {
+    const png = Buffer.from('fallback-png');
+    const contents = {
+      debugger: {
+        isAttached: () => false,
+        attach: vi.fn(),
+        detach: vi.fn(),
+        sendCommand: vi.fn().mockRejectedValue(new Error('CDP unavailable')),
+      },
+      capturePage: vi.fn().mockResolvedValue({
+        isEmpty: () => false,
+        toPNG: () => png,
+      }),
+    };
+
+    await expect(capturePageViewportPng(contents as never)).resolves.toEqual(png);
+    expect(contents.capturePage).toHaveBeenCalledOnce();
   });
 });
 

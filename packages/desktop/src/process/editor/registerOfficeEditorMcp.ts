@@ -22,7 +22,7 @@
  * Process boundary: Main-process (Node.js) module — no DOM APIs.
  */
 
-import { mcpService } from '@/common/adapter/ipcBridge';
+import { getMcpRegistry } from '@process/resources/mcpRegistry';
 import { BUILTIN_OFFICE_EDITOR_NAME } from '../resources/builtinMcp/officeEditorServer';
 import { startOfficeEditor } from './officeEditorMcpWiring';
 
@@ -45,32 +45,27 @@ export const ensureOfficeEditorMcpRegistered = async (): Promise<boolean> => {
     const transport = { type: 'sse' as const, url: host.url };
     const original_json = JSON.stringify({ mcpServers: { [BUILTIN_OFFICE_EDITOR_NAME]: { url: host.url } } }, null, 2);
 
-    const existing = (await mcpService.listServers.invoke()) ?? [];
+    const existing = (await getMcpRegistry().list()) ?? [];
     const current = existing.find((server) => server.name === BUILTIN_OFFICE_EDITOR_NAME);
 
     if (!current) {
-      await mcpService.batchImportServers.invoke({
-        servers: [
-          {
-            name: BUILTIN_OFFICE_EDITOR_NAME,
-            description: OFFICE_EDITOR_MCP_DESCRIPTION,
-            enabled: false,
-            builtin: true,
-            transport,
-            original_json,
-          },
-        ],
-      });
+      await getMcpRegistry().importMany([
+        {
+          name: BUILTIN_OFFICE_EDITOR_NAME,
+          description: OFFICE_EDITOR_MCP_DESCRIPTION,
+          enabled: false,
+          builtin: true,
+          transport,
+          original_json,
+        },
+      ]);
       console.log(`[OfficeEditorMCP] Registered "${BUILTIN_OFFICE_EDITOR_NAME}" at ${host.url}.`);
       return true;
     }
 
     const sameUrl = current.transport.type === 'sse' && current.transport.url === host.url;
     if (!sameUrl) {
-      await mcpService.updateServer.invoke({
-        id: current.id,
-        data: { transport, original_json, builtin: true },
-      });
+      await getMcpRegistry().update(current.id, { transport, original_json, builtin: true });
       console.log(`[OfficeEditorMCP] Updated "${BUILTIN_OFFICE_EDITOR_NAME}" URL → ${host.url}.`);
     }
     return true;

@@ -61,6 +61,7 @@ const IdeTerminalPanel: React.FC<IdeTerminalPanelProps> = ({ defaultCwd, onOpenP
   const { t } = useTranslation();
   const term = useTerminalState();
   const [open, setOpen] = useState(false);
+  const [fullyHidden, setFullyHidden] = useState(true);
   const [tab, setTab] = useState<PanelTab>('terminal');
   const [height, setHeight] = useState(DEFAULT_HEIGHT);
   const [consoleId, setConsoleId] = useState<string | null>(null);
@@ -134,6 +135,7 @@ const IdeTerminalPanel: React.FC<IdeTerminalPanelProps> = ({ defaultCwd, onOpenP
 
   const openNewTerminal = useCallback(
     async (profile?: { shell?: string; args?: string[] }): Promise<void> => {
+      setFullyHidden(false);
       setOpen(true);
       setTab('terminal');
       const options = {
@@ -155,6 +157,7 @@ const IdeTerminalPanel: React.FC<IdeTerminalPanelProps> = ({ defaultCwd, onOpenP
     'ide.terminal.run',
     (payload) => {
       void (async () => {
+        setFullyHidden(false);
         setOpen(true);
         setTab('terminal');
         const session = await term.createSession(payload.cwd ? { cwd: payload.cwd } : undefined);
@@ -175,11 +178,23 @@ const IdeTerminalPanel: React.FC<IdeTerminalPanelProps> = ({ defaultCwd, onOpenP
   useAddEventListener(
     'ide.terminal.focus',
     (payload) => {
+      setFullyHidden(false);
       setOpen(true);
       setTab('terminal');
       term.setActiveId(payload.id);
     },
     [term]
+  );
+
+  useAddEventListener(
+    'ide.terminal.toggle',
+    () => {
+      setFullyHidden((hidden) => {
+        if (hidden) setOpen(true);
+        return !hidden;
+      });
+    },
+    []
   );
 
   const clearSession = useCallback(
@@ -211,6 +226,10 @@ const IdeTerminalPanel: React.FC<IdeTerminalPanelProps> = ({ defaultCwd, onOpenP
   );
 
   if (!isElectronDesktop()) return null;
+
+  // Quick Test's Terminal button hides the dock completely, including the
+  // collapsed "Terminal (n)" strip. Sessions remain alive in Main process.
+  if (fullyHidden) return null;
 
   const runningCount = term.runningCount;
 

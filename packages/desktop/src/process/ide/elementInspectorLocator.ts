@@ -103,6 +103,15 @@ const normalizeSourcePath = (fileName: string): string =>
     .replace(/^\.\//, '')
     .replace(/^\/+/, '');
 
+/** Convert a dev-transform source path to a workspace-relative path when possible. */
+const sourcePathForWorkspace = (fileName: string, rootPath?: string): string => {
+  if (!rootPath) return normalizeSourcePath(fileName);
+  const source = fileName.replace(/\\/g, '/');
+  const root = rootPath.replace(/\\/g, '/').replace(/\/+$/, '');
+  if (source.toLowerCase().startsWith(root.toLowerCase() + '/')) return source.slice(root.length + 1);
+  return normalizeSourcePath(fileName);
+};
+
 /**
  * Find the graph node whose id best matches a fiber source file. Exact first,
  * then longest common suffix (so `…/src/Hero.tsx` matches `src/Hero.tsx`).
@@ -131,6 +140,16 @@ const nodeForSource = (graph: KnowledgeGraph, fileName: string): KnowledgeNode |
  * trails. Returns the best node or null.
  */
 const nodeByTokens = (graph: KnowledgeGraph, element: PickedElement): KnowledgeNode | null => {
+  const component = element.componentName?.toLowerCase();
+  if (component) {
+    const exact = graph.nodes.find(
+      (node) =>
+        node.layer === 'ui' &&
+        (node.symbols.some((symbol) => symbol.name.toLowerCase() === component) ||
+          node.label.replace(/\.[^.]+$/, '').toLowerCase() === component)
+    );
+    if (exact) return exact;
+  }
   const elTokens = new Set([
     ...tokens(element.selector),
     ...tokens(element.text),
@@ -174,13 +193,17 @@ const bestSymbol = (node: KnowledgeNode, element: PickedElement): { name: string
  * debug source (exact authored file:line); falls back to token matching against
  * UI graph nodes. Pure: same element + graph always yields the same result.
  */
-export const locateElement = (element: PickedElement, graph: KnowledgeGraph | null): LocatedElement => {
+export const locateElement = (
+  element: PickedElement,
+  graph: KnowledgeGraph | null,
+  rootPath?: string
+): LocatedElement => {
   const usesFor = (nodeId: string): string[] =>
     graph ? graph.edges.filter((e) => e.from === nodeId).map((e) => e.to) : [];
 
   // 1) Fiber debug source — the authoritative, exact authored location.
-  if (graph && element.source?.fileName) {
-    const node = nodeForSource(graph, element.source.fileName);
+  if (element.source?.fileName) {
+    const node = graph ? nodeForSource(graph, element.source.fileName) : null;
     if (node) {
       const sym = bestSymbol(node, element);
       return {
@@ -197,7 +220,7 @@ export const locateElement = (element: PickedElement, graph: KnowledgeGraph | nu
     // still know the authored path + line — surface it directly.
     return {
       element,
-      file: normalizeSourcePath(element.source.fileName),
+      file: sourcePathForWorkspace(element.source.fileName, rootPath),
       line: element.source.lineNumber || null,
       symbol: element.componentName ?? null,
       uses: [],

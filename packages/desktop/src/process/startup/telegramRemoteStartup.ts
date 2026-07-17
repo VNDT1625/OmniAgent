@@ -27,32 +27,50 @@ export function prepareTelegramRemoteSecret(): string {
  * Publish the token-protected Telegram remote surface and give aioncore its
  * HTTPS origin. Repeated readiness callbacks share one in-flight tunnel.
  */
-export function startTelegramRemoteTunnel(backendPort: number, language = 'en-US'): Promise<TunnelResult> {
+export async function startTelegramRemoteTunnel(backendPort: number, language = 'en-US'): Promise<TunnelResult> {
   activeBackendPort = backendPort;
   appLanguage = language;
-  if (startPromise) return startPromise;
-  startPromise = (async () => {
+
+  if (activePublicUrl) {
+    return publishRemoteConfiguration(backendPort, activePublicUrl, appLanguage);
+  }
+
+  if (startPromise) {
+    const existing = await startPromise;
+    if (!existing.ok) return existing;
+    return publishRemoteConfiguration(backendPort, existing.url, appLanguage);
+  }
+
+  const attempt = (async (): Promise<TunnelResult> => {
     const result = await startTunnel(TUNNEL_KEY, `http://127.0.0.1:${backendPort}`);
     if (!result.ok) return result;
-
-    try {
-      const response = await postRemoteConfiguration(backendPort, {
-        public_url: result.url,
-        language: appLanguage,
-      });
-      if (!response.ok) {
-        stopTunnel(TUNNEL_KEY);
-        return { ok: false, reason: 'start-failed', detail: `aioncore rejected tunnel setup (${response.status})` };
-      }
-      activePublicUrl = result.url;
-      return result;
-    } catch (error) {
-      stopTunnel(TUNNEL_KEY);
-      const detail = error instanceof Error ? error.message : String(error);
-      return { ok: false, reason: 'start-failed', detail };
-    }
+    return publishRemoteConfiguration(backendPort, result.url, appLanguage);
   })();
-  return startPromise;
+  startPromise = attempt;
+  const result = await attempt;
+  if (!result.ok) startPromise = null;
+  return result;
+}
+
+async function publishRemoteConfiguration(
+  backendPort: number,
+  publicUrl: string,
+  language: string
+): Promise<TunnelResult> {
+  try {
+    const response = await postRemoteConfiguration(backendPort, {
+      public_url: publicUrl,
+      language,
+    });
+    if (!response.ok) {
+      return { ok: false, reason: 'start-failed', detail: `aioncore rejected tunnel setup (${response.status})` };
+    }
+    activePublicUrl = publicUrl;
+    return { ok: true, url: publicUrl };
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    return { ok: false, reason: 'start-failed', detail };
+  }
 }
 
 async function postRemoteConfiguration(

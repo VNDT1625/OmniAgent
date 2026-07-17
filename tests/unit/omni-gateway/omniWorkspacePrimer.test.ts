@@ -53,6 +53,13 @@ describe('buildIdeMemorySection / withIdeMemorySection', () => {
     expect(buildIdeMemorySection('sess-X')).toContain('Your session memory id is: sess-X');
   });
 
+  it('instructs agents to use the local-render marker for an explicit Secret Context reveal', () => {
+    const section = buildIdeMemorySection('sess-X');
+    expect(section).toContain('ALIAS is {{secret:ALIAS}}');
+    expect(section).toContain('TEST is {{secret:TEST}}');
+    expect(section).toContain('never receive, print, request, or infer its value');
+  });
+
   it('is idempotent: a second append does not duplicate the block', () => {
     const once = withIdeMemorySection('sess-1', 'existing');
     const twice = withIdeMemorySection('sess-1', once);

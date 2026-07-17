@@ -501,7 +501,8 @@ export const createAppDetector = (): IAppDetector => {
       () => providerRun(),
       model ?? '',
       [{ role: 'user', content: prompt }],
-      undefined
+      undefined,
+      { workspace: dir, surface: 'ide', permissionMode: 'read-only' }
     );
     onProgress?.({ projectDir: dir, phase: 'parsing', message: '', percent: 90 });
     const detected = parseAppSetup(content, dir);

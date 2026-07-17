@@ -43,7 +43,7 @@ import { locateElement, type LocatedElement, type PickedElement } from './elemen
 import type { CdpWebContents } from './quickTestTracer';
 import type { loadGraph } from './quickTestBridgeHelpers';
 import type { UnderstandResult } from './understandTypes';
-import { createFfmpegVideoBackend } from '../testing/engines/ffmpegVideoBackend';
+import { capturePageViewportPng, createFfmpegVideoBackend } from '../testing/engines/ffmpegVideoBackend';
 import { resolveFfmpeg } from '../testing/engines/toolResolver';
 import { runUiAudit, type UiAuditReport } from './uiAuditEngine';
 
@@ -144,6 +144,83 @@ export const resolveFullPageSize = (
   width: Math.ceil(Math.max(layoutSize.width ?? 0, domSize.width ?? 0)),
   height: Math.ceil(Math.max(layoutSize.height ?? 0, domSize.height ?? 0)),
 });
+
+/**
+ * Capture and persist a Quick Test screenshot using the same implementation as
+ * the renderer IPC bridge. Keeping this operation here lets agent-facing tools
+ * reuse the proven CDP full-page path without maintaining a second algorithm.
+ */
+export const captureInspectScreenshot = async (
+  wc: CdpWebContents,
+  rootPath: string,
+  mode: InspectScreenshotMode
+): Promise<InspectScreenshotResult | null> => {
+  trackInspectEvidenceRoot(rootPath);
+  await pruneInspectEvidence(rootPath);
+  let png: Buffer;
+  let dataUrl: string;
+  if (mode === 'fullPage') {
+    const wasAttached = wc.debugger.isAttached();
+    const zoomable = wc as CdpWebContents & { getZoomFactor?: () => number; setZoomFactor?: (factor: number) => void };
+    const previousZoom = zoomable.getZoomFactor?.();
+    const canRestoreZoom =
+      typeof previousZoom === 'number' && Number.isFinite(previousZoom) && !!zoomable.setZoomFactor;
+    if (canRestoreZoom && Math.abs(previousZoom - 1) > 0.001) zoomable.setZoomFactor?.(1);
+    try {
+      if (!wasAttached) wc.debugger.attach('1.3');
+      await wc.debugger.sendCommand('Page.enable');
+      const [metrics, domSize] = await Promise.all([
+        wc.debugger.sendCommand('Page.getLayoutMetrics') as Promise<{
+          cssContentSize?: CaptureSize;
+          contentSize?: CaptureSize;
+        }>,
+        wc.executeJavaScript(`(() => {
+          const nodes = [document.documentElement, document.body, document.scrollingElement].filter(Boolean);
+          const dimensions = (key) => nodes.map((node) => Number(node[key]) || 0);
+          return {
+            width: Math.max(
+              window.innerWidth,
+              ...dimensions('scrollWidth'),
+              ...dimensions('offsetWidth'),
+              ...dimensions('clientWidth')
+            ),
+            height: Math.max(
+              window.innerHeight,
+              ...dimensions('scrollHeight'),
+              ...dimensions('offsetHeight'),
+              ...dimensions('clientHeight')
+            )
+          };
+        })()`) as Promise<CaptureSize>,
+      ]);
+      const contentSize = metrics.cssContentSize ?? metrics.contentSize ?? {};
+      const { width, height } = resolveFullPageSize(contentSize, domSize);
+      if (width <= 0 || height <= 0) throw new Error('The page has no capturable area.');
+      const captured = (await wc.debugger.sendCommand('Page.captureScreenshot', {
+        format: 'png',
+        fromSurface: true,
+        captureBeyondViewport: true,
+        clip: { x: 0, y: 0, width, height, scale: 1 },
+      })) as { data?: string };
+      if (!captured.data) throw new Error('Chromium returned an empty screenshot.');
+      png = Buffer.from(captured.data, 'base64');
+      dataUrl = `data:image/png;base64,${captured.data}`;
+    } finally {
+      if (!wasAttached && wc.debugger.isAttached()) wc.debugger.detach();
+      if (canRestoreZoom) zoomable.setZoomFactor?.(previousZoom);
+    }
+  } else {
+    const captured = await capturePageViewportPng(wc as unknown as WebContents);
+    if (!captured) return null;
+    png = captured;
+    dataUrl = `data:image/png;base64,${captured.toString('base64')}`;
+  }
+  const dir = path.join(rootPath, '.omni', 'inspect');
+  await fsp.mkdir(dir, { recursive: true });
+  const filePath = path.join(dir, `shot-${mode === 'fullPage' ? 'full-page' : 'viewport'}-${Date.now()}.png`);
+  await fsp.writeFile(filePath, png);
+  return { filePath, dataUrl, mode };
+};
 
 /** Typed inspector channels. */
 export const inspectChannels = {
@@ -322,7 +399,7 @@ export function registerElementInspectorBridge(deps: ElementInspectorBridgeDeps)
       const picked = (await wc.executeJavaScript(PICKER_SCRIPT)) as PickedElement | null;
       if (!picked) return { ok: true, data: null };
       const graph = await deps.loadGraph(rootPath).catch((): null => null);
-      return { ok: true, data: locateElement(picked, graph) };
+      return { ok: true, data: locateElement(picked, graph, rootPath) };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return { ok: false, error: message, code: 'error' };
@@ -356,76 +433,7 @@ export function registerElementInspectorBridge(deps: ElementInspectorBridgeDeps)
     const wc = deps.getWebContents(req.tabId);
     if (!wc) return { ok: false, error: 'No embedded browser tab to capture.', code: 'error' };
     try {
-      trackInspectEvidenceRoot(rootPath);
-      await pruneInspectEvidence(rootPath);
-      let png: Buffer;
-      let dataUrl: string;
-      if (req.mode === 'fullPage') {
-        // A recording may already own the debugger. Reuse it without detaching;
-        // otherwise attach only for the duration of this full-page capture.
-        const wasAttached = wc.debugger.isAttached();
-        if (!wasAttached) wc.debugger.attach('1.3');
-        try {
-          await wc.debugger.sendCommand('Page.enable');
-          const [metrics, domSize] = await Promise.all([
-            wc.debugger.sendCommand('Page.getLayoutMetrics') as Promise<{
-              cssContentSize?: CaptureSize;
-              contentSize?: CaptureSize;
-            }>,
-            wc.executeJavaScript(`(() => {
-              const nodes = [document.documentElement, document.body, document.scrollingElement].filter(Boolean);
-              const dimensions = (key) => nodes.map((node) => Number(node[key]) || 0);
-              return {
-                width: Math.max(
-                  window.innerWidth,
-                  ...dimensions('scrollWidth'),
-                  ...dimensions('offsetWidth'),
-                  ...dimensions('clientWidth')
-                ),
-                height: Math.max(
-                  window.innerHeight,
-                  ...dimensions('scrollHeight'),
-                  ...dimensions('offsetHeight'),
-                  ...dimensions('clientHeight')
-                )
-              };
-            })()`) as Promise<CaptureSize>,
-          ]);
-          const contentSize = metrics.cssContentSize ?? metrics.contentSize ?? {};
-          const { width, height } = resolveFullPageSize(contentSize, domSize);
-          if (width <= 0 || height <= 0) throw new Error('The page has no capturable area.');
-          const captured = (await wc.debugger.sendCommand('Page.captureScreenshot', {
-            format: 'png',
-            fromSurface: true,
-            captureBeyondViewport: true,
-            clip: { x: 0, y: 0, width, height, scale: 1 },
-          })) as { data?: string };
-          if (!captured.data) throw new Error('Chromium returned an empty screenshot.');
-          png = Buffer.from(captured.data, 'base64');
-          dataUrl = `data:image/png;base64,${captured.data}`;
-        } finally {
-          if (!wasAttached && wc.debugger.isAttached()) wc.debugger.detach();
-        }
-      } else {
-        // Electron's `capturePage()` returns only the currently visible frame.
-        const capturable = wc as unknown as {
-          capturePage?: () => Promise<{ isEmpty: () => boolean; toPNG: () => Buffer; toDataURL: () => string }>;
-        };
-        if (typeof capturable.capturePage !== 'function') {
-          return { ok: false, error: 'This tab cannot be captured.', code: 'error' };
-        }
-        const image = await capturable.capturePage();
-        if (image.isEmpty()) return { ok: true, data: null };
-        png = image.toPNG();
-        dataUrl = image.toDataURL();
-      }
-      // Save the PNG into the repo's `.omni/inspect/` folder so the agent can
-      // open the evidence directly with its image tools.
-      const dir = path.join(rootPath, '.omni', 'inspect');
-      await fsp.mkdir(dir, { recursive: true });
-      const filePath = path.join(dir, `shot-${req.mode === 'fullPage' ? 'full-page' : 'viewport'}-${Date.now()}.png`);
-      await fsp.writeFile(filePath, png);
-      return { ok: true, data: { filePath, dataUrl, mode: req.mode } };
+      return { ok: true, data: await captureInspectScreenshot(wc, rootPath, req.mode) };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       return { ok: false, error: message, code: 'error' };

@@ -240,7 +240,7 @@ export const useFileCreator = (): UseFileCreator => {
 
       setStatus('generating');
       const messages = buildMessages(name, kind, description, refs);
-      const result = await studioChatClient.chat.invoke({ model: options.model, messages });
+      const result = await studioChatClient.chat.invoke({ model: options.model, messages, workspace: options.dir });
       if (!result.ok) {
         const failure = result as StudioChatFailure;
         setError(failure.code === 'no-model' ? 'no-model' : 'generate-failed');

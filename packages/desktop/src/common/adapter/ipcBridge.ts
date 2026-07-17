@@ -59,6 +59,24 @@ import type { ApplicablePreset, ResourceBudget, ResourceMode, ResourceState } fr
 import type { OmniGatewayProgressEvent } from '@process/omni-gateway/omniGatewayProgress';
 import type { OmniAuthMode, OmniOAuthClientSummary, OmniToolPermissions } from '@process/omni-gateway/auth/authTypes';
 import type { RemoteAccessMode } from '@/common/config/remotePublicUrl';
+
+import type { CompanyConfig } from '@process/company/companyConfig';
+import type { CompanyStructure } from '@process/company/companyOrchestrator';
+import type {
+  AcceptDraftsResult,
+  CancelConversationRequest,
+  CompanyIdRequest,
+  CompanyResult,
+  ConversationEventEnvelope,
+  CreateFromDescriptionRequest,
+  ListAgentsResponse,
+  ResolvePermissionRequest,
+  RunConversationBridgeRequest,
+  RunConversationBridgeResult,
+  SetAssignmentRequest,
+  SetRulesRequest,
+  UpdateStructureRequest,
+} from '@process/company/companyBridge';
 import type {
   LiveSystemMetrics,
   ProcessPriorityLevel,
@@ -81,20 +99,8 @@ import {
 } from './httpBridge';
 import { fromApiSearchResult, type ApiMessageSearchItem } from './searchMapper';
 import type { IAddTeamAgentParams, ICreateTeamParams } from './teamMapper';
-import {
-  fromBackendAgent,
-  fromBackendTeam,
-  fromBackendTeamList,
-  fromBackendTeamOptional,
-  toBackendAgent,
-} from './teamMapper';
-import { fromBackendCompareResult, type RawCompareResult } from './fileSnapshotMapper';
-import {
-  absoluteToRelativePath,
-  fromBackendWorkspaceFlatFiles,
-  fromBackendWorkspaceList,
-  type RawWorkspaceFlatFile,
-} from './workspaceMapper';
+
+import { absoluteToRelativePath, fromBackendWorkspaceList } from './workspaceMapper';
 
 // ---------------------------------------------------------------------------
 // Shell — routed to POST /api/shell/*
@@ -172,46 +178,11 @@ export type AionrsContextSnapshot = {
 };
 
 export const conversation = {
-  create: withResponseMap(
-    httpPost<TChatConversation, ICreateConversationParams>('/api/conversations', (p) => {
-      // Top-level `model` is aionrs-only on the backend (spec 2026-05-12).
-      // Other agent types carry model info via `extra`.
-      const isAionrs = p.type === 'aionrs';
-      const body: Record<string, unknown> = {
-        type: p.type,
-        id: p.id,
-        name: p.name,
-        extra: p.extra,
-      };
-      if (isAionrs) {
-        const model = toApiModelOptional(p.model);
-        if (model) body.model = model;
-      }
-      return body;
-    }),
-    fromApiConversation
+  create: bridge.buildProvider<TChatConversation, ICreateConversationParams>('conversation.native.create'),
+  createWithConversation: bridge.buildProvider<TChatConversation, { conversation: TChatConversation }>(
+    'conversation.native.clone'
   ),
-  createWithConversation: withResponseMap(
-    httpPost<TChatConversation, { conversation: TChatConversation }>('/api/conversations/clone', (p) => {
-      const isAionrs = p.conversation.type === 'aionrs';
-      const { model: _rawModel, ...rest } = p.conversation as TChatConversation & {
-        model?: TProviderWithModel;
-      };
-      const clonedConversation: Record<string, unknown> = { ...rest };
-      if (isAionrs) {
-        const model = toApiModelOptional(_rawModel);
-        if (model) clonedConversation.model = model;
-      }
-      return {
-        conversation: clonedConversation,
-      };
-    }),
-    fromApiConversation
-  ),
-  get: withResponseMap(
-    httpGet<TChatConversation, { id: string }>((p) => `/api/conversations/${p.id}`, { silentStatuses: [404] }),
-    fromApiConversation
-  ),
+  get: bridge.buildProvider<TChatConversation | undefined, { id: string }>('conversation.native.get'),
   getAssociateConversation: withResponseMap(
     httpGet<TChatConversation[], { conversation_id: string }>(
       (p) => `/api/conversations/${p.conversation_id}/associated`
@@ -222,22 +193,12 @@ export const conversation = {
     httpGet<TChatConversation[], { cron_job_id: string }>((p) => `/api/cron/jobs/${p.cron_job_id}/conversations`),
     (list) => list.map(fromApiConversation)
   ),
-  remove: httpDelete<boolean, { id: string }>((p) => `/api/conversations/${p.id}`),
-  update: httpPatch<boolean, { id: string; updates: Partial<TChatConversation>; merge_extra?: boolean }>(
-    (p) => `/api/conversations/${p.id}`,
-    (p) => {
-      const updates = p.updates as Record<string, unknown>;
-      const { model: rawModel, ...rest } = updates;
-      const model = toApiModelOptional(rawModel as TProviderWithModel | undefined);
-      return {
-        ...rest,
-        ...(model ? { model } : {}),
-        merge_extra: p.merge_extra,
-      };
-    }
+  remove: bridge.buildProvider<boolean, { id: string }>('conversation.native.remove'),
+  update: bridge.buildProvider<boolean, { id: string; updates: Partial<TChatConversation>; merge_extra?: boolean }>(
+    'conversation.native.update'
   ),
-  reset: httpPost<void, IResetConversationParams>((p) => `/api/conversations/${p.id}/reset`),
-  warmup: httpPost<void, { conversation_id: string }>((p) => `/api/conversations/${p.conversation_id}/warmup`),
+  reset: bridge.buildProvider<void, IResetConversationParams>('conversation.native.reset'),
+  warmup: bridge.buildProvider<void, { conversation_id: string }>('conversation.native.warmup'),
   getAionrsContext: httpGet<AionrsContextSnapshot, { conversation_id: string }>(
     (p) => `/api/conversations/${p.conversation_id}/aionrs-context`
   ),
@@ -249,17 +210,9 @@ export const conversation = {
     (p) => ({ custom_context: p.custom_context, context_branches: p.context_branches })
   ),
 
-  stop: httpPost<void, { conversation_id: string }>((p) => `/api/conversations/${p.conversation_id}/cancel`),
-  activeCount: httpGet<{ count: number }>('/api/conversations/active-count'),
-  sendMessage: httpPost<ISendMessageResult, ISendMessageParams>(
-    (p) => `/api/conversations/${p.conversation_id}/messages`,
-    (p) => ({
-      content: p.input,
-      files: p.files,
-      loading_id: p.loading_id,
-      inject_skills: p.inject_skills,
-    })
-  ),
+  stop: bridge.buildProvider<void, { conversation_id: string }>('conversation.native.cancel'),
+  activeCount: bridge.buildProvider<{ count: number }, void>('conversation.native.active-count'),
+  sendMessage: bridge.buildProvider<ISendMessageResult, ISendMessageParams>('conversation.native.send'),
   getSlashCommands: httpGet<Array<{ command: string; description: string }>, { conversation_id: string }>(
     (p) => `/api/conversations/${p.conversation_id}/slash-commands`
   ),
@@ -281,9 +234,9 @@ export const conversation = {
     (p) => `/api/conversations/${p.conversation_id}/artifacts/${p.artifact_id}`,
     (p) => ({ status: p.status })
   ),
-  responseStream: wsEmitter<IResponseMessage>('message.stream'),
+  responseStream: bridge.buildEmitter<IResponseMessage>('conversation.native.response-stream'),
   artifactStream: wsEmitter<IConversationArtifact>('conversation.artifact'),
-  turnCompleted: wsMappedEmitter<IConversationTurnCompletedEvent>('turn.completed', (raw) => {
+  legacyTurnCompleted: wsMappedEmitter<IConversationTurnCompletedEvent>('turn.completed', (raw) => {
     const r = raw as Record<string, unknown>;
     const rawLast = (r.last_message ?? r.lastMessage) as Record<string, unknown> | undefined;
     const last_message: IConversationTurnCompletedEvent['last_message'] = rawLast
@@ -327,7 +280,8 @@ export const conversation = {
       last_message,
     };
   }),
-  listChanged: wsEmitter<IConversationListChangedEvent>('conversation.listChanged'),
+  turnCompleted: bridge.buildEmitter<IConversationTurnCompletedEvent>('conversation.native.turn-completed'),
+  listChanged: bridge.buildEmitter<IConversationListChangedEvent>('conversation.native.list-changed'),
   // Uses httpRequest directly (instead of httpGet + withResponseMap) because the
   // response mapper needs `workspace` from params to build fullPath/relativePath,
   // and withResponseMap's map function does not receive the original params.
@@ -524,17 +478,14 @@ export const dialog = {
 // ---------------------------------------------------------------------------
 
 export const fs = {
-  getFilesByDir: httpPost<Array<IDirOrFile>, { dir: string; root: string }>('/api/fs/dir'),
-  listWorkspaceFiles: withResponseMap(
-    httpPost<Array<RawWorkspaceFlatFile>, { root: string }>('/api/fs/list'),
-    fromBackendWorkspaceFlatFiles
-  ),
-  getImageBase64: httpPost<string | null, { path: string; workspace?: string }>('/api/fs/image-base64'),
-  fetchRemoteImage: httpPost<string, { url: string }>('/api/fs/fetch-remote-image'),
-  readFile: httpPost<string | null, { path: string; workspace?: string }>('/api/fs/read'),
-  readFileBuffer: httpPost<string | null, { path: string; workspace?: string }>('/api/fs/read-buffer'),
-  createTempFile: httpPost<string, { file_name: string }>('/api/fs/temp'),
-  writeFile: httpPost<boolean, { path: string; data: string }>('/api/fs/write'),
+  getFilesByDir: bridge.buildProvider<Array<IDirOrFile>, { dir: string; root: string }>('native-fs.get-files-by-dir'),
+  listWorkspaceFiles: bridge.buildProvider<IWorkspaceFlatFile[], { root: string }>('native-fs.list-workspace-files'),
+  getImageBase64: bridge.buildProvider<string | null, { path: string; workspace?: string }>('native-fs.image-base64'),
+  fetchRemoteImage: bridge.buildProvider<string, { url: string }>('native-fs.fetch-remote-image'),
+  readFile: bridge.buildProvider<string | null, { path: string; workspace?: string }>('native-fs.read'),
+  readFileBuffer: bridge.buildProvider<string | null, { path: string; workspace?: string }>('native-fs.read-buffer'),
+  createTempFile: bridge.buildProvider<string, { file_name: string }>('native-fs.temp'),
+  writeFile: bridge.buildProvider<boolean, { path: string; data: string }>('native-fs.write'),
   createZip: httpPost<
     boolean,
     {
@@ -546,32 +497,32 @@ export const fs = {
         source_path?: string;
       }>;
     }
-  >('/api/fs/zip'),
-  cancelZip: httpPost<boolean, { request_id: string }>('/api/fs/zip/cancel'),
-  getFileMetadata: httpPost<IFileMetadata, { path: string; workspace?: string }>('/api/fs/metadata'),
-  copyFilesToWorkspace: httpPost<
+  >('native-fs.zip'),
+  cancelZip: bridge.buildProvider<boolean, { request_id: string }>('native-fs.zip-cancel'),
+  getFileMetadata: bridge.buildProvider<IFileMetadata, { path: string; workspace?: string }>('native-fs.metadata'),
+  copyFilesToWorkspace: bridge.buildProvider<
     { copied_files: string[]; failed_files?: Array<{ path: string; error: string }> },
     { file_paths: string[]; workspace: string; source_root?: string }
-  >('/api/fs/copy'),
-  removeEntry: httpPost<void, { path: string }>('/api/fs/remove'),
-  renameEntry: httpPost<{ new_path: string }, { path: string; new_name: string }>('/api/fs/rename'),
+  >('native-fs.copy'),
+  removeEntry: bridge.buildProvider<void, { path: string }>('native-fs.remove'),
+  renameEntry: bridge.buildProvider<{ new_path: string }, { path: string; new_name: string }>('native-fs.rename'),
   readBuiltinRule: httpPost<string, { file_name: string }>('/api/skills/builtin-rule'),
   readBuiltinSkill: httpPost<string, { file_name: string }>('/api/skills/builtin-skill'),
-  readAssistantRule: httpPost<string, { assistant_id: string; locale?: string }>('/api/skills/assistant-rule/read'),
-  writeAssistantRule: httpPost<boolean, { assistant_id: string; content: string; locale?: string }>(
-    '/api/skills/assistant-rule/write'
+  readAssistantRule: bridge.buildProvider<string, { assistant_id: string; locale?: string }>(
+    'assistant-resource.read-rule'
   ),
-  deleteAssistantRule: httpDelete<boolean, { assistant_id: string }>(
-    (p) => `/api/skills/assistant-rule/${p.assistant_id}`
+  writeAssistantRule: bridge.buildProvider<boolean, { assistant_id: string; content: string; locale?: string }>(
+    'assistant-resource.write-rule'
   ),
-  readAssistantSkill: httpPost<string, { assistant_id: string; locale?: string }>('/api/skills/assistant-skill/read'),
-  writeAssistantSkill: httpPost<boolean, { assistant_id: string; content: string; locale?: string }>(
-    '/api/skills/assistant-skill/write'
+  deleteAssistantRule: bridge.buildProvider<boolean, { assistant_id: string }>('assistant-resource.delete-rule'),
+  readAssistantSkill: bridge.buildProvider<string, { assistant_id: string; locale?: string }>(
+    'assistant-resource.read-skill'
   ),
-  deleteAssistantSkill: httpDelete<boolean, { assistant_id: string }>(
-    (p) => `/api/skills/assistant-skill/${p.assistant_id}`
+  writeAssistantSkill: bridge.buildProvider<boolean, { assistant_id: string; content: string; locale?: string }>(
+    'assistant-resource.write-skill'
   ),
-  listAvailableSkills: httpGet<
+  deleteAssistantSkill: bridge.buildProvider<boolean, { assistant_id: string }>('assistant-resource.delete-skill'),
+  listAvailableSkills: bridge.buildProvider<
     Array<{
       name: string;
       description: string;
@@ -581,21 +532,26 @@ export const fs = {
       source: 'builtin' | 'custom' | 'extension';
     }>,
     void
-  >('/api/skills'),
+  >('native-skills.list'),
   listBuiltinAutoSkills: httpGet<Array<{ name: string; description: string; location: string }>, void>(
     '/api/skills/builtin-auto'
   ),
-  materializeSkillsForAgent: httpPost<
+  materializeSkillsForAgent: bridge.buildProvider<
     { skills: Array<{ name: string; source_path: string }> },
     { conversation_id: string; skills: string[] }
-  >('/api/skills/materialize-for-agent'),
-  readSkillInfo: httpPost<{ name: string; description: string }, { skill_path: string }>('/api/skills/info'),
-  importSkill: httpPost<{ skill_name: string }, { skill_path: string }>('/api/skills/import'),
-  scanForSkills: httpPost<Array<{ name: string; description: string; path: string }>, { folder_path: string }>(
-    '/api/skills/scan'
+  >('native-skills.materialize'),
+  readSkillInfo: bridge.buildProvider<{ name: string; description: string }, { skill_path: string }>(
+    'native-skills.info'
   ),
-  detectCommonSkillPaths: httpGet<Array<{ name: string; path: string }>, void>('/api/skills/detect-paths'),
-  detectAndCountExternalSkills: httpGet<
+  importSkill: bridge.buildProvider<{ skill_name: string }, { skill_path: string }>('native-skills.import'),
+  scanForSkills: bridge.buildProvider<
+    Array<{ name: string; description: string; path: string }>,
+    { folder_path: string }
+  >('native-skills.scan'),
+  detectCommonSkillPaths: bridge.buildProvider<Array<{ name: string; path: string }>, void>(
+    'native-skills.common-paths'
+  ),
+  detectAndCountExternalSkills: bridge.buildProvider<
     Array<{
       name: string;
       path: string;
@@ -603,15 +559,19 @@ export const fs = {
       skills: Array<{ name: string; description: string; path: string }>;
     }>,
     void
-  >('/api/skills/detect-external'),
-  importSkillWithSymlink: httpPost<{ skill_name: string }, { skill_path: string }>('/api/skills/import-symlink'),
-  deleteSkill: httpDelete<void, { skill_name: string }>((p) => `/api/skills/${p.skill_name}`),
-  getSkillPaths: httpGet<{ user_skills_dir: string; builtin_skills_dir: string }, void>('/api/skills/paths'),
-  getCustomExternalPaths: httpGet<Array<{ name: string; path: string }>, void>('/api/skills/external-paths'),
-  addCustomExternalPath: httpPost<void, { name: string; path: string }>('/api/skills/external-paths'),
-  removeCustomExternalPath: httpDelete<void, { path: string }>(
-    (p) => `/api/skills/external-paths?path=${encodeURIComponent(p.path)}`
+  >('native-skills.detect-external'),
+  importSkillWithSymlink: bridge.buildProvider<{ skill_name: string }, { skill_path: string }>(
+    'native-skills.import-link'
   ),
+  deleteSkill: bridge.buildProvider<void, { skill_name: string }>('native-skills.delete'),
+  getSkillPaths: bridge.buildProvider<{ user_skills_dir: string; builtin_skills_dir: string }, void>(
+    'native-skills.paths'
+  ),
+  getCustomExternalPaths: bridge.buildProvider<Array<{ name: string; path: string }>, void>(
+    'native-skills.external-paths'
+  ),
+  addCustomExternalPath: bridge.buildProvider<void, { name: string; path: string }>('native-skills.external-add'),
+  removeCustomExternalPath: bridge.buildProvider<void, { path: string }>('native-skills.external-remove'),
   enableSkillsMarket: httpPost<void, void>('/api/skills/market/enable'),
   disableSkillsMarket: httpPost<void, void>('/api/skills/market/disable'),
 };
@@ -629,17 +589,17 @@ export const speechToText = {
 // ---------------------------------------------------------------------------
 
 export const fileWatch = {
-  startWatch: httpPost<void, { file_path: string }>('/api/fs/watch/start'),
-  stopWatch: httpPost<void, { file_path: string }>('/api/fs/watch/stop'),
-  stopAllWatches: httpPost<void, void>('/api/fs/watch/stop-all'),
-  fileChanged: wsEmitter<{ file_path: string; event_type: string }>('fileWatch.fileChanged'),
+  startWatch: bridge.buildProvider<void, { file_path: string }>('native-fs.watch-start'),
+  stopWatch: bridge.buildProvider<void, { file_path: string }>('native-fs.watch-stop'),
+  stopAllWatches: bridge.buildProvider<void, void>('native-fs.watch-stop-all'),
+  fileChanged: bridge.buildEmitter<{ file_path: string; event_type: string }>('fileWatch.fileChanged'),
 };
 
 // Workspace Office file watch
 export const workspaceOfficeWatch = {
-  start: httpPost<void, { workspace: string }>('/api/fs/office-watch/start'),
-  stop: httpPost<void, { workspace: string }>('/api/fs/office-watch/stop'),
-  fileAdded: wsEmitter<{ file_path: string; workspace: string }>('workspaceOfficeWatch.fileAdded'),
+  start: bridge.buildProvider<void, { workspace: string }>('native-fs.office-watch-start'),
+  stop: bridge.buildProvider<void, { workspace: string }>('native-fs.office-watch-stop'),
+  fileAdded: bridge.buildEmitter<{ file_path: string; workspace: string }>('workspaceOfficeWatch.fileAdded'),
 };
 
 // File streaming updates (real-time content push when agent writes)
@@ -655,39 +615,40 @@ export const fileStream = {
 
 // File snapshot providers
 export const fileSnapshot = {
-  init: httpPost<import('@/common/types/platform/fileSnapshot').SnapshotInfo, { workspace: string }>(
-    '/api/fs/snapshot/init'
+  init: bridge.buildProvider<import('@/common/types/platform/fileSnapshot').SnapshotInfo, { workspace: string }>(
+    'native-snapshot.init'
   ),
-  compare: withResponseMap(
-    httpPost<RawCompareResult, { workspace: string }>('/api/fs/snapshot/compare'),
-    fromBackendCompareResult
+  compare: bridge.buildProvider<import('@/common/types/platform/fileSnapshot').CompareResult, { workspace: string }>(
+    'native-snapshot.compare'
   ),
-  getBaselineContent: httpPost<string | null, { workspace: string; file_path: string }>('/api/fs/snapshot/baseline'),
-  getInfo: httpPost<import('@/common/types/platform/fileSnapshot').SnapshotInfo, { workspace: string }>(
-    '/api/fs/snapshot/info'
+  getBaselineContent: bridge.buildProvider<string | null, { workspace: string; file_path: string }>(
+    'native-snapshot.baseline'
   ),
-  dispose: httpPost<void, { workspace: string }>('/api/fs/snapshot/dispose'),
-  stageFile: httpPost<void, { workspace: string; file_path: string }>('/api/fs/snapshot/stage'),
-  stageAll: httpPost<void, { workspace: string }>('/api/fs/snapshot/stage-all'),
-  unstageFile: httpPost<void, { workspace: string; file_path: string }>('/api/fs/snapshot/unstage'),
-  unstageAll: httpPost<void, { workspace: string }>('/api/fs/snapshot/unstage-all'),
-  discardFile: httpPost<
+  getInfo: bridge.buildProvider<import('@/common/types/platform/fileSnapshot').SnapshotInfo, { workspace: string }>(
+    'native-snapshot.info'
+  ),
+  dispose: bridge.buildProvider<void, { workspace: string }>('native-snapshot.dispose'),
+  stageFile: bridge.buildProvider<void, { workspace: string; file_path: string }>('native-snapshot.stage'),
+  stageAll: bridge.buildProvider<void, { workspace: string }>('native-snapshot.stage-all'),
+  unstageFile: bridge.buildProvider<void, { workspace: string; file_path: string }>('native-snapshot.unstage'),
+  unstageAll: bridge.buildProvider<void, { workspace: string }>('native-snapshot.unstage-all'),
+  discardFile: bridge.buildProvider<
     void,
     {
       workspace: string;
       file_path: string;
       operation: import('@/common/types/platform/fileSnapshot').FileChangeOperation;
     }
-  >('/api/fs/snapshot/discard'),
-  resetFile: httpPost<
+  >('native-snapshot.discard'),
+  resetFile: bridge.buildProvider<
     void,
     {
       workspace: string;
       file_path: string;
       operation: import('@/common/types/platform/fileSnapshot').FileChangeOperation;
     }
-  >('/api/fs/snapshot/reset'),
-  getBranches: httpPost<string[], { workspace: string }>('/api/fs/snapshot/branches'),
+  >('native-snapshot.reset'),
+  getBranches: bridge.buildProvider<string[], { workspace: string }>('native-snapshot.branches'),
 };
 
 // ---------------------------------------------------------------------------
@@ -824,39 +785,35 @@ export const acpConversation = {
 };
 
 // ---------------------------------------------------------------------------
-// MCP Service — routed to /api/mcp/*
+// MCP Service — catalog CRUD is owned by the Electron Main process. Advanced
+// discovery/OAuth probes remain adapter operations until their native drivers
+// are available.
 // ---------------------------------------------------------------------------
 
 export const mcpService = {
-  listServers: httpGet<IMcpServer[], void>('/api/mcp/servers'),
-  createServer: httpPost<
+  listServers: bridge.buildProvider<IMcpServer[], void>('mcp-registry.list'),
+  createServer: bridge.buildProvider<
     IMcpServer,
     Pick<IMcpServer, 'name' | 'description' | 'transport' | 'original_json' | 'builtin'>
-  >('/api/mcp/servers'),
-  importServers: httpPost<
+  >('mcp-registry.create'),
+  importServers: bridge.buildProvider<
     IMcpServer[],
     { servers: Array<Pick<IMcpServer, 'name' | 'description' | 'transport' | 'original_json' | 'builtin'>> }
-  >('/api/mcp/servers/import'),
-  updateServer: httpPut<
+  >('mcp-registry.import'),
+  updateServer: bridge.buildProvider<
     IMcpServer,
     {
       id: string;
       data: Partial<Pick<IMcpServer, 'name' | 'description' | 'transport' | 'original_json' | 'builtin'>>;
     }
-  >(
-    (p) => `/api/mcp/servers/${p.id}`,
-    (p) => p.data
-  ),
-  deleteServer: httpDelete<void, { id: string }>((p) => `/api/mcp/servers/${p.id}`),
-  toggleServer: httpPost<IMcpServer, { id: string }>(
-    (p) => `/api/mcp/servers/${p.id}/toggle`,
-    () => undefined
-  ),
-  batchImportServers: httpPost<
+  >('mcp-registry.update'),
+  deleteServer: bridge.buildProvider<void, { id: string }>('mcp-registry.remove'),
+  toggleServer: bridge.buildProvider<IMcpServer, { id: string }>('mcp-registry.toggle'),
+  batchImportServers: bridge.buildProvider<
     IMcpServer[],
     { servers: Array<Partial<IMcpServer> & Pick<IMcpServer, 'name' | 'transport'>> }
-  >('/api/mcp/servers/import'),
-  getAgentMcpConfigs: httpGet<
+  >('mcp-registry.import'),
+  getAgentMcpConfigs: bridge.buildProvider<
     Array<{
       source: string;
       servers: Array<
@@ -867,8 +824,8 @@ export const mcpService = {
       >;
     }>,
     Array<{ agent_type: string; backend?: string; name: string; cli_path?: string }>
-  >('/api/mcp/agent-configs'),
-  testMcpConnection: httpPost<
+  >('native-mcp.agent-configs'),
+  testMcpConnection: bridge.buildProvider<
     {
       success: boolean;
       tools?: Array<{
@@ -883,11 +840,13 @@ export const mcpService = {
       wwwAuthenticate?: string;
     },
     IMcpServer
-  >('/api/mcp/test-connection'),
-  checkOAuthStatus: httpPost<{ authenticated: boolean }, { server_url: string }>('/api/mcp/oauth/check-status'),
-  loginMcpOAuth: httpPost<{ success: boolean; error?: string }, { server_url: string }>('/api/mcp/oauth/login'),
-  logoutMcpOAuth: httpPost<void, { server_url: string }>('/api/mcp/oauth/logout'),
-  getAuthenticatedServers: httpGet<string[], void>('/api/mcp/oauth/authenticated'),
+  >('native-mcp.test'),
+  checkOAuthStatus: bridge.buildProvider<{ authenticated: boolean }, { server_url: string }>('native-mcp.oauth-status'),
+  loginMcpOAuth: bridge.buildProvider<{ success: boolean; error?: string }, { server_url: string }>(
+    'native-mcp.oauth-login'
+  ),
+  logoutMcpOAuth: bridge.buildProvider<void, { server_url: string }>('native-mcp.oauth-logout'),
+  getAuthenticatedServers: bridge.buildProvider<string[], void>('native-mcp.oauth-authenticated'),
 };
 
 export const openclawConversation = {
@@ -962,29 +921,18 @@ export type PaginatedResult<T> = {
 };
 
 export const database = {
-  getConversationMessages: httpGet<
+  getConversationMessages: bridge.buildProvider<
     PaginatedResult<import('@/common/chat/chatLib').TMessage>,
     { conversation_id: string; page?: number; page_size?: number; order?: string; content_mode?: 'compact' | 'full' }
-  >(
-    (p) =>
-      `/api/conversations/${p.conversation_id}/messages?page=${p.page ?? 1}&page_size=${p.page_size ?? 50}${p.order ? `&order=${p.order}` : ''}${p.content_mode ? `&content_mode=${p.content_mode}` : ''}`
-  ),
-  getConversationMessage: httpGet<
+  >('conversation.native.history'),
+  getConversationMessage: bridge.buildProvider<
     import('@/common/chat/chatLib').TMessage,
     { conversation_id: string; message_id: string }
-  >((p) => `/api/conversations/${p.conversation_id}/messages/${encodeURIComponent(p.message_id)}`),
-  getUserConversations: withResponseMap(
-    httpGet<PaginatedResult<import('@/common/config/storage').TChatConversation>, { cursor?: string; limit?: number }>(
-      (p) => {
-        const params = new URLSearchParams();
-        if (p.cursor) params.set('cursor', p.cursor);
-        if (p.limit) params.set('limit', String(p.limit));
-        const qs = params.toString();
-        return `/api/conversations${qs ? `?${qs}` : ''}`;
-      }
-    ),
-    fromApiPaginatedConversations
-  ),
+  >('conversation.native.message'),
+  getUserConversations: bridge.buildProvider<
+    PaginatedResult<import('@/common/config/storage').TChatConversation>,
+    { cursor?: string; limit?: number }
+  >('conversation.native.list'),
   searchConversationMessages: withResponseMap(
     httpGet<PaginatedResult<ApiMessageSearchItem>, { keyword: string; page?: number; page_size?: number }>(
       (p) =>
@@ -1090,32 +1038,30 @@ export const windowControls = {
 };
 
 // ---------------------------------------------------------------------------
-// System Settings — routed to /api/settings/*
+// System Settings — typed Electron IPC backed by ProcessConfig
 // ---------------------------------------------------------------------------
 
 export const systemSettings = {
-  getCloseToTray: httpGet<boolean, void>('/api/settings/client?key=closeToTray'),
-  setCloseToTray: httpPut<void, { enabled: boolean }>('/api/settings/client', (p) => ({ closeToTray: p.enabled })),
-  getNotificationEnabled: httpGet<boolean, void>('/api/settings/client?key=notificationEnabled'),
-  setNotificationEnabled: httpPut<void, { enabled: boolean }>('/api/settings/client', (p) => ({
-    notificationEnabled: p.enabled,
-  })),
-  getCronNotificationEnabled: httpGet<boolean, void>('/api/settings/client?key=cronNotificationEnabled'),
-  setCronNotificationEnabled: httpPut<void, { enabled: boolean }>('/api/settings/client', (p) => ({
-    cronNotificationEnabled: p.enabled,
-  })),
-  getKeepAwake: httpGet<boolean, void>('/api/settings/client?key=keepAwake'),
-  setKeepAwake: httpPut<void, { enabled: boolean }>('/api/settings/client', (p) => ({ keepAwake: p.enabled })),
-  changeLanguage: httpPatch<void, { language: string }>('/api/settings', (p) => ({ language: p.language })),
-  languageChanged: wsEmitter<{ language: string }>('system-settings:language-changed'),
-  getSaveUploadToWorkspace: httpGet<boolean, void>('/api/settings/client?key=saveUploadToWorkspace'),
-  setSaveUploadToWorkspace: httpPut<void, { enabled: boolean }>('/api/settings/client', (p) => ({
-    saveUploadToWorkspace: p.enabled,
-  })),
-  getAutoPreviewOfficeFiles: httpGet<boolean, void>('/api/settings/client?key=autoPreviewOfficeFiles'),
-  setAutoPreviewOfficeFiles: httpPut<void, { enabled: boolean }>('/api/settings/client', (p) => ({
-    autoPreviewOfficeFiles: p.enabled,
-  })),
+  getCloseToTray: bridge.buildProvider<boolean, void>('system-settings:get-close-to-tray'),
+  setCloseToTray: bridge.buildProvider<void, { enabled: boolean }>('system-settings:set-close-to-tray'),
+  getNotificationEnabled: bridge.buildProvider<boolean, void>('system-settings:get-notification-enabled'),
+  setNotificationEnabled: bridge.buildProvider<void, { enabled: boolean }>('system-settings:set-notification-enabled'),
+  getCronNotificationEnabled: bridge.buildProvider<boolean, void>('system-settings:get-cron-notification-enabled'),
+  setCronNotificationEnabled: bridge.buildProvider<void, { enabled: boolean }>(
+    'system-settings:set-cron-notification-enabled'
+  ),
+  getKeepAwake: bridge.buildProvider<boolean, void>('system-settings:get-keep-awake'),
+  setKeepAwake: bridge.buildProvider<void, { enabled: boolean }>('system-settings:set-keep-awake'),
+  changeLanguage: bridge.buildProvider<void, { language: string }>('system-settings:change-language'),
+  languageChanged: bridge.buildEmitter<{ language: string }>('system-settings:language-changed'),
+  getSaveUploadToWorkspace: bridge.buildProvider<boolean, void>('system-settings:get-save-upload-to-workspace'),
+  setSaveUploadToWorkspace: bridge.buildProvider<void, { enabled: boolean }>(
+    'system-settings:set-save-upload-to-workspace'
+  ),
+  getAutoPreviewOfficeFiles: bridge.buildProvider<boolean, void>('system-settings:get-auto-preview-office-files'),
+  setAutoPreviewOfficeFiles: bridge.buildProvider<void, { enabled: boolean }>(
+    'system-settings:set-auto-preview-office-files'
+  ),
   getPetEnabled: bridge.buildProvider<boolean, void>('system-settings:get-pet-enabled'),
   setPetEnabled: bridge.buildProvider<void, { enabled: boolean }>('system-settings:set-pet-enabled'),
   getPetSize: bridge.buildProvider<number, void>('system-settings:get-pet-size'),
@@ -1349,6 +1295,7 @@ export interface IWebUIStatus {
   networkUrl?: string;
   lanIP?: string;
   candidateLanIPs?: string[];
+  publicUrl?: string;
   tailscaleIP?: string;
   tailscaleUrl?: string;
   adminUsername: string;
@@ -1362,6 +1309,7 @@ export interface IWebUIStartResult {
   networkUrl?: string;
   lanIP?: string;
   candidateLanIPs?: string[];
+  publicUrl?: string;
   tailscaleIP?: string;
   tailscaleUrl?: string;
   initialPassword?: string;
@@ -1379,6 +1327,7 @@ export const webui = {
     networkUrl?: string;
     lanIP?: string;
     candidateLanIPs?: string[];
+    publicUrl?: string;
     tailscaleIP?: string;
     tailscaleUrl?: string;
     initialPassword?: string;
@@ -1394,49 +1343,29 @@ export const webui = {
 };
 
 // ---------------------------------------------------------------------------
-// Cron — routed to /api/cron/*
+// Cron — Electron IPC backed by Tomny Core scheduledTasks
 // ---------------------------------------------------------------------------
 
 export const cron = {
-  listJobs: httpGet<ICronJob[], void>('/api/cron/jobs'),
-  listJobsByConversation: httpGet<ICronJob[], { conversation_id: string }>(
-    (p) => `/api/cron/jobs?conversation_id=${encodeURIComponent(p.conversation_id)}`
-  ),
-  getJob: httpGet<ICronJob | null, { job_id: string }>((p) => `/api/cron/jobs/${p.job_id}`),
-  addJob: httpPost<ICronJob, ICreateCronJobParams>('/api/cron/jobs'),
-  updateJob: httpPut<ICronJob, { job_id: string; updates: Partial<ICronJob> }>(
-    (p) => `/api/cron/jobs/${p.job_id}`,
-    (p) => ({
-      name: p.updates.name,
-      description: p.updates.description,
-      enabled: p.updates.enabled,
-      schedule: p.updates.schedule,
-      message: p.updates.target?.payload.text,
-      execution_mode: p.updates.target?.execution_mode,
-      agent_config: p.updates.metadata?.agent_config,
-      conversation_title: p.updates.metadata?.conversation_title,
-      max_retries: p.updates.state?.max_retries,
-    })
-  ),
-  removeJob: httpDelete<void, { job_id: string }>((p) => `/api/cron/jobs/${p.job_id}`),
-  runNow: httpPost<{ conversation_id: string }, { job_id: string }>((p) => `/api/cron/jobs/${p.job_id}/run`),
-  saveSkill: httpPost<void, { job_id: string; content: string }>(
-    (p) => `/api/cron/jobs/${p.job_id}/skill`,
-    (p) => ({ content: p.content })
-  ),
-  hasSkill: withResponseMap(
-    httpGet<{ has_skill: boolean }, { job_id: string }>((p) => `/api/cron/jobs/${p.job_id}/skill`),
-    (data) => Boolean(data?.has_skill)
-  ),
-  deleteSkill: httpDelete<void, { job_id: string }>((p) => `/api/cron/jobs/${p.job_id}/skill`),
-  onJobCreated: wsEmitter<ICronJob>('cron.job-created'),
-  onJobUpdated: wsEmitter<ICronJob>('cron.job-updated'),
-  onJobRemoved: wsEmitter<{ job_id: string }>('cron.job-removed'),
-  onJobExecuted: wsEmitter<{ job_id: string; status: 'ok' | 'error' | 'skipped' | 'missed'; error?: string }>(
-    'cron.job-executed'
-  ),
+  listJobs: bridge.buildProvider<ICronJob[], void>('cron.list-jobs'),
+  listJobsByConversation: bridge.buildProvider<ICronJob[], { conversation_id: string }>('cron.list-by-conversation'),
+  getJob: bridge.buildProvider<ICronJob | null, { job_id: string }>('cron.get-job'),
+  addJob: bridge.buildProvider<ICronJob, ICreateCronJobParams>('cron.add-job'),
+  updateJob: bridge.buildProvider<ICronJob, { job_id: string; updates: Partial<ICronJob> }>('cron.update-job'),
+  removeJob: bridge.buildProvider<void, { job_id: string }>('cron.remove-job'),
+  runNow: bridge.buildProvider<{ conversation_id: string }, { job_id: string }>('cron.run-now'),
+  saveSkill: bridge.buildProvider<void, { job_id: string; content: string }>('cron.save-skill'),
+  hasSkill: bridge.buildProvider<boolean, { job_id: string }>('cron.has-skill'),
+  deleteSkill: bridge.buildProvider<void, { job_id: string }>('cron.delete-skill'),
+  onJobCreated: bridge.buildEmitter<ICronJob>('cron.job-created'),
+  onJobUpdated: bridge.buildEmitter<ICronJob>('cron.job-updated'),
+  onJobRemoved: bridge.buildEmitter<{ job_id: string }>('cron.job-removed'),
+  onJobExecuted: bridge.buildEmitter<{
+    job_id: string;
+    status: 'ok' | 'error' | 'skipped' | 'missed';
+    error?: string;
+  }>('cron.job-executed'),
 };
-
 // ---------------------------------------------------------------------------
 // Cron types (re-exported for consumers)
 // ---------------------------------------------------------------------------
@@ -1509,6 +1438,8 @@ export interface ICreateCronJobParams {
 
 interface ISendMessageParams {
   input: string;
+  /** Ephemeral text used only for the model; the server persists `input`. */
+  model_input?: string;
   conversation_id: string;
   files?: string[];
   loading_id?: string;
@@ -1940,58 +1871,58 @@ export const hub = {
 };
 
 // ---------------------------------------------------------------------------
-// Team Mode API — routed to /api/teams/*
+// Team Mode API — Electron IPC backed by Tomny AgentMesh
 // ---------------------------------------------------------------------------
 
 export type { IAddTeamAgentParams, ICreateTeamParams } from './teamMapper';
 
 export const team = {
-  create: withResponseMap(
-    httpPost<TTeam, ICreateTeamParams>('/api/teams', (p) => ({
-      name: p.name,
-      agents: p.agents.map(toBackendAgent),
-      ...(p.workspace ? { workspace: p.workspace } : {}),
-    })),
-    fromBackendTeam
+  create: bridge.buildProvider<TTeam, ICreateTeamParams>('team.create'),
+  list: bridge.buildProvider<TTeam[], { user_id: string }>('team.list'),
+  get: bridge.buildProvider<TTeam | null, { id: string }>('team.get'),
+  remove: bridge.buildProvider<void, { id: string }>('team.remove'),
+  addAgent: bridge.buildProvider<TeamAgent, IAddTeamAgentParams>('team.add-agent'),
+  removeAgent: bridge.buildProvider<void, { team_id: string; slot_id: string }>('team.remove-agent'),
+  stop: bridge.buildProvider<void, { team_id: string }>('team.stop'),
+  ensureSession: bridge.buildProvider<void, { team_id: string }>('team.ensure-session'),
+  renameAgent: bridge.buildProvider<void, { team_id: string; slot_id: string; new_name: string }>('team.rename-agent'),
+  renameTeam: bridge.buildProvider<void, { id: string; name: string }>('team.rename'),
+  setSessionMode: bridge.buildProvider<void, { team_id: string; session_mode: string }>('team.set-session-mode'),
+  agentStatusChanged: bridge.buildEmitter<ITeamAgentStatusEvent>('team.agent.status'),
+  agentSpawned: bridge.buildEmitter<ITeamAgentSpawnedEvent>('team.agent.spawned'),
+  agentRemoved: bridge.buildEmitter<ITeamAgentRemovedEvent>('team.agent.removed'),
+  agentRenamed: bridge.buildEmitter<ITeamAgentRenamedEvent>('team.agent.renamed'),
+  listChanged: bridge.buildEmitter<ITeamListChangedEvent>('team.list-changed'),
+  created: bridge.buildEmitter<ITeamCreatedEvent>('team.created'),
+  teammateMessage: bridge.buildEmitter<ITeamTeammateMessageEvent>('team.teammate.message'),
+};
+
+// ---------------------------------------------------------------------------
+// Company — typed Electron IPC backed by Tomny company services
+// ---------------------------------------------------------------------------
+
+export const company = {
+  createFromDescription: bridge.buildProvider<CompanyResult<CompanyConfig>, CreateFromDescriptionRequest>(
+    'company.create-from-description'
   ),
-  list: withResponseMap(
-    httpGet<TTeam[], { user_id: string }>((p) => `/api/teams?user_id=${encodeURIComponent(p.user_id)}`),
-    fromBackendTeamList
+  getStructure: bridge.buildProvider<CompanyResult<CompanyStructure>, CompanyIdRequest>('company.get-structure'),
+  getRules: bridge.buildProvider<CompanyResult<string[]>, CompanyIdRequest>('company.get-rules'),
+  setRules: bridge.buildProvider<CompanyResult<CompanyConfig>, SetRulesRequest>('company.set-rules'),
+  listAgents: bridge.buildProvider<CompanyResult<ListAgentsResponse>, void>('company.list-agents'),
+  setAssignment: bridge.buildProvider<CompanyResult<CompanyConfig>, SetAssignmentRequest>('company.set-assignment'),
+  acceptDrafts: bridge.buildProvider<CompanyResult<AcceptDraftsResult>, CompanyIdRequest>('company.accept-drafts'),
+  updateStructure: bridge.buildProvider<CompanyResult<CompanyConfig>, UpdateStructureRequest>(
+    'company.update-structure'
   ),
-  get: withResponseMap(
-    httpGet<TTeam | null, { id: string }>((p) => `/api/teams/${p.id}`),
-    fromBackendTeamOptional
+  deleteCompany: bridge.buildProvider<CompanyResult<{ deleted: boolean }>, CompanyIdRequest>('company.delete-company'),
+  runConversation: bridge.buildProvider<CompanyResult<RunConversationBridgeResult>, RunConversationBridgeRequest>(
+    'company.run-conversation'
   ),
-  remove: httpDelete<void, { id: string }>((p) => `/api/teams/${p.id}`),
-  addAgent: withResponseMap(
-    httpPost<TeamAgent, IAddTeamAgentParams>(
-      (p) => `/api/teams/${p.team_id}/agents`,
-      (p) => toBackendAgent(p.agent)
-    ),
-    fromBackendAgent
+  resolvePermission: bridge.buildProvider<CompanyResult<{ resolved: boolean }>, ResolvePermissionRequest>(
+    'company.resolve-permission'
   ),
-  removeAgent: httpDelete<void, { team_id: string; slot_id: string }>(
-    (p) => `/api/teams/${p.team_id}/agents/${p.slot_id}`
+  cancelConversation: bridge.buildProvider<CompanyResult<void>, CancelConversationRequest>(
+    'company.cancel-conversation'
   ),
-  stop: httpDelete<void, { team_id: string }>((p) => `/api/teams/${p.team_id}/session`),
-  ensureSession: httpPost<void, { team_id: string }>((p) => `/api/teams/${p.team_id}/session`),
-  renameAgent: httpPatch<void, { team_id: string; slot_id: string; new_name: string }>(
-    (p) => `/api/teams/${p.team_id}/agents/${p.slot_id}/name`,
-    (p) => ({ name: p.new_name })
-  ),
-  renameTeam: httpPatch<void, { id: string; name: string }>(
-    (p) => `/api/teams/${p.id}/name`,
-    (p) => ({ name: p.name })
-  ),
-  setSessionMode: httpPost<void, { team_id: string; session_mode: string }>(
-    (p) => `/api/teams/${p.team_id}/session-mode`,
-    (p) => ({ session_mode: p.session_mode })
-  ),
-  agentStatusChanged: wsEmitter<ITeamAgentStatusEvent>('team.agent.status'),
-  agentSpawned: wsEmitter<ITeamAgentSpawnedEvent>('team.agent.spawned'),
-  agentRemoved: wsEmitter<ITeamAgentRemovedEvent>('team.agent.removed'),
-  agentRenamed: wsEmitter<ITeamAgentRenamedEvent>('team.agent.renamed'),
-  listChanged: wsEmitter<ITeamListChangedEvent>('team.list-changed'),
-  created: wsEmitter<ITeamCreatedEvent>('team.created'),
-  teammateMessage: wsEmitter<ITeamTeammateMessageEvent>('team.teammate.message'),
+  conversationEvent: bridge.buildEmitter<ConversationEventEnvelope>('company.conversation-event'),
 };

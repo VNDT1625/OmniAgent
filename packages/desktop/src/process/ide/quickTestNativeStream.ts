@@ -27,11 +27,72 @@
 
 import { execFile, spawn, type ChildProcess } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { NativeLogStream, NativeStreamOpener } from './quickTestNativeTracer';
+import type {
+  NativeAutomationAction,
+  NativeLogStream,
+  NativeStreamOpener,
+  NativeTargetIdentity,
+} from './quickTestNativeTracer';
 import type { TracePlatform } from './quickTestTracer';
 import { resolveAdb } from '../testing/engines/toolResolver';
 
 const execFileAsync = promisify(execFile);
+
+export type WindowsNativeTarget =
+  | { kind: 'process'; processId: number }
+  | { kind: 'executable'; executablePath: string };
+
+/** Parse `pid:123`, a raw numeric PID, or an executable path. */
+export const parseWindowsNativeTarget = (target: string): WindowsNativeTarget | null => {
+  const value = target.trim();
+  if (!value) return null;
+  const pidMatch = value.match(/^(?:pid:)?(\d+)$/i);
+  if (pidMatch) {
+    const processId = Number(pidMatch[1]);
+    return Number.isSafeInteger(processId) && processId > 0 ? { kind: 'process', processId } : null;
+  }
+  return { kind: 'executable', executablePath: value };
+};
+
+export type WindowsUiaSelector = { automationId?: string; name?: string; controlType?: string };
+
+const selectorPart = (value: string): string => encodeURIComponent(value).replace(/%20/g, '+');
+
+/** Build a stable, replayable selector without embedding the transient PID. */
+export const buildWindowsUiaSelector = (item: WindowsUiaSelector): string => {
+  const parts: string[] = [];
+  if (item.automationId) parts.push(`id=${selectorPart(item.automationId)}`);
+  if (item.name) parts.push(`name=${selectorPart(item.name)}`);
+  if (item.controlType) parts.push(`type=${selectorPart(item.controlType.replace(/^ControlType\./, ''))}`);
+  return `uia:${parts.join(';') || 'focused=true'}`;
+};
+
+/** Parse both structured selectors and the legacy `uia:<id-or-name>` form. */
+export const parseWindowsUiaSelector = (selector: string): WindowsUiaSelector | null => {
+  if (!selector.startsWith('uia:')) return null;
+  const body = selector.slice(4);
+  if (!body || body === 'focused=true') return {};
+  if (!body.includes('=')) return { automationId: body };
+  const result: WindowsUiaSelector = {};
+  for (const segment of body.split(';')) {
+    const equal = segment.indexOf('=');
+    if (equal < 1) continue;
+    const key = segment.slice(0, equal);
+    const raw = segment.slice(equal + 1).replace(/\+/g, ' ');
+    let value = '';
+    try {
+      value = decodeURIComponent(raw);
+    } catch {
+      return null;
+    }
+    if (key === 'id') result.automationId = value;
+    else if (key === 'name') result.name = value;
+    else if (key === 'type') result.controlType = value;
+  }
+  return Object.keys(result).length > 0 ? result : null;
+};
+
+const encodePowerShellValue = (value: string): string => Buffer.from(value, 'utf8').toString('base64');
 
 /** Resolve the first connected android serial (`emulator-5554` or a device id). */
 const firstAndroidSerial = async (adbPath: string): Promise<string | null> => {
@@ -90,6 +151,128 @@ const streamFromProcess = (proc: ChildProcess): NativeLogStream => {
   };
 };
 
+const runPowerShell = async (script: string, timeout = 5000): Promise<string> => {
+  const { stdout } = await execFileAsync(
+    'powershell.exe',
+    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-Command', script],
+    { timeout, windowsHide: true, maxBuffer: 4 * 1024 * 1024 }
+  );
+  return stdout.trim();
+};
+
+const resolveWindowsIdentity = async (processId: number, executable?: string): Promise<NativeTargetIdentity> => {
+  const fallback: NativeTargetIdentity = { platform: 'windows', processId, executable };
+  try {
+    const stdout = await runPowerShell(
+      `$p = Get-Process -Id ${processId} -ErrorAction Stop; [Console]::WriteLine((@{ title=$p.MainWindowTitle; handle=([string]$p.MainWindowHandle); path=$p.Path } | ConvertTo-Json -Compress))`
+    );
+    const item = JSON.parse(stdout.split(/\r?\n/).pop() ?? '{}') as {
+      title?: string;
+      handle?: string;
+      path?: string;
+    };
+    return {
+      ...fallback,
+      executable: item.path || executable,
+      windowHandle: item.handle && item.handle !== '0' ? item.handle : undefined,
+      windowTitle: item.title || undefined,
+    };
+  } catch {
+    return fallback;
+  }
+};
+
+const captureWindowsTarget = async (processId: number): Promise<Buffer | null> => {
+  try {
+    const stdout = await runPowerShell(`
+      Add-Type -AssemblyName UIAutomationClient; Add-Type -AssemblyName UIAutomationTypes; Add-Type -AssemblyName System.Drawing;
+      $condition = New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty, ${processId});
+      $e = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Children, $condition);
+      if ($null -eq $e) { exit 0 }; $r = $e.Current.BoundingRectangle;
+      if ($r.Width -le 0 -or $r.Height -le 0) { exit 0 };
+      $bmp = New-Object System.Drawing.Bitmap([int]$r.Width, [int]$r.Height);
+      $g = [System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen([int]$r.X, [int]$r.Y, 0, 0, $bmp.Size);
+      $m = New-Object System.IO.MemoryStream; $bmp.Save($m, [System.Drawing.Imaging.ImageFormat]::Png);
+      [Console]::Write([Convert]::ToBase64String($m.ToArray())); $g.Dispose(); $bmp.Dispose(); $m.Dispose();
+    `);
+    return stdout ? Buffer.from(stdout, 'base64') : null;
+  } catch {
+    return null;
+  }
+};
+
+const performWindowsAction = async (processId: number, action: NativeAutomationAction): Promise<boolean> => {
+  const selector = parseWindowsUiaSelector(action.selector);
+  if (!selector) return false;
+  const id = encodePowerShellValue(selector.automationId ?? '');
+  const name = encodePowerShellValue(selector.name ?? '');
+  const type = encodePowerShellValue(selector.controlType ?? '');
+  const value = encodePowerShellValue(action.kind === 'input' ? action.value : '');
+  const actionKind = action.kind;
+  try {
+    const stdout = await runPowerShell(`
+      Add-Type -AssemblyName UIAutomationClient; Add-Type -AssemblyName UIAutomationTypes;
+      function Decode([string]$v) { [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($v)) }
+      $id=Decode('${id}'); $name=Decode('${name}'); $type=Decode('${type}'); $value=Decode('${value}');
+      $pc=New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty, ${processId});
+      $root=[System.Windows.Automation.AutomationElement]::RootElement.FindFirst([System.Windows.Automation.TreeScope]::Children,$pc);
+      if ($null -eq $root) { [Console]::Write('false'); exit 0 }; $conditions=New-Object System.Collections.Generic.List[System.Windows.Automation.Condition];
+      if ($id) { $conditions.Add((New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::AutomationIdProperty,$id))) }
+      if ($name) { $conditions.Add((New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty,$name))) }
+      if ($type) { $conditions.Add((New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::LocalizedControlTypeProperty,$type.ToLowerInvariant()))) }
+      $condition=if($conditions.Count -eq 0){[System.Windows.Automation.Condition]::TrueCondition}elseif($conditions.Count -eq 1){$conditions[0]}else{New-Object System.Windows.Automation.AndCondition(,$conditions.ToArray())};
+      $e=$root.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$condition); if($null -eq $e){[Console]::Write('false');exit 0};
+      try { $e.SetFocus() } catch {};
+      if ('${actionKind}' -eq 'input') { try { $p=$e.GetCurrentPattern([System.Windows.Automation.ValuePattern]::Pattern); $p.SetValue($value); [Console]::Write('true') } catch { [Console]::Write('false') } }
+      else { try { $p=$e.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern); $p.Invoke(); [Console]::Write('true') } catch { try { $p=$e.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern); $p.Select(); [Console]::Write('true') } catch { [Console]::Write('false') } } }
+    `);
+    return stdout.endsWith('true');
+  } catch {
+    return false;
+  }
+};
+
+const createAttachedWindowsStream = (processId: number): NativeLogStream => {
+  const closeListeners: Array<(info: { code: number | null }) => void> = [];
+  let closed = false;
+  const timer = setInterval(() => {
+    if (closed) return;
+    try {
+      process.kill(processId, 0);
+    } catch {
+      closed = true;
+      clearInterval(timer);
+      for (const listener of closeListeners) listener({ code: 0 });
+    }
+  }, 1000);
+  return {
+    processId,
+    capabilities: { logs: false, interactions: true, screenshots: true, actions: true, attach: true },
+    onLine: () => undefined,
+    onClose: (listener) => closeListeners.push(listener),
+    close: () => {
+      closed = true;
+      clearInterval(timer);
+    },
+  };
+};
+
+const installWindowsAutomation = async (stream: NativeLogStream, executable?: string): Promise<NativeLogStream> => {
+  const processId = stream.processId;
+  if (!processId) return stream;
+  stream.identity = await resolveWindowsIdentity(processId, executable);
+  stream.capabilities = {
+    logs: stream.capabilities?.logs ?? true,
+    interactions: true,
+    screenshots: true,
+    actions: true,
+    attach: stream.capabilities?.attach ?? false,
+  };
+  stream.captureScreenshot = () => captureWindowsTarget(processId);
+  stream.performAction = (action) => performWindowsAction(processId, action);
+  attachWindowsAccessibilityProbe(stream);
+  return stream;
+};
 /** Attach a Windows UI Automation poller to a process-backed native stream. */
 const attachWindowsAccessibilityProbe = (stream: NativeLogStream): void => {
   if (process.platform !== 'win32' || !stream.processId) return;
@@ -162,6 +345,7 @@ const openAndroidStream = async (target: string): Promise<NativeLogStream | null
   const proc = spawn(adb.path, ['-s', serial, 'logcat', '-v', 'brief'], { stdio: ['ignore', 'pipe', 'pipe'] });
   if (!proc.pid) return null;
   const stream = streamFromProcess(proc);
+  stream.target = serial;
   let interactionListener:
     | ((event: Extract<import('./quickTestTracer').TraceEvent, { kind: 'click' | 'input' }>) => void)
     | null = null;
@@ -231,15 +415,21 @@ const openAndroidStream = async (target: string): Promise<NativeLogStream | null
 /** Launch a Windows `.exe` and stream its stdout/stderr. */
 const openWindowsStream = async (target: string): Promise<NativeLogStream | null> => {
   if (process.platform !== 'win32') return null;
-  const exePath = target.trim();
-  if (!exePath) return null;
+  const parsed = parseWindowsNativeTarget(target);
+  if (!parsed) return null;
+  if (parsed.kind === 'process') {
+    const stream = createAttachedWindowsStream(parsed.processId);
+    stream.target = `pid:${parsed.processId}`;
+    return installWindowsAutomation(stream);
+  }
+  const exePath = parsed.executablePath;
   const proc = spawn(exePath, [], { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: false });
   // `spawn` reports launch failures asynchronously via the 'error' event; pid is
   // set synchronously when the OS accepted the spawn.
   if (!proc.pid) return null;
   const stream = streamFromProcess(proc);
-  attachWindowsAccessibilityProbe(stream);
-  return stream;
+  stream.target = exePath;
+  return installWindowsAutomation(stream, exePath);
 };
 
 /**

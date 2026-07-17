@@ -244,7 +244,13 @@ const NewSessionPanel: React.FC<NewSessionPanelProps> = ({
     if (!canGenerate) return;
     setGenerating(true);
     const appUrl = platform === 'web' ? (app.url ?? '').trim() || undefined : undefined;
-    void onGenerate({ description: prompt.trim(), platform, model: model || undefined, appUrl })
+    void onGenerate({
+      description: prompt.trim(),
+      platform,
+      model: model || undefined,
+      appUrl,
+      workspace: projectDir || undefined,
+    })
       .then((draft) => {
         if (!name.trim()) setName(draft.name);
         setStepsText(draft.steps.map((s) => s.description).join('\n'));

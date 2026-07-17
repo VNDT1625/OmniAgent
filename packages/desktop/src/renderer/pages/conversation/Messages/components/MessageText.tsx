@@ -9,10 +9,10 @@ import { AIONUI_FILES_MARKER } from '@/common/config/constants';
 import { useConversationContextSafe } from '@/renderer/hooks/context/ConversationContext';
 import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { iconColors } from '@/renderer/styles/colors';
-import { Alert, Message, Tooltip } from '@arco-design/web-react';
-import { Copy } from '@icon-park/react';
+import { Alert, Button, Message, Tooltip } from '@arco-design/web-react';
+import { Copy, PreviewOpen } from '@icon-park/react';
 import classNames from 'classnames';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { copyText } from '@/renderer/utils/ui/clipboard';
 import CollapsibleContent from '@renderer/components/chat/CollapsibleContent';
@@ -22,6 +22,8 @@ import MarkdownView from '@renderer/components/Markdown';
 import { stripThinkTags, hasThinkTags } from '@renderer/utils/chat/thinkTagFilter';
 import { stripTokenWatermarkNotice } from '@/common/chat/chatLib';
 import { stripSkillSuggest, hasSkillSuggest } from '@renderer/utils/chat/skillSuggestParser';
+import { getSecretMarkers, renderSecretMarkers } from '@renderer/utils/chat/secretMarkers';
+import { ideClient } from '@/renderer/pages/studio/ide/ideClient';
 
 /**
  * Format a timestamp for message display.
@@ -122,15 +124,31 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
   }, [message.content.content]);
 
   const { text, files } = parseFileMarker(contentToRender);
-  const { data, json } = useFormatContent(text);
   const { t } = useTranslation();
   const [showCopyAlert, setShowCopyAlert] = useState(false);
+  const [locallyRevealedText, setLocallyRevealedText] = useState<string | null>(null);
+  const [unavailableSecrets, setUnavailableSecrets] = useState<Set<string>>(() => new Set());
+  const [revealingSecret, setRevealingSecret] = useState<string | null>(null);
   const isUserMessage = message.position === 'right';
   const isTeammateMessage = message.position === 'left' && message.content.teammateMessage === true;
   const shouldRenderPlainText = isUserMessage;
   const conversationContext = useConversationContextSafe();
   const layout = useLayoutContext();
   const isMobile = layout?.isMobile ?? false;
+  const secretMarkers = useMemo(() => (isUserMessage ? [] : getSecretMarkers(text)), [isUserMessage, text]);
+  const renderedText = useMemo(
+    () =>
+      locallyRevealedText ??
+      renderSecretMarkers(text, {}, unavailableSecrets, (alias) => t('ide.memory.secret.chatUnavailable', { alias })),
+    [locallyRevealedText, t, text, unavailableSecrets]
+  );
+  const { data, json } = useFormatContent(renderedText);
+
+  useEffect(() => {
+    setLocallyRevealedText(null);
+    setUnavailableSecrets(new Set());
+  }, [text]);
+
   const resolvedFiles = useMemo(
     () => files.map((file_path) => resolveMessageFilePath(file_path, conversationContext?.workspace)),
     [conversationContext?.workspace, files]
@@ -142,6 +160,7 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
   }
 
   const handleCopy = () => {
+    // Copy the persisted opaque marker, never a value revealed only in this local view.
     const baseText = shouldRenderPlainText ? text : json ? JSON.stringify(data, null, 2) : text;
     const fileList = files.length ? `Files:\n${files.map((path) => `- ${path}`).join('\n')}\n\n` : '';
     const textToCopy = fileList + baseText;
@@ -153,6 +172,30 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
       .catch(() => {
         Message.error(t('common.copyFailed'));
       });
+  };
+
+  const handleSecretReveal = async (): Promise<void> => {
+    if (!conversationContext?.workspace || revealingSecret) return;
+    if (locallyRevealedText !== null) {
+      setLocallyRevealedText(null);
+      return;
+    }
+
+    setRevealingSecret('all');
+    const response = await ideClient
+      .repoSecretRenderMarkers(conversationContext.workspace, text)
+      .catch((cause): { ok: false; error: string } => ({
+        ok: false,
+        error: cause instanceof Error ? cause.message : String(cause),
+      }));
+    setRevealingSecret(null);
+    if ('error' in response) {
+      setUnavailableSecrets(new Set(secretMarkers.map(({ alias }) => alias)));
+      Message.error(response.error);
+      return;
+    }
+    setUnavailableSecrets(new Set());
+    setLocallyRevealedText(response.data.text);
   };
 
   const copyButton = (
@@ -200,6 +243,24 @@ const MessageText: React.FC<{ message: IMessageText }> = ({ message }) => {
                 ))}
               </HorizontalFileList>
             )}
+          </div>
+        )}
+        {secretMarkers.length > 0 && (
+          <div className='mb-6px flex flex-wrap items-center gap-6px'>
+            {secretMarkers.map(({ alias }) => (
+              <Button
+                key={alias}
+                size='mini'
+                icon={<PreviewOpen theme='outline' size={13} />}
+                loading={revealingSecret !== null}
+                disabled={!conversationContext?.workspace}
+                onClick={() => void handleSecretReveal()}
+              >
+                {locallyRevealedText !== null
+                  ? t('ide.memory.secret.chatHide', { alias })
+                  : t('ide.memory.secret.chatReveal', { alias })}
+              </Button>
+            ))}
           </div>
         )}
         <div

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   appProviderModels,
   tomnyModelArgs,
-} from '../../../packages/desktop/src/process/experimentalCore/tomnyCoreAdapter';
+} from '../../../packages/desktop/src/process/experimentalCore/adapters/tomnyCoreAdapter';
 
 describe('Tomny app provider catalog', () => {
   it('uses enabled models from app settings and does not expose secrets as CLI arguments', () => {

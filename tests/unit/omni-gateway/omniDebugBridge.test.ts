@@ -39,6 +39,11 @@ const fakeIde = (overrides?: Partial<IdeMcpService>): IdeMcpService => ({
   context: vi.fn(async () => ({ summary: '' })),
   map: vi.fn(async () => ({ summary: '' })),
   analyze: vi.fn(async () => ({ summary: '' })),
+  analyzeImage: vi.fn(async () => ({
+    json: { schemaVersion: 1, image: { width: 10, height: 20 } },
+    semanticText: 'Image: 10x20',
+    mockUi: '[image]\n[/image]',
+  })),
   compact: vi.fn(async () => ({ summary: '' })),
   runCommand: vi.fn(async () => ({ code: 0, stdout: '', stderr: '', timedOut: false, durationMs: 0 })),
   ...overrides,

@@ -19,7 +19,13 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { buildOmniIdeServer } from '@/process/omni-gateway/omniGatewayProfile';
 import { createOmniGatewayState } from '@/process/omni-gateway/omniGatewayState';
-import type { IdeMcpService } from '@/process/ide/mcp/ideServer';
+import type { IdeMcpService, QuickTestScenarioAgentService } from '@/process/ide/mcp/ideServer';
+
+import {
+  OMNI_IDE_BASE_ALLOWLIST_NAMES,
+  OMNI_IDE_DANGEROUS_NAMES,
+  OMNI_IDE_EXTERNAL_ALLOWLIST_NAMES,
+} from '@/process/omni-gateway/omniIdeAllowlist';
 
 const TTL_MS = 60_000;
 
@@ -45,13 +51,37 @@ const fakeIdeService = (): IdeMcpService => ({
   context: vi.fn(async () => ({ summary: '' })),
   map: vi.fn(async () => ({ summary: '' })),
   analyze: vi.fn(async () => ({ summary: '' })),
+  analyzeImage: vi.fn(async () => ({
+    json: { schemaVersion: 1, image: { width: 10, height: 20 } },
+    semanticText: 'Image: 10x20',
+    mockUi: '[image]\n[/image]',
+  })),
   compact: vi.fn(async () => ({ summary: '' })),
   runCommand: vi.fn(async () => ({ code: 0, stdout: '', stderr: '', timedOut: false, durationMs: 0 })),
+});
+
+const fakeQuickTestScenarios = (): QuickTestScenarioAgentService => ({
+  list: vi.fn(async () => ({ scenarios: [], total: 0 })),
+  describe: vi.fn(async () => ({
+    id: 'scenario-1',
+    name: 'Scenario',
+    platform: 'web',
+    stepCount: 0,
+    createdAt: 1,
+    rootPath: '/tmp/repo',
+    steps: [],
+  })),
+  run: vi.fn(async () => ({ runId: 'run-1', scenarioId: 'scenario-1', status: 'queued', queuedAt: 1 })),
+  status: vi.fn(async () => ({ runId: 'run-1', scenarioId: 'scenario-1', status: 'running', queuedAt: 1 })),
+  cancel: vi.fn(async () => ({ runId: 'run-1', scenarioId: 'scenario-1', status: 'cancelled', queuedAt: 1 })),
+  compare: vi.fn(async () => ({ baselineRunId: 'run-0', currentRunId: 'run-1' })),
 });
 
 const connect = async (opts: {
   allowDangerous: boolean;
   ide?: IdeMcpService;
+  mode?: 'local' | 'external';
+  quickTestScenarios?: QuickTestScenarioAgentService;
   toolPermissions?: Record<string, boolean>;
 }) => {
   const state = createOmniGatewayState({
@@ -65,7 +95,8 @@ const connect = async (opts: {
     rootPath: '/tmp/repo',
     allowDangerous: opts.allowDangerous,
     sessionTtlMs: TTL_MS,
-    ideDeps: { ide },
+    ideDeps: { ide, quickTestScenarios: opts.quickTestScenarios },
+    mode: opts.mode,
     toolPermissions: opts.toolPermissions,
   });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
@@ -77,6 +108,49 @@ const connect = async (opts: {
 type CallResult = { content: Array<{ type: string; text?: string }>; isError?: boolean };
 
 const textOf = (result: CallResult): string => result.content.find((c) => c.type === 'text')?.text ?? '';
+
+describe('Quick Test Agent Bridge gateway policy', () => {
+  it('keeps inspection tools read-only and gates replay controls as dangerous', () => {
+    for (const name of [
+      'ide_quick_test_list',
+      'ide_quick_test_describe',
+      'ide_quick_test_status',
+      'ide_quick_test_compare',
+    ]) {
+      expect(OMNI_IDE_BASE_ALLOWLIST_NAMES.has(name)).toBe(true);
+      expect(OMNI_IDE_EXTERNAL_ALLOWLIST_NAMES.has(name)).toBe(true);
+    }
+    expect(OMNI_IDE_DANGEROUS_NAMES.has('ide_quick_test_run')).toBe(true);
+    expect(OMNI_IDE_DANGEROUS_NAMES.has('ide_quick_test_cancel')).toBe(true);
+    expect(OMNI_IDE_EXTERNAL_ALLOWLIST_NAMES.has('ide_quick_test_run')).toBe(false);
+  });
+
+  it('allows saved-scenario inspection after bootstrap', async () => {
+    const scenarios = fakeQuickTestScenarios();
+    const { client } = await connect({ allowDangerous: false, quickTestScenarios: scenarios });
+    const bootstrap = (await client.callTool({ name: 'omni_bootstrap_session', arguments: {} })) as CallResult;
+    const { sessionId } = JSON.parse(textOf(bootstrap)) as { sessionId: string };
+    const result = (await client.callTool({
+      name: 'ide_quick_test_list',
+      arguments: { rootPath: '/tmp/repo', sessionId },
+    })) as CallResult;
+    expect(result.isError).toBeFalsy();
+    expect(scenarios.list).toHaveBeenCalledOnce();
+  });
+
+  it('blocks saved-scenario replay without the dangerous opt-in', async () => {
+    const scenarios = fakeQuickTestScenarios();
+    const { client } = await connect({ allowDangerous: false, quickTestScenarios: scenarios });
+    const bootstrap = (await client.callTool({ name: 'omni_bootstrap_session', arguments: {} })) as CallResult;
+    const { sessionId } = JSON.parse(textOf(bootstrap)) as { sessionId: string };
+    const result = (await client.callTool({
+      name: 'ide_quick_test_run',
+      arguments: { rootPath: '/tmp/repo', scenarioId: 'scenario-1', sessionId },
+    })) as CallResult;
+    expect(result.isError).toBe(true);
+    expect(scenarios.run).not.toHaveBeenCalled();
+  });
+});
 
 describe('omniGatewayProfile (IDE profile)', () => {
   it('lists both omni_* housekeeping tools and the underlying ide_* tools', async () => {
@@ -128,6 +202,22 @@ describe('omniGatewayProfile (IDE profile)', () => {
     expect(textOf(result)).toContain('omni_bootstrap_session');
   });
 
+  it('rejects a rootPath outside the workspace bound to the session', async () => {
+    const { client, ide } = await connect({ allowDangerous: false });
+    const bootstrap = (await client.callTool({
+      name: 'omni_bootstrap_session',
+      arguments: {},
+    })) as CallResult;
+    const { sessionId } = JSON.parse(textOf(bootstrap)) as { sessionId: string };
+    const result = (await client.callTool({
+      name: 'ide_search',
+      arguments: { rootPath: '/tmp/another-repo', query: 'foo', sessionId },
+    })) as CallResult;
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain('does not match the workspace');
+    expect(ide.search).not.toHaveBeenCalled();
+  });
+
   it('refuses dangerous tools when allowDangerous is off', async () => {
     const { client, ide } = await connect({ allowDangerous: false });
     const bootstrap = (await client.callTool({
@@ -142,6 +232,27 @@ describe('omniGatewayProfile (IDE profile)', () => {
     expect(result.isError).toBe(true);
     expect(textOf(result)).toContain('dangerous');
     expect(ide.runCommand).not.toHaveBeenCalled();
+  });
+
+  it('never exposes replay controls over the public tunnel', async () => {
+    const scenarios = fakeQuickTestScenarios();
+    const { client } = await connect({
+      allowDangerous: true,
+      mode: 'external',
+      quickTestScenarios: scenarios,
+    });
+    const bootstrap = (await client.callTool({
+      name: 'omni_bootstrap_session',
+      arguments: {},
+    })) as CallResult;
+    const { sessionId } = JSON.parse(textOf(bootstrap)) as { sessionId: string };
+    const result = (await client.callTool({
+      name: 'ide_quick_test_run',
+      arguments: { rootPath: '/tmp/repo', scenarioId: 'scenario-1', sessionId },
+    })) as CallResult;
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain('public External MCP tunnel');
+    expect(scenarios.run).not.toHaveBeenCalled();
   });
 
   it('allows dangerous tools when allowDangerous is on', async () => {

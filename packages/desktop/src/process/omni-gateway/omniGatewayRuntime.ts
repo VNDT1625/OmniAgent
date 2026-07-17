@@ -193,6 +193,14 @@ export const createOmniGatewayRuntime = (deps: OmniGatewayRuntimeDeps): OmniGate
       getAuthMode: () => currentAuthMode,
       isOAuthTokenValid: async (presented) => (await deps.oauth().validateAccessToken(presented)) !== undefined,
       oauthHandler: oauthHandler ? (req, res) => (oauthHandler as OmniOAuthHandler).tryHandle(req, res) : undefined,
+      isOriginAllowed: (origin) => {
+        try {
+          const publicOrigin = liveExternal ? new URL(liveExternal.tunnelUrl).origin : undefined;
+          return publicOrigin !== undefined && new URL(origin).origin === publicOrigin;
+        } catch {
+          return false;
+        }
+      },
       buildIdeServer: (mode) =>
         buildOmniIdeServer({
           state,

@@ -22,6 +22,7 @@
  * Process boundary: Main-process (Node.js / Electron). No DOM APIs.
  */
 
+import { timingSafeEqual } from 'node:crypto';
 import * as http from 'node:http';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -76,7 +77,7 @@ export type StartOmniGatewayHostInput = {
    *  - `bearer` (default) — only the external Bearer token is accepted.
    *  - `oauth`            — only a valid OAuth access token is accepted.
    *  - `mixed`            — either an OAuth access token OR the Bearer token.
-   *  - `none`             — every request is accepted (ephemeral, opt-in only).
+   *  - `none`             — legacy value, hardened to the short-TTL external bearer.
    *
    * The LOCAL bearer (`localBearerToken`) is ALWAYS accepted regardless of mode
    * so first-party clients (Claude Desktop / Cursor) never break.
@@ -95,6 +96,8 @@ export type StartOmniGatewayHostInput = {
    * client can complete the OAuth dance even before it holds a token.
    */
   oauthHandler?: (req: http.IncomingMessage, res: http.ServerResponse) => Promise<boolean>;
+  /** Browser origins allowed to call the gateway. Requests without Origin (native MCP clients) remain supported. */
+  isOriginAllowed?: (origin: string) => boolean;
 };
 
 /** SSE stream path for the IDE profile (local clients only). */
@@ -109,16 +112,24 @@ const IDE_MCP_PATH = '/ide/mcp';
 /** Prefix reserved for the read-only debug bridge URLs. */
 const DEBUG_PREFIX = '/debug/omni';
 const MCP_CORS_HEADERS: http.OutgoingHttpHeaders = {
-  'access-control-allow-origin': '*',
   'access-control-allow-methods': 'GET,POST,DELETE,OPTIONS',
   'access-control-allow-headers': 'authorization,content-type,mcp-session-id,mcp-protocol-version',
   'access-control-expose-headers': 'mcp-session-id',
+  vary: 'Origin',
 };
 
-const applyMcpCorsHeaders = (res: http.ServerResponse): void => {
+const applyMcpCorsHeaders = (res: http.ServerResponse, origin?: string): void => {
   for (const [key, value] of Object.entries(MCP_CORS_HEADERS)) {
     res.setHeader(key, value);
   }
+  if (origin) res.setHeader('access-control-allow-origin', origin);
+};
+
+const bearerMatches = (presented: string, expected: string): boolean => {
+  if (!presented || !expected) return false;
+  const left = Buffer.from(presented, 'utf8');
+  const right = Buffer.from(expected, 'utf8');
+  return left.length === right.length && timingSafeEqual(left, right);
 };
 
 /** A typed error the registrar surfaces to the Settings UI on port conflict. */
@@ -147,7 +158,7 @@ export const startOmniGatewayHost = async (input: StartOmniGatewayHostInput): Pr
    * Identify the auth mode of an incoming `/ide/*` request, or null when the
    * request is not authorised. The LOCAL bearer is always accepted. Beyond
    * that, the CONFIGURED Web Access auth mode decides:
-   *  - `none`   → accept everything as `external` (even with no header).
+   *  - `none`   → require the short-TTL external bearer (legacy compatibility).
    *  - `bearer` → accept the external Bearer token (legacy behaviour).
    *  - `oauth`  → accept a valid OAuth access token.
    *  - `mixed`  → accept either an OAuth access token or the Bearer token.
@@ -158,13 +169,14 @@ export const startOmniGatewayHost = async (input: StartOmniGatewayHostInput): Pr
       typeof header === 'string' && header.startsWith('Bearer ') ? header.slice('Bearer '.length).trim() : '';
 
     // Local first-party clients are ALWAYS accepted — never broken by Web mode.
-    if (presented.length > 0 && presented === input.localBearerToken) return 'local';
+    if (bearerMatches(presented, input.localBearerToken)) return 'local';
 
     const mode: OmniAuthMode = input.getAuthMode?.() ?? 'bearer';
-
-    if (mode === 'none') return 'external';
-
     const bearerOk = (): boolean => presented.length > 0 && input.isExternalBearerValid?.(presented) === true;
+
+    // Legacy none remains loadable for settings compatibility, but the core
+    // never disables authentication. It is hardened to the short-TTL bearer.
+    if (mode === 'none') return bearerOk() ? 'external' : null;
     const oauthOk = async (): Promise<boolean> =>
       presented.length > 0 && input.isOAuthTokenValid !== undefined && (await input.isOAuthTokenValid(presented));
 
@@ -187,9 +199,16 @@ export const startOmniGatewayHost = async (input: StartOmniGatewayHostInput): Pr
 
   const handle = async (req: http.IncomingMessage, res: http.ServerResponse): Promise<void> => {
     const url = new URL(req.url ?? '/', 'http://127.0.0.1');
+    const originHeader = req.headers.origin;
+    const origin = typeof originHeader === 'string' ? originHeader : undefined;
+
+    if (origin && input.isOriginAllowed?.(origin) !== true) {
+      res.writeHead(403, { 'content-type': 'text/plain', vary: 'Origin' }).end('Origin is not allowed.');
+      return;
+    }
 
     if (url.pathname === IDE_MCP_PATH) {
-      applyMcpCorsHeaders(res);
+      applyMcpCorsHeaders(res, origin);
       if ((req.method ?? 'GET').toUpperCase() === 'OPTIONS') {
         res.writeHead(204).end();
         return;

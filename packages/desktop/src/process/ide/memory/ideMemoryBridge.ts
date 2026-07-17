@@ -34,12 +34,19 @@ import {
   type SuperMemoryKind,
   type SuperMemorySnapshot,
 } from './sessionMemoryStore';
+import { getRepoSecretStore, type RepoSecretContext, type RepoSecretMarkerRender } from './repoSecretStore';
 
 /** IPC channel names for the IDE session-memory surface. */
 export const IDE_MEMORY_CHANNELS = {
   snapshot: 'ide.memory-snapshot',
   clear: 'ide.memory-clear',
   remember: 'ide.memory-remember',
+  repoSecretList: 'ide.repo-secret-list',
+  repoSecretSave: 'ide.repo-secret-save',
+  repoSecretDeclare: 'ide.repo-secret-declare',
+  repoSecretRemove: 'ide.repo-secret-remove',
+  repoSecretReveal: 'ide.repo-secret-reveal',
+  repoSecretRenderMarkers: 'ide.repo-secret-render-markers',
 } as const;
 
 /** Always-resolving result envelope. */
@@ -59,6 +66,19 @@ export type IdeMemoryRememberRequest = {
   pinned?: boolean;
 };
 
+/** Repository-scoped secret metadata. Values never cross this IPC boundary. */
+export type RepoSecretListRequest = { repository: string };
+export type RepoSecretSaveRequest = { repository: string; alias: string; description: string; value: string };
+export type RepoSecretDeclareRequest = { repository: string; alias: string; description: string };
+export type RepoSecretRemoveRequest = { repository: string; alias: string };
+/**
+ * Deliberate local UI reveal. It is intentionally not exposed to MCP or any
+ * agent-facing bridge, so secret values cannot enter prompts or tool output.
+ */
+export type RepoSecretRevealRequest = { repository: string; alias: string };
+/** Explicit renderer request; values never enter MCP, model requests, history, or logs. */
+export type RepoSecretRenderMarkersRequest = { repository: string; text: string };
+
 /** Typed channels. Exported for bootstrap registration wiring. */
 export const ideMemoryChannels = {
   snapshot: bridge.buildProvider<IdeMemoryResult<SuperMemorySnapshot>, IdeMemoryRequest>(IDE_MEMORY_CHANNELS.snapshot),
@@ -66,6 +86,25 @@ export const ideMemoryChannels = {
   remember: bridge.buildProvider<IdeMemoryResult<RememberResult>, IdeMemoryRememberRequest>(
     IDE_MEMORY_CHANNELS.remember
   ),
+  repoSecretList: bridge.buildProvider<IdeMemoryResult<RepoSecretContext[]>, RepoSecretListRequest>(
+    IDE_MEMORY_CHANNELS.repoSecretList
+  ),
+  repoSecretSave: bridge.buildProvider<IdeMemoryResult<RepoSecretContext>, RepoSecretSaveRequest>(
+    IDE_MEMORY_CHANNELS.repoSecretSave
+  ),
+  repoSecretDeclare: bridge.buildProvider<IdeMemoryResult<RepoSecretContext>, RepoSecretDeclareRequest>(
+    IDE_MEMORY_CHANNELS.repoSecretDeclare
+  ),
+  repoSecretRemove: bridge.buildProvider<IdeMemoryResult<boolean>, RepoSecretRemoveRequest>(
+    IDE_MEMORY_CHANNELS.repoSecretRemove
+  ),
+  repoSecretReveal: bridge.buildProvider<IdeMemoryResult<string>, RepoSecretRevealRequest>(
+    IDE_MEMORY_CHANNELS.repoSecretReveal
+  ),
+  repoSecretRenderMarkers: bridge.buildProvider<
+    IdeMemoryResult<RepoSecretMarkerRender>,
+    RepoSecretRenderMarkersRequest
+  >(IDE_MEMORY_CHANNELS.repoSecretRenderMarkers),
 };
 
 /**
@@ -98,6 +137,55 @@ export function registerIdeMemoryBridge(): void {
     try {
       getSessionMemoryStore().clearSession(req.sessionId);
       return { ok: true, data: true };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ideMemoryChannels.repoSecretList.provider(async (req): Promise<IdeMemoryResult<RepoSecretContext[]>> => {
+    try {
+      return { ok: true, data: await getRepoSecretStore().list(req.repository) };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ideMemoryChannels.repoSecretSave.provider(async (req): Promise<IdeMemoryResult<RepoSecretContext>> => {
+    try {
+      return { ok: true, data: await getRepoSecretStore().save(req.repository, req.alias, req.description, req.value) };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ideMemoryChannels.repoSecretDeclare.provider(async (req): Promise<IdeMemoryResult<RepoSecretContext>> => {
+    try {
+      return { ok: true, data: await getRepoSecretStore().declare(req.repository, req.alias, req.description) };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ideMemoryChannels.repoSecretRemove.provider(async (req): Promise<IdeMemoryResult<boolean>> => {
+    try {
+      await getRepoSecretStore().remove(req.repository, req.alias);
+      return { ok: true, data: true };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ideMemoryChannels.repoSecretReveal.provider(async (req): Promise<IdeMemoryResult<string>> => {
+    try {
+      return { ok: true, data: await getRepoSecretStore().reveal(req.repository, req.alias) };
+    } catch (error) {
+      return { ok: false, error: error instanceof Error ? error.message : String(error) };
+    }
+  });
+
+  ideMemoryChannels.repoSecretRenderMarkers.provider(async (req): Promise<IdeMemoryResult<RepoSecretMarkerRender>> => {
+    try {
+      return { ok: true, data: await getRepoSecretStore().renderMarkers(req.repository, req.text) };
     } catch (error) {
       return { ok: false, error: error instanceof Error ? error.message : String(error) };
     }

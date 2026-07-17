@@ -10,7 +10,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { getOrCreateAnalyticsId } from './process/utils/analyticsId';
-import { readAutoUpdateDiagnostics } from './process/services/autoUpdateDiagnostics';
+import { readAutoUpdateDiagnostics } from './process/services/diagnostics/autoUpdateDiagnostics';
 import { collectBackendInstallDiagnostics } from './process/startup/backendInstallDiagnostics';
 import { classifyBackendStartupFailure } from './process/startup/backendStartupFailure';
 import {

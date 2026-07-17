@@ -40,6 +40,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { IdeMemoryRecordableKind, SuperMemoryItem, SuperMemoryKind } from '../ideClient';
 import AionrsContextPanel from './AionrsContextPanel';
+import RepoSecretContextPanel from './RepoSecretContextPanel';
 
 import { useIdeMemory, type UseIdeMemory } from './useIdeMemory';
 
@@ -50,6 +51,8 @@ type MemorySessionDrawerProps = {
   conversationId?: string | null;
   /** Runtime type; Context is exposed only for AionRS. */
   conversationType?: string | null;
+  /** Repository bound to this IDE chat. Required for persistent Secret Context. */
+  repository?: string | null;
   /** Whether the drawer is open (also gates polling). */
   visible: boolean;
   /** Close handler. */
@@ -105,13 +108,14 @@ const MemorySessionDrawer: React.FC<MemorySessionDrawerProps> = ({
   memId,
   conversationId,
   conversationType,
+  repository,
   visible,
   onClose,
 }) => {
   const { t } = useTranslation();
   const { snapshot, loading, refresh, clear, remember } = useIdeMemory(memId, visible);
   const showContext = conversationType === 'aionrs' && conversationId !== null;
-  const [activePane, setActivePane] = useState<'save' | 'context'>('save');
+  const [activePane, setActivePane] = useState<'save' | 'context' | 'secret'>('save');
 
   useEffect(() => {
     if (!showContext) setActivePane('save');
@@ -182,15 +186,18 @@ const MemorySessionDrawer: React.FC<MemorySessionDrawerProps> = ({
           {showContext ? (
             <Tabs
               activeTab={activePane}
-              onChange={(key) => setActivePane(key as 'save' | 'context')}
+              onChange={(key) => setActivePane(key as 'save' | 'context' | 'secret')}
               className='shrink-0'
             >
               <Tabs.TabPane key='save' title={t('ide.memory.tabs.save')} />
               <Tabs.TabPane key='context' title={t('ide.memory.tabs.context')} />
+              {repository ? <Tabs.TabPane key='secret' title={t('ide.memory.tabs.secret')} /> : null}
             </Tabs>
           ) : null}
           {activePane === 'context' && conversationId ? (
             <AionrsContextPanel conversationId={conversationId} active={visible} />
+          ) : activePane === 'secret' && repository ? (
+            <RepoSecretContextPanel repository={repository} active={visible} />
           ) : (
             <>
               {/* Token-budget gauge */}

@@ -254,7 +254,13 @@ export function registerIdeWikiBridge(): void {
 
   ideWikiChannels.section.provider(async (req): Promise<IdeWikiResult<string>> => {
     try {
-      return { ok: true, data: await runIdeChat(req.model, buildSectionMessages(req)) };
+      return {
+        ok: true,
+        data: await runIdeChat(req.model, buildSectionMessages(req), undefined, {
+          workspace: req.rootPath,
+          permissionMode: 'read-only',
+        }),
+      };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error('[IdeWikiBridge] wiki-section failed:', error);

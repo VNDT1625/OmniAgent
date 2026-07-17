@@ -136,7 +136,10 @@ const LiveBrowserFrame: React.FC<LiveBrowserFrameProps> = ({ tab, fallbackLabel 
   }, [tab.url, schedulePush]);
 
   return (
-    <div className='flex flex-col min-h-0 rd-12px border border-solid border-line-2 bg-base overflow-hidden'>
+    <div
+      className='h-full flex flex-col min-h-0 rd-12px border border-solid border-line-2 bg-base overflow-hidden'
+      data-testid='live-browser-frame'
+    >
       <div className='flex items-center gap-8px px-10px py-7px border-b border-solid border-line-2 bg-fill-1 shrink-0'>
         <span className='size-20px flex-center rd-6px bg-fill-2 text-t-secondary shrink-0'>
           <Compass theme='outline' size='13' />

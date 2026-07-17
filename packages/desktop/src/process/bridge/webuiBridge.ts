@@ -95,6 +95,8 @@ export function initWebuiBridge(): void {
       localUrl: handle.localUrl,
       networkUrl: handle.networkUrl,
       lanIP: handle.lanIP,
+      candidateLanIPs: handle.candidateLanIPs,
+      publicUrl: handle.publicUrl,
       initialPassword: handle.initialPassword,
     });
     return handle;

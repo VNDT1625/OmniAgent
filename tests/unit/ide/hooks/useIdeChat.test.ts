@@ -1,6 +1,7 @@
 import type { TChatConversation } from '@/common/config/storage';
 import {
   isConversationForIdeWorkspace,
+  mergeIdeSessionMcpServers,
   resolveIdeChatActiveIdAfterClose,
   resolveRestoredIdeChatActiveId,
   type IdeChatTab,
@@ -55,5 +56,56 @@ describe('IDE chat active tab selection', () => {
     expect(resolveIdeChatActiveIdAfterClose(tabs, 'c')).toBe('b');
     expect(resolveIdeChatActiveIdAfterClose(tabs, 'b')).toBe('c');
     expect(resolveIdeChatActiveIdAfterClose([{ id: 'a', title: 'A', memId: 'memory-a' }], 'a')).toBeNull();
+  });
+});
+
+describe('IDE chat MCP attachment', () => {
+  const ideServer = {
+    id: 'ide-live',
+    name: 'aionui-ide',
+    transport: { type: 'sse', url: 'http://127.0.0.1:4100/sse' },
+  } as const;
+  const browserServer = {
+    id: 'browser-live',
+    name: 'aionui-browser-control',
+    transport: { type: 'sse', url: 'http://127.0.0.1:4200/sse' },
+  } as const;
+
+  it('refreshes Browser-Control to the live endpoint when Super is already enabled', () => {
+    const merged = mergeIdeSessionMcpServers(
+      [
+        {
+          id: 'browser-stale',
+          name: 'aionui-browser-control',
+          transport: { type: 'sse', url: 'http://127.0.0.1:9999/sse' },
+        },
+        { id: 'custom', name: 'custom-tools', transport: { type: 'sse', url: 'https://example.test/sse' } },
+      ],
+      ideServer,
+      null,
+      browserServer
+    );
+
+    expect(merged.find((server) => server.name === 'aionui-browser-control')).toEqual(browserServer);
+    expect(merged.some((server) => server.name === 'custom-tools')).toBe(true);
+  });
+
+  it('attaches Browser-Control when an IDE conversation did not previously have it', () => {
+    const merged = mergeIdeSessionMcpServers(
+      [{ id: 'custom', name: 'custom-tools', transport: { type: 'sse', url: 'https://example.test/sse' } }],
+      ideServer,
+      null,
+      browserServer
+    );
+
+    expect(merged.some((server) => server.name === 'aionui-browser-control')).toBe(true);
+    expect(merged.some((server) => server.name === 'custom-tools')).toBe(true);
+  });
+
+  it('keeps the IDE usable when Browser-Control is temporarily absent from the catalog', () => {
+    const merged = mergeIdeSessionMcpServers([], ideServer, null, undefined);
+
+    expect(merged.some((server) => server.name === 'aionui-browser-control')).toBe(false);
+    expect(merged.some((server) => server.name === 'aionui-ide')).toBe(true);
   });
 });

@@ -44,6 +44,8 @@ export type UseLiveBrowserTabs = {
   total: number;
   /** Whether the first probe is still in flight. */
   loading: boolean;
+  /** Destroy a foreground browser tab without affecting the remaining session. */
+  closeBrowserTab: (id: string) => Promise<void>;
 };
 
 /**
@@ -57,6 +59,7 @@ export function useLiveBrowserTabs(active: boolean): UseLiveBrowserTabs {
   const [editors, setEditors] = useState<EditorFrameInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const aliveRef = useRef(true);
+  const renderedTabIdsRef = useRef<string[]>([]);
 
   useEffect(() => {
     aliveRef.current = true;
@@ -72,9 +75,10 @@ export function useLiveBrowserTabs(active: boolean): UseLiveBrowserTabs {
       editorControlClient.listFrames().catch((): EditorFrameInfo[] => []),
     ]);
     if (!aliveRef.current) return;
-    // Only foreground browser tabs become frames; hidden research tabs are
-    // off-screen and must not show.
-    const foreground = (Array.isArray(list) ? list : []).filter((tab) => tab.visible !== false);
+    // User tabs stay watchable after this card temporarily hides them. Only
+    // true background research/scraping tabs are excluded.
+    const foreground = (Array.isArray(list) ? list : []).filter((tab) => tab.background !== true);
+    renderedTabIdsRef.current = foreground.map((tab) => tab.id);
     setTabs(foreground);
     setEditors(Array.isArray(frames) ? frames : []);
     setLoading(false);
@@ -83,7 +87,9 @@ export function useLiveBrowserTabs(active: boolean): UseLiveBrowserTabs {
   // Probe + poll while the panel is open; hide every native view when it closes.
   useEffect(() => {
     if (!active) {
-      void browserClient.hideAll().catch(() => {});
+      for (const id of renderedTabIdsRef.current) {
+        void browserClient.setVisible({ id, visible: false }).catch(() => {});
+      }
       return;
     }
     setLoading(true);
@@ -91,7 +97,9 @@ export function useLiveBrowserTabs(active: boolean): UseLiveBrowserTabs {
     const timer = setInterval(() => void refresh(), WATCH_POLL_MS);
     return () => {
       clearInterval(timer);
-      void browserClient.hideAll().catch(() => {});
+      for (const id of renderedTabIdsRef.current) {
+        void browserClient.setVisible({ id, visible: false }).catch(() => {});
+      }
     };
   }, [active, refresh]);
 
@@ -114,5 +122,18 @@ export function useLiveBrowserTabs(active: boolean): UseLiveBrowserTabs {
     return unsubscribe;
   }, [active]);
 
-  return { tabs, editors, total: tabs.length + editors.length, loading };
+  const closeBrowserTab = useCallback(
+    async (id: string): Promise<void> => {
+      setTabs((current) => current.filter((tab) => tab.id !== id));
+      renderedTabIdsRef.current = renderedTabIdsRef.current.filter((tabId) => tabId !== id);
+      try {
+        await browserClient.destroyTab({ id });
+      } catch {
+        await refresh();
+      }
+    },
+    [refresh]
+  );
+
+  return { tabs, editors, total: tabs.length + editors.length, loading, closeBrowserTab };
 }

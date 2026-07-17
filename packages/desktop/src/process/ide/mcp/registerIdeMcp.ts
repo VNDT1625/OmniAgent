@@ -25,7 +25,7 @@
  */
 
 import * as http from 'node:http';
-import { mcpService } from '@/common/adapter/ipcBridge';
+import { getMcpRegistry } from '@process/resources/mcpRegistry';
 import { startIdeMcpHost } from './ideMcpHost';
 import { buildIdeServer } from './ideMcpWiring';
 import { BUILTIN_IDE_NAME } from './ideServer';
@@ -93,22 +93,20 @@ export const ensureIdeMcpRegistered = async (): Promise<boolean> => {
     const transport = { type: 'sse' as const, url: endpoint.url };
     const original_json = JSON.stringify({ mcpServers: { [BUILTIN_IDE_NAME]: { url: endpoint.url } } }, null, 2);
 
-    const existing = (await mcpService.listServers.invoke()) ?? [];
+    const existing = (await getMcpRegistry().list()) ?? [];
     const current = existing.find((server) => server.name === BUILTIN_IDE_NAME);
 
     if (!current) {
-      await mcpService.batchImportServers.invoke({
-        servers: [
-          {
-            name: BUILTIN_IDE_NAME,
-            description: IDE_MCP_DESCRIPTION,
-            enabled: false,
-            builtin: true,
-            transport,
-            original_json,
-          },
-        ],
-      });
+      await getMcpRegistry().importMany([
+        {
+          name: BUILTIN_IDE_NAME,
+          description: IDE_MCP_DESCRIPTION,
+          enabled: false,
+          builtin: true,
+          transport,
+          original_json,
+        },
+      ]);
       console.log(`[IdeMCP] Registered ${BUILTIN_IDE_NAME} at ${endpoint.url} (${endpoint.source}).`);
       return true;
     }
@@ -116,10 +114,7 @@ export const ensureIdeMcpRegistered = async (): Promise<boolean> => {
     // Refresh the URL if the ephemeral port changed since the last boot.
     const sameUrl = current.transport.type === 'sse' && current.transport.url === endpoint.url;
     if (!sameUrl) {
-      await mcpService.updateServer.invoke({
-        id: current.id,
-        data: { transport, original_json, builtin: true },
-      });
+      await getMcpRegistry().update(current.id, { transport, original_json, builtin: true });
       console.log(`[IdeMCP] Updated ${BUILTIN_IDE_NAME} URL -> ${endpoint.url} (${endpoint.source}).`);
     }
     return true;

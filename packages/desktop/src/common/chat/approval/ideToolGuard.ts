@@ -7,19 +7,19 @@
 /**
  * IDE Strict Mode tool guard — the PURE decision core that decides whether an
  * agent's tool-call permission request must be auto-denied so the agent is
- * forced to use the built-in `ide_*` / MTUI tooling instead of a CLI backend's
+ * forced to use the built-in `tomny_*` / MTUI tooling instead of a CLI backend's
  * own native tools (Bash, Write, Edit, Read, Glob, Grep, …).
  *
  * ## Why this exists
  *
  * Inside an IDE workspace every repo read / search / edit should flow through
- * the `ide_*` MCP server (and `mtui`) so the work is visible, reviewable and
+ * the Tomny MCP layer (and `mtui`) so the work is visible, reviewable and
  * undoable through the IDE/MTUI gateway. A prompt reminder
  * (`buildPlanningGuard`) only *asks* the model to prefer those tools; the model
  * frequently ignores it and reaches for its own Bash/Write. This guard makes
  * the rule **hard**: when Strict IDE Mode is on, any permission request for a
  * non-whitelisted tool is denied automatically (no user prompt), so the only
- * way for the agent to act on the repo is the `ide_*` tools.
+ * way for the agent to act on the repo is through trusted Tomny tools.
  *
  * This module is intentionally PURE (no DOM, no ipc, no React) so it can be unit
  * tested in isolation and reused by every platform handler (acp, aionrs, …).
@@ -36,10 +36,10 @@ export const STRICT_IDE_CLAUDE_AGENT_DESCRIPTION =
 /**
  * Tool-name prefixes / exact names that REMAIN allowed under Strict IDE Mode.
  * Everything else is denied. Kept deliberately small: the built-in IDE MCP
- * tools (`ide_*`), the MTUI CLI, and the team coordination tools that also flow
- * through the MTUI gateway.
+ * tools (`ide_*`), observable browser operations (`browser_*`), the MTUI CLI,
+ * and team coordination tools that also flow through the MTUI gateway.
  */
-const ALLOWED_TOOL_PREFIXES = ['ide_', 'team_', 'db_'] as const;
+const ALLOWED_TOOL_PREFIXES = ['tomny_', 'ide_', 'team_', 'db_', 'browser_'] as const;
 const ALLOWED_TOOL_NAMES = ['mtui', 'toolsearch'] as const;
 
 /** Common native tool names/titles that Strict IDE Mode must always block (case-insensitive after normalize). */
@@ -101,7 +101,7 @@ const isNativeLikeTool = (rawName: string | undefined): boolean => {
 };
 
 /** MCP server names whose trusted tools may be auto-approved by the IDE plane. */
-const ALLOWED_MCP_SERVERS = ['aionui-ide', 'builtin-ide', 'aionui-tool-selector'] as const;
+const ALLOWED_MCP_SERVERS = ['aionui-ide', 'builtin-ide', 'aionui-tool-selector', 'aionui-browser-control'] as const;
 
 /**
  * Mandatory remap table: a backend's native tool name → the built-in `ide_*`
@@ -112,14 +112,14 @@ const ALLOWED_MCP_SERVERS = ['aionui-ide', 'builtin-ide', 'aionui-tool-selector'
  * token of a shell command (so `grep -rn foo` maps from `grep`).
  */
 const TOOL_REMAP: ReadonlyArray<{ from: readonly string[]; to: string }> = [
-  { from: ['grep', 'rg', 'ripgrep', 'ag', 'ack'], to: 'ide_search' },
-  { from: ['glob', 'find', 'ls', 'dir', 'tree'], to: 'ide_glob' },
+  { from: ['grep', 'rg', 'ripgrep', 'ag', 'ack'], to: 'tomny_search' },
+  { from: ['glob', 'find', 'ls', 'dir', 'tree'], to: 'tomny_glob' },
   {
     from: ['bash', 'sh', 'zsh', 'shell', 'powershell', 'pwsh', 'cmd', 'execute', 'exec', 'run', 'run_terminal_cmd'],
-    to: 'ide_command',
+    to: 'tomny_command',
   },
-  { from: ['cat', 'read', 'read_file', 'head', 'tail', 'less', 'more', 'open'], to: 'ide_read_file' },
-  { from: ['write', 'write_file', 'create_file', 'createfile', 'newfile'], to: 'team_write_file' },
+  { from: ['cat', 'read', 'read_file', 'head', 'tail', 'less', 'more', 'open'], to: 'tomny_read' },
+  { from: ['write', 'write_file', 'create_file', 'createfile', 'newfile'], to: 'tomny_team_write' },
   {
     from: [
       'edit',
@@ -133,7 +133,7 @@ const TOOL_REMAP: ReadonlyArray<{ from: readonly string[]; to: string }> = [
       'awk',
       'multiedit',
     ],
-    to: 'team_edit_file',
+    to: 'tomny_team_edit',
   },
 ];
 
@@ -313,7 +313,7 @@ export const buildRemapReason = (toolCall: GuardToolCall | undefined): string =>
   if (target) {
     return `🚫 Strict IDE Mode đã chặn ${toolLabel} vì tool native không được phép trong workspace này. Hãy dùng \`${target}\` thay thế. Tool gốc không được chạy.`;
   }
-  return '🚫 Strict IDE Mode đã chặn tool native vì không có ánh xạ an toàn. Hãy dùng tool ide_* phù hợp. Tool gốc không được chạy.';
+  return '🚫 Strict IDE Mode đã chặn tool native vì không có ánh xạ an toàn. Hãy dùng tool tomny_* phù hợp. Tool gốc không được chạy.';
 };
 
 /**

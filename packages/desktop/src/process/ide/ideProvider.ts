@@ -20,7 +20,7 @@
 
 import { httpRequest } from '@/common/adapter/httpBridge';
 import type { IProvider } from '@/common/config/storage';
-import { runAgentChatMessages } from '@process/services/agentChat';
+import { runAgentChatMessages, type DirectCliExecutionContext } from '@process/services/agentChat';
 
 /** One chat message exchanged with the model provider. */
 export type IdeChatMessage = {
@@ -116,6 +116,17 @@ const runProviderChat = async (model: string, messages: IdeChatMessage[], signal
  * Run one IDE completion, routing a `cli:<agentId>` model id to a CLI agent
  * (Claude Code, Codex, Gemini CLI…) and any other model id to the provider path.
  */
-export const runIdeChat = async (model: string, messages: IdeChatMessage[], signal?: AbortSignal): Promise<string> => {
-  return runAgentChatMessages((m, msgs, s) => runProviderChat(m, msgs as IdeChatMessage[], s), model, messages, signal);
+export const runIdeChat = async (
+  model: string,
+  messages: IdeChatMessage[],
+  signal?: AbortSignal,
+  context?: Omit<DirectCliExecutionContext, 'surface'>
+): Promise<string> => {
+  return runAgentChatMessages(
+    (m, msgs, s) => runProviderChat(m, msgs as IdeChatMessage[], s),
+    model,
+    messages,
+    signal,
+    { ...context, surface: 'ide' }
+  );
 };

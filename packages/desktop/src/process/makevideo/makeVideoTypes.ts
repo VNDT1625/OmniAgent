@@ -53,6 +53,100 @@ export type Scene = {
   frameEndPath?: string | null;
 };
 
+export type FilmCharacter = {
+  id: string;
+  name: string;
+  role: string;
+  appearance: string;
+  wardrobe: string;
+  personality: string;
+  voiceNotes: string;
+  referenceAssetIds: string[];
+};
+
+export type FilmLocation = {
+  id: string;
+  name: string;
+  description: string;
+  visualRules: string;
+  referenceAssetIds: string[];
+};
+
+export type FilmBible = {
+  logline: string;
+  synopsis: string;
+  genre: string;
+  tone: string;
+  audience: string;
+  aspectRatio: '16:9' | '9:16' | '1:1' | '2.39:1';
+  visualLanguage: string;
+  negativePrompt: string;
+  characters: FilmCharacter[];
+  locations: FilmLocation[];
+};
+
+export type FilmAssetKind = 'image' | 'video' | 'audio' | 'music' | 'subtitle' | 'reference';
+
+export type FilmAsset = {
+  id: string;
+  kind: FilmAssetKind;
+  name: string;
+  path: string;
+  source: 'generated' | 'imported' | 'recorded';
+  sceneId?: string | null;
+  tags: string[];
+  createdAt: number;
+};
+
+export type TimelineClip = {
+  id: string;
+  sceneId?: string | null;
+  assetId?: string | null;
+  track: 'video' | 'voice' | 'music' | 'sfx' | 'subtitle';
+  startSec: number;
+  durationSec: number;
+  trimStartSec: number;
+  trimEndSec: number;
+  volume: number;
+  transitionIn?: 'cut' | 'fade' | 'dissolve';
+  transitionOut?: 'cut' | 'fade' | 'dissolve';
+};
+
+export type FilmTimeline = {
+  fps: 24 | 25 | 30 | 60;
+  width: number;
+  height: number;
+  clips: TimelineClip[];
+};
+
+export type ProductionTaskStatus = 'pending' | 'ready' | 'running' | 'blocked' | 'done' | 'failed';
+export type ProductionAgentRole =
+  | 'director'
+  | 'screenwriter'
+  | 'storyboard'
+  | 'continuity'
+  | 'visual'
+  | 'voice'
+  | 'editor'
+  | 'qa';
+
+export type ProductionTask = {
+  id: string;
+  role: ProductionAgentRole;
+  title: string;
+  status: ProductionTaskStatus;
+  sceneId?: string | null;
+  dependsOn: string[];
+  output?: string | null;
+  error?: string | null;
+};
+
+export type ProductionPlan = {
+  version: 1;
+  tasks: ProductionTask[];
+  lastRunAt?: number | null;
+};
+
 /** A persisted video project — the topic, its scenes, and audit timestamps. */
 export type VideoProject = {
   /** Stable project id. */
@@ -78,6 +172,14 @@ export type VideoProject = {
    * Video-clip provider config snapshot for this project.
    */
   videoClipConfig?: VideoClipConfig | null;
+  /** Persistent creative constraints used to keep characters, locations and style consistent. */
+  filmBible?: FilmBible | null;
+  /** Searchable source-of-truth for generated and imported production media. */
+  assets?: FilmAsset[];
+  /** Non-linear edit decision list used by editor agents and final rendering. */
+  timeline?: FilmTimeline | null;
+  /** Dependency-aware work graph for specialised production agents. */
+  productionPlan?: ProductionPlan | null;
 };
 
 /** Request payload for the provider-backed script generation step. */

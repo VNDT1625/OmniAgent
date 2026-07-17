@@ -33,6 +33,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { ISessionMemoryStore } from '../memory/sessionMemoryStore';
+import type { RepoSecretContext } from '../memory/repoSecretStore';
 import type { ExperienceEntryDraft, ExperienceQuery, ExperienceSuggestion } from '@process/experience/experienceTypes';
 import type { DebugEpisode, VerifyOutcomeResult } from '@process/experience/workflow/experienceWorkflow';
 import type {
@@ -71,6 +72,14 @@ export type ExperienceAgentService = {
     episode: DebugEpisode,
     outcome: 'passed' | 'failed'
   ) => Promise<VerifyOutcomeResult>;
+};
+
+/** Metadata-only repository secret vault available to an agent. Values never leave Main. */
+export type RepoSecretAgentService = {
+  list: (repository: string) => Promise<RepoSecretContext[]>;
+  declare: (repository: string, alias: string, description: string) => Promise<RepoSecretContext>;
+  resolveEnvironment: (repository: string, aliases: string[]) => Promise<Record<string, string>>;
+  redact: (text: string, values: Record<string, string>) => string;
 };
 
 /** Canonical MCP server name for the built-in IDE server. */
@@ -148,6 +157,13 @@ export type IdeMtuiResult = {
   stale?: boolean;
 };
 
+/** Result of explicit image-to-VisualArtifact analysis for non-vision agents. */
+export type IdeVisualArtifactResult = {
+  json: unknown;
+  semanticText: string;
+  mockUi: string;
+};
+
 /**
  * The IDE capabilities this server exposes. Declared structurally so the factory
  * stays pure and testable; the host injects the real fs-backed implementation
@@ -181,6 +197,8 @@ export type IdeMcpService = {
   ) => Promise<IdeMtuiResult>;
   /** MTUI analyze — detect languages / error-check a path or the whole repo. */
   analyze: (rootPath: string, target?: string) => Promise<IdeMtuiResult>;
+  /** Explicit image analysis tool. It is not run automatically when an image is attached. */
+  analyzeImage: (filePath: string, mimeType?: string) => Promise<IdeVisualArtifactResult>;
   /** MTUI compact — compress noisy build/test logs to the important lines. */
   compact: (rootPath: string, input: string, profile?: string, maxLines?: number) => Promise<IdeMtuiResult>;
   /**
@@ -192,7 +210,7 @@ export type IdeMcpService = {
   runCommand: (
     rootPath: string,
     command: string,
-    opts?: { cwd?: string; timeoutMs?: number }
+    opts?: { cwd?: string; timeoutMs?: number; env?: Record<string, string> }
   ) => Promise<{ code: number; stdout: string; stderr: string; timedOut: boolean; durationMs: number }>;
 };
 
@@ -234,6 +252,11 @@ export type IdeServerDeps = {
    */
   quickTest?: QuickTestRunner;
   /**
+   * Optional saved-scenario automation surface. When present, agents can list,
+   * inspect, start, poll, cancel and compare deterministic Quick Test replays.
+   */
+  quickTestScenarios?: QuickTestScenarioAgentService;
+  /**
    * Optional Database accessor (Agent plane). When present, the server exposes
    * `db_*` tools so an agent can list connections, inspect the schema, and run
    * SQL against the open repo's database(s). Omitted in tests that don't need it.
@@ -247,6 +270,8 @@ export type IdeServerDeps = {
    * Omitted in tests that don't need it.
    */
   memory?: SessionMemoryAgentService;
+  /** Optional repository Secret Context vault. The agent can never read values. */
+  repoSecrets?: RepoSecretAgentService;
   /** Optional project-scoped debugging experience base exposed as `exp_*` tools. */
   experience?: ExperienceAgentService;
   /**
@@ -401,6 +426,72 @@ export type QuickTestRunner = {
   }>;
 };
 
+export type QuickTestScenarioSummary = {
+  id: string;
+  name: string;
+  platform: 'web' | 'android' | 'windows';
+  target?: string;
+  stepCount: number;
+  createdAt: number;
+};
+
+export type QuickTestScenarioDetail = QuickTestScenarioSummary & {
+  rootPath: string;
+  steps: Array<Record<string, unknown>>;
+};
+
+export type QuickTestScenarioRunMode =
+  | { kind: 'full' }
+  | { kind: 'from-step'; stepIndex: number }
+  | { kind: 'single-step'; stepIndex: number };
+
+export type QuickTestScenarioRunStatus = {
+  runId: string;
+  scenarioId: string;
+  status: 'queued' | 'running' | 'passed' | 'failed' | 'cancelled';
+  queuedAt: number;
+  startedAt?: number;
+  finishedAt?: number;
+  failedStepIndex?: number;
+  error?: string;
+  result?: Record<string, unknown>;
+  evidence?: Record<string, unknown>;
+  assessment?: Record<string, unknown>;
+};
+
+export type QuickTestScenarioRunComparison = {
+  baselineRunId: string;
+  currentRunId: string;
+  [key: string]: unknown;
+};
+
+/** Saved Quick Test operations exposed to agents by the IDE MCP server. */
+export type QuickTestScenarioAgentService = {
+  list: (request: {
+    rootPath: string;
+    platform?: 'web' | 'android' | 'windows';
+    limit: number;
+  }) => Promise<{ scenarios: QuickTestScenarioSummary[]; total: number }>;
+  describe: (request: { rootPath: string; scenarioId: string }) => Promise<QuickTestScenarioDetail>;
+  run: (request: {
+    rootPath: string;
+    scenarioId: string;
+    target?: string;
+    tabId?: string;
+    mode: QuickTestScenarioRunMode;
+    timeoutMs: number;
+    /** Ephemeral stepId-to-value map; implementations must never persist or echo it. */
+    inputOverrides?: Record<string, string>;
+  }) => Promise<QuickTestScenarioRunStatus>;
+  status: (request: { rootPath: string; runId: string }) => Promise<QuickTestScenarioRunStatus>;
+  cancel: (request: { rootPath: string; runId: string }) => Promise<QuickTestScenarioRunStatus>;
+  compare: (request: {
+    rootPath: string;
+    baselineRunId: string;
+    currentRunId: string;
+  }) => Promise<QuickTestScenarioRunComparison>;
+};
+
 /** Standard MCP text payload, optionally flagged as an error. */
 const textResult = (
   text: string,
@@ -463,6 +554,16 @@ const guard = async (
   }
 };
 
+/** Return a machine-readable envelope for saved Quick Test automation tools. */
+const quickTestResult = async <T>(fn: () => Promise<T>): Promise<ReturnType<typeof textResult>> => {
+  try {
+    return textResult(applyHeadroom(JSON.stringify({ ok: true, data: await fn() }, null, 2)));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return textResult(JSON.stringify({ ok: false, error: { code: 'quick_test_error', message } }, null, 2), true);
+  }
+};
+
 /** Render one team-edit lease as a compact, agent-friendly line. */
 const renderLease = (lease: TeamLeaseInfo): string =>
   `${lease.relPath} — held by ${lease.agentId}${lease.intent ? ` (${lease.intent})` : ''}`;
@@ -501,6 +602,29 @@ const renderTerminalResult = (result: TerminalRunResult, maxBytes?: number): str
     2
   );
 };
+
+const nullableString = (description: string): z.ZodOptional<z.ZodNullable<z.ZodString>> =>
+  z.string().nullable().optional().describe(description);
+
+const nullableNumber = (description: string): z.ZodOptional<z.ZodNullable<z.ZodNumber>> =>
+  z.number().nullable().optional().describe(description);
+
+const nullableBoolean = (description: string): z.ZodOptional<z.ZodNullable<z.ZodBoolean>> =>
+  z.boolean().nullable().optional().describe(description);
+
+const nonEmptyString = (value: string | null | undefined, field: string): string => {
+  if (typeof value !== 'string' || value.trim().length === 0) throw new Error(`${field} is required.`);
+  return value;
+};
+
+const optionalString = (value: string | null | undefined): string | undefined =>
+  typeof value === 'string' && value.trim().length > 0 ? value : undefined;
+
+const optionalNumber = (value: number | null | undefined): number | undefined =>
+  typeof value === 'number' ? value : undefined;
+
+const optionalBoolean = (value: boolean | null | undefined): boolean | undefined =>
+  typeof value === 'boolean' ? value : undefined;
 
 /**
  * Build the IDE {@link McpServer} bound to the injected service.
@@ -547,6 +671,34 @@ export const createIdeServer = (deps: IdeServerDeps): McpServer => {
     };
     (server as unknown as { tool: ToolRegistrar }).tool = wrappedRegistrar;
   }
+
+  /**
+   * Secrets enter only a child process environment. The model, approval event,
+   * command string, session, ExpBase, and tool output see aliases/redactions.
+   */
+  const runSecretAwareCommand = async (
+    rootPath: string,
+    command: string,
+    opts: { cwd?: string; timeoutMs?: number; secretAliases?: string[] }
+  ) => {
+    const aliases = opts.secretAliases ?? [];
+    if (aliases.length > 0 && !deps.repoSecrets) {
+      throw new Error('Repository Secret Context is unavailable for this IDE server.');
+    }
+    const values = aliases.length > 0 ? await deps.repoSecrets!.resolveEnvironment(rootPath, aliases) : {};
+    const result = await ide.runCommand(
+      rootPath,
+      command,
+      aliases.length > 0
+        ? { cwd: opts.cwd, timeoutMs: opts.timeoutMs, env: values }
+        : { cwd: opts.cwd, timeoutMs: opts.timeoutMs }
+    );
+    return {
+      ...result,
+      stdout: deps.repoSecrets?.redact(result.stdout, values) ?? result.stdout,
+      stderr: deps.repoSecrets?.redact(result.stderr, values) ?? result.stderr,
+    };
+  };
 
   // --- ide_list_dir --------------------------------------------------------
   server.tool(
@@ -912,6 +1064,28 @@ Input:
       })
   );
 
+  // --- ide_analyze_image ---------------------------------------------------
+  server.tool(
+    'ide_analyze_image',
+    `Explicitly convert an image file into a VisualArtifact for agents/models that cannot read images
+directly, or when you need a structured layout/color/text prompt. This tool is NOT run automatically
+when the user sends an image; call it only when image understanding is needed. If no OCR/vision
+analyzer is configured, it returns metadata, palette, geometry regions, and an honest limitation note.
+
+Input:
+- filePath: absolute path of the image file (required)
+- mimeType: optional MIME type, e.g. image/png.`,
+    {
+      filePath: z.string().describe('Absolute path of the image file.'),
+      mimeType: z.string().optional().describe('Optional MIME type, e.g. image/png.'),
+    },
+    ({ filePath, mimeType }) =>
+      guard(async () => {
+        const result = await ide.analyzeImage(filePath, mimeType);
+        return JSON.stringify(result, null, 2);
+      })
+  );
+
   // --- ide_compact ---------------------------------------------------------
   server.tool(
     'ide_compact',
@@ -934,6 +1108,237 @@ Input:
       guard(async () => {
         const r = await ide.compact(rootPath, input, profile, maxLines);
         return r.summary;
+      })
+  );
+
+  // --- tomny_* aliases ------------------------------------------------------
+  // Agent-facing Tomny names. Keep ide_* stable for existing ACP/Codex/Omni
+  // clients, while giving new Tomny agents a first-class tool vocabulary.
+  server.tool(
+    'tomny_glob',
+    `Tomny file finder. Alias of ide_glob/ide_list_dir for finding files by glob pattern.
+Nullable optional fields are accepted; missing required fields return a clear MCP error instead of a
+schema crash.`,
+    {
+      dir: nullableString('Absolute path of the folder to search.'),
+      pattern: nullableString('Glob pattern, e.g. "**/*.ts". Empty/null defaults to "**/*".'),
+      recursive: nullableBoolean('Walk all subdirectories (default true).'),
+      maxResults: nullableNumber('Cap on entries returned.'),
+    },
+    ({ dir, pattern, recursive, maxResults }) =>
+      guard(async () => {
+        const searchDir = nonEmptyString(dir, 'dir');
+        const glob = optionalString(pattern) ?? '**/*';
+        const entries = await ide.listDir(searchDir, {
+          glob,
+          recursive: optionalBoolean(recursive) ?? true,
+          maxResults: optionalNumber(maxResults),
+        });
+        const files = entries.filter((e) => !e.isDir);
+        if (files.length === 0) return 'No files match the pattern.';
+        return files.map((e) => e.relativePath ?? e.fullPath ?? e.name).join('\n');
+      })
+  );
+
+  server.tool(
+    'tomny_read',
+    `Tomny file reader. Alias of ide_read_file with tolerant nullable optional arguments.`,
+    {
+      filePath: nullableString('Absolute path of the file to read.'),
+      all: nullableBoolean('Return the entire file with no truncation.'),
+      from: nullableNumber('Start line (1-based, inclusive).'),
+      to: nullableNumber('End line (1-based, inclusive).'),
+      maxLines: nullableNumber('Cap on returned lines.'),
+      maxBytes: nullableNumber('Cap on returned characters.'),
+      lineNumbers: nullableBoolean('Prefix each line with its line number.'),
+    },
+    ({ filePath, all, from, to, maxLines, maxBytes, lineNumbers }) =>
+      guard(
+        async () => {
+          const r = await ide.readFile(nonEmptyString(filePath, 'filePath'), {
+            all: optionalBoolean(all),
+            from: optionalNumber(from),
+            to: optionalNumber(to),
+            maxLines: optionalNumber(maxLines),
+            maxBytes: optionalNumber(maxBytes),
+            lineNumbers: optionalBoolean(lineNumbers),
+          });
+          if (r.binary) return r.text;
+          const header = `[lines ${r.lineStart}-${r.lineEnd} of ${r.totalLines}${r.truncated ? '; TRUNCATED — pass all=true or a from/to range for more' : ''}]`;
+          return `${header}\n${r.text}`;
+        },
+        { bounded: all === true || (from !== null && from !== undefined) || (to !== null && to !== undefined) }
+      )
+  );
+
+  server.tool(
+    'tomny_search',
+    `Tomny content search. Alias of ide_search/ide_grep; accepts either query or pattern.`,
+    {
+      rootPath: nullableString('Absolute path of the repo/folder to search.'),
+      query: nullableString('Text or pattern to find.'),
+      pattern: nullableString('Alias for query.'),
+      glob: nullableString('Glob pattern restricting which files are searched.'),
+      regex: nullableBoolean('Treat the query as a regular expression.'),
+      wholeWord: nullableBoolean('Match whole words only.'),
+      caseSensitive: nullableBoolean('Case-sensitive match.'),
+      maxResults: nullableNumber('Cap on the number of matches.'),
+    },
+    ({ rootPath, query, pattern, glob, regex, wholeWord, caseSensitive, maxResults }) =>
+      guard(async () => {
+        const needle = optionalString(query) ?? optionalString(pattern);
+        if (!needle) throw new Error('query or pattern is required.');
+        return renderSearchHits(
+          await ide.search(nonEmptyString(rootPath, 'rootPath'), needle, {
+            glob: optionalString(glob),
+            regex: optionalBoolean(regex),
+            wholeWord: optionalBoolean(wholeWord),
+            caseSensitive: optionalBoolean(caseSensitive),
+            maxResults: optionalNumber(maxResults),
+          })
+        );
+      })
+  );
+
+  server.tool(
+    'tomny_context',
+    `Tomny context finder. Alias of ide_context for ranking files relevant to an intent.`,
+    {
+      rootPath: nullableString('Absolute repo root.'),
+      intent: nullableString('Natural-language task or concern.'),
+      limit: nullableNumber('Max candidates.'),
+    },
+    ({ rootPath, intent, limit }) =>
+      guard(
+        async () =>
+          (
+            await ide.context(
+              nonEmptyString(rootPath, 'rootPath'),
+              nonEmptyString(intent, 'intent'),
+              optionalNumber(limit)
+            )
+          ).summary
+      )
+  );
+
+  server.tool(
+    'tomny_map',
+    `Tomny codebase map. Alias of ide_map.`,
+    {
+      rootPath: nullableString('Absolute repo root.'),
+      scope: z.enum(['repo', 'folder', 'intent']).nullable().optional().describe('Map scope (default "repo").'),
+      target: nullableString('Folder path or intent text, depending on scope.'),
+      limit: nullableNumber('Max entries.'),
+    },
+    ({ rootPath, scope, target, limit }) =>
+      guard(async () => {
+        const r = await ide.map(
+          nonEmptyString(rootPath, 'rootPath'),
+          scope ?? 'repo',
+          optionalString(target),
+          optionalNumber(limit)
+        );
+        return JSON.stringify({ summary: r.summary, stale: r.stale, details: r.details }, null, 2);
+      })
+  );
+
+  server.tool(
+    'tomny_analyze',
+    `Tomny repository analyzer. Alias of ide_analyze.`,
+    {
+      rootPath: nullableString('Absolute repo root.'),
+      target: nullableString('Optional path to error-check.'),
+    },
+    ({ rootPath, target }) =>
+      guard(async () => {
+        const r = await ide.analyze(nonEmptyString(rootPath, 'rootPath'), optionalString(target));
+        return JSON.stringify({ summary: r.summary, details: r.details }, null, 2);
+      })
+  );
+
+  server.tool(
+    'tomny_analyze_image',
+    `Tomny surface-neutral image analyzer. Call explicitly when the selected model cannot inspect an image
+or when structured layout, text, color, geometry, and hierarchy are required. It is never invoked merely
+because an image was attached.`,
+    {
+      filePath: nullableString('Absolute path of the image file.'),
+      mimeType: nullableString('Optional MIME type, e.g. image/png.'),
+    },
+    ({ filePath, mimeType }) =>
+      guard(async () =>
+        JSON.stringify(await ide.analyzeImage(nonEmptyString(filePath, 'filePath'), optionalString(mimeType)), null, 2)
+      )
+  );
+
+  server.tool(
+    'tomny_visual_analyze',
+    `Tomny visual analyzer. Alias of ide_analyze_image.`,
+    {
+      filePath: nullableString('Absolute path of the image file.'),
+      mimeType: nullableString('Optional MIME type, e.g. image/png.'),
+    },
+    ({ filePath, mimeType }) =>
+      guard(async () =>
+        JSON.stringify(await ide.analyzeImage(nonEmptyString(filePath, 'filePath'), optionalString(mimeType)), null, 2)
+      )
+  );
+
+  server.tool(
+    'tomny_compact',
+    `Tomny log compactor. Alias of ide_compact.`,
+    {
+      rootPath: nullableString('Absolute repo root.'),
+      input: nullableString('Raw log/output text to compact. Empty string is accepted.'),
+      profile: nullableString('Toolchain hint (vitest/tsc/cargo/pytest).'),
+      maxLines: nullableNumber('Cap on output lines.'),
+    },
+    ({ rootPath, input, profile, maxLines }) =>
+      guard(async () => {
+        const r = await ide.compact(
+          nonEmptyString(rootPath, 'rootPath'),
+          input ?? '',
+          optionalString(profile),
+          optionalNumber(maxLines)
+        );
+        return r.summary;
+      })
+  );
+
+  server.tool(
+    'tomny_command',
+    `Tomny guarded shell command. Dangerous alias of ide_command; use only when structured Tomny tools do
+not fit.`,
+    {
+      rootPath: nullableString('Absolute repo root.'),
+      command: nullableString('Command line to run.'),
+      cwd: nullableString('Working directory for this run.'),
+      timeoutMs: nullableNumber('Hard timeout in ms before the command is killed.'),
+      secretAliases: z
+        .array(z.string())
+        .max(16)
+        .optional()
+        .describe('Secret Context aliases injected only as child-process environment variables.'),
+    },
+    ({ rootPath, command, cwd, timeoutMs, secretAliases }) =>
+      guard(async () => {
+        const result = await runSecretAwareCommand(
+          nonEmptyString(rootPath, 'rootPath'),
+          nonEmptyString(command, 'command'),
+          {
+            cwd: optionalString(cwd),
+            timeoutMs: optionalNumber(timeoutMs),
+            secretAliases,
+          }
+        );
+        const status = result.timedOut
+          ? `TIMED OUT after ${result.durationMs}ms (killed)`
+          : `exit ${result.code} in ${result.durationMs}ms`;
+        const parts = [`[${status}]`];
+        if (result.stdout.trim()) parts.push(`--- stdout ---\n${result.stdout.trimEnd()}`);
+        if (result.stderr.trim()) parts.push(`--- stderr ---\n${result.stderr.trimEnd()}`);
+        if (!result.stdout.trim() && !result.stderr.trim()) parts.push('(no output)');
+        return parts.join('\n');
       })
   );
 
@@ -968,16 +1373,23 @@ Input:
 - rootPath: absolute repo root (required; also the default working directory)
 - command: the command line to run (required)
 - cwd: working directory for THIS run (optional; defaults to rootPath)
-- timeoutMs: hard timeout before the command is killed (optional; default 60000).`,
+- timeoutMs: hard timeout before the command is killed (optional; default 60000)
+- secretAliases: optional Secret Context aliases. They are injected into the child process environment only; use
+  the variable name in the command or code, never a secret value. Tool output is redacted.`,
     {
       rootPath: z.string().describe('Absolute repo root (also the default working directory).'),
       command: z.string().describe('The command line to run (pipes / && / globs allowed).'),
       cwd: z.string().optional().describe('Working directory for this run (defaults to rootPath).'),
       timeoutMs: z.number().optional().describe('Hard timeout in ms before the command is killed (default 60000).'),
+      secretAliases: z
+        .array(z.string())
+        .max(16)
+        .optional()
+        .describe('Secret Context aliases injected only as child-process environment variables.'),
     },
-    ({ rootPath, command, cwd, timeoutMs }) =>
+    ({ rootPath, command, cwd, timeoutMs, secretAliases }) =>
       guard(async () => {
-        const r = await ide.runCommand(rootPath, command, { cwd, timeoutMs });
+        const r = await runSecretAwareCommand(rootPath, command, { cwd, timeoutMs, secretAliases });
         const status = r.timedOut
           ? `TIMED OUT after ${r.durationMs}ms (killed)`
           : `exit ${r.code} in ${r.durationMs}ms`;
@@ -1124,6 +1536,135 @@ Returns JSON: the first error (if any), the interaction/log path, and the suspec
           };
           return JSON.stringify(summary, null, 2);
         })
+    );
+  }
+
+  // --- ide_quick_test_* (saved scenarios) ----------------------------------
+  if (deps.quickTestScenarios) {
+    const scenarios = deps.quickTestScenarios;
+    const rootPathSchema = z
+      .string()
+      .trim()
+      .min(1)
+      .max(32_768)
+      .describe('Absolute workspace root containing the saved scenario.');
+    const idSchema = z
+      .string()
+      .trim()
+      .min(1)
+      .max(256)
+      .regex(/^[a-zA-Z0-9_.:-]+$/, 'Use only letters, numbers, dot, underscore, colon or dash.');
+    const modeSchema = z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('full') }).strict(),
+      z.object({ kind: z.literal('from-step'), stepIndex: z.number().int().min(0).max(9_999) }).strict(),
+      z.object({ kind: z.literal('single-step'), stepIndex: z.number().int().min(0).max(9_999) }).strict(),
+    ]);
+    const inputOverridesSchema = z
+      .record(z.string().min(1).max(256), z.string().max(4_096))
+      .refine((value) => Object.keys(value).length <= 50, 'At most 50 input overrides are allowed.');
+
+    server.tool(
+      'ide_quick_test_list',
+      `List saved Quick Test replay scenarios for one workspace. Use the returned scenario id with
+ide_quick_test_describe before running it. Results are bounded to at most 100 scenarios.`,
+      {
+        rootPath: rootPathSchema,
+        platform: z.enum(['web', 'android', 'windows']).optional().describe('Optional platform filter.'),
+        limit: z.number().int().min(1).max(100).default(50).describe('Maximum scenarios to return (default 50).'),
+      },
+      ({ rootPath, platform, limit }) => quickTestResult(() => scenarios.list({ rootPath, platform, limit }))
+    );
+
+    server.tool(
+      'ide_quick_test_describe',
+      `Inspect one saved Quick Test scenario, including its ordered replay steps, before running it.
+This does not execute the application.`,
+      {
+        rootPath: rootPathSchema,
+        scenarioId: idSchema.describe('Scenario id from ide_quick_test_list.'),
+      },
+      ({ rootPath, scenarioId }) => quickTestResult(() => scenarios.describe({ rootPath, scenarioId }))
+    );
+
+    server.tool(
+      'ide_quick_test_run',
+      `Start an asynchronous replay of a saved Quick Test scenario. The backend performs the recorded
+steps without manual mouse/keyboard control and returns a run id; poll ide_quick_test_status until the
+run reaches passed, failed or cancelled. mode defaults to the full scenario. inputOverrides is an
+EPHEMERAL stepId-to-value map for redacted inputs: values are passed only to the runner in memory and
+must never be persisted or returned. Obtain secrets from session memory or secure user-provided
+context; never guess credentials.`,
+      {
+        rootPath: rootPathSchema,
+        scenarioId: idSchema.describe('Scenario id from ide_quick_test_list.'),
+        target: z
+          .string()
+          .trim()
+          .min(1)
+          .max(4096)
+          .optional()
+          .describe('Optional native target override: Android serial or Windows .exe path.'),
+        tabId: z.string().trim().min(1).max(256).optional().describe('Optional existing Quick Test tab id.'),
+        mode: modeSchema.default({ kind: 'full' }).describe('Run the full scenario, from one step, or one step only.'),
+        timeoutMs: z
+          .number()
+          .int()
+          .min(1_000)
+          .max(300_000)
+          .default(120_000)
+          .describe('Hard run timeout in milliseconds.'),
+        inputOverrides: inputOverridesSchema
+          .optional()
+          .describe('Ephemeral redacted-input values keyed by replay step id; never persisted or echoed.'),
+      },
+      ({ rootPath, scenarioId, target, tabId, mode, timeoutMs, inputOverrides }) =>
+        quickTestResult(() =>
+          scenarios.run({
+            rootPath,
+            scenarioId,
+            target,
+            tabId,
+            mode: mode as QuickTestScenarioRunMode,
+            timeoutMs,
+            inputOverrides,
+          })
+        )
+    );
+
+    server.tool(
+      'ide_quick_test_status',
+      `Poll an asynchronous saved-scenario run. Returns structured status plus failure evidence when
+available. Stop polling after passed, failed or cancelled.`,
+      {
+        rootPath: rootPathSchema,
+        runId: idSchema.describe('Run id returned by ide_quick_test_run.'),
+      },
+      ({ rootPath, runId }) => quickTestResult(() => scenarios.status({ rootPath, runId }))
+    );
+
+    server.tool(
+      'ide_quick_test_cancel',
+      `Cancel a queued or running saved-scenario replay. Cancellation is idempotent; the returned status
+is the authoritative final state.`,
+      {
+        rootPath: rootPathSchema,
+        runId: idSchema.describe('Run id returned by ide_quick_test_run.'),
+      },
+      ({ rootPath, runId }) => quickTestResult(() => scenarios.cancel({ rootPath, runId }))
+    );
+
+    server.tool(
+      'ide_quick_test_compare',
+      `Compare two completed saved-scenario runs to verify a fix. Pass the known-bad run as baselineRunId
+and the post-fix run as currentRunId. The backend returns interaction, error, network, timing and visual
+differences that it has evidence for.`,
+      {
+        rootPath: rootPathSchema,
+        baselineRunId: idSchema.describe('Completed baseline (usually known-bad) run id.'),
+        currentRunId: idSchema.describe('Completed current (usually post-fix) run id.'),
+      },
+      ({ rootPath, baselineRunId, currentRunId }) =>
+        quickTestResult(() => scenarios.compare({ rootPath, baselineRunId, currentRunId }))
     );
   }
 
@@ -1460,6 +2001,68 @@ after verification, then follow any returned suggestions before repeating the sa
     );
   }
 
+  // --- ide_secret_context_* (Repository vault — Agent plane) --------------
+  if (deps.repoSecrets) {
+    const repoSecrets = deps.repoSecrets;
+
+    server.tool(
+      'ide_secret_context_list',
+      `List the safe metadata for this repository's Secret Context. You receive only aliases, purposes,
+and whether a user has supplied a value; values are never returned to you, prompts, history, or logs.
+Use the alias when writing configuration or code that reads its runtime environment variable (for example
+process.env.MY_API_KEY or $env:MY_API_KEY). For a guarded command, pass the alias through its
+secretAliases field so only that child process receives it. When the local user explicitly asks to view an
+alias value, reply exactly as \`ALIAS is {{secret:ALIAS}}\` (for example \`TEST is {{secret:TEST}}\`). This
+is a local-render marker that gives the user Reveal UI; it does not reveal a value to you. Never ask to
+read, print, commit, paste, or infer the secret value.
+
+Input:
+- repository: absolute workspace root (required).`,
+      { repository: z.string().describe('Absolute repository root.') },
+      ({ repository }) =>
+        guard(async () => {
+          const entries = await repoSecrets.list(repository);
+          return JSON.stringify(
+            {
+              entries,
+              localRevealGuidance: entries
+                .filter((entry) => entry.status === 'set')
+                .map((entry) => ({
+                  alias: entry.alias,
+                  response: `${entry.alias} is {{secret:${entry.alias}}}`,
+                })),
+              usage:
+                'Use aliases as runtime environment variables. If the local user explicitly asks to view an alias, reply exactly `ALIAS is {{secret:ALIAS}}`; the client renders a local Reveal UI. Secret values remain opaque to you.',
+            },
+            null,
+            2
+          );
+        })
+    );
+
+    server.tool(
+      'ide_secret_context_declare',
+      `Register a repository Secret Context alias and its purpose, without a value. Use this only when
+the task needs a secret that is not listed yet. The user can later add or replace the value in Memory →
+Secret Context. You must never put a raw secret value in this tool.
+
+Input:
+- repository: absolute workspace root (required)
+- alias: uppercase environment-variable name, e.g. PAYMENTS_API_KEY (required)
+- description: short purpose (required).`,
+      {
+        repository: z.string().describe('Absolute repository root.'),
+        alias: z.string().describe('Uppercase variable name, for example PAYMENTS_API_KEY.'),
+        description: z.string().describe('Short purpose, without a secret value.'),
+      },
+      ({ repository, alias, description }) =>
+        guard(async () => {
+          const entry = await repoSecrets.declare(repository, alias, description);
+          return JSON.stringify({ entry, next: 'Ask the user to set its value in Secret Context if needed.' }, null, 2);
+        })
+    );
+  }
+
   // --- ide_memory_* (Session super-memory — Agent plane) -------------------
   // Only exposed when a session-memory store is injected (production wiring).
   if (deps.memory) {
@@ -1754,6 +2357,124 @@ Input:
           const held =
             snap.leases.length > 0 ? snap.leases.map((l) => `- ${renderLease(l)}`).join('\n') : '- (no files held)';
           return [`## Participants`, people, '', `## Held files`, held].join('\n');
+        })
+    );
+
+    server.tool(
+      'tomny_team_claim',
+      `Tomny collaborative lease claim. Claim a workspace-relative file before editing it.`,
+      {
+        rootPath: nullableString('Absolute workspace root.'),
+        agentId: nullableString('Stable participant id for this session.'),
+        relPath: nullableString('Workspace-relative path of the file to claim.'),
+        intent: nullableString('Optional short description of the planned change.'),
+      },
+      ({ rootPath, agentId, relPath, intent }) =>
+        guard(async () => {
+          const result = team.claim(
+            nonEmptyString(rootPath, 'rootPath'),
+            nonEmptyString(agentId, 'agentId'),
+            nonEmptyString(relPath, 'relPath'),
+            optionalString(intent)
+          );
+          if (result.ok) {
+            return `Claimed ${result.lease.relPath}${result.renewed ? ' (renewed your existing lease)' : ''}. Release it with tomny_team_release when done.`;
+          }
+          return `CONFLICT: ${renderLease(result.lease)}. Do NOT edit it; coordinate or choose another file.`;
+        })
+    );
+
+    server.tool(
+      'tomny_team_write',
+      `Tomny full-file writer. This dangerous operation is protected by a team lease and persisted through MTUI.`,
+      {
+        rootPath: nullableString('Absolute workspace root.'),
+        agentId: nullableString('Stable participant id for this session.'),
+        relPath: nullableString('Workspace-relative path of the file to write.'),
+        content: nullableString('Full new file content. Empty or null writes an empty file.'),
+      },
+      ({ rootPath, agentId, relPath, content }) =>
+        guard(async () => {
+          const pathValue = nonEmptyString(relPath, 'relPath');
+          const result = await team.write(
+            nonEmptyString(rootPath, 'rootPath'),
+            nonEmptyString(agentId, 'agentId'),
+            pathValue,
+            content ?? ''
+          );
+          if (result.ok === true) return `Wrote ${pathValue} (${result.bytes} bytes) via MTUI.`;
+          if (result.reason === 'held') {
+            return `CONFLICT: ${renderLease(result.lease)}. The write was refused.`;
+          }
+          return `Write failed: ${result.error}`;
+        })
+    );
+
+    server.tool(
+      'tomny_team_edit',
+      `Tomny anchored edit. Replaces one exact text region through team leases and MTUI so concurrent agents cannot silently clobber each other.`,
+      {
+        rootPath: nullableString('Absolute workspace root.'),
+        agentId: nullableString('Stable participant id for this session.'),
+        relPath: nullableString('Workspace-relative path of the file to edit.'),
+        oldText: nullableString('Exact non-empty current text to replace once.'),
+        newText: nullableString('Replacement text. Empty or null deletes the old text.'),
+      },
+      ({ rootPath, agentId, relPath, oldText, newText }) =>
+        guard(async () => {
+          const pathValue = nonEmptyString(relPath, 'relPath');
+          const result = await team.editReplace(
+            nonEmptyString(rootPath, 'rootPath'),
+            nonEmptyString(agentId, 'agentId'),
+            pathValue,
+            nonEmptyString(oldText, 'oldText'),
+            newText ?? ''
+          );
+          if (result.ok === true) return `Edited ${pathValue} (${result.matches} match replaced) via MTUI.`;
+          if (result.reason === 'held') return `CONFLICT: ${renderLease(result.lease)}. The edit was refused.`;
+          if (result.reason === 'stale') {
+            return `STALE: ${result.detail}\nRe-read with tomny_read, rebase the change, then retry.`;
+          }
+          if (result.reason === 'ambiguous') {
+            return `AMBIGUOUS: ${result.detail}\nUse a longer unique oldText anchor.`;
+          }
+          return `Edit failed: ${result.error}`;
+        })
+    );
+
+    server.tool(
+      'tomny_team_release',
+      `Release a Tomny advisory file lease after finishing an edit.`,
+      {
+        rootPath: nullableString('Absolute workspace root.'),
+        agentId: nullableString('Stable participant id for this session.'),
+        relPath: nullableString('Workspace-relative path of the file to release.'),
+      },
+      ({ rootPath, agentId, relPath }) =>
+        guard(async () => {
+          const pathValue = nonEmptyString(relPath, 'relPath');
+          return team.release(nonEmptyString(rootPath, 'rootPath'), nonEmptyString(agentId, 'agentId'), pathValue)
+            ? `Released ${pathValue}.`
+            : `You did not hold a lease on ${pathValue}.`;
+        })
+    );
+
+    server.tool(
+      'tomny_team_status',
+      `Show Tomny participants and active file leases for a workspace.`,
+      { rootPath: nullableString('Absolute workspace root.') },
+      ({ rootPath }) =>
+        guard(async () => {
+          const snap = team.snapshot(nonEmptyString(rootPath, 'rootPath'));
+          const people =
+            snap.participants.length > 0
+              ? snap.participants.map((p) => `- ${p.label}${p.isUser ? ' (user)' : ''} [${p.agentId}]`).join('\n')
+              : '- (nobody yet)';
+          const held =
+            snap.leases.length > 0
+              ? snap.leases.map((lease) => `- ${renderLease(lease)}`).join('\n')
+              : '- (no files held)';
+          return ['## Participants', people, '', '## Held files', held].join('\n');
         })
     );
   }

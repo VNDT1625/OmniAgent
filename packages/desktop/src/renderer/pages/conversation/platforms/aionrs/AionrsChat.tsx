@@ -30,6 +30,7 @@ const AionrsChat: React.FC<{
   session_mode?: string;
   cron_job_id?: string;
   emptySlot?: React.ReactNode;
+  beforeSendBox?: React.ReactNode;
   loadedSkills?: string[];
   loadedMcpServers?: string[];
   loadedMcpStatuses?: IConversationMcpStatus[];
@@ -41,6 +42,7 @@ const AionrsChat: React.FC<{
   session_mode,
   cron_job_id,
   emptySlot,
+  beforeSendBox,
   loadedSkills,
   loadedMcpServers,
   loadedMcpStatuses,
@@ -71,6 +73,7 @@ const AionrsChat: React.FC<{
           <FlexFullContainer>
             <MessageList className='flex-1' emptySlot={emptySlot} />
           </FlexFullContainer>
+          {beforeSendBox && <div className='w-full min-w-0 shrink-0 px-16px box-border'>{beforeSendBox}</div>}
           <AionrsSendBox
             conversation_id={conversation_id}
             modelSelection={modelSelection}

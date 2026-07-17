@@ -30,6 +30,7 @@
 
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { buildWorkflowPlan, getCompactAutomationCapabilities } from './automationHarness';
 import type { Workflow, WorkflowNode } from './automationTypes';
 
 // ---------------------------------------------------------------------------
@@ -117,6 +118,31 @@ const summariseWorkflow = (wf: Workflow) => ({
  */
 export const createAutomationServer = (deps: AutomationServerDeps): McpServer => {
   const server = new McpServer({ name: BUILTIN_AUTOMATION_NAME, version: '1.0.0' });
+
+  server.tool(
+    'automation_get_capabilities',
+    'Return the compact automation node catalog. Use this before planning so the agent does not need full source or documentation context.',
+    {},
+    async () => jsonResult(getCompactAutomationCapabilities()),
+  );
+
+  server.tool(
+    'automation_plan_workflow',
+    'Validate a proposed workflow before saving it. Returns the normalized plan and concise warnings without executing anything.',
+    {
+      goal: z.string().describe('The outcome this workflow should achieve.'),
+      nodes: z.string().describe('JSON-serialised array of WorkflowNode objects.'),
+    },
+    async ({ goal, nodes }) => {
+      try {
+        const parsed = JSON.parse(nodes) as unknown;
+        if (!Array.isArray(parsed)) return textResult('nodes must be a JSON array.', true);
+        return jsonResult(buildWorkflowPlan(goal, parsed as WorkflowNode[]));
+      } catch (error) {
+        return textResult(`Invalid workflow plan: ${describeError(error)}`, true);
+      }
+    },
+  );
 
   // -------------------------------------------------------------------------
   // automation_list_workflows

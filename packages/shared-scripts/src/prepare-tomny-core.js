@@ -10,9 +10,17 @@ const { execFileSync } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const {
+  artifactManifestMatches,
+  assertPinnedCommit,
+  sealSourceCache,
+  sha256File,
+  validateReusableSource,
+} = require('./source-build-identity');
 
 const UPSTREAM_REPOSITORY = 'https://github.com/VNDT1625/OmniAgent.git';
-const BUILD_RECIPE_VERSION = 3;
+const BUILD_RECIPE_VERSION = 4;
+const RECIPE_IDENTITY = `tomny-core-v${BUILD_RECIPE_VERSION}`;
 
 const targetTriple = (platform, arch) => {
   const targets = {
@@ -82,42 +90,46 @@ const repairCachedRepository = (sourceDir) => {
 
 const ensureSource = ({ version, commit }) => {
   const cacheRoot = path.join(os.tmpdir(), 'tomny-core-source');
-  const sourceDir = process.env.TOMNY_CORE_SOURCE_DIR || path.join(cacheRoot, version);
-  if (!fs.existsSync(path.join(sourceDir, '.git'))) {
+  const cacheKey = `${version}-${commit.slice(0, 12)}-r${BUILD_RECIPE_VERSION}`;
+  const sourceDir = process.env.TOMNY_CORE_SOURCE_DIR || path.join(cacheRoot, cacheKey);
+  if (!fs.existsSync(sourceDir)) {
     fs.mkdirSync(cacheRoot, { recursive: true });
     execFileSync('git', ['clone', '--depth', '1', '--branch', version, UPSTREAM_REPOSITORY, sourceDir], {
       stdio: 'inherit',
     });
+  } else if (!fs.existsSync(path.join(sourceDir, '.git'))) {
+    throw new Error(`Tomny Core source cache is not a Git checkout: ${sourceDir}`);
   }
   repairCachedRepository(sourceDir);
-  const actualCommit = execFileSync('git', [...gitRepositoryArgs(sourceDir), 'rev-parse', 'HEAD'], {
-    encoding: 'utf8',
-  }).trim();
-  if (commit && actualCommit !== commit) {
-    throw new Error(`Tomny Core source mismatch: expected ${commit}, received ${actualCommit}`);
-  }
+  const identity = validateReusableSource({
+    sourceDir,
+    repository: UPSTREAM_REPOSITORY,
+    commit,
+    recipeIdentity: RECIPE_IDENTITY,
+  });
   patchTomnyBranding(sourceDir);
   patchTomnyCompatibility(sourceDir);
-  return { sourceDir, actualCommit };
+  const provenance = sealSourceCache({ sourceDir, identity, recipeIdentity: RECIPE_IDENTITY });
+  return { sourceDir, actualCommit: identity.actualCommit, provenance };
 };
 
-const manifestMatches = (manifestPath, version, commit) => {
-  if (!fs.existsSync(manifestPath)) return false;
-  try {
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-    return (
-      manifest.version === version &&
-      manifest.sourceCommit === commit &&
-      manifest.sourceType === 'source-build' &&
-      manifest.buildRecipeVersion === BUILD_RECIPE_VERSION
-    );
-  } catch {
-    return false;
-  }
-};
+const manifestMatches = (manifestPath, binaryPath, version, commit, triple) =>
+  artifactManifestMatches({
+    manifestPath,
+    binaryPath,
+    expected: {
+      version,
+      sourceCommit: commit,
+      sourceRepository: UPSTREAM_REPOSITORY,
+      sourceType: 'source-build',
+      buildRecipeVersion: BUILD_RECIPE_VERSION,
+      targetTriple: triple,
+    },
+  });
 
 function prepareTomnyCore(options) {
   const { projectRoot, platform, arch, version, commit } = options;
+  assertPinnedCommit(commit);
   const triple = targetTriple(platform, arch);
   if (!triple) throw new Error(`Unsupported Tomny Core target: ${platform}-${arch}`);
 
@@ -125,11 +137,11 @@ function prepareTomnyCore(options) {
   const targetDir = path.join(projectRoot, 'resources', 'bundled-tomny-core', runtimeKey);
   const targetBinary = path.join(targetDir, stagedBinaryName(platform));
   const manifestPath = path.join(targetDir, 'manifest.json');
-  if (fs.existsSync(targetBinary) && manifestMatches(manifestPath, version, commit)) {
+  if (manifestMatches(manifestPath, targetBinary, version, commit, triple)) {
     return { prepared: true, cached: true, dir: targetDir, sourceCommit: commit };
   }
 
-  const { sourceDir, actualCommit } = ensureSource({ version, commit });
+  const { sourceDir, actualCommit, provenance } = ensureSource({ version, commit });
   execFileSync('rustup', ['target', 'add', '--toolchain', 'stable', triple], { cwd: sourceDir, stdio: 'inherit' });
   execFileSync(
     'rustup',
@@ -167,6 +179,10 @@ function prepareTomnyCore(options) {
         version,
         sourceCommit: actualCommit,
         sourceRepository: UPSTREAM_REPOSITORY,
+        sourceTree: provenance.sourceTree,
+        sourceHash: provenance.sourceHash,
+        binarySha256: sha256File(targetBinary),
+        targetTriple: triple,
         sourceType: 'source-build',
         compatibility: 'aioncore-rest-ws-v1',
         license: 'MIT',

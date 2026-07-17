@@ -7,10 +7,9 @@
 /**
  * `ConversationWatchOverlay` — host for the in-chat live-browser frames.
  *
- * Rendered INSIDE the chat content column (via `ChatLayout`'s
- * `chatColumnOverlay` slot), so the agent's browser frames appear as part of the
- * conversation — like ChatGPT's agent canvas — rather than a panel glued to the
- * window's right edge.
+ * Rendered in each platform chat's `beforeSendBox` slot as a bounded working
+ * canvas between the message list and composer. The browser stays observable
+ * without replacing the conversation or feeling detached from the input.
  *
  * It owns the open/auto-open state:
  *  - it auto-opens the moment the agent opens its first browser tab (a light
@@ -31,6 +30,8 @@ import { editorControlClient } from './editorControlClient';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSuperMode } from '../../hooks/useSuperMode';
 import LiveBrowserWatch from './LiveBrowserWatch';
+
+import AgentMeshInlineCard from './AgentMeshInlineCard';
 
 /** Props for {@link ConversationWatchOverlay}. */
 export type ConversationWatchOverlayProps = {
@@ -53,7 +54,7 @@ const TabPoller: React.FC<{ onCount: (count: number) => void }> = ({ onCount }) 
       // tab must not auto-open; an editor frame should.
       const browserP = browserClient
         .listTabs()
-        .then((tabs) => (Array.isArray(tabs) ? tabs.filter((t) => t.visible !== false).length : 0))
+        .then((tabs) => (Array.isArray(tabs) ? tabs.filter((t) => t.background !== true).length : 0))
         .catch(() => 0);
       const editorP = editorControlClient
         .listFrames()
@@ -73,7 +74,7 @@ const TabPoller: React.FC<{ onCount: (count: number) => void }> = ({ onCount }) 
   return null;
 };
 
-/** Owns the in-chat live-browser overlay state and renders it in the chat column. */
+/** Owns the live-browser card state rendered immediately above the chat composer. */
 const ConversationWatchOverlay: React.FC<ConversationWatchOverlayProps> = ({ conversationId }) => {
   const sup = useSuperMode(conversationId);
   const [open, setOpen] = useState(false);
@@ -130,13 +131,22 @@ const ConversationWatchOverlay: React.FC<ConversationWatchOverlayProps> = ({ con
     if (count === 0) autoOpenedRef.current = false;
   }, []);
 
-  if (!isElectronDesktop() || !sup.available || !conversationId) return null;
+  if (!isElectronDesktop() || !conversationId) return null;
 
   return (
     <>
-      <LiveBrowserWatch open={sup.enabled && open} onClose={() => setOpen(false)} onTabCountChange={handleTabCount} />
-      {/* While closed but Super on, watch for the agent's first tab to auto-open. */}
-      {sup.enabled && !open && <TabPoller onCount={handleTabCount} />}
+      <AgentMeshInlineCard conversationId={conversationId} />
+      {sup.available ? (
+        <>
+          <LiveBrowserWatch
+            open={sup.enabled && open}
+            onClose={() => setOpen(false)}
+            onTabCountChange={handleTabCount}
+          />
+          {/* While closed but Super on, watch for the agent's first tab to auto-open. */}
+          {sup.enabled && !open && <TabPoller onCount={handleTabCount} />}
+        </>
+      ) : null}
     </>
   );
 };

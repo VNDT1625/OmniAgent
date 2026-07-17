@@ -11,8 +11,7 @@
  * Builds a {@link CompanyChat} that calls the user's configured provider/model
  * over the OpenAI-compatible `/chat/completions` endpoint. The call style
  * mirrors `browser/providerChat.ts` and `company/companyGenerator.ts`: the
- * provider list (with a usable `api_key`) is read from aioncore
- * (`GET /api/providers`) and the request is issued directly via `fetch` (not
+ * provider list (with a usable `api_key`) is read from the native Tomny provider store and the request is issued directly via `fetch` (not
  * through `ClientFactory`, which expects a camelCase `apiKey` and throws outside
  * the chat pipeline).
  *
@@ -25,8 +24,9 @@
  * Process boundary: Main-process (Node.js) module. No DOM APIs.
  */
 
-import { httpRequest } from '@/common/adapter/httpBridge';
 import type { IProvider } from '@/common/config/storage';
+import { getReadyProviderStore } from '@process/services/tomnyProviderBridge';
+import { isCliModelId, runAgentChatMessages } from '@process/services/agentChat';
 import type { CompanyChat } from './companyConversation';
 
 /** Whether a model id is enabled for a provider (defaults to enabled). */
@@ -70,7 +70,18 @@ const pick = (providers: IProvider[], model?: string): { provider: IProvider; mo
  */
 export const createCompanyChat = (): CompanyChat => {
   return async ({ model, messages, signal }) => {
-    const providers = (await httpRequest<IProvider[]>('GET', '/api/providers').catch(() => [] as IProvider[])) || [];
+    if (model && isCliModelId(model)) {
+      return runAgentChatMessages(
+        async () => {
+          throw new Error('CLI routing unexpectedly fell through to the provider transport.');
+        },
+        model,
+        messages,
+        signal,
+        { surface: 'chat', permissionMode: 'workspace-write' }
+      );
+    }
+    const providers = await (await getReadyProviderStore()).list();
     const selected = pick(providers, model);
     if (!selected) {
       throw new Error('No usable model is configured. Open Settings → Model and add a provider/model, then try again.');

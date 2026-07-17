@@ -4,6 +4,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -21,13 +22,33 @@ const {
   targetTriple,
 }: {
   gitRepositoryArgs: (sourceDir: string) => string[];
-  manifestMatches: (path: string, version: string, commit: string) => boolean;
+  manifestMatches: (path: string, binary: string, version: string, commit: string, triple: string) => boolean;
   patchTomnyBranding: (sourceDir: string) => void;
   patchTomnyCompatibility: (sourceDir: string) => void;
   repairCachedRepository: (sourceDir: string) => void;
   stagedBinaryName: (platform: string) => string;
   targetTriple: (platform: string, arch: string) => string | null;
 } = require('../../../packages/shared-scripts/src/prepare-tomny-core.js');
+const {
+  assertPinnedCommit,
+  normalizeRepositoryUrl,
+  sealSourceCache,
+  validateReusableSource,
+}: {
+  assertPinnedCommit: (commit: string) => void;
+  normalizeRepositoryUrl: (repository: string) => string;
+  sealSourceCache: (input: {
+    sourceDir: string;
+    identity: { actualCommit: string; sourceRepository: string; sourceTree: string };
+    recipeIdentity: string;
+  }) => { sourceHash: string };
+  validateReusableSource: (input: {
+    sourceDir: string;
+    repository: string;
+    commit: string;
+    recipeIdentity: string;
+  }) => { actualCommit: string; sourceRepository: string; sourceTree: string; sourceHash?: string };
+} = require('../../../packages/shared-scripts/src/source-build-identity.js');
 
 describe('Tomny Core source builder', () => {
   it('maps supported release targets and rejects unknown targets', () => {
@@ -37,21 +58,81 @@ describe('Tomny Core source builder', () => {
     expect(stagedBinaryName('win32')).toBe('tomny-core.exe');
   });
 
-  it('only accepts current source-built manifests pinned to the requested revision', () => {
+  it('only accepts artifacts whose binary and full source identity match', () => {
     const directory = mkdtempSync(join(tmpdir(), 'tomny-core-manifest-'));
     const manifestPath = join(directory, 'manifest.json');
+    const binaryPath = join(directory, 'tomny-core.exe');
+    const commit = 'a'.repeat(40);
+    writeFileSync(binaryPath, 'trusted-binary');
     writeFileSync(
       manifestPath,
       JSON.stringify({
         version: 'v0.1.16',
-        sourceCommit: 'abc',
+        sourceCommit: commit,
+        sourceRepository: 'https://github.com/VNDT1625/OmniAgent.git',
+        sourceTree: 'b'.repeat(40),
+        sourceHash: 'c'.repeat(64),
+        binarySha256: '94bfbc5b9a95c1e17ffb07b413f68ccd74601c45f1ed1d71dfa6c76aeebd10d1',
+        targetTriple: 'x86_64-pc-windows-msvc',
         sourceType: 'source-build',
-        buildRecipeVersion: 3,
+        buildRecipeVersion: 4,
       })
     );
 
-    expect(manifestMatches(manifestPath, 'v0.1.16', 'abc')).toBe(true);
-    expect(manifestMatches(manifestPath, 'v0.1.16', 'different')).toBe(false);
+    expect(manifestMatches(manifestPath, binaryPath, 'v0.1.16', commit, 'x86_64-pc-windows-msvc')).toBe(true);
+    writeFileSync(binaryPath, 'poisoned-binary');
+    expect(manifestMatches(manifestPath, binaryPath, 'v0.1.16', commit, 'x86_64-pc-windows-msvc')).toBe(false);
+  });
+
+  it('rejects ambiguous repository URLs and abbreviated commits', () => {
+    expect(() => normalizeRepositoryUrl('git@github.com:VNDT1625/OmniAgent.git')).toThrow('absolute HTTPS');
+    expect(() => normalizeRepositoryUrl('https://user@example.com/repository.git')).toThrow('uncredentialed HTTPS');
+    expect(() => assertPinnedCommit('abc123')).toThrow('full lowercase SHA-1');
+  });
+
+  it('seals a pinned checkout and fails closed after source or remote tampering', () => {
+    const sourceDir = mkdtempSync(join(tmpdir(), 'tomny-source-identity-'));
+    const repository = 'https://github.com/VNDT1625/OmniAgent.git';
+    const sourcePath = join(sourceDir, 'source.txt');
+    execFileSync('git', ['init', sourceDir]);
+    writeFileSync(sourcePath, 'trusted source');
+    execFileSync('git', ['-C', sourceDir, 'add', 'source.txt']);
+    execFileSync('git', [
+      '-C',
+      sourceDir,
+      '-c',
+      'user.name=Tomny Test',
+      '-c',
+      'user.email=test@tomny.local',
+      'commit',
+      '-m',
+      'fixture',
+    ]);
+    execFileSync('git', ['-C', sourceDir, 'remote', 'add', 'origin', repository]);
+    const commit = execFileSync('git', ['-C', sourceDir, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+    writeFileSync(sourcePath, 'unproven local change');
+    expect(() => validateReusableSource({ sourceDir, repository, commit, recipeIdentity: 'test-recipe' })).toThrow(
+      'Unproven source cache'
+    );
+    writeFileSync(sourcePath, 'trusted source');
+    const identity = validateReusableSource({ sourceDir, repository, commit, recipeIdentity: 'test-recipe' });
+    const provenance = sealSourceCache({ sourceDir, identity, recipeIdentity: 'test-recipe' });
+
+    expect(validateReusableSource({ sourceDir, repository, commit, recipeIdentity: 'test-recipe' }).sourceHash).toBe(
+      provenance.sourceHash
+    );
+    expect(sealSourceCache({ sourceDir, identity, recipeIdentity: 'test-recipe' }).sourceHash).toBe(
+      provenance.sourceHash
+    );
+    writeFileSync(sourcePath, 'poisoned source');
+    expect(() => validateReusableSource({ sourceDir, repository, commit, recipeIdentity: 'test-recipe' })).toThrow(
+      'potentially poisoned'
+    );
+    writeFileSync(sourcePath, 'trusted source');
+    execFileSync('git', ['-C', sourceDir, 'remote', 'set-url', 'origin', 'https://github.com/attacker/repository.git']);
+    expect(() => validateReusableSource({ sourceDir, repository, commit, recipeIdentity: 'test-recipe' })).toThrow(
+      'repository mismatch'
+    );
   });
 
   it('brands the executable, command, and log without rewriting the compatibility API', () => {

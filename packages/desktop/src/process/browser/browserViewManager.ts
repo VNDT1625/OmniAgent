@@ -89,6 +89,8 @@ export type BrowserTabInfo = {
   title: string;
   /** Whether the tab is currently visible (attached and painting). */
   visible: boolean;
+  /** True for hidden research/scraping tabs that must never appear in a live user surface. */
+  background?: boolean;
   /** The most recent bounds applied to the tab. */
   bounds: TabBounds;
 };
@@ -498,6 +500,7 @@ class BrowserViewManagerImpl implements IBrowserViewManager {
         url: destroyed ? '' : record.view.webContents.getURL(),
         title: destroyed ? '' : record.view.webContents.getTitle(),
         visible: record.visible,
+        background: record.background,
         bounds: { ...record.bounds },
       });
     }

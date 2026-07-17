@@ -377,10 +377,11 @@ const runAutomationChat = async (req: AutomationChatRequest, store: IAutomationS
       : [{ role: 'system', content: systemPrompt }, ...(req.messages as ChatMessageInput[])];
 
   const reply = await runAgentChatMessages(
-    (model, msgs, signal) => runProviderChat(model, msgs as ChatMessageInput[]),
+    (model, msgs) => runProviderChat(model, msgs as ChatMessageInput[]),
     req.model,
     messages,
-    undefined
+    undefined,
+    { surface: 'automation', permissionMode: 'read-only' }
   );
 
   // Attempt to extract and persist a workflow from the reply.

@@ -23,6 +23,9 @@ import userEvent from '@testing-library/user-event';
 import { ConfigProvider } from '@arco-design/web-react';
 import type { TChatConversation } from '@/common/config/storage';
 
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+
 const BROWSER_CONTROL = 'aionui-browser-control';
 
 vi.mock('react-i18next', () => ({
@@ -61,6 +64,7 @@ const browserMock = vi.hoisted(() => ({
   show: vi.fn(() => Promise.resolve()),
   setVisible: vi.fn(() => Promise.resolve()),
   setBounds: vi.fn(() => Promise.resolve()),
+  destroyTab: vi.fn(() => Promise.resolve()),
   onTabUpdated: vi.fn(() => () => {}),
 }));
 vi.mock('@renderer/pages/browser/browserBridgeClient', () => ({ browserClient: browserMock }));
@@ -103,6 +107,7 @@ describe('ConversationSurfaces (DOM)', () => {
     browserMock.show.mockResolvedValue(undefined);
     browserMock.setVisible.mockResolvedValue(undefined);
     browserMock.setBounds.mockResolvedValue(undefined);
+    browserMock.destroyTab.mockResolvedValue(undefined);
     browserMock.onTabUpdated.mockReturnValue(() => {});
     editorMock.listFrames.mockResolvedValue([]);
     editorMock.closeFrame.mockResolvedValue(undefined);
@@ -148,12 +153,12 @@ describe('ConversationSurfaces (DOM)', () => {
     expect(screen.queryByText('workspace.empty')).toBeNull();
   });
 
-  it('auto-opens the watch panel and renders one frame per agent tab', async () => {
+  it('auto-opens with a tab strip and renders only the selected browser at full width', async () => {
+    const user = userEvent.setup();
     convMock.get.mockResolvedValue({
       id: 'c1',
       extra: { session_mcp_servers: [{ id: 'bc1', name: BROWSER_CONTROL }] },
     });
-    // The agent opened TWO tabs → the panel auto-opens and shows TWO frames.
     browserMock.listTabs.mockResolvedValue([
       {
         id: 'tab1',
@@ -172,13 +177,106 @@ describe('ConversationSurfaces (DOM)', () => {
     ]);
     renderHeader(conversation({ session_mcp_servers: [{ id: 'bc1', name: BROWSER_CONTROL }] }));
 
-    // Without any click, the docked panel appears because tabs exist.
     await waitFor(() => expect(screen.getByText('workspace.watchTitle')).toBeTruthy());
-    // Both opened tabs are rendered as their own in-chat frames.
-    await waitFor(() => {
-      expect(screen.getByText('YouTube')).toBeTruthy();
-      expect(screen.getByText('Facebook')).toBeTruthy();
+    const youtubeTab = await screen.findByRole('tab', { name: 'YouTube' });
+    const facebookTab = screen.getByRole('tab', { name: 'Facebook' });
+    await waitFor(() => expect(screen.getAllByTestId('live-browser-frame')).toHaveLength(1));
+    expect(youtubeTab.getAttribute('aria-selected')).toBe('true');
+
+    await user.click(facebookTab);
+    expect(facebookTab.getAttribute('aria-selected')).toBe('true');
+    expect(screen.getAllByTestId('live-browser-frame')).toHaveLength(1);
+
+    const card = screen.getByTestId('live-browser-card');
+    expect(card.className).toContain('w-full');
+    expect(card.className).not.toContain('absolute');
+    expect(card.className).not.toContain('inset-0');
+  });
+
+  it('destroys only the browser tab whose close button is clicked', async () => {
+    const user = userEvent.setup();
+    convMock.get.mockResolvedValue({
+      id: 'c1',
+      extra: { session_mcp_servers: [{ id: 'bc1', name: BROWSER_CONTROL }] },
     });
+    browserMock.listTabs.mockResolvedValue([
+      {
+        id: 'tab1',
+        title: 'Checkout',
+        url: 'https://example.com/checkout',
+        visible: true,
+        bounds: { x: 0, y: 0, width: 0, height: 0 },
+      },
+      {
+        id: 'tab2',
+        title: 'Orders',
+        url: 'https://example.com/orders',
+        visible: true,
+        bounds: { x: 0, y: 0, width: 0, height: 0 },
+      },
+    ]);
+    renderHeader(conversation({ session_mcp_servers: [{ id: 'bc1', name: BROWSER_CONTROL }] }));
+
+    await screen.findByRole('tab', { name: 'Checkout' });
+    await user.click(screen.getAllByRole('button', { name: 'browser.tab.close' })[0]);
+
+    await waitFor(() => expect(browserMock.destroyTab).toHaveBeenCalledWith({ id: 'tab1' }));
+    expect(screen.queryByRole('tab', { name: 'Checkout' })).toBeNull();
+    expect(screen.getByRole('tab', { name: 'Orders' }).getAttribute('aria-selected')).toBe('true');
+  });
+
+  it('collapses the live browser without closing its conversation surface', async () => {
+    const user = userEvent.setup();
+    convMock.get.mockResolvedValue({
+      id: 'c1',
+      extra: { session_mcp_servers: [{ id: 'bc1', name: BROWSER_CONTROL }] },
+    });
+    browserMock.listTabs.mockResolvedValue([
+      {
+        id: 'tab1',
+        title: 'Checkout',
+        url: 'https://example.com/checkout',
+        visible: true,
+        bounds: { x: 0, y: 0, width: 0, height: 0 },
+      },
+    ]);
+    renderHeader(conversation({ session_mcp_servers: [{ id: 'bc1', name: BROWSER_CONTROL }] }));
+
+    await screen.findByRole('tab', { name: 'Checkout' });
+    await user.click(screen.getByRole('button', { name: 'common.collapse' }));
+
+    expect(screen.getByTestId('live-browser-card')).toBeTruthy();
+    expect(screen.queryByText('Checkout')).toBeNull();
+    expect(screen.getByRole('button', { name: 'common.expand' }).getAttribute('aria-expanded')).toBe('false');
+  });
+
+  it('reopens a user browser tab after the watch card hides it', async () => {
+    const user = userEvent.setup();
+    convMock.get.mockResolvedValue({
+      id: 'c1',
+      extra: { session_mcp_servers: [{ id: 'bc1', name: BROWSER_CONTROL }] },
+    });
+    const tab = {
+      id: 'tab1',
+      title: 'Checkout',
+      url: 'https://example.com/checkout',
+      visible: true,
+      background: false,
+      bounds: { x: 0, y: 0, width: 800, height: 600 },
+    };
+    browserMock.listTabs.mockResolvedValue([tab]);
+    renderHeader(conversation({ session_mcp_servers: [{ id: 'bc1', name: BROWSER_CONTROL }] }));
+
+    await screen.findByRole('tab', { name: 'Checkout' });
+    await user.click(screen.getByRole('button', { name: 'common.close' }));
+    await waitFor(() => expect(screen.queryByTestId('live-browser-card')).toBeNull());
+
+    browserMock.listTabs.mockResolvedValue([{ ...tab, visible: false }]);
+    await user.click(screen.getByText('workspace.watch').closest('button')!);
+
+    await screen.findByRole('tab', { name: 'Checkout' });
+    expect(browserMock.hideAll).not.toHaveBeenCalled();
+    expect(browserMock.setVisible).toHaveBeenCalledWith({ id: 'tab1', visible: false });
   });
 
   it('ignores hidden background tabs (e.g. the agent research tab)', async () => {
@@ -201,6 +299,7 @@ describe('ConversationSurfaces (DOM)', () => {
         title: 'google search',
         url: 'https://google.com/search?q=x',
         visible: false,
+        background: true,
         bounds: { x: -10000, y: 0, width: 1280, height: 900 },
       },
     ]);
@@ -220,5 +319,30 @@ describe('ConversationSurfaces (DOM)', () => {
     const frames = await editorMock.listFrames();
     expect(frames).toHaveLength(1);
     expect(frames[0].title).toBe('notes.md');
+  });
+});
+
+describe('live browser composer placement', () => {
+  const platformChats = [
+    ['aionrs/AionrsChat.tsx', '<AionrsSendBox'],
+    ['acp/AcpChat.tsx', '<AcpSendBox'],
+    ['remote/RemoteChat.tsx', '<RemoteSendBox'],
+    ['openclaw/OpenClawChat.tsx', '<OpenClawSendBox'],
+    ['nanobot/NanobotChat.tsx', '<NanobotSendBox'],
+  ] as const;
+
+  it.each(platformChats)('renders the browser card directly before the composer in %s', (file, composer) => {
+    const source = readFileSync(
+      resolve(process.cwd(), 'packages/desktop/src/renderer/pages/conversation/platforms', file),
+      'utf8'
+    );
+    const messagesIndex = source.indexOf('<MessageList');
+    const watchIndex = source.indexOf('{beforeSendBox &&');
+    const composerIndex = source.indexOf(composer);
+
+    expect(messagesIndex).toBeGreaterThan(-1);
+    expect(watchIndex).toBeGreaterThan(messagesIndex);
+    expect(composerIndex).toBeGreaterThan(watchIndex);
+    expect(source.slice(watchIndex, composerIndex)).not.toContain('max-w-800px');
   });
 });

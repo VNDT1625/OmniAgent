@@ -26,7 +26,7 @@ import { ipcBridge } from '@/common';
 import type { IMcpServer, ISessionMcpServer } from '@/common/config/storage';
 import { ensureBackendMcpCatalog, toSessionMcpServer } from '@/renderer/hooks/mcp/catalog';
 import { useCallback, useEffect, useState } from 'react';
-import { BROWSER_CONTROL_MCP_NAME, withSuperBrowserRules } from './superGuidance';
+import { BROWSER_CONTROL_MCP_NAME, withSuperBrowserRules, withoutSuperBrowserRules } from './superGuidance';
 
 /** Canonical name of the built-in Browser-Control MCP server (re-exported for callers). */
 export { BROWSER_CONTROL_MCP_NAME };
@@ -126,23 +126,30 @@ export function useSuperMode(conversationId: string | undefined): UseSuperMode {
       .invoke({ id: conversationId })
       .then(async (conv) => {
         if (!alive) return;
-        const extra = (conv?.extra ?? {}) as { session_mcp_servers?: ISessionMcpServer[] };
+        const extra = (conv?.extra ?? {}) as {
+          session_mcp_servers?: ISessionMcpServer[];
+          preset_rules?: string;
+        };
         const servers = Array.isArray(extra.session_mcp_servers) ? extra.session_mcp_servers : [];
         const attachedEntry = servers.find((s) => s.name === BROWSER_CONTROL_MCP_NAME) ?? null;
         const attached = Boolean(attachedEntry);
         setEnabled(attached);
         saveSuper(conversationId, attached);
 
-        // Refresh a stale loopback URL so the agent reconnects after a restart.
+        // Refresh both the ephemeral loopback URL and the standing guidance.
+        // The latter upgrades conversations that enabled Super before Quick Test
+        // tools existed, without requiring the user to toggle Super off and on.
         if (attached && server) {
           const fresh: ISessionMcpServer = toSessionMcpServer(server);
-          const stale = JSON.stringify(attachedEntry?.transport) !== JSON.stringify(fresh.transport);
-          if (stale) {
+          const staleTransport = JSON.stringify(attachedEntry?.transport) !== JSON.stringify(fresh.transport);
+          const freshRules = withSuperBrowserRules(extra.preset_rules);
+          const staleRules = freshRules !== (extra.preset_rules ?? '').trim();
+          if (staleTransport || staleRules) {
             const rebuilt = servers.map((s) => (s.name === BROWSER_CONTROL_MCP_NAME ? fresh : s));
             await ipcBridge.conversation.update
               .invoke({
                 id: conversationId,
-                updates: { session_mcp_servers: rebuilt } as never,
+                updates: { session_mcp_servers: rebuilt, preset_rules: freshRules } as never,
                 merge_extra: true,
               })
               .catch((): boolean => false);
@@ -180,7 +187,9 @@ export function useSuperMode(conversationId: string | undefined): UseSuperMode {
         const updates: { session_mcp_servers: ISessionMcpServer[]; preset_rules?: string } = {
           session_mcp_servers: updatedServers,
         };
-        if (next) updates.preset_rules = withSuperBrowserRules(extra.preset_rules);
+        updates.preset_rules = next
+          ? withSuperBrowserRules(extra.preset_rules)
+          : withoutSuperBrowserRules(extra.preset_rules);
 
         const ok = await ipcBridge.conversation.update.invoke({
           id: conversationId,

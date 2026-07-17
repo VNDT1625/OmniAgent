@@ -231,6 +231,8 @@ describe('NewSessionPanel (Requirement 2b — UI plane)', () => {
     fireEvent.click(genButton);
     await waitFor(() => expect(onGenerate).toHaveBeenCalledTimes(1));
     expect((onGenerate.mock.calls[0][0] as GenerateTestRequest).appUrl).toBe('http://localhost:3000');
+
+    expect((onGenerate.mock.calls[0][0] as GenerateTestRequest).workspace).toBe('/picked/project');
   });
 
   it('manual setup picks a folder and opens the advanced editor WITHOUT calling AI detect', async () => {

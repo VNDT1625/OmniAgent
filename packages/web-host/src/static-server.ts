@@ -34,12 +34,27 @@ const DEFAULT_PORT = 25808;
 
 function getLanIP(): string | null {
   const nets = networkInterfaces();
+  const candidates: Array<{ address: string; score: number }> = [];
   for (const name of Object.keys(nets)) {
+    const normalizedName = name.toLowerCase();
+    const virtualAdapter = /(radmin|virtual|vmware|vbox|hyper-v|tailscale|zerotier|docker|wsl|loopback|tunnel)/.test(
+      normalizedName
+    );
+    const physicalAdapter = /(wi-?fi|wireless|wlan|ethernet|local area|^en\d|^eth\d)/.test(normalizedName);
     for (const iface of nets[name] || []) {
-      if (iface.family === 'IPv4' && !iface.internal) return iface.address;
+      if (iface.family !== 'IPv4' || iface.internal) continue;
+      const isPrivate = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(iface.address);
+      candidates.push({
+        address: iface.address,
+        score: (isPrivate ? 100 : 0) + (physicalAdapter ? 20 : 0) - (virtualAdapter ? 80 : 0),
+      });
     }
   }
-  return null;
+
+  // Prefer a private address on a physical Wi-Fi/Ethernet adapter. This avoids
+  // publishing a VirtualBox/Radmin/Tailscale address that a normal phone on the
+  // same router cannot reach.
+  return candidates.sort((a, b) => b.score - a.score)[0]?.address ?? null;
 }
 
 function forwardToBackend(req: IncomingMessage, res: ServerResponse, backendPort: number): void {

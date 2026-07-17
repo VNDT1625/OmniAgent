@@ -37,6 +37,10 @@ vi.mock('@/renderer/pages/studio/ide/memory/AionrsContextPanel', () => ({
   default: () => <div data-testid='aionrs-context-panel'>context panel</div>,
 }));
 
+vi.mock('@/renderer/pages/studio/ide/memory/RepoSecretContextPanel', () => ({
+  default: () => <div data-testid='repo-secret-context-panel'>secret panel</div>,
+}));
+
 import MemorySessionDrawer from '@/renderer/pages/studio/ide/memory/MemorySessionDrawer';
 
 const snapshot = (overrides: Partial<SuperMemorySnapshot> = {}): SuperMemorySnapshot => ({
@@ -132,6 +136,21 @@ describe('MemorySessionDrawer', () => {
     );
     fireEvent.click(screen.getByText('ide.memory.tabs.context'));
     expect(screen.getByTestId('aionrs-context-panel')).toBeInTheDocument();
+  });
+
+  it('shows the repository Secret Context only for an AionRS conversation with a workspace', () => {
+    render(
+      <MemorySessionDrawer
+        memId='ide-mem-1'
+        conversationId='conv-1'
+        conversationType='aionrs'
+        repository='C:\\repo'
+        visible
+        onClose={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText('ide.memory.tabs.secret'));
+    expect(screen.getByTestId('repo-secret-context-panel')).toBeInTheDocument();
   });
 
   it('refreshes when the refresh button is clicked', () => {

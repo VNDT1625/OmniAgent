@@ -275,7 +275,13 @@ const classify = (error: unknown): 'no-model' | 'error' => {
  * Resolves the provider lazily so a model added after startup is picked up
  * without a restart. Throws on failure (caller wraps into a result / swallows).
  */
-const defaultChat = async (model: string, system: string, user: string, signal?: AbortSignal): Promise<string> => {
+const defaultChat = async (
+  model: string,
+  system: string,
+  user: string,
+  signal?: AbortSignal,
+  execution?: { workspace: string }
+): Promise<string> => {
   return runAgentChatMessages(
     (providerModel, messages, providerSignal) => runProviderChat(providerModel, messages, providerSignal),
     model,
@@ -283,7 +289,8 @@ const defaultChat = async (model: string, system: string, user: string, signal?:
       { role: 'system', content: system },
       { role: 'user', content: user },
     ],
-    signal
+    signal,
+    { workspace: execution?.workspace, surface: 'ide', permissionMode: 'read-only' }
   );
 };
 

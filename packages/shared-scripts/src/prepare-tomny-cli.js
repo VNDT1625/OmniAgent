@@ -7,11 +7,23 @@
  */
 
 const { execFileSync } = require('child_process');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const {
+  artifactManifestMatches,
+  assertPinnedCommit,
+  sealSourceCache,
+  sha256File,
+  validateReusableSource,
+} = require('./source-build-identity');
 
-const UPSTREAM_REPOSITORY = 'https://github.com/VNDT1625/aionrs.git';
+const UPSTREAM_REPOSITORY = 'https://github.com/iOfficeAI/aionrs.git';
+const SOURCE_PATCH_VERSION = 'tool-result-v2';
+const SOURCE_PATCH = path.join(__dirname, 'tomny-tool-result.patch');
+const SOURCE_PATCH_SHA256 = crypto.createHash('sha256').update(fs.readFileSync(SOURCE_PATCH)).digest('hex');
+const RECIPE_IDENTITY = `tomny-cli-${SOURCE_PATCH_VERSION}-${SOURCE_PATCH_SHA256}`;
 
 const targetTriple = (platform, arch) => {
   const targets = {
@@ -51,19 +63,43 @@ const patchTomnyBranding = (sourceDir) => {
 
 const ensureSource = ({ version, commit }) => {
   const cacheRoot = path.join(os.tmpdir(), 'tomny-cli-source');
-  const sourceDir = process.env.TOMNY_CLI_SOURCE_DIR || path.join(cacheRoot, version);
+  const cacheKey = `${version}-${commit.slice(0, 12)}-${SOURCE_PATCH_SHA256.slice(0, 12)}`;
+  const sourceDir = process.env.TOMNY_CLI_SOURCE_DIR || path.join(cacheRoot, cacheKey);
   if (!fs.existsSync(sourceDir)) {
     fs.mkdirSync(cacheRoot, { recursive: true });
     execFileSync('git', ['clone', '--depth', '1', '--branch', version, UPSTREAM_REPOSITORY, sourceDir], {
       stdio: 'inherit',
     });
+  } else if (!fs.existsSync(path.join(sourceDir, '.git'))) {
+    throw new Error(`Tomny CLI source cache is not a Git checkout: ${sourceDir}`);
   }
 
-  const actualCommit = execFileSync('git', ['-C', sourceDir, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
-  if (commit && actualCommit !== commit) {
-    throw new Error(`Tomny CLI source mismatch: expected ${commit}, received ${actualCommit}`);
+  return {
+    sourceDir,
+    identity: validateReusableSource({
+      sourceDir,
+      repository: UPSTREAM_REPOSITORY,
+      commit,
+      recipeIdentity: RECIPE_IDENTITY,
+    }),
+  };
+};
+
+const canApplyPatch = (sourceDir, args) => {
+  try {
+    execFileSync('git', ['-C', sourceDir, 'apply', ...args, SOURCE_PATCH], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
   }
-  return { sourceDir, actualCommit };
+};
+
+const applyTomnyProtocolPatch = (sourceDir) => {
+  if (canApplyPatch(sourceDir, ['--reverse', '--check'])) return;
+  if (!canApplyPatch(sourceDir, ['--check'])) {
+    throw new Error(`Tomny CLI protocol patch ${SOURCE_PATCH_VERSION} is incompatible with the selected source.`);
+  }
+  execFileSync('git', ['-C', sourceDir, 'apply', SOURCE_PATCH], { stdio: 'inherit' });
 };
 
 const copyLicense = (sourceDir, targetDir) => {
@@ -83,8 +119,24 @@ const copyLicense = (sourceDir, targetDir) => {
  * @param {string} options.version
  * @param {string} options.commit
  */
+const manifestMatches = (manifestPath, binaryPath, version, commit, triple) =>
+  artifactManifestMatches({
+    manifestPath,
+    binaryPath,
+    expected: {
+      version,
+      sourceCommit: commit,
+      sourceRepository: UPSTREAM_REPOSITORY,
+      sourceType: 'source-build',
+      sourcePatchVersion: SOURCE_PATCH_VERSION,
+      sourcePatchSha256: SOURCE_PATCH_SHA256,
+      targetTriple: triple,
+    },
+  });
+
 function prepareTomnyCli(options) {
   const { projectRoot, platform, arch, version, commit } = options;
+  assertPinnedCommit(commit);
   const triple = targetTriple(platform, arch);
   if (!triple) throw new Error(`Unsupported Tomny CLI target: ${platform}-${arch}`);
 
@@ -92,16 +144,16 @@ function prepareTomnyCli(options) {
   const stagedDir = path.join(projectRoot, 'resources', 'bundled-tomny-cli', runtimeKey);
   const stagedBinary = path.join(stagedDir, binaryName(platform));
   const stagedManifest = path.join(stagedDir, 'manifest.json');
-  if (fs.existsSync(stagedBinary) && fs.existsSync(stagedManifest)) {
-    const manifest = JSON.parse(fs.readFileSync(stagedManifest, 'utf8'));
-    if (manifest.sourceCommit === commit && manifest.version === version) {
-      console.log(`Tomny CLI already prepared: resources/bundled-tomny-cli/${runtimeKey}/${binaryName(platform)}`);
-      return { prepared: true, cached: true, dir: stagedDir, sourceCommit: commit };
-    }
+  if (manifestMatches(stagedManifest, stagedBinary, version, commit, triple)) {
+    console.log(`Tomny CLI already prepared: resources/bundled-tomny-cli/${runtimeKey}/${binaryName(platform)}`);
+    return { prepared: true, cached: true, dir: stagedDir, sourceCommit: commit };
   }
 
-  const { sourceDir, actualCommit } = ensureSource({ version, commit });
+  const { sourceDir, identity } = ensureSource({ version, commit });
+  applyTomnyProtocolPatch(sourceDir);
   patchTomnyBranding(sourceDir);
+  const provenance = sealSourceCache({ sourceDir, identity, recipeIdentity: RECIPE_IDENTITY });
+  const actualCommit = identity.actualCommit;
 
   execFileSync('rustup', ['target', 'add', '--toolchain', 'stable', triple], { cwd: sourceDir, stdio: 'inherit' });
   execFileSync(
@@ -140,6 +192,13 @@ function prepareTomnyCli(options) {
         version,
         sourceCommit: actualCommit,
         sourceRepository: UPSTREAM_REPOSITORY,
+        sourceTree: provenance.sourceTree,
+        sourceHash: provenance.sourceHash,
+        sourceType: 'source-build',
+        sourcePatchVersion: SOURCE_PATCH_VERSION,
+        sourcePatchSha256: SOURCE_PATCH_SHA256,
+        binarySha256: sha256File(targetBinary),
+        targetTriple: triple,
         license: 'Apache-2.0',
         protocol: 'json-stream',
         builtAt: new Date().toISOString(),
@@ -153,4 +212,4 @@ function prepareTomnyCli(options) {
   return { prepared: true, dir: targetDir, sourceCommit: actualCommit };
 }
 
-module.exports = { prepareTomnyCli };
+module.exports = { manifestMatches, prepareTomnyCli };

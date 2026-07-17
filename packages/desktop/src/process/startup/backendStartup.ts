@@ -4,9 +4,10 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-type BackendStartupResult = { ok: true; port: number } | { ok: false };
+type BackendStartupResult = { ok: true; port: number } | { ok: true; skipped: true } | { ok: false };
 
 type StartBackendOrExitOptions = {
+  enabled?: boolean;
   startBackend: () => Promise<number>;
   onStarted: (port: number) => void;
   captureFailure: (error: unknown) => Promise<void> | void;
@@ -20,6 +21,9 @@ function isBackendStartupCancelledError(error: unknown): boolean {
 }
 
 export async function startBackendOrExit(options: StartBackendOrExitOptions): Promise<BackendStartupResult> {
+  if (options.enabled === false) {
+    return { ok: true, skipped: true };
+  }
   try {
     const port = await options.startBackend();
     options.onStarted(port);

@@ -24,7 +24,7 @@ import { createCredentialStore, type ICredentialStore, type Credential } from '@
 import { getDbService } from '@process/ide/db/dbWiring';
 import { getSessionMemoryStore } from '@process/ide/memory/sessionMemoryStore';
 import { getTeamEditService } from '@process/ide/teamEdit/teamEditService';
-import { getIdeMcpService, getQuickTestRunner } from '@process/ide/mcp/ideMcpWiring';
+import { getIdeMcpService, getQuickTestRunner, getQuickTestScenarioAgentService } from '@process/ide/mcp/ideMcpWiring';
 import type { DbAgentService } from '@process/ide/mcp/ideServer';
 import { OmniGatewayAddressInUseError } from './omniGatewayHost';
 import { createOmniGatewayRuntime } from './omniGatewayRuntime';
@@ -209,6 +209,8 @@ const gatewayRuntime = createOmniGatewayRuntime({
   buildIdeDeps: () => ({
     ide: getIdeMcpService(),
     quickTest: getQuickTestRunner(),
+
+    quickTestScenarios: getQuickTestScenarioAgentService(),
     db: getDbService() as DbAgentService,
     memory: getSessionMemoryStore(),
     teamEdit: getTeamEditService(),

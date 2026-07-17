@@ -76,6 +76,14 @@ import type { IMediaPipeline, MediaSource } from '@process/browser/mediaPipeline
 import type { IEditorFrameStore } from '@process/editor/editorFrameStore';
 import type { ExtractSource, ExtractOutcome } from '@process/services/contentExtract';
 
+import type { QuickTestLifecycleService } from '@process/services/quick-test/lifecycle';
+import {
+  captureInspectScreenshot,
+  type InspectScreenshotMode,
+  type InspectScreenshotResult,
+} from '@process/ide/elementInspectorBridge';
+import { runUiAudit, type UiAuditFinding, type UiAuditReport, type UiAuditSeverity } from '@process/ide/uiAuditEngine';
+
 /** Stable identifier of the built-in Browser-Control MCP server (consumed by Task 15.1). */
 export const BUILTIN_BROWSER_CONTROL_ID = 'builtin-browser-control';
 
@@ -98,6 +106,9 @@ type PageContents = NonNullable<ReturnType<IBrowserViewManager['getWebContents']
  * is created per interaction because the sink is tab-specific.
  */
 export type CreateHumanLikeInput = (sink: InputSink) => IHumanLikeInput;
+
+/** Agent-facing lifecycle for an observed Quick Test session. */
+export type QuickTestControl = QuickTestLifecycleService;
 
 /**
  * Injected collaborators and tunables for {@link createBrowserControlServer}.
@@ -127,6 +138,17 @@ export type BrowserControlDeps = {
    * choice is ambiguous.
    */
   getActiveTabId?: () => BrowserTabId | undefined;
+  /**
+   * Securely fills a repository Secret Context alias into a browser form field.
+   * The callback runs entirely in the Main process and MUST NOT expose the
+   * resolved value to the MCP response, logs, or the model.
+   */
+  fillSecret?: (request: {
+    tabId: BrowserTabId;
+    selector: string;
+    repository: string;
+    secretAlias: string;
+  }) => Promise<void>;
   /** Delay primitive for scroll pacing and `browser_wait_for` polling. Defaults to `setTimeout`. */
   sleep?: (ms: number) => Promise<void>;
   /** Wall-clock source (Unix ms) used by `browser_wait_for` timeouts. Defaults to `Date.now`. */
@@ -152,6 +174,20 @@ export type BrowserControlDeps = {
    * when omitted the server lazily uses the process-wide default service.
    */
   extractContent?: { extract: (source: ExtractSource) => Promise<ExtractOutcome> };
+
+  /**
+   * Optional Quick Test lifecycle. When injected, the same browser-control MCP
+   * can launch a repository, observe it, persist/replay workflows, and tear the
+   * session down without the agent leaving chat.
+   */
+  /** Optional overrides for deterministic evidence tests; production uses the existing Quick Test engines. */
+  auditPage?: (contents: PageContents) => Promise<UiAuditReport>;
+  captureEvidence?: (
+    contents: PageContents,
+    rootPath: string,
+    mode: InspectScreenshotMode
+  ) => Promise<InspectScreenshotResult | null>;
+  quickTest?: QuickTestControl;
 };
 
 /** Default ceiling for {@link IPagePerception} `browser_wait_for` polling. */
@@ -180,6 +216,15 @@ const textResult = (text: string, isError = false): ToolTextResult => ({
 
 /** Stringify any caught error for an MCP text payload. */
 const describeError = (error: unknown): string => (error instanceof Error ? error.message : String(error));
+
+/** Serialize structured lifecycle responses without losing MCP error semantics. */
+const quickTestResult = async (operation: () => Promise<unknown>): Promise<ToolTextResult> => {
+  try {
+    return textResult(JSON.stringify(await operation(), null, 2));
+  } catch (error) {
+    return textResult(`Quick Test error: ${describeError(error)}`, true);
+  }
+};
 
 /** Narrow an `executeJavaScript` result to a {@link Point}, or `null` when it is not one. */
 const asPoint = (value: unknown): Point | null => {
@@ -458,6 +503,45 @@ Input:
     }
   );
 
+  // --- browser_secret_type (main-process Secret Context injection) ---------
+  server.tool(
+    'browser_secret_type',
+    `Fill a form field with a repository Secret Context alias without exposing its value to the
+model, chat, MCP response, or logs. Use this instead of browser_type whenever a page needs a
+password, API key, token, or other secret.
+
+Input:
+- repository: repository that owns the Secret Context alias (required)
+- selector: CSS selector of the input or textarea to fill (required)
+- secret_alias: uppercase Secret Context alias, for example API_KEY (required)
+- tabId: which tab to act on; omit to use the active/only tab (optional)
+
+Returns confirmation only. It never returns the secret value.`,
+    {
+      repository: z.string().min(1).describe('Repository that owns the Secret Context alias.'),
+      selector: z.string().min(1).describe('CSS selector of the input or textarea to fill.'),
+      secret_alias: z
+        .string()
+        .regex(/^[A-Z][A-Z0-9_]{0,79}$/)
+        .describe('Uppercase Secret Context alias. Never pass a secret value.'),
+      tabId: z.string().optional().describe('Tab to act on; defaults to the active/only tab.'),
+    },
+    async ({ repository, selector, secret_alias, tabId }) => {
+      try {
+        if (!deps.fillSecret) {
+          return textResult('Secret Context browser filling is unavailable in this application runtime.', true);
+        }
+        const id = resolveTabId(tabId);
+        await deps.fillSecret({ tabId: id, selector, repository, secretAlias: secret_alias });
+        return textResult(
+          `Filled ${selector} in tab ${id} from Secret Context alias ${secret_alias}. The secret value was not exposed.`
+        );
+      } catch {
+        return textResult(`Unable to fill Secret Context alias ${secret_alias} in the browser form.`, true);
+      }
+    }
+  );
+
   // --- browser_scroll (incremental wheel events, tab-isolated) -------------
   server.tool(
     'browser_scroll',
@@ -722,6 +806,188 @@ video. Returns the extracted text, or an error describing why extraction failed.
       }
     }
   );
+
+  // --- quick_test_* (optional agent-driven E2E lifecycle) -------------------
+  if (deps.quickTest) {
+    const quickTest = deps.quickTest;
+    const rootPathSchema = z.string().trim().min(1).max(4096).describe('Absolute repository root path.');
+    const idSchema = z
+      .string()
+      .trim()
+      .min(1)
+      .max(128)
+      .regex(/^[A-Za-z0-9][A-Za-z0-9._:-]*$/)
+      .describe('Opaque Quick Test identifier.');
+    const tabIdSchema = z.string().trim().min(1).max(256).optional().describe('Existing browser tab id to reuse.');
+
+    server.tool(
+      'quick_test_discover',
+      `Inspect a repository before launching it. Returns supported targets, detected services, commands, ports,
+and saved run recipes. Call this first; do not guess a command or port.`,
+      { rootPath: rootPathSchema },
+      ({ rootPath }) => quickTestResult(() => quickTest.discover({ rootPath }))
+    );
+
+    server.tool(
+      'quick_test_start',
+
+      `Start a repository through Quick Test. Runs hidden by default so the session and terminals can continue without occupying the chat; pass visible when the user asks to watch it. Use a target returned by
+quick_test_discover. frontend starts only the UI, full starts the complete stack, and services starts the
+explicit serviceIds. Returns a session id and the resolved tab/url when ready.`,
+      {
+        rootPath: rootPathSchema,
+        mode: z.enum(['frontend', 'full', 'services']).describe('How much of the detected application to start.'),
+        serviceIds: z.array(idSchema).min(1).max(32).optional().describe('Required only when mode is services.'),
+        url: z.string().trim().url().max(4096).optional().describe('Optional browser URL override.'),
+        tabId: tabIdSchema,
+        visible: z.boolean().optional().describe('Attach the browser preview now; defaults to hidden.'),
+      },
+      ({ rootPath, mode, serviceIds, url, tabId, visible }) => {
+        if (mode === 'services' && !serviceIds?.length) {
+          return textResult('Quick Test error: serviceIds is required when mode is services.', true);
+        }
+        if (mode !== 'services' && serviceIds) {
+          return textResult('Quick Test error: serviceIds is only valid when mode is services.', true);
+        }
+        return quickTestResult(() => quickTest.start({ rootPath, mode, serviceIds, url, tabId, visible }));
+      }
+    );
+
+    server.tool(
+      'quick_test_visibility',
+      'Show or hide a running Quick Test browser preview without stopping its terminals or session.',
+      { sessionId: idSchema, visible: z.boolean().describe('Whether the browser preview should be shown.') },
+      ({ sessionId, visible }) => quickTestResult(() => quickTest.setVisibility({ sessionId, visible }))
+    );
+
+    server.tool(
+      'quick_test_observe',
+      `Begin recording browser actions, console/network failures, screenshots, and source evidence for a running
+Quick Test session. Call this before using browser interaction tools.`,
+      { sessionId: idSchema },
+      ({ sessionId }) => quickTestResult(() => quickTest.observe({ sessionId }))
+    );
+
+    server.tool(
+      'quick_test_status',
+      `Read the current Quick Test phase and the latest bounded evidence/result. Poll this after launch or replay
+instead of relying on fixed delays.`,
+      { sessionId: idSchema },
+      ({ sessionId }) => quickTestResult(() => quickTest.status({ sessionId }))
+    );
+
+    server.tool(
+      'quick_test_save',
+      `Save the observed actions as a deterministic workflow. Returns a test id that quick_test_replay can run later
+without reopening an interactive browser.`,
+      {
+        sessionId: idSchema,
+        name: z.string().trim().min(1).max(160).optional().describe('Optional human-readable workflow name.'),
+      },
+      ({ sessionId, name }) => quickTestResult(() => quickTest.save({ sessionId, name }))
+    );
+
+    server.tool(
+      'quick_test_replay',
+      `Replay a saved Quick Test workflow and collect fresh evidence. Prefer this after a code fix when no manual
+browser exploration is needed.`,
+      {
+        rootPath: rootPathSchema,
+        testId: idSchema.describe('Saved workflow id returned by quick_test_save.'),
+        tabId: tabIdSchema,
+      },
+      ({ rootPath, testId, tabId }) => quickTestResult(() => quickTest.replay({ rootPath, testId, tabId }))
+    );
+
+    const resolveQuickTestPage = async (sessionId: string) => {
+      const session = await quickTest.status({ sessionId });
+      if (!session.tabId) throw new Error('This Quick Test session has no browser tab.');
+      return { session, contents: requireContents(session.tabId) };
+    };
+    const severityRank: Record<UiAuditSeverity, number> = {
+      critical: 4,
+      serious: 3,
+      moderate: 2,
+      minor: 1,
+    };
+    const boundedFindings = (findings: UiAuditFinding[]): UiAuditFinding[] =>
+      findings.toSorted((left, right) => severityRank[right.severity] - severityRank[left.severity]).slice(0, 40);
+
+    server.tool(
+      'quick_test_audit',
+      `Run the existing deterministic Quick Test UI audit against this session's live browser tab. It checks
+contrast, typography, accessibility, layout, and interaction rules without asking the model to guess from
+pixels. Returns scores, metrics, rule counts, and at most the 40 most severe findings.`,
+      { sessionId: idSchema },
+      ({ sessionId }) =>
+        quickTestResult(async () => {
+          const { contents } = await resolveQuickTestPage(sessionId);
+          const report = await (deps.auditPage ?? runUiAudit)(contents);
+          const findings = boundedFindings(report.findings);
+          return {
+            score: report.score,
+            auditedAt: report.auditedAt,
+            url: report.url,
+            elementCount: report.elementCount,
+            categoryScores: report.categoryScores,
+            metrics: report.metrics,
+            ruleCounts: report.ruleCounts,
+            totalFindings: report.findings.length,
+            findings,
+            truncated: report.truncated === true || findings.length < report.findings.length,
+          };
+        })
+    );
+
+    server.tool(
+      'quick_test_capture',
+      `Capture visual evidence from this Quick Test session using the same screenshot engine as the IDE panel.
+viewport captures the current frame; fullPage captures the entire scrollable document through Chromium CDP.
+The PNG is saved under .omni/inspect for follow-up agent analysis and returned inline.`,
+      {
+        sessionId: idSchema,
+        mode: z.enum(['viewport', 'fullPage']).describe('Current viewport or the full scrollable page.'),
+      },
+      async ({ sessionId, mode }) => {
+        try {
+          const { session, contents } = await resolveQuickTestPage(sessionId);
+          const capture = await (deps.captureEvidence ?? captureInspectScreenshot)(contents, session.rootPath, mode);
+          if (!capture) return textResult('Quick Test capture returned an empty image.', true);
+          const commaIndex = capture.dataUrl.indexOf(',');
+          const data = commaIndex >= 0 ? capture.dataUrl.slice(commaIndex + 1) : capture.dataUrl;
+          return {
+            content: [
+              { type: 'image' as const, data, mimeType: 'image/png' },
+              {
+                type: 'text' as const,
+                text: JSON.stringify({ filePath: capture.filePath, mode: capture.mode, tabId: session.tabId }),
+              },
+            ],
+          };
+        } catch (error) {
+          return textResult(`Quick Test capture error: ${describeError(error)}`, true);
+        }
+      }
+    );
+
+    server.tool(
+      'quick_test_stop',
+      `Stop observation and application processes for a session while retaining its result. Set keepTab only when
+the user should continue viewing the browser after the terminals stop.`,
+      {
+        sessionId: idSchema,
+        keepTab: z.boolean().optional().describe('Keep the visible browser tab open after stopping.'),
+      },
+      ({ sessionId, keepTab }) => quickTestResult(() => quickTest.stop({ sessionId, keepTab }))
+    );
+
+    server.tool(
+      'quick_test_close',
+      `Close the visible browser/session resources after results are saved or consumed. This operation is idempotent.`,
+      { sessionId: idSchema },
+      ({ sessionId }) => quickTestResult(() => quickTest.close({ sessionId }))
+    );
+  }
 
   // --- editor_* (Super's Studio-editor plane — live editable frames in chat) ---
   // Only registered when the editor capability is wired (editorFrames + editorIO).

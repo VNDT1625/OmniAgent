@@ -113,6 +113,8 @@ export type GenerateTestRequest = {
   model?: string;
   /** Optional URL of the app under test (web) so steps navigate there, not example.com. */
   appUrl?: string;
+  /** Absolute project workspace selected by the user. */
+  workspace?: string;
 };
 
 /** Result of {@link TESTING_CHANNELS.generate}: an editable scenario draft. */
@@ -212,7 +214,7 @@ export function registerTestingBridge(options: RegisterTestingBridgeOptions): vo
   // Generate a scenario draft from a plain-language description (the user does
   // not have to know the step grammar). Throws a clear error when no generator
   // is wired or no model is configured; the renderer surfaces it as a message.
-  testingChannels.generate.provider(async ({ description, platform, model, appUrl }) => {
+  testingChannels.generate.provider(async ({ description, platform, model, appUrl, workspace }) => {
     if (!scenarioGenerator) {
       throw new Error('Test generation is not available (no model generator wired).');
     }
@@ -221,6 +223,7 @@ export function registerTestingBridge(options: RegisterTestingBridgeOptions): vo
       platform,
       model,
       appUrl,
+      workspace,
       onProgress: (progress) => testingChannels.generateProgress.emit(progress),
     });
     return { name: draft.name, steps: draft.steps };

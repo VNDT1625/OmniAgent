@@ -35,6 +35,10 @@ describe('runUiAudit', () => {
     expect(script).toContain('accessibility.form-label');
     expect(script).toContain('allElements.slice(0, 6000)');
     expect(script).toContain('findings.length >= MAX_FINDINGS');
+    expect(script).toContain('typography.family-sprawl');
+    expect(script).toContain('accessibility.document-language');
+    expect(script).toContain('Math.min(25,Number(value))');
+    expect(script).toContain('interactiveElementCount:interactive.length');
   });
 
   it('rejects an invalid page-side result', async () => {
@@ -42,6 +46,14 @@ describe('runUiAudit', () => {
       executeJavaScript: vi.fn(async () => null),
     } as unknown as CdpWebContents;
 
-    await expect(runUiAudit(webContents)).rejects.toThrow('UI audit did not return a report.');
+    await expect(runUiAudit(webContents)).rejects.toThrow('UI audit did not return a valid report.');
+  });
+
+  it('rejects an incomplete page-side report before the renderer consumes it', async () => {
+    const webContents = {
+      executeJavaScript: vi.fn(async () => ({ score: 90, findings: [] })),
+    } as unknown as CdpWebContents;
+
+    await expect(runUiAudit(webContents)).rejects.toThrow('UI audit did not return a valid report.');
   });
 });

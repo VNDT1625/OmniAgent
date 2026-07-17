@@ -6,21 +6,21 @@
 
 /**
  * Wires the agent-facing Cron MCP server (Scheduled Tasks — Agent plane) for the
- * Main process. It assembles the {@link CronServerDeps} from the real `cron.*`
- * IPC-bridge invokers (which call aioncore's `/api/cron/*` over HTTP) and starts
+ * Main process. It assembles the {@link CronServerDeps} from the Tomny Core scheduled-task
+ * compatibility adapter and starts
  * the in-process SSE host.
  *
  * ## One service, two planes
  *
- * The Agent plane drives the **same** aioncore cron surface the UI plane
+ * The Agent plane drives the **same** Tomny Core schedule store the UI plane
  * (`renderer/pages/cron/`) uses — a task an agent creates appears on the
  * Scheduled Tasks page and vice-versa. We deliberately do not add a second
- * scheduler; the `cron` bridge is the single source of truth.
+ * scheduler; `scheduled-tasks.json` is the single source of truth.
  *
  * Process boundary: Main-process (Node.js / Electron) module.
  */
 
-import { cron } from '@/common/adapter/ipcBridge';
+import { getLegacyCronAdapter } from './scheduledTasks';
 import { createCronServer, type CronServerDeps, type CronServiceClient } from '../resources/builtinMcp/cronServer';
 import { startCronMcpHost, type CronMcpHost } from './cronMcpHost';
 
@@ -28,20 +28,20 @@ import { startCronMcpHost, type CronMcpHost } from './cronMcpHost';
 let cachedDeps: CronServerDeps | undefined;
 
 /**
- * Build the {@link CronServerDeps} from the real `cron` IPC bridge.
+ * Build the {@link CronServerDeps} from Tomny Core's compatibility adapter.
  *
- * The bridge invokers already map onto aioncore's REST contract, so we just
- * project them onto the structural {@link CronServiceClient} the server expects.
+ * Both the renderer IPC surface and this MCP client project the same direct-core
+ * service onto the structural {@link CronServiceClient} contract.
  */
 export const getCronServerDeps = (): CronServerDeps => {
   if (cachedDeps) return cachedDeps;
   const client: CronServiceClient = {
-    listJobs: () => cron.listJobs.invoke(),
-    getJob: (params) => cron.getJob.invoke(params),
-    addJob: (params) => cron.addJob.invoke(params),
-    updateJob: (params) => cron.updateJob.invoke(params),
-    removeJob: (params) => cron.removeJob.invoke(params),
-    runNow: (params) => cron.runNow.invoke(params),
+    listJobs: () => getLegacyCronAdapter().listJobs(),
+    getJob: (params) => getLegacyCronAdapter().getJob(params),
+    addJob: (params) => getLegacyCronAdapter().addJob(params),
+    updateJob: (params) => getLegacyCronAdapter().updateJob(params),
+    removeJob: (params) => getLegacyCronAdapter().removeJob(params),
+    runNow: (params) => getLegacyCronAdapter().runNow(params),
   };
   cachedDeps = { cron: client };
   return cachedDeps;

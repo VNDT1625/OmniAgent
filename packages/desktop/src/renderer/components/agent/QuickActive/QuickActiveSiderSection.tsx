@@ -23,6 +23,7 @@
 
 import { requestActiveTab } from '@/renderer/pages/browser/constants';
 import { requestActiveSession } from '@/renderer/pages/testing/constants';
+import { useLayoutContext } from '@/renderer/hooks/context/LayoutContext';
 import { isElectronDesktop } from '@/renderer/utils/platform';
 import { cleanupSiderTooltips } from '@renderer/utils/ui/siderTooltip';
 import { blurActiveElement } from '@renderer/utils/ui/focus';
@@ -122,6 +123,8 @@ const QuickActiveSiderSection: React.FC<QuickActiveSiderSectionProps> = ({
   onSessionClick,
 }) => {
   const { t } = useTranslation();
+  const layout = useLayoutContext();
+  const navigateWithFeedback = layout?.navigateWithFeedback;
   const navigate = useNavigate();
   const isDesktop = isElectronDesktop();
 
@@ -139,10 +142,11 @@ const QuickActiveSiderSection: React.FC<QuickActiveSiderSectionProps> = ({
       cleanupSiderTooltips();
       blurActiveElement();
       if (id) requestActiveTab(id);
-      Promise.resolve(navigate('/settings/browser')).catch(console.error);
+      if (navigateWithFeedback) navigateWithFeedback('/settings/browser');
+      else Promise.resolve(navigate('/settings/browser')).catch(console.error);
       if (onSessionClick) onSessionClick();
     },
-    [navigate, onSessionClick]
+    [navigate, navigateWithFeedback, onSessionClick]
   );
 
   const goTesting = useCallback(
@@ -150,10 +154,11 @@ const QuickActiveSiderSection: React.FC<QuickActiveSiderSectionProps> = ({
       cleanupSiderTooltips();
       blurActiveElement();
       if (id) requestActiveSession(id);
-      Promise.resolve(navigate('/settings/testing')).catch(console.error);
+      if (navigateWithFeedback) navigateWithFeedback('/settings/testing');
+      else Promise.resolve(navigate('/settings/testing')).catch(console.error);
       if (onSessionClick) onSessionClick();
     },
-    [navigate, onSessionClick]
+    [navigate, navigateWithFeedback, onSessionClick]
   );
 
   const onBrowserPage = pathname.startsWith('/settings/browser');

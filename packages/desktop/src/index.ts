@@ -21,6 +21,7 @@ import { initMainAdapterWithWindow } from './common/adapter/main';
 import { ipcBridge } from './common';
 import { initializeProcess } from './process';
 import { startBackendOrExit } from './process/startup/backendStartup';
+import { resolveCoreBootPolicy } from './process/startup/coreBootPolicy';
 import { classifyBackendStartupFailure } from './process/startup/backendStartupFailure';
 import { installQuitCleanup } from './process/startup/quitCleanup';
 import {
@@ -292,10 +293,7 @@ function ensureAdminUserOnce(backendPort: number): Promise<void> {
 }
 
 function markBackendReady(backendPort: number, source: string): void {
-  if (backendStartedOk) return;
-  console.log(`[AionUi] ${source} ready (port=${backendPort})`);
   exposeBackendPort(backendPort);
-  registerCronResumeBridge(backendPort);
   void ProcessConfig.get('language')
     .then((language) => startTelegramRemoteTunnel(backendPort, language ?? 'en-US'))
     .then((result) => {
@@ -305,6 +303,9 @@ function markBackendReady(backendPort: number, source: string): void {
       }
       console.warn(`[TelegramRemote] direct control unavailable (${result.reason})`, result.detail ?? '');
     });
+  if (backendStartedOk) return;
+  console.log(`[AionUi] ${source} ready (port=${backendPort})`);
+  registerCronResumeBridge(backendPort);
   backendStartedOk = true;
   backendStartupFailed = false;
   backendStartupFailureInfo = null;
@@ -524,6 +525,20 @@ const handleAppReady = async (): Promise<void> => {
     return;
   }
 
+  let coreBootPolicy;
+  try {
+    coreBootPolicy = resolveCoreBootPolicy({
+      requestedMode: getSwitchValue('core-mode') || process.env.TOMNY_CORE_BOOT_MODE,
+      isWebUIMode,
+      isResetPasswordMode,
+    });
+    console.info('[TomnyCore] Boot mode: ' + coreBootPolicy.mode);
+  } catch (error) {
+    console.error('[TomnyCore] Invalid core boot policy:', error);
+    app.exit(1);
+    return;
+  }
+
   // Set dock icon in development mode on macOS
   // In production, the icon is set via forge.config.ts packagerConfig.icon
   if (process.platform === 'darwin' && !app.isPackaged && app.dock) {
@@ -554,8 +569,20 @@ const handleAppReady = async (): Promise<void> => {
   // Start aioncore only after initializeProcess(). initStorage may open
   // the legacy Electron SQLite catalog for a one-shot v26 migration and must
   // close it before the backend touches the same file.
-  prepareTelegramRemoteSecret();
+  if (coreBootPolicy.startLegacyBackend) {
+    prepareTelegramRemoteSecret();
+  } else {
+    console.info('[TomnyCore] Native TypeScript core ready; legacy HTTP backend was not started.');
+  }
+  const captureLegacyBackendFailure = async (error: unknown): Promise<void> => {
+    if (coreBootPolicy.requireLegacyBackend) {
+      markBackendStartupFailed(error);
+    }
+    await captureBackendStartupFailure(error);
+  };
+
   const backendStartup = await startBackendOrExit({
+    enabled: coreBootPolicy.startLegacyBackend,
     startBackend: async () => {
       const { getDataPath } = await import('./process/utils/utils');
       const { getSystemDir } = await import('./process/utils/initStorage');
@@ -571,12 +598,10 @@ const handleAppReady = async (): Promise<void> => {
         {
           allowPendingOnHealthTimeout: !(isWebUIMode || isResetPasswordMode),
           onHealthTimeout: async (error) => {
-            markBackendStartupFailed(error);
-            await captureBackendStartupFailure(error);
+            await captureLegacyBackendFailure(error);
           },
           onPendingExit: async (error) => {
-            markBackendStartupFailed(error);
-            await captureBackendStartupFailure(error);
+            await captureLegacyBackendFailure(error);
           },
           onReady: (backendPort) => {
             markBackendReady(backendPort, 'backendManager.lateReady');
@@ -593,17 +618,14 @@ const handleAppReady = async (): Promise<void> => {
       mark(`backendManager.start pending health (port=${backendPort})`);
     },
     captureFailure: async (error) => {
-      markBackendStartupFailed(error);
-      await captureBackendStartupFailure(error);
+      await captureLegacyBackendFailure(error);
     },
     exitApp: (code) => app.exit(code),
-    exitOnFailure: isWebUIMode || isResetPasswordMode,
+    exitOnFailure: coreBootPolicy.requireLegacyBackend,
     logError: console.error,
   });
-  if (!backendStartup.ok) {
-    if (isWebUIMode || isResetPasswordMode) {
-      return;
-    }
+  if (!backendStartup.ok && coreBootPolicy.requireLegacyBackend) {
+    return;
   }
 
   // One-shot WebUI admin credential migration. Must run after the backend is

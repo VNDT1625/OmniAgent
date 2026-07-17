@@ -1,3 +1,5 @@
+import { ipcBridge } from '@/common';
+
 import { httpRequest } from '@/common/adapter/httpBridge';
 import { mcpService } from '@/common/adapter/ipcBridge';
 import { configService } from '@/common/config/configService';
@@ -83,6 +85,51 @@ const toggleImportedEnabledServers = async (servers: IMcpServer[], imported: IMc
   }
 
   return toggledServers;
+};
+
+/** Merge the live Browser-Control server into a conversation session snapshot. */
+export const mergeBrowserControlSessionServer = (
+  servers: ISessionMcpServer[],
+  browserServer: ISessionMcpServer
+): ISessionMcpServer[] => [...servers.filter((server) => server.name !== browserServer.name), browserServer];
+
+/** Return the session snapshot update needed for a live Browser-Control server. */
+export const buildBrowserControlSessionUpdate = (
+  servers: ISessionMcpServer[],
+  browserServer: ISessionMcpServer,
+  attachIfMissing = false
+): ISessionMcpServer[] | null => {
+  const current = servers.find((server) => server.name === browserServer.name);
+  if (!current && !attachIfMissing) return null;
+  if (current && JSON.stringify(current) === JSON.stringify(browserServer)) return null;
+  return mergeBrowserControlSessionServer(servers, browserServer);
+};
+
+/**
+ * Refresh the Browser-Control MCP snapshot for an existing chat.
+ * Custom MCP entries are preserved; missing browser entries remain opt-in via
+ * the Super toggle (or by passing `attachIfMissing: true`).
+ */
+export const ensureBrowserControlSession = async (
+  conversationId: string,
+  options: { attachIfMissing?: boolean } = {}
+): Promise<boolean> => {
+  const [{ allServers }, conversation] = await Promise.all([
+    ensureBackendMcpCatalog(),
+    ipcBridge.conversation.get.invoke({ id: conversationId }),
+  ]);
+  const live = allServers.find((server) => server.name === 'aionui-browser-control');
+  if (!live || !conversation) return false;
+  const extra = (conversation.extra ?? {}) as { session_mcp_servers?: ISessionMcpServer[] };
+  const existing = Array.isArray(extra.session_mcp_servers) ? extra.session_mcp_servers : [];
+  const update = buildBrowserControlSessionUpdate(existing, toSessionMcpServer(live), options.attachIfMissing === true);
+  if (!update) return existing.some((server) => server.name === live.name);
+  const ok = await ipcBridge.conversation.update.invoke({
+    id: conversationId,
+    updates: { session_mcp_servers: update } as never,
+    merge_extra: true,
+  });
+  return Boolean(ok);
 };
 
 export const ensureBackendMcpCatalog = async (): Promise<{

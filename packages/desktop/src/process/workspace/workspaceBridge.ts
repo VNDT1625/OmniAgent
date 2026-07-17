@@ -22,8 +22,8 @@
  * Browser surfaces are driven through the **same** {@link IBrowserViewManager}
  * the Browser page uses, so a workspace's tab is a real embedded tab the
  * renderer can position as an overlay frame. Editor surfaces read/write via the
- * fs HTTP API (`/api/fs/read` + `/api/fs/write`) — the same endpoints the
- * Universal Editor uses — so an edited file is what the Studio editor shows.
+ * native Main-process file gateway — the same filesystem plane the Universal
+ * Editor uses — so an edited file is what the Studio editor shows.
  *
  * The global bootstrap calls {@link registerWorkspaceBridge} once with the
  * main-window accessor; this module does not wire itself in.
@@ -33,7 +33,7 @@
 
 import { bridge } from '@office-ai/platform';
 import type { BrowserWindow } from 'electron';
-import { httpRequest } from '@/common/adapter/httpBridge';
+import { NativeFileGateway } from '@process/resources/nativeFileGateway';
 import { createBrowserViewManager, type IBrowserViewManager } from '@process/browser/browserViewManager';
 import { createWebAgentRunner, type IWebAgentRunner } from '@process/browser/webAgentRunner';
 import { createProviderChat } from '@process/browser/providerChat';
@@ -90,19 +90,16 @@ export const workspaceChannels = {
 // Shared services
 // ---------------------------------------------------------------------------
 
-/** Editor file IO backed by the aioncore fs HTTP API (Main-process side). */
-const createHttpEditorIO = () => ({
-  read: async (filePath: string): Promise<string> => {
-    const result = await httpRequest<string | null>('POST', '/api/fs/read', { path: filePath }).catch(
-      (): string | null => null
-    );
-    return typeof result === 'string' ? result : '';
-  },
-  write: async (filePath: string, content: string): Promise<void> => {
-    const ok = await httpRequest<boolean>('POST', '/api/fs/write', { path: filePath, data: content });
-    if (!ok) throw new Error(`File could not be written: ${filePath}`);
-  },
-});
+/** Editor file IO backed directly by the Main-process filesystem gateway. */
+const createNativeEditorIO = () => {
+  const gateway = new NativeFileGateway();
+  return {
+    read: async (filePath: string): Promise<string> => (await gateway.readText(filePath)) ?? '',
+    write: async (filePath: string, content: string): Promise<void> => {
+      await gateway.writeText(filePath, content);
+    },
+  };
+};
 
 /** The Main-process services the workspace bridge operates on. */
 export type WorkspaceServices = {
@@ -172,7 +169,7 @@ export const getWorkspaceServices = (getWindow: () => BrowserWindow | null | und
 
   const runners: Record<SurfaceKind, ReturnType<typeof createEditorAgentRunner>> = {
     browser: createBrowserSurfaceRunner({ viewManager, agentRunner }),
-    editor: createEditorAgentRunner({ chat, io: createHttpEditorIO() }),
+    editor: createEditorAgentRunner({ chat, io: createNativeEditorIO() }),
   };
 
   const orchestrator = createWorkspaceOrchestrator({ runners });

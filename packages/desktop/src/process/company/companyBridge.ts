@@ -42,6 +42,8 @@
 
 import { bridge } from '@office-ai/platform';
 import { httpRequest } from '@/common/adapter/httpBridge';
+import { getMcpRegistry } from '@process/resources/mcpRegistry';
+import { getAssistantResourceStore } from '@process/resources/nativeAssistantResourceBridge';
 import {
   createCompanyConfigStore,
   createFromDescription,
@@ -456,7 +458,9 @@ const fetchAgentPool = async (): Promise<ListAgentsResponse> => {
   type RawMcp = { id?: string; name?: string; builtin?: boolean };
   type RawSkill = { name?: string; description?: string };
   const [mcpRaw, skillRaw] = await Promise.all([
-    httpRequest<RawMcp[]>('GET', '/api/mcp/servers').catch((): RawMcp[] => []),
+    getMcpRegistry()
+      .list()
+      .catch((): RawMcp[] => []),
     httpRequest<RawSkill[]>('GET', '/api/skills').catch((): RawSkill[] => []),
   ]);
   const mcpServers: AgentPoolMcp[] = (mcpRaw || [])
@@ -774,11 +778,9 @@ export function registerCompanyBridge(options: RegisterCompanyBridgeOptions = {}
           if (!newId) throw new Error('assistant create returned no id');
           // Persist the proposed rules as the assistant's rule file (best-effort).
           if (draft.rules && draft.rules.trim().length > 0) {
-            await httpRequest('POST', '/api/skills/assistant-rule/write', {
-              assistant_id: newId,
-              locale: 'en-US',
-              content: draft.rules,
-            }).catch((): undefined => undefined);
+            await getAssistantResourceStore()
+              .write({ assistant_id: newId, locale: 'en-US', content: draft.rules }, 'rule')
+              .catch((): undefined => undefined);
           }
           role.apply({ kind: 'assistant', refId: newId, label: draft.name, model: draft.model });
           created += 1;

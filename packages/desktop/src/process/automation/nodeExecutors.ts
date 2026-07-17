@@ -38,6 +38,7 @@ import type {
   HttpNodeConfig,
   MakeVideoNodeConfig,
   ManagerNodeConfig,
+  N8nNodeConfig,
   NodeContext,
   NotifyNodeConfig,
   SetNodeConfig,
@@ -52,6 +53,7 @@ import { createCloudUploader } from './connectors/cloudUpload';
 import { createEmailSender } from './connectors/emailSend';
 import { createFacebookPublisher } from './connectors/facebookPost';
 import { createTiktokPublisher } from './connectors/tiktokPost';
+import { createN8nAction } from './connectors/n8n';
 import {
   createEditorAction,
   createMakeVideoAction,
@@ -170,6 +172,7 @@ export const createNodeExecutors = (deps: NodeExecutorDeps): NodeExecutorMap => 
   const emailSender = createEmailSender();
   const facebookPublisher = createFacebookPublisher({ fetchImpl });
   const tiktokPublisher = createTiktokPublisher({ fetchImpl });
+  const n8nAction = createN8nAction({ fetchImpl });
   const editorAction = createEditorAction(deps.editor);
   const filesystemAction = createFilesystemAction(deps.filesystemFs);
   const appReuse = createAppReuseActions(deps.appReuse ?? {});
@@ -243,6 +246,11 @@ export const createNodeExecutors = (deps: NodeExecutorDeps): NodeExecutorMap => 
 
     'action.filesystem': (node, ctx) =>
       filesystemAction.run(node.config as unknown as FilesystemNodeConfig, ctx.input, node.name),
+
+    'action.n8n': async (node, ctx, signal) => {
+      const config = await withCredential(node.config);
+      return n8nAction(config as unknown as N8nNodeConfig, ctx.input, signal);
+    },
 
     // --- App-reuse nodes (drive existing AionUi features) ---
 

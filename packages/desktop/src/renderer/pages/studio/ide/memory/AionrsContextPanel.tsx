@@ -4,6 +4,7 @@ import { AddOne, Data, Delete, Refresh, Save } from '@icon-park/react';
 import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { AionrsContextBranch } from '@/common';
+import { areContextBranchesValid, estimateContextBranchTokens } from './contextBranchUtils';
 import { useAionrsContext } from './useAionrsContext';
 
 type AionrsContextPanelProps = {
@@ -28,7 +29,7 @@ const AionrsContextPanel: React.FC<AionrsContextPanelProps> = ({ conversationId,
 
   useEffect(() => {
     if (!customDirty && snapshot) setDraft(snapshot.custom_context);
-    if (!branchesDirty && snapshot) setBranchDrafts(snapshot.context_branches);
+    if (!branchesDirty && snapshot) setBranchDrafts(snapshot.context_branches ?? []);
   }, [branchesDirty, customDirty, snapshot]);
 
   const messageItems = useMemo(
@@ -44,6 +45,10 @@ const AionrsContextPanel: React.FC<AionrsContextPanelProps> = ({ conversationId,
   );
 
   const submit = async (): Promise<void> => {
+    if (!areContextBranchesValid(branchDrafts)) {
+      Message.error(t('ide.memory.context.branchInvalid'));
+      return;
+    }
     const saveError = await save(draft, branchDrafts);
     if (saveError) {
       Message.error(t('ide.memory.context.saveFailed'));
@@ -62,7 +67,9 @@ const AionrsContextPanel: React.FC<AionrsContextPanelProps> = ({ conversationId,
   };
 
   const updateBranch = (index: number, patch: Partial<AionrsContextBranch>): void => {
-    setBranchDrafts((current) => current.map((branch, itemIndex) => (itemIndex === index ? { ...branch, ...patch } : branch)));
+    setBranchDrafts((current) =>
+      current.map((branch, itemIndex) => (itemIndex === index ? { ...branch, ...patch } : branch))
+    );
     setBranchesDirty(true);
   };
 
@@ -177,8 +184,8 @@ const AionrsContextPanel: React.FC<AionrsContextPanelProps> = ({ conversationId,
                 <Empty description={t('ide.memory.context.branchesEmpty')} />
               ) : (
                 branchDrafts.map((branch, index) => {
-                  const isActive = snapshot.active_context_branch_ids.includes(branch.id);
-                  const tokenEstimate = Math.ceil(branch.content.length / 4);
+                  const isActive = (snapshot.active_context_branch_ids ?? []).includes(branch.id);
+                  const tokenEstimate = estimateContextBranchTokens(branch.content);
                   return (
                     <div key={`${branch.id}-${index}`} className='p-10px rd-10px border border-border-2 bg-fill-1'>
                       <div className='mb-8px flex items-center justify-between gap-8px'>
@@ -200,6 +207,7 @@ const AionrsContextPanel: React.FC<AionrsContextPanelProps> = ({ conversationId,
                         <Input
                           value={branch.id}
                           maxLength={64}
+                          disabled
                           placeholder={t('ide.memory.context.branchId')}
                           onChange={(value) => updateBranch(index, { id: value })}
                         />
@@ -230,6 +238,18 @@ const AionrsContextPanel: React.FC<AionrsContextPanelProps> = ({ conversationId,
                   );
                 })
               )}
+              <div className='flex justify-end'>
+                <Button
+                  type='primary'
+                  size='small'
+                  icon={<Save theme='outline' size={14} />}
+                  loading={saving}
+                  disabled={!customDirty && !branchesDirty}
+                  onClick={() => void submit()}
+                >
+                  {t('ide.memory.context.save')}
+                </Button>
+              </div>
             </div>
           </Collapse.Item>
           <Collapse.Item name='working-memory' header={t('ide.memory.context.workingMemory')}>

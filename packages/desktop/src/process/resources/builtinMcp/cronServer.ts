@@ -13,8 +13,8 @@
  * while the matching UI plane (`renderer/pages/cron/`) drives the *same* state.
  * Scheduling was the one capability with **no** agent-facing tools — this server
  * closes that gap: it lets an agent list, inspect, create, update, pause/resume,
- * run-now and delete the user's scheduled tasks, all through the SAME aioncore
- * `/api/cron/*` surface the UI uses (single source of truth — a job an agent
+ * run-now and delete the user's scheduled tasks, all through the same typed
+ * Electron Cron IPC surface the UI uses (single source of truth — a job an agent
  * creates shows up on the Scheduled Tasks page and vice-versa).
  *
  * ## Tool-name convention (snake_case, not dotted)
@@ -29,8 +29,7 @@
  * ## Why a factory + injected deps
  *
  * The server is built as a factory taking {@link CronServerDeps}. In production
- * the host injects the real `cron.*` IPC-bridge invokers (which call aioncore
- * over HTTP from the Main process). In tests we inject fakes, so the tool surface
+ * the host injects the Tomny Core scheduled-task adapter in the Main process. In tests we inject fakes, so the tool surface
  * is verified without a live backend.
  *
  * Process boundary: Main-process (Node.js / Electron) module — no DOM APIs.
@@ -57,7 +56,7 @@ export type CronServiceClient = {
 
 /** Injected collaborators for {@link createCronServer}. */
 export type CronServerDeps = {
-  /** The cron service (aioncore-backed in production, faked in tests). */
+  /** The Tomny Core scheduled-task service (faked in tests). */
   cron: CronServiceClient;
   /**
    * Resolve the current IANA time zone for cron expressions. Defaults to the

@@ -11,13 +11,13 @@
  *
  * ## Why an in-process HTTP/SSE host (not a stdio child)
  *
- * The Cron capability is HTTP-backed in aioncore (`/api/cron/*`) and the Main
- * process reaches it through `globalThis.__backendPort`. A standalone `node`
- * child (the stdio pattern used by image-gen / resource / company / manager)
- * cannot see that port. The Testing and Browser-Control servers solved the same
- * "needs live Main-process state" problem by hosting the `McpServer` in the Main
- * process on a loopback HTTP server using the MCP SDK's {@link SSEServerTransport}
- * and registering it in the catalog as an `sse` server. This module mirrors
+ * The Cron capability is backed by Tomny Core's durable scheduled-task service.
+ * A standalone process cannot reach that live Main-process service.
+
+ * It follows the Testing and Browser-Control in-process host pattern by hosting
+ * the MCP server in the Main process on a loopback HTTP endpoint using the
+ * MCP SDK SSE transport and registering it in the catalog as an SSE server.
+ * This module mirrors process/browser/browserControlMcpHost.ts.
  * `process/browser/browserControlMcpHost.ts` 1:1.
  *
  * Each SSE connection gets its own transport + a fresh {@link McpServer} bound to

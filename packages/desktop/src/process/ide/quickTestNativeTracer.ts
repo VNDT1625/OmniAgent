@@ -42,15 +42,50 @@ import { findFirstError, isErrorEvent, pushBounded } from './quickTestBuffer';
  * Abstracted so the tracer never imports `child_process` directly — the wiring
  * layer supplies a real implementation, the tests a fake.
  */
+/** Identity shared by Windows/Android native adapters and agent evidence. */
+export type NativeTargetIdentity = {
+  platform: Extract<TracePlatform, 'android' | 'windows'>;
+  processId?: number;
+  executable?: string;
+  windowHandle?: string;
+  windowTitle?: string;
+  deviceSerial?: string;
+};
+
+/** Capability contract lets callers choose the strongest available native path. */
+export type NativeAdapterCapabilities = {
+  logs: boolean;
+  interactions: boolean;
+  screenshots: boolean;
+  actions: boolean;
+  attach: boolean;
+};
+
+/** Native replay action accepted by accessibility adapters. */
+export type NativeAutomationAction =
+  | { kind: 'click'; selector: string }
+  | { kind: 'input'; selector: string; value: string };
+
 export type NativeLogStream = {
   /** PID of the launched native target, when the opener owns the process. */
   processId?: number;
+  /** Resolved target used for later native replay (Android serial or Windows executable). */
+  target?: string;
+  /** Stable process/window identity resolved by the native adapter. */
+  identity?: NativeTargetIdentity;
+  /** Honest capabilities; unsupported operations stay false instead of faking success. */
+  capabilities?: NativeAdapterCapabilities;
   /** Register a listener for each emitted log line. */
   onLine: (listener: (line: string) => void) => void;
   /** Register a listener for the stream ending (process exit / adb detach). */
   onClose: (listener: (info: { code: number | null }) => void) => void;
   /** Optional structured UI events supplied by an accessibility adapter. */
   onInteraction?: (listener: (event: Extract<TraceEvent, { kind: 'click' | 'input' }>) => void) => void;
+
+  /** Capture the target window only. */
+  captureScreenshot?: () => Promise<Buffer | null>;
+  /** Perform one accessibility action for deterministic native replay. */
+  performAction?: (action: NativeAutomationAction) => Promise<boolean>;
   /** Stop the stream and release the underlying process/handle. */
   close: () => void;
 };
@@ -102,6 +137,15 @@ export type QuickTestNativeTracer = {
   currentEvents: () => TraceEvent[];
   /** Whether the active stream supplied structured accessibility interactions. */
   hasStructuredInteractions: () => boolean;
+
+  /** Capabilities of the active native adapter. */
+  capabilities: () => NativeAdapterCapabilities | null;
+  /** Process/window/device identity of the active target. */
+  targetIdentity: () => NativeTargetIdentity | null;
+  /** Best-effort target-window screenshot. */
+  captureScreenshot: () => Promise<Buffer | null>;
+  /** Run an accessibility action when supported. */
+  performAction: (action: NativeAutomationAction) => Promise<boolean>;
 };
 
 // ---------------------------------------------------------------------------
@@ -159,12 +203,17 @@ export const createQuickTestNativeTracer = (deps: QuickTestNativeTracerDeps): Qu
   let active = false;
   let platform: TracePlatform = 'android';
   let rootPath = '';
+
+  let resolvedTarget = '';
   let startedAt = 0;
   let recorded = 0;
   let errorSeen = false;
   let stream: NativeLogStream | null = null;
   const events: TraceEvent[] = [];
   let structuredInteractions = false;
+
+  let adapterCapabilities: NativeAdapterCapabilities | null = null;
+  let identity: NativeTargetIdentity | null = null;
 
   const push = (event: TraceEvent | null): void => {
     if (!event || !active) return;
@@ -183,12 +232,23 @@ export const createQuickTestNativeTracer = (deps: QuickTestNativeTracerDeps): Qu
 
     platform = plat;
     rootPath = root;
+
+    resolvedTarget = opened.target?.trim() || target.trim();
     startedAt = clock();
     events.length = 0;
     recorded = 0;
     errorSeen = false;
     stream = opened;
     structuredInteractions = Boolean(opened.onInteraction);
+
+    adapterCapabilities = opened.capabilities ?? {
+      logs: true,
+      interactions: structuredInteractions,
+      screenshots: Boolean(opened.captureScreenshot),
+      actions: Boolean(opened.performAction),
+      attach: false,
+    };
+    identity = opened.identity ?? (opened.processId ? { platform: plat, processId: opened.processId } : null);
     active = true;
 
     opened.onLine((line) => push(mapNativeLogLine(line, clock())));
@@ -214,7 +274,15 @@ export const createQuickTestNativeTracer = (deps: QuickTestNativeTracerDeps): Qu
     }
     structuredInteractions = false;
     const typed = [...events];
-    return { platform, rootPath, events: typed, firstError: findFirstError(typed), startedAt, stoppedAt };
+    return {
+      platform,
+      rootPath,
+      ...(resolvedTarget ? { target: resolvedTarget } : {}),
+      events: typed,
+      firstError: findFirstError(typed),
+      startedAt,
+      stoppedAt,
+    };
   };
 
   return {
@@ -225,6 +293,11 @@ export const createQuickTestNativeTracer = (deps: QuickTestNativeTracerDeps): Qu
     recordedCount: () => recorded,
     currentEvents: () => [...events],
     hasStructuredInteractions: () => structuredInteractions,
+
+    capabilities: () => (adapterCapabilities ? { ...adapterCapabilities } : null),
+    targetIdentity: () => (identity ? { ...identity } : null),
+    captureScreenshot: async () => (stream?.captureScreenshot ? stream.captureScreenshot() : null),
+    performAction: async (action) => (stream?.performAction ? stream.performAction(action) : false),
   };
 };
 

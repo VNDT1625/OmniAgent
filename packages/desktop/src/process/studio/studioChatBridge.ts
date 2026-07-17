@@ -48,6 +48,8 @@ export type StudioChatRequest = {
   model: string;
   /** The running conversation (user/assistant turns). */
   messages: StudioChatMessage[];
+  /** Absolute workspace selected by the user for document creation. */
+  workspace?: string;
 };
 
 /**
@@ -142,7 +144,8 @@ const runChat = async (req: StudioChatRequest): Promise<string> => {
     (model, messages) => runProviderChat(model, messages as StudioChatRequest['messages']),
     req.model,
     req.messages,
-    undefined
+    undefined,
+    { workspace: req.workspace, surface: 'office', permissionMode: 'read-only' }
   );
 };
 

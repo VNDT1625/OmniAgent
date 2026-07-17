@@ -57,6 +57,7 @@ import { DEFAULT_GOAL_WATCHDOG_CONFIG } from '@/common/chat/slash/goalWatchdog';
 import { useGoalRunner } from '@/renderer/hooks/chat/useGoalRunner';
 import { useTeamPermission } from '@/renderer/pages/team/hooks/TeamPermissionContext';
 import { allSupportedExts } from '@/renderer/services/FileService';
+import { withResponseLanguageDirective } from '@/renderer/services/i18n/responseLanguage';
 import { iconColors } from '@/renderer/styles/colors';
 import { emitter, useAddEventListener } from '@/renderer/utils/emitter';
 import { mergeFileSelectionItems } from '@/renderer/utils/file/fileSelection';
@@ -264,10 +265,10 @@ const AionrsSendBox: React.FC<{
         const guardedMessage = await buildPlanningGuard(workspacePath, baseModelMessage);
         // Goal Mode steering: bind every ordinary turn to the mandatory pipeline.
         const steeredMessage = withGoalSteeringDirective(guardedMessage, conversation_id);
-        // Do not persist UI-language steering in the AionRS transcript. It is
-        // visible in Context/History and makes ordinary user messages look
-        // synthetic; the agent can infer the reply language from the request.
-        const modelInput = steeredMessage;
+        // Keep the UI-language directive out of the visible user bubble while
+        // still sending it to AionRS. Tool output and codebases are commonly
+        // English, so the agent cannot reliably infer the user's language.
+        const modelInput = withResponseLanguageDirective(steeredMessage, conversation_id);
 
         setWaitingResponse(true);
         void checkAndUpdateTitle(conversation_id, input);
@@ -276,7 +277,8 @@ const AionrsSendBox: React.FC<{
         // subsequent WebSocket stream events — avoids duplicate bubbles when
         // useMessageLstCache reloads.
         const res = await ipcBridge.conversation.sendMessage.invoke({
-          input: modelInput,
+          input: displayMessage,
+          model_input: modelInput,
           conversation_id,
           files,
         });

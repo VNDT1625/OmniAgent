@@ -11,6 +11,7 @@ import { networkInterfaces } from 'os';
 import { getSystemDir } from './initStorage';
 import { httpRequest } from '@/common/adapter/httpBridge';
 import { startWebHost, type WebHostHandle } from '@aionui/web-host';
+import { ensureCloudflared, startTunnel, stopTunnel } from '@process/studio/cloudflareTunnel';
 import { getDataPath } from './utils';
 
 const WEBUI_CONFIG_FILE = 'webui.config.json';
@@ -169,10 +170,14 @@ export type DesktopWebUIHandle = {
   localUrl: string;
   networkUrl?: string;
   lanIP?: string;
+  candidateLanIPs?: string[];
+  publicUrl?: string;
   initialPassword?: string;
 };
 
+const WEBUI_TUNNEL_KEY = 'webui';
 let currentHandle: (WebHostHandle & { allowRemote: boolean }) | null = null;
+let currentPublicUrl: string | undefined;
 // First-use plaintext password for the active handle. Set by webui.start IPC
 // handler before startDesktopWebUI() when the backend reports needs_setup=true,
 // so Settings can display the generated password exactly once. Cleared on stop.
@@ -186,27 +191,49 @@ export function setDesktopWebUIInitialPassword(password: string | undefined): vo
   currentInitialPassword = password;
 }
 
-const getLanIP = (): string | null => {
+const getCandidateLanIPs = (): string[] => {
   const nets = networkInterfaces();
+  const candidates: Array<{ address: string; score: number }> = [];
   for (const name of Object.keys(nets)) {
     const netInfo = nets[name];
     if (!netInfo) continue;
+    const normalizedName = name.toLowerCase();
+    const virtualAdapter = /(radmin|virtual|vmware|vbox|hyper-v|tailscale|zerotier|docker|wsl|loopback|tunnel)/.test(
+      normalizedName
+    );
+    const physicalAdapter = /(wi-?fi|wireless|wlan|ethernet|local area|^en\d|^eth\d)/.test(normalizedName);
     for (const net of netInfo) {
       const isIPv4 = net.family === 'IPv4' || (net.family as unknown) === 4;
-      if (isIPv4 && !net.internal) return net.address;
+      if (!isIPv4 || net.internal) continue;
+      const isPrivate = /^(10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(net.address);
+      if (!candidates.some((candidate) => candidate.address === net.address)) {
+        candidates.push({
+          address: net.address,
+          score: (isPrivate ? 100 : 0) + (physicalAdapter ? 20 : 0) - (virtualAdapter ? 80 : 0),
+        });
+      }
     }
   }
-  return null;
+
+  return candidates.sort((a, b) => b.score - a.score).map((candidate) => candidate.address);
 };
 
-const toDesktopHandle = (handle: WebHostHandle, allowRemote: boolean): DesktopWebUIHandle => ({
-  port: handle.port,
-  allowRemote,
-  localUrl: handle.localUrl,
-  networkUrl: handle.networkUrl,
-  lanIP: handle.lanIP,
-  initialPassword: currentInitialPassword,
-});
+const getLanIP = (): string | null => getCandidateLanIPs()[0] ?? null;
+
+const toDesktopHandle = (handle: WebHostHandle, allowRemote: boolean): DesktopWebUIHandle => {
+  const candidateLanIPs = allowRemote ? getCandidateLanIPs() : [];
+  const lanIP = handle.lanIP ?? candidateLanIPs[0];
+  return {
+    port: handle.port,
+    allowRemote,
+    localUrl: handle.localUrl,
+    networkUrl: lanIP ? `http://${lanIP}:${handle.port}` : handle.networkUrl,
+    lanIP,
+    candidateLanIPs,
+    publicUrl: currentPublicUrl,
+    initialPassword: currentInitialPassword,
+  };
+};
 
 /**
  * Spawn a WebUI instance (static server + backend) and remember the handle so
@@ -263,6 +290,25 @@ export async function startDesktopWebUI(opts: { port?: number; allowRemote?: boo
   });
 
   currentHandle = Object.assign(handle, { allowRemote });
+  currentPublicUrl = undefined;
+
+  if (allowRemote) {
+    const cloudflared = await ensureCloudflared();
+    if (cloudflared.ok) {
+      const tunnel = await startTunnel(WEBUI_TUNNEL_KEY, handle.localUrl);
+      if (tunnel.ok) {
+        currentPublicUrl = tunnel.url;
+      } else {
+        const reason = 'reason' in tunnel ? tunnel.reason : 'start-failed';
+        const detail = 'detail' in tunnel ? tunnel.detail : undefined;
+        console.warn(`[WebUI] Public tunnel unavailable: ${reason}${detail ? ` (${detail})` : ''}`);
+      }
+    } else {
+      const detail = 'detail' in cloudflared ? cloudflared.detail : 'cloudflared installation failed';
+      console.warn(`[WebUI] Public tunnel unavailable: ${detail}`);
+    }
+  }
+
   return toDesktopHandle(handle, allowRemote);
 }
 
@@ -274,6 +320,8 @@ export async function stopDesktopWebUI(): Promise<void> {
   if (!handle) return;
   currentHandle = null;
   currentInitialPassword = undefined;
+  currentPublicUrl = undefined;
+  stopTunnel(WEBUI_TUNNEL_KEY);
   try {
     await handle.stop();
   } catch (err) {
@@ -292,25 +340,33 @@ export function getDesktopWebUIStatus(): {
   localUrl: string;
   networkUrl?: string;
   lanIP?: string;
+  candidateLanIPs?: string[];
+  publicUrl?: string;
   initialPassword?: string;
 } {
   if (!currentHandle) {
-    const lanIP = getLanIP();
+    const candidateLanIPs = getCandidateLanIPs();
+    const lanIP = candidateLanIPs[0];
     return {
       running: false,
       port: DEFAULT_WEBUI_PORT,
       allowRemote: false,
       localUrl: `http://localhost:${DEFAULT_WEBUI_PORT}`,
-      lanIP: lanIP ?? undefined,
+      lanIP,
+      candidateLanIPs,
     };
   }
+  const candidateLanIPs = currentHandle.allowRemote ? getCandidateLanIPs() : [];
+  const lanIP = currentHandle.lanIP ?? candidateLanIPs[0];
   return {
     running: true,
     port: currentHandle.port,
     allowRemote: currentHandle.allowRemote,
     localUrl: currentHandle.localUrl,
-    networkUrl: currentHandle.networkUrl,
-    lanIP: currentHandle.lanIP,
+    networkUrl: lanIP ? `http://${lanIP}:${currentHandle.port}` : currentHandle.networkUrl,
+    lanIP,
+    candidateLanIPs,
+    publicUrl: currentPublicUrl,
     initialPassword: currentInitialPassword,
   };
 }

@@ -319,3 +319,69 @@
 .terminal-tabs .arco-tabs-pane {
   height: 100% !important;
 }
+
+/* Immediate feedback while a top-level route prepares its first render. */
+.route-loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.route-loader--page {
+  min-height: 100vh;
+}
+
+.route-loader--overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  min-height: 100%;
+  background-color: color-mix(in srgb, var(--bg-1) 88%, transparent);
+  backdrop-filter: blur(2px);
+  pointer-events: all;
+}
+
+.route-loader__indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 36px;
+  border: 1px solid var(--border-base);
+  border-radius: 9999px;
+  background-color: var(--bg-2);
+  box-shadow: 0 8px 24px var(--color-fill-4);
+}
+
+.route-loader__progress {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  overflow: hidden;
+}
+
+.route-loader__progress > span {
+  display: block;
+  width: 36%;
+  height: 100%;
+  background-color: var(--color-primary-6);
+  animation: route-loader-progress 1s ease-in-out infinite;
+}
+
+@keyframes route-loader-progress {
+  from {
+    transform: translateX(-110%);
+  }
+  to {
+    transform: translateX(310%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-loader__progress > span {
+    width: 100%;
+    animation: none;
+    transform: none;
+  }
+}

@@ -24,12 +24,20 @@
 export { CLI_MODEL_PREFIX, isCliModelId, makeCliModelId, parseCliModelId } from './cliModelId';
 export { withCliAgent, __resetSharedCliDriver } from './cliAgentChat';
 export { createCliAgentDriver, flattenMessagesToPrompt } from './cliAgentDriver';
+export { createDirectCliAgentDriver, resolveDirectCliWorkspace } from './directCliAgent';
 export { normalizeChatMessagesForMarkdown } from './markdownMessageNormalizer';
+
+export * from './durability';
+
+export * from './attachments';
+export * from './permission';
 export type { CliAgentDriver, CliAgentDriverDeps, CliConversationHandle, TurnSignal } from './cliAgentDriver';
+export type { DirectCliAgentDriver, DirectCliAgentDriverDeps, DirectCliExecutionContext } from './directCliAgent';
 export type { MarkdownMessageNormalizerDeps } from './markdownMessageNormalizer';
 
 import type { AgentChat, ChatMessageInput } from '@process/browser/webAgentRunner';
 import { withCliAgent } from './cliAgentChat';
+import type { DirectCliExecutionContext } from './directCliAgent';
 
 /** A flat completion call shared by the non-runner bridges. */
 export type FlatChat = (model: string, messages: ChatMessageInput[], signal?: AbortSignal) => Promise<string>;
@@ -49,8 +57,9 @@ export const runAgentChatMessages = (
   providerRun: FlatChat,
   model: string,
   messages: ChatMessageInput[],
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  context?: DirectCliExecutionContext
 ): Promise<string> => {
   const adapted: AgentChat = ({ model: m, messages: msgs, signal: s }) => providerRun(m, msgs as ChatMessageInput[], s);
-  return withCliAgent(adapted)({ model, messages, signal });
+  return withCliAgent(adapted, undefined, context)({ model, messages, signal });
 };

@@ -23,6 +23,8 @@ import { registerSmartFixBridge } from '@process/terminal/smartFix/smartFixBridg
 import { createCompanyGenerator } from '@process/company/companyGenerator';
 import { registerBrowserBridge, getBrowserServices } from '@process/browser/browserBridge';
 import type { CdpWebContents } from '@process/ide/quickTestTracer';
+
+import type { ApiMockRule, NetworkRequestSample, PerformanceSample } from '@process/services/quick-test/observability';
 import { registerEditorControlBridge } from '@process/editor/editorControlBridge';
 import { registerTestingBridge } from '@process/testing/testingBridge';
 import { getTestingServices } from '@process/testing/testingWiring';
@@ -57,12 +59,23 @@ import { registerIdeLangBridge } from '@process/ide/lang/ideLangBridge';
 import { registerIdeLspBridge } from '@process/ide/lang/ideLspBridge';
 import { registerIdeCompletionBridge } from '@process/ide/lang/ideCompletionBridge';
 import { registerIdeMemoryBridge } from '@process/ide/memory/ideMemoryBridge';
+
 import { registerKnowledgeGraphBridge } from '@process/ide/knowledgeGraphBridge';
+
 import { registerQuickTestBridge } from '@process/ide/quickTestBridge';
-import { registerElementInspectorBridge } from '@process/ide/elementInspectorBridge';
-import { registerRunTargetBridge } from '@process/ide/runTarget/runTargetBridge';
-import { registerIdeCommandBridge } from '@process/ide/command/commandBridge';
+
 import { openNativeLogStream as openNativeStream } from '@process/ide/quickTestNativeStream';
+import { registerQuickTestAssetBridge } from '@process/ide/quickTestAssetBridge';
+import { registerQuickTestInsightsBridge } from '@process/ide/quickTestInsightsBridge';
+import { createNativeQuickTestReplayAdapter } from '@process/testing/engines/nativeQuickTestReplayAdapter';
+import { getQuickTestScenarioAgentService } from '@process/ide/mcp/ideMcpWiring';
+
+import { registerElementInspectorBridge } from '@process/ide/elementInspectorBridge';
+
+import { registerRunTargetBridge } from '@process/ide/runTarget/runTargetBridge';
+
+import { registerIdeCommandBridge } from '@process/ide/command/commandBridge';
+
 import { registerSpecLifecycleBridge } from '@process/ide/specLifecycleBridge';
 import { registerDbBridge } from '@process/ide/db/dbBridge';
 import { getDbService } from '@process/ide/db/dbWiring';
@@ -82,8 +95,24 @@ import { getGitManagerServices } from '@process/git/gitManagerWiring';
 import { registerRouter9Bridge } from '@process/router9/router9Bridge';
 import { registerPricingBridge } from '@process/pricing/pricingBridge';
 import { registerProviderBridge } from '@process/services/tomnyProviderBridge';
+import { registerMcpRegistryBridge } from '@process/resources/mcpRegistry';
+import { registerFileGatewayBridge } from '@process/resources/nativeFileGatewayBridge';
+import { registerAssistantResourceBridge } from '@process/resources/nativeAssistantResourceBridge';
+
+import {
+  registerNativeCapabilityBridge,
+  registerNativeFileOperationBridge,
+  registerNativeSnapshotBridge,
+} from '@process/resources/nativePlatform';
 
 import { registerExperimentalCoreBridge } from '@process/experimentalCore/experimentalCoreBridge';
+import { registerAgentMeshBridge } from '@process/agentRuntime/agentMesh/ipc';
+import { AgentMeshService } from '@process/agentRuntime/agentMesh/service';
+
+import { JsonTeamStore, registerTeamBridge } from '@process/team';
+import { JsonlDurableEventStore } from '@process/services/agentChat/durability';
+import path from 'node:path';
+import { app } from 'electron';
 import { getApplicationMainWindow } from './applicationBridge';
 
 export type BridgeDependencies = Record<string, never>;
@@ -97,6 +126,35 @@ export function initAllBridges(_deps: BridgeDependencies = {}): void {
   initNotificationBridge();
   initOmniGatewayBridge();
   initWebuiBridge();
+  try {
+    registerMcpRegistryBridge();
+    console.log('[Bridge] MCP registry bridge registered.');
+  } catch (error) {
+    console.error('[Bridge] Failed to register MCP registry bridge:', error);
+  }
+
+  try {
+    registerFileGatewayBridge();
+    console.log('[Bridge] Native file gateway registered.');
+  } catch (error) {
+    console.error('[Bridge] Failed to register native file gateway:', error);
+  }
+
+  try {
+    registerAssistantResourceBridge();
+    console.log('[Bridge] Assistant resource bridge registered.');
+  } catch (error) {
+    console.error('[Bridge] Failed to register assistant resource bridge:', error);
+  }
+
+  try {
+    registerNativeFileOperationBridge();
+    registerNativeSnapshotBridge();
+    registerNativeCapabilityBridge();
+    console.log('[Bridge] Native filesystem, snapshot, MCP and skill drivers registered.');
+  } catch (error) {
+    console.error('[Bridge] Failed to register native platform drivers:', error);
+  }
 
   // Tomni Agentic native bridges (Task 15.1 wiring). Each registration is isolated
   // so a failure in one cannot silently prevent the others from registering
@@ -412,6 +470,178 @@ export function initAllBridges(_deps: BridgeDependencies = {}): void {
         openNativeStream,
       })
     );
+    register('IDE quick-test asset bridge', () =>
+      registerQuickTestAssetBridge({
+        getWebContents: resolveQuickTestWebContents,
+        createNativeAdapter: createNativeQuickTestReplayAdapter,
+      })
+    );
+    const installQuickTestMocks = async (
+      contents: CdpWebContents | null,
+      rules: readonly ApiMockRule[]
+    ): Promise<(() => Promise<void>) | null> => {
+      const enabledRules = rules.filter((rule) => rule.enabled !== false);
+      if (!contents || enabledRules.length === 0) return null;
+      const script = `(() => {
+        const rules = ${JSON.stringify(enabledRules)};
+        const state = window.__omniQuickTestFetchMock || {};
+        if (!state.originalFetch) state.originalFetch = window.fetch.bind(window);
+        state.rules = rules;
+        state.matchesGlob = (pattern, value) => {
+          const parts = String(pattern).split('*');
+          let cursor = 0;
+          for (const part of parts) {
+            if (!part) continue;
+            const found = value.indexOf(part, cursor);
+            if (found < 0) return false;
+            cursor = found + part.length;
+          }
+          return pattern.startsWith('*') || value.startsWith(parts[0] || '');
+        };
+        state.matchUrl = (rule, rawUrl) => {
+          const matcher = rule.match && rule.match.url;
+          const expected = matcher && matcher.value;
+          if (!expected) return false;
+          const absoluteUrl = new URL(rawUrl, location.href).href;
+          if (matcher.kind === 'exact') return rawUrl === expected || absoluteUrl === expected;
+          if (matcher.kind === 'prefix') return rawUrl.startsWith(expected) || absoluteUrl.startsWith(expected);
+          return state.matchesGlob(expected, rawUrl) || state.matchesGlob(expected, absoluteUrl);
+        };
+        state.matchHeaders = (rule, source) => {
+          const expected = rule.match && rule.match.headers;
+          if (!expected || Object.keys(expected).length === 0) return true;
+          const headers = new Headers(source && source.headers);
+          return Object.entries(expected).every(([key, value]) => headers.get(key) === value);
+        };
+        state.findRule = async (input, init) => {
+          const request = input instanceof Request ? input : null;
+          const rawUrl = request ? request.url : String(input);
+          const method = (init && init.method) || (request && request.method) || 'GET';
+          let body = typeof (init && init.body) === 'string' ? init.body : '';
+          if (!body && request && typeof request.clone === 'function') {
+            try { body = await request.clone().text(); } catch { body = ''; }
+          }
+          return rules
+            .slice()
+            .sort((left, right) => (right.priority || 0) - (left.priority || 0))
+            .find((rule) => {
+              const match = rule.match || {};
+              if (match.method && match.method.toUpperCase() !== method.toUpperCase()) return false;
+              if (!state.matchUrl(rule, rawUrl)) return false;
+              if (!state.matchHeaders(rule, init || request || {})) return false;
+              return !match.bodyIncludes || body.includes(match.bodyIncludes);
+            });
+        };
+        window.__omniQuickTestFetchMock = state;
+        window.fetch = async (input, init) => {
+          const rule = await state.findRule(input, init || {});
+          if (!rule) return state.originalFetch(input, init);
+          const response = rule.response || {};
+          const delayMs = Math.max(0, Number(response.delayMs || 0));
+          if (delayMs > 0) await new Promise((resolve) => setTimeout(resolve, delayMs));
+          return new Response(response.body || '', {
+            status: response.status || 200,
+            headers: response.headers || {},
+          });
+        };
+      })();`;
+      const restoreScript = `(() => {
+        const state = window.__omniQuickTestFetchMock;
+        if (state && state.originalFetch) window.fetch = state.originalFetch;
+        delete window.__omniQuickTestFetchMock;
+      })();`;
+      let scriptId: string | null = null;
+      const wasAttached = contents.debugger.isAttached();
+      try {
+        if (!wasAttached) contents.debugger.attach('1.3');
+        await contents.debugger.sendCommand('Page.enable');
+        const result = await contents.debugger.sendCommand('Page.addScriptToEvaluateOnNewDocument', { source: script });
+        scriptId =
+          typeof (result as { identifier?: unknown }).identifier === 'string'
+            ? (result as { identifier: string }).identifier
+            : null;
+      } catch (error) {
+        if (!wasAttached && contents.debugger.isAttached()) contents.debugger.detach();
+        console.warn('[Bridge] Quick Test mock preload unavailable:', error);
+      }
+      await contents.executeJavaScript(script).catch((error: unknown) => {
+        console.warn('[Bridge] Quick Test mock injection failed:', error);
+      });
+      return async () => {
+        if (scriptId) {
+          await contents.debugger
+            .sendCommand('Page.removeScriptToEvaluateOnNewDocument', { identifier: scriptId })
+            .catch((): undefined => undefined);
+        }
+        await contents.executeJavaScript(restoreScript).catch((): undefined => undefined);
+        if (!wasAttached && contents.debugger.isAttached()) contents.debugger.detach();
+      };
+    };
+    register('IDE quick-test insights bridge', () =>
+      registerQuickTestInsightsBridge({
+        collectTabObservability: async (tabId) => {
+          const contents = resolveQuickTestWebContents(tabId);
+          if (!contents) throw new Error('The Quick Test browser is unavailable.');
+          const result = (await contents.executeJavaScript(`(() => {
+            const navigation = performance.getEntriesByType('navigation').flatMap((entry) => {
+              const item = entry;
+              return [{ kind: 'navigation', startTime: item.startTime, domContentLoadedMs: item.domContentLoadedEventEnd, loadMs: item.loadEventEnd }];
+            });
+            const resourceEntries = performance.getEntriesByType('resource');
+            const resources = resourceEntries.map((entry) => ({
+              kind: 'resource', name: entry.name, initiatorType: entry.initiatorType || 'resource',
+              startTime: entry.startTime, duration: entry.duration, transferSize: entry.transferSize || 0,
+            }));
+            const network = resourceEntries.map((entry, index) => ({
+              id: 'performance-resource-' + index + '-' + Math.round(entry.startTime),
+              method: 'GET',
+              url: entry.name,
+              startedAt: entry.startTime,
+              responseAt: entry.responseStart,
+              finishedAt: entry.responseEnd || entry.startTime + entry.duration,
+              status: typeof entry.responseStatus === 'number' ? entry.responseStatus : undefined,
+              resourceType: entry.initiatorType || 'resource',
+              transferredBytes: entry.transferSize || 0,
+            }));
+            const paints = performance.getEntriesByType('paint').flatMap((entry) =>
+              entry.name === 'first-paint' || entry.name === 'first-contentful-paint'
+                ? [{ kind: 'paint', name: entry.name, startTime: entry.startTime }]
+                : []);
+            return { network, performance: [...navigation, ...resources, ...paints] };
+          })()`)) as { network?: NetworkRequestSample[]; performance?: PerformanceSample[] };
+          return { network: result.network ?? [], performance: result.performance ?? [] };
+        },
+        replay: async ({ rootPath, scenarioId, tabId, mockRules }) => {
+          const cleanupMocks = await installQuickTestMocks(resolveQuickTestWebContents(tabId), mockRules);
+          try {
+            const service = getQuickTestScenarioAgentService();
+            let snapshot = await service.run({
+              rootPath,
+              scenarioId,
+              tabId,
+              mode: { kind: 'full' },
+              timeoutMs: 120_000,
+            });
+            while (snapshot.status === 'queued' || snapshot.status === 'running') {
+              await new Promise((resolve) => setTimeout(resolve, 100));
+              snapshot = await service.status({ rootPath, runId: snapshot.runId });
+            }
+            const startedAt = snapshot.startedAt ?? snapshot.queuedAt;
+            const finishedAt = snapshot.finishedAt ?? Date.now();
+            return {
+              runId: snapshot.runId,
+              status:
+                snapshot.status === 'cancelled' ? 'cancelled' : snapshot.status === 'passed' ? 'passed' : 'failed',
+              startedAt,
+              finishedAt,
+              ...(snapshot.error ? { errors: [{ kind: 'replay', message: snapshot.error }] } : {}),
+            };
+          } finally {
+            await cleanupMocks?.();
+          }
+        },
+      })
+    );
     // Element inspector — an additive, CDP-free visual picker ("Inspect", like
     // F12) that maps a clicked element to its component + file:line for precise
     // design/change requests. Independent of the trace flow above.
@@ -488,11 +718,35 @@ export function initAllBridges(_deps: BridgeDependencies = {}): void {
     console.error('[Bridge] Failed to register Tomny provider bridge:', error);
   }
 
+  const meshService = new AgentMeshService({
+    eventStoreFactory: (sessionId) =>
+      new JsonlDurableEventStore(
+        path.join(app.getPath('userData'), 'tomny-core', 'agent-mesh', `${encodeURIComponent(sessionId)}.jsonl`)
+      ),
+  });
+
   try {
-    registerExperimentalCoreBridge();
+    registerExperimentalCoreBridge(meshService);
     console.log('[Bridge] Experimental core bridge registered.');
   } catch (error) {
     console.error('[Bridge] Failed to register experimental core bridge:', error);
+  }
+
+  try {
+    registerAgentMeshBridge(meshService);
+    console.log('[Bridge] AgentMesh bridge registered.');
+  } catch (error) {
+    console.error('[Bridge] Failed to register AgentMesh bridge:', error);
+  }
+
+  try {
+    registerTeamBridge({
+      mesh: meshService,
+      store: new JsonTeamStore(path.join(app.getPath('userData'), 'tomny-core', 'teams.json')),
+    });
+    console.log('[Bridge] Native Team bridge registered.');
+  } catch (error) {
+    console.error('[Bridge] Failed to register native Team bridge:', error);
   }
 
   try {

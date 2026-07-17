@@ -65,7 +65,7 @@ interface EventTypes {
   'browser.openChat': void;
   // IDE Agent Hooks: a fired hook wants the IDE Chat surface to run a prompt
   // (the workspace root + the prompt to send to a new/active agent tab).
-  'ide.hook.askAgent': [{ rootPath: string; prompt: string; hookName: string }];
+  'ide.hook.askAgent': [{ rootPath: string; prompt: string; hookName: string; filePaths?: string[] }];
   // IDE navigation: the editor asks the workspace to resolve a symbol's
   // definition/references (the workspace owns rootPath + file-opening). When
   // `lsp` is present (a language server is attached to the file), the workspace
@@ -87,6 +87,9 @@ interface EventTypes {
   // dev-server URL from the output) and asks the dock to open + focus that
   // existing session id, instead of spawning a second one.
   'ide.terminal.focus': [{ id: string }];
+  // Quick Test and other IDE surfaces can toggle the existing terminal dock
+  // without owning or duplicating its local open state.
+  'ide.terminal.toggle': void;
   // IDE relations: the editor's impact CodeLens asks the workspace to reveal the
   // Related-code rail (so the user can see who depends on the file being edited).
   'ide.relations.reveal': [{ filePath: string }];

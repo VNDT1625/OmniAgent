@@ -21,7 +21,7 @@
  * Process boundary: Main-process (Node.js) module — no DOM APIs.
  */
 
-import { mcpService } from '@/common/adapter/ipcBridge';
+import { getMcpRegistry } from '@process/resources/mcpRegistry';
 import { getApplicationMainWindow } from '../bridge/applicationBridge';
 import { BUILTIN_TESTING_NAME } from '../resources/builtinMcp/testingServer';
 import { startTestingMcpHost } from './testingMcpHost';
@@ -47,22 +47,20 @@ export const ensureTestingMcpRegistered = async (): Promise<boolean> => {
     const transport = { type: 'sse' as const, url: host.url };
     const original_json = JSON.stringify({ mcpServers: { [BUILTIN_TESTING_NAME]: { url: host.url } } }, null, 2);
 
-    const existing = (await mcpService.listServers.invoke()) ?? [];
+    const existing = (await getMcpRegistry().list()) ?? [];
     const current = existing.find((server) => server.name === BUILTIN_TESTING_NAME);
 
     if (!current) {
-      await mcpService.batchImportServers.invoke({
-        servers: [
-          {
-            name: BUILTIN_TESTING_NAME,
-            description: TESTING_MCP_DESCRIPTION,
-            enabled: true,
-            builtin: true,
-            transport,
-            original_json,
-          },
-        ],
-      });
+      await getMcpRegistry().importMany([
+        {
+          name: BUILTIN_TESTING_NAME,
+          description: TESTING_MCP_DESCRIPTION,
+          enabled: true,
+          builtin: true,
+          transport,
+          original_json,
+        },
+      ]);
       console.log(`[TestingMCP] Registered "${BUILTIN_TESTING_NAME}" at ${host.url}.`);
       return true;
     }
@@ -70,10 +68,7 @@ export const ensureTestingMcpRegistered = async (): Promise<boolean> => {
     // Refresh the URL if the ephemeral port changed since the last boot.
     const sameUrl = current.transport.type === 'sse' && current.transport.url === host.url;
     if (!sameUrl) {
-      await mcpService.updateServer.invoke({
-        id: current.id,
-        data: { transport, original_json, builtin: true },
-      });
+      await getMcpRegistry().update(current.id, { transport, original_json, builtin: true });
       console.log(`[TestingMCP] Updated "${BUILTIN_TESTING_NAME}" URL → ${host.url}.`);
     }
     return true;

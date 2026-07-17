@@ -11,6 +11,12 @@
 import { describe, it, expect } from 'vitest';
 import { resolveFfmpeg, resolveAdb, resolveEmulator } from '@/process/testing/engines/toolResolver';
 import { createAndroidScriptEngine } from '@/process/testing/engines/androidEngine';
+import {
+  createAndroidQuickTestAdapter,
+  findAndroidNode,
+  parseAndroidHierarchy,
+  type AndroidAdbExecutor,
+} from '@/process/testing/engines/androidQuickTestAdapter';
 import { createWindowsScriptEngine } from '@/process/testing/engines/windowsEngine';
 import { createWindowsTarget } from '@/process/testing/platforms/windowsTarget';
 import { createAndroidTarget } from '@/process/testing/platforms/androidTarget';

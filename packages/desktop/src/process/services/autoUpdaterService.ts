@@ -9,7 +9,7 @@ import type { ProgressInfo, UpdateInfo } from 'electron-updater';
 import { app } from 'electron';
 import log from 'electron-log';
 import { EventEmitter } from 'events';
-import { recordAutoUpdateQuitAndInstall, recordAutoUpdateStatus } from './autoUpdateDiagnostics';
+import { recordAutoUpdateQuitAndInstall, recordAutoUpdateStatus } from './diagnostics/autoUpdateDiagnostics';
 
 /**
  * Returns the appropriate update channel name based on the current platform and architecture.

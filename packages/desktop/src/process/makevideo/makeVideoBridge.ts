@@ -299,7 +299,8 @@ export const runScript = async (req: ScriptRequest): Promise<Scene[]> => {
     (model, msgs) => runProviderChat(model, msgs as Array<{ role: string; content: string }>),
     req.model,
     messages,
-    undefined
+    undefined,
+    { surface: 'video', permissionMode: 'read-only' }
   );
   return parseScenes(content, req.sceneCount, randomUUID);
 };

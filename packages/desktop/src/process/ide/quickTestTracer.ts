@@ -100,6 +100,8 @@ export type RuntimeTrace = {
   platform: TracePlatform;
   /** Absolute repo root the IDE had open (for graph mapping). */
   rootPath: string;
+  /** Resolved native target (Android serial or Windows executable). */
+  target?: string;
   /** All recorded events, oldest first. */
   events: TraceEvent[];
   /** The first error/exception event, if any. */

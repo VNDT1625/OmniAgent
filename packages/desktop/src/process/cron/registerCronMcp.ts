@@ -24,7 +24,7 @@
  * Process boundary: Main-process (Node.js) module — no DOM APIs.
  */
 
-import { mcpService } from '@/common/adapter/ipcBridge';
+import { getMcpRegistry } from '@process/resources/mcpRegistry';
 import { BUILTIN_CRON_NAME } from '../resources/builtinMcp/constants';
 import { startCron } from './cronWiring';
 
@@ -46,24 +46,22 @@ export const ensureCronMcpRegistered = async (): Promise<boolean> => {
     const transport = { type: 'sse' as const, url: host.url };
     const original_json = JSON.stringify({ mcpServers: { [BUILTIN_CRON_NAME]: { url: host.url } } }, null, 2);
 
-    const existing = (await mcpService.listServers.invoke()) ?? [];
+    const existing = (await getMcpRegistry().list()) ?? [];
     const current = existing.find((server) => server.name === BUILTIN_CRON_NAME);
 
     if (!current) {
-      await mcpService.batchImportServers.invoke({
-        servers: [
-          {
-            name: BUILTIN_CRON_NAME,
-            description: CRON_MCP_DESCRIPTION,
-            // Available but not auto-attached: opt a chat in via the MCP picker
-            // / "Super" surface. Default-off avoids surprising every new chat.
-            enabled: false,
-            builtin: true,
-            transport,
-            original_json,
-          },
-        ],
-      });
+      await getMcpRegistry().importMany([
+        {
+          name: BUILTIN_CRON_NAME,
+          description: CRON_MCP_DESCRIPTION,
+          // Available but not auto-attached: opt a chat in via the MCP picker
+          // / "Super" surface. Default-off avoids surprising every new chat.
+          enabled: false,
+          builtin: true,
+          transport,
+          original_json,
+        },
+      ]);
       console.log(`[CronMCP] Registered "${BUILTIN_CRON_NAME}" at ${host.url}.`);
       return true;
     }
@@ -71,10 +69,7 @@ export const ensureCronMcpRegistered = async (): Promise<boolean> => {
     // Refresh the URL if the ephemeral port changed since the last boot.
     const sameUrl = current.transport.type === 'sse' && current.transport.url === host.url;
     if (!sameUrl) {
-      await mcpService.updateServer.invoke({
-        id: current.id,
-        data: { transport, original_json, builtin: true },
-      });
+      await getMcpRegistry().update(current.id, { transport, original_json, builtin: true });
       console.log(`[CronMCP] Updated "${BUILTIN_CRON_NAME}" URL → ${host.url}.`);
     }
     return true;

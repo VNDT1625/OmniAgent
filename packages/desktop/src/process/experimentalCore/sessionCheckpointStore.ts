@@ -24,6 +24,14 @@ export type CoreSessionCheckpoint = {
   targetId: string;
   workspace: string;
   modelKey?: string;
+  companyId?: string;
+  surface?: string;
+  agentId?: string;
+  personalId?: string;
+  permissionScopes?: string[];
+  capabilityGrants?: string[];
+  availableCapabilities?: string[];
+  modelCapabilities?: string[];
   permissionMode: ExperimentalPermissionMode;
   status: CoreSessionStatus;
   createdAt: number;
@@ -38,21 +46,22 @@ export type CoreSessionStore = {
   list: () => Promise<CoreSessionCheckpoint[]>;
   get: (sessionId: string) => Promise<CoreSessionCheckpoint | undefined>;
   save: (checkpoint: CoreSessionCheckpoint) => Promise<void>;
+  replaceAll: (checkpoints: CoreSessionCheckpoint[]) => Promise<void>;
   fork: (sessionId: string, forkId: string, timestamp: number) => Promise<CoreSessionCheckpoint>;
 };
 
-const SECRET_PATTERNS: RegExp[] = [
-  /\b(sk-[a-z0-9_-]{12,})\b/giu,
-  /\b(ghp_[a-z0-9]{20,})\b/giu,
-  /\b(Bearer\s+)[a-z0-9._~+/-]+=*/giu,
-  /\b(api[_-]?key|token|secret|password)\s*[:=]\s*([^\s,;]+)/giu,
+const SECRET_REDACTORS: ReadonlyArray<{ pattern: RegExp; replacement: string }> = [
+  { pattern: /\bsk-[a-z0-9_-]{12,}\b/giu, replacement: '[REDACTED]' },
+  { pattern: /\bghp_[a-z0-9]{20,}\b/giu, replacement: '[REDACTED]' },
+  { pattern: /\b(Bearer\s+)[a-z0-9._~+/-]+=*/giu, replacement: '$1[REDACTED]' },
+  {
+    pattern: /\b(api[_-]?key|token|secret|password)\s*[:=]\s*([^\s,;]+)/giu,
+    replacement: '$1[REDACTED]',
+  },
 ];
 
 export const redactCheckpointText = (text: string): string =>
-  SECRET_PATTERNS.reduce(
-    (value, pattern) => value.replace(pattern, (_match, prefix?: string) => `${prefix ?? ''}[REDACTED]`),
-    text
-  );
+  SECRET_REDACTORS.reduce((value, redactor) => value.replace(redactor.pattern, redactor.replacement), text);
 
 const clone = (checkpoint: CoreSessionCheckpoint): CoreSessionCheckpoint => structuredClone(checkpoint);
 
@@ -79,6 +88,17 @@ export class MemoryCoreSessionStore implements CoreSessionStore {
 
   public async save(checkpoint: CoreSessionCheckpoint): Promise<void> {
     this.checkpoints.set(checkpoint.id, clone(checkpoint));
+  }
+
+  public async replaceAll(checkpoints: CoreSessionCheckpoint[]): Promise<void> {
+    const ids = new Set<string>();
+    for (const checkpoint of checkpoints) {
+      if (!checkpoint.id.trim() || ids.has(checkpoint.id))
+        throw new Error('Core session bundle contains duplicate ids.');
+      ids.add(checkpoint.id);
+    }
+    this.checkpoints.clear();
+    for (const checkpoint of checkpoints) this.checkpoints.set(checkpoint.id, clone(checkpoint));
   }
 
   public async fork(sessionId: string, forkId: string, timestamp: number): Promise<CoreSessionCheckpoint> {
@@ -129,8 +149,26 @@ export class JsonCoreSessionStore extends MemoryCoreSessionStore {
       ...message,
       text: redactCheckpointText(message.text),
     }));
+    if (safeCheckpoint.lastError) safeCheckpoint.lastError = redactCheckpointText(safeCheckpoint.lastError);
     await super.save(safeCheckpoint);
     await this.flush();
+  }
+
+  public override async replaceAll(checkpoints: CoreSessionCheckpoint[]): Promise<void> {
+    const previous = await super.list();
+    const safeCheckpoints = checkpoints.map((checkpoint) => {
+      const safe = clone(checkpoint);
+      safe.messages = safe.messages.map((message) => ({ ...message, text: redactCheckpointText(message.text) }));
+      if (safe.lastError) safe.lastError = redactCheckpointText(safe.lastError);
+      return safe;
+    });
+    await super.replaceAll(safeCheckpoints);
+    try {
+      await this.flush();
+    } catch (error) {
+      await super.replaceAll(previous);
+      throw error;
+    }
   }
 
   private async flush(): Promise<void> {

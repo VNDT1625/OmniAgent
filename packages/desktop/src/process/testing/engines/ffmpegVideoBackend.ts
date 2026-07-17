@@ -10,13 +10,12 @@
  * install needed). It also writes real milestone screenshots.
  *
  * How it records: the embedded test tab is not a normal window we can grab with
- * a desktop recorder, so we drive the capture ourselves — on a fixed interval we
- * call `webContents.capturePage()` (the same real frame the user would see) and
- * feed each PNG to a long-running ffmpeg process over stdin (image2pipe). ffmpeg
- * encodes them into an MP4 at a steady frame rate. Stopping closes ffmpeg's
- * stdin and waits for it to finalise the file. If a frame grab fails we simply
- * skip it (the video keeps going), so a transient capture error never aborts a
- * run.
+ * a desktop recorder, so we drive capture through CDP at the page's CSS
+ * viewport. This keeps evidence independent from the size and position of the
+ * in-chat preview card. Each PNG is fed to a long-running ffmpeg process over
+ * stdin (image2pipe), which encodes an MP4 at a steady frame rate. If CDP is not
+ * available, Electron capture is used as a best-effort fallback. A transient
+ * frame error is skipped without aborting the run.
  *
  * This is genuinely real video (not a stub): play the produced `.mp4` and you see
  * the actual run. Process boundary: Main-process (Node.js / Electron) module.
@@ -51,6 +50,78 @@ type Recording = {
   grabbing: boolean;
 };
 
+type CdpViewport = {
+  pageX?: number;
+  pageY?: number;
+  clientWidth?: number;
+  clientHeight?: number;
+};
+
+/** Capture at intrinsic page zoom so preview sizing never affects evidence. */
+export const captureAtIntrinsicZoom = async <T>(contents: WebContents, capture: () => Promise<T>): Promise<T> => {
+  const zoomable = contents as WebContents & {
+    getZoomFactor?: () => number;
+    setZoomFactor?: (factor: number) => void;
+  };
+  const previousZoom = zoomable.getZoomFactor?.();
+  const canRestore = typeof previousZoom === 'number' && Number.isFinite(previousZoom) && !!zoomable.setZoomFactor;
+  if (canRestore && Math.abs(previousZoom - 1) > 0.001) zoomable.setZoomFactor?.(1);
+  try {
+    return await capture();
+  } finally {
+    if (canRestore) zoomable.setZoomFactor?.(previousZoom);
+  }
+};
+
+/**
+ * Capture the page's CSS viewport directly through CDP.
+ *
+ * Unlike `webContents.capturePage()`, this does not encode the native
+ * `WebContentsView` card's physical size or display zoom into the evidence.
+ * The resulting PNG is expressed in page CSS pixels, so moving/resizing the
+ * in-chat preview (for example when the app sidebar collapses) does not turn a
+ * Quick Test capture into a tiny preview-card screenshot.
+ */
+const capturePageViewportPngUnscaled = async (contents: WebContents): Promise<Buffer | null> => {
+  const wasAttached = contents.debugger.isAttached();
+  try {
+    if (!wasAttached) contents.debugger.attach('1.3');
+    await contents.debugger.sendCommand('Page.enable');
+    const metrics = (await contents.debugger.sendCommand('Page.getLayoutMetrics')) as {
+      cssVisualViewport?: CdpViewport;
+      cssLayoutViewport?: CdpViewport;
+    };
+    const viewport = metrics.cssVisualViewport ?? metrics.cssLayoutViewport;
+    const width = Math.floor(viewport?.clientWidth ?? 0);
+    const height = Math.floor(viewport?.clientHeight ?? 0);
+    if (width <= 0 || height <= 0) return null;
+    const captured = (await contents.debugger.sendCommand('Page.captureScreenshot', {
+      format: 'png',
+      fromSurface: true,
+      captureBeyondViewport: false,
+      clip: {
+        x: viewport?.pageX ?? 0,
+        y: viewport?.pageY ?? 0,
+        width,
+        height,
+        scale: 1,
+      },
+    })) as { data?: string };
+    return captured.data ? Buffer.from(captured.data, 'base64') : null;
+  } catch {
+    // Older Electron/Chromium builds may reject a CDP capture command. Keep a
+    // best-effort fallback instead of losing the recording altogether.
+    const image = await contents.capturePage();
+    return image.isEmpty() ? null : image.toPNG();
+  } finally {
+    if (!wasAttached && contents.debugger.isAttached()) contents.debugger.detach();
+  }
+};
+
+/** Capture a CSS viewport screenshot without inheriting the live preview zoom. */
+export const capturePageViewportPng = (contents: WebContents): Promise<Buffer | null> =>
+  captureAtIntrinsicZoom(contents, () => capturePageViewportPngUnscaled(contents));
+
 /**
  * Create a real ffmpeg-backed {@link CaptureBackend}.
  *
@@ -71,9 +142,8 @@ export const createFfmpegVideoBackend = (deps: FfmpegVideoBackendDeps): CaptureB
     try {
       const contents = deps.getWebContents(tabId);
       if (!contents || contents.isDestroyed()) return;
-      const image = await contents.capturePage();
-      if (image.isEmpty()) return;
-      const png = image.toPNG();
+      const png = await capturePageViewportPng(contents);
+      if (!png) return;
       if (png.length > 0 && rec.ffmpeg.stdin.writable) {
         rec.ffmpeg.stdin.write(png);
       }
@@ -156,10 +226,10 @@ export const createFfmpegVideoBackend = (deps: FfmpegVideoBackendDeps): CaptureB
     const tabId = target.tabId;
     const contents = tabId ? deps.getWebContents(tabId) : undefined;
     if (!contents || contents.isDestroyed()) return;
-    const image = await contents.capturePage();
-    if (image.isEmpty()) return;
+    const png = await capturePageViewportPng(contents);
+    if (!png) return;
     await fs.mkdir(path.dirname(outputPath), { recursive: true }).catch((): undefined => undefined);
-    await fs.writeFile(outputPath, image.toPNG());
+    await fs.writeFile(outputPath, png);
   };
 
   return { startVideo, stopVideo, snapshot };

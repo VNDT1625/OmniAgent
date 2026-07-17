@@ -18,15 +18,15 @@
  * Process boundary: Main-process (Node.js / Electron) module.
  */
 
-import { mcpService } from '@/common/adapter/ipcBridge';
+import { getMcpRegistry } from '@process/resources/mcpRegistry';
 import { BUILTIN_BROWSER_CONTROL_NAME } from '../resources/builtinMcp/browserControlServer';
 import { getApplicationMainWindow } from '../bridge/applicationBridge';
 import { startBrowserControl } from './browserControlWiring';
 
 /** Human description shown in the MCP catalog / tools picker. */
 const BROWSER_CONTROL_MCP_DESCRIPTION =
-  'Drive a live embedded browser: open pages, read/click/type/scroll, wait, screenshot and summarise video. ' +
-  'Lets the chat agent operate the web on your behalf (the "Super" capability). Shares tabs with the in-app browser.';
+  'Drive a live embedded browser and autonomous Quick Test: discover/start repos, observe interactions, ' +
+  'save/replay E2E workflows, and read/click/type/scroll/screenshot. Shares tabs and terminals with the app.';
 
 /**
  * Start the host and register/refresh its `sse` entry in the MCP catalog.
@@ -45,24 +45,22 @@ export const ensureBrowserControlMcpRegistered = async (): Promise<boolean> => {
       2
     );
 
-    const existing = (await mcpService.listServers.invoke()) ?? [];
+    const existing = (await getMcpRegistry().list()) ?? [];
     const current = existing.find((server) => server.name === BUILTIN_BROWSER_CONTROL_NAME);
 
     if (!current) {
-      await mcpService.batchImportServers.invoke({
-        servers: [
-          {
-            name: BUILTIN_BROWSER_CONTROL_NAME,
-            description: BROWSER_CONTROL_MCP_DESCRIPTION,
-            // Available but not auto-attached: the per-conversation "Super"
-            // toggle opts a chat in. Default-off avoids surprising every new chat.
-            enabled: false,
-            builtin: true,
-            transport,
-            original_json,
-          },
-        ],
-      });
+      await getMcpRegistry().importMany([
+        {
+          name: BUILTIN_BROWSER_CONTROL_NAME,
+          description: BROWSER_CONTROL_MCP_DESCRIPTION,
+          // Available but not auto-attached: the per-conversation "Super"
+          // toggle opts a chat in. Default-off avoids surprising every new chat.
+          enabled: false,
+          builtin: true,
+          transport,
+          original_json,
+        },
+      ]);
       console.log(`[BrowserControlMCP] Registered "${BUILTIN_BROWSER_CONTROL_NAME}" at ${host.url}.`);
       return true;
     }
@@ -70,10 +68,7 @@ export const ensureBrowserControlMcpRegistered = async (): Promise<boolean> => {
     // Refresh the URL if the ephemeral port changed since the last boot.
     const sameUrl = current.transport.type === 'sse' && current.transport.url === host.url;
     if (!sameUrl) {
-      await mcpService.updateServer.invoke({
-        id: current.id,
-        data: { transport, original_json, builtin: true },
-      });
+      await getMcpRegistry().update(current.id, { transport, original_json, builtin: true });
       console.log(`[BrowserControlMCP] Updated "${BUILTIN_BROWSER_CONTROL_NAME}" URL → ${host.url}.`);
     }
     return true;

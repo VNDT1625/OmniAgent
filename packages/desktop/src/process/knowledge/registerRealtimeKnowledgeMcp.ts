@@ -18,7 +18,7 @@
  * Process boundary: Main-process (Node.js) module — no DOM APIs.
  */
 
-import { mcpService } from '@/common/adapter/ipcBridge';
+import { getMcpRegistry } from '@process/resources/mcpRegistry';
 import { BUILTIN_REALTIME_KNOWLEDGE_NAME } from '../resources/builtinMcp/realtimeKnowledgeServer';
 import { startRealtimeKnowledge } from './realtimeKnowledgeMcpWiring';
 
@@ -45,32 +45,27 @@ export const ensureRealtimeKnowledgeMcpRegistered = async (): Promise<boolean> =
       2
     );
 
-    const existing = (await mcpService.listServers.invoke()) ?? [];
+    const existing = (await getMcpRegistry().list()) ?? [];
     const current = existing.find((server) => server.name === BUILTIN_REALTIME_KNOWLEDGE_NAME);
 
     if (!current) {
-      await mcpService.batchImportServers.invoke({
-        servers: [
-          {
-            name: BUILTIN_REALTIME_KNOWLEDGE_NAME,
-            description: REALTIME_KNOWLEDGE_MCP_DESCRIPTION,
-            enabled: false,
-            builtin: true,
-            transport,
-            original_json,
-          },
-        ],
-      });
+      await getMcpRegistry().importMany([
+        {
+          name: BUILTIN_REALTIME_KNOWLEDGE_NAME,
+          description: REALTIME_KNOWLEDGE_MCP_DESCRIPTION,
+          enabled: false,
+          builtin: true,
+          transport,
+          original_json,
+        },
+      ]);
       console.log(`[RealtimeKnowledgeMCP] Registered "${BUILTIN_REALTIME_KNOWLEDGE_NAME}" at ${host.url}.`);
       return true;
     }
 
     const sameUrl = current.transport.type === 'sse' && current.transport.url === host.url;
     if (!sameUrl) {
-      await mcpService.updateServer.invoke({
-        id: current.id,
-        data: { transport, original_json, builtin: true },
-      });
+      await getMcpRegistry().update(current.id, { transport, original_json, builtin: true });
       console.log(`[RealtimeKnowledgeMCP] Updated "${BUILTIN_REALTIME_KNOWLEDGE_NAME}" URL → ${host.url}.`);
     }
     return true;

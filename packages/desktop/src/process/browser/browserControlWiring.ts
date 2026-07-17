@@ -32,7 +32,7 @@
  */
 
 import type { BrowserWindow } from 'electron';
-import { httpRequest } from '@/common/adapter/httpBridge';
+import { NativeFileGateway } from '@process/resources/nativeFileGateway';
 import { getResourceCoordinator } from '../resource/resourceCoordinator';
 import { getBrowserServices } from './browserBridge';
 import { createHumanLikeInput } from './humanLikeInput';
@@ -41,6 +41,74 @@ import type { IMediaPipeline, MediaSource } from './mediaPipeline';
 import type { BrowserControlDeps } from '../resources/builtinMcp/browserControlServer';
 import { startBrowserControlMcpHost, type BrowserControlMcpHost } from './browserControlMcpHost';
 import { getEditorFrameStore } from '../editor/editorFrameStore';
+import {
+  createQuickTestLifecycleService,
+  createTerminalQuickTestLauncher,
+  type QuickTestLifecycleService,
+} from '../services/quick-test/lifecycle';
+import { getTerminalServices } from '../terminal/terminalWiring';
+import { getRepoSecretStore } from '../ide/memory/repoSecretStore';
+
+/**
+ * Set a secret directly in a form control without ever returning its value to
+ * the MCP client. The value deliberately exists only in this Main-process
+ * closure and the target page's form control.
+ */
+const fillBrowserSecret = async (
+  viewManager: ReturnType<typeof getBrowserServices>['viewManager'],
+  request: { tabId: string; selector: string; repository: string; secretAlias: string }
+): Promise<void> => {
+  const contents = viewManager.getWebContents(request.tabId);
+  if (!contents) throw new Error('The selected browser tab is no longer available.');
+
+  const values = await getRepoSecretStore().resolveEnvironment(request.repository, [request.secretAlias]);
+  const secret = values[request.secretAlias.trim().toUpperCase()];
+  if (typeof secret !== 'string' || secret.length === 0) {
+    throw new Error(`Secret Context alias ${request.secretAlias.trim().toUpperCase()} has no stored value.`);
+  }
+
+  // The serialized value is sent only to the selected page. This script never
+  // returns it, and its failures are converted to a fixed error below so an
+  // Electron exception cannot echo a value back into the model/tool result.
+  const script = `(() => {
+    try {
+      const element = document.querySelector(${JSON.stringify(request.selector)});
+      if (!element) return false;
+      const value = ${JSON.stringify(secret)};
+      if (element instanceof HTMLInputElement) {
+        if (element.type === 'file' || element.disabled || element.readOnly) return false;
+        const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+        if (!setter) return false;
+        element.focus();
+        setter.call(element, value);
+      } else if (element instanceof HTMLTextAreaElement) {
+        if (element.disabled || element.readOnly) return false;
+        const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+        if (!setter) return false;
+        element.focus();
+        setter.call(element, value);
+      } else if (element instanceof HTMLElement && element.isContentEditable) {
+        element.focus();
+        element.textContent = value;
+      } else {
+        return false;
+      }
+      element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: null }));
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+      return true;
+    } catch {
+      return false;
+    }
+  })()`;
+
+  let filled = false;
+  try {
+    filled = (await contents.executeJavaScript(script)) === true;
+  } catch {
+    filled = false;
+  }
+  if (!filled) throw new Error('Could not fill the selected browser form control with the Secret Context alias.');
+};
 
 /**
  * Minimal {@link IMediaPipeline} for the Agent plane. Video summarisation needs
@@ -64,6 +132,19 @@ const createStubMediaPipeline = (): IMediaPipeline => {
 
 /** Lazily-built deps so the host + register step share one assembly. */
 let cachedDeps: BrowserControlDeps | undefined;
+let quickTestLifecycle: QuickTestLifecycleService | undefined;
+
+/** Resolve the shared agent Quick Test lifecycle bound to the browser and IDE terminal singletons. */
+export const getQuickTestLifecycle = (getWindow: () => BrowserWindow | null | undefined): QuickTestLifecycleService => {
+  if (quickTestLifecycle) return quickTestLifecycle;
+  const browser = getBrowserServices(getWindow).viewManager;
+  const terminal = getTerminalServices().manager;
+  quickTestLifecycle = createQuickTestLifecycleService({
+    viewManager: browser,
+    launcher: createTerminalQuickTestLauncher(terminal),
+  });
+  return quickTestLifecycle;
+};
 
 /**
  * Build (once) the {@link BrowserControlDeps} from the shared browser services.
@@ -91,19 +172,15 @@ export const getBrowserControlDeps = (getWindow: () => BrowserWindow | null | un
     pagePerception,
     mediaPipeline,
     coordinator,
+    fillSecret: (request) => fillBrowserSecret(viewManager, request),
+    quickTest: getQuickTestLifecycle(getWindow),
     // Editor capability (Super's Studio-editor plane): share ONE frame store
     // with the renderer bridge so a file the agent opens shows up as a frame.
     editorFrames: getEditorFrameStore(),
     editorIO: {
-      read: async (filePath: string): Promise<string> => {
-        const result = await httpRequest<string | null>('POST', '/api/fs/read', { path: filePath }).catch(
-          (): string | null => null
-        );
-        return typeof result === 'string' ? result : '';
-      },
+      read: async (filePath: string): Promise<string> => (await new NativeFileGateway().readText(filePath)) ?? '',
       write: async (filePath: string, content: string): Promise<void> => {
-        const ok = await httpRequest<boolean>('POST', '/api/fs/write', { path: filePath, data: content });
-        if (!ok) throw new Error(`File could not be written: ${filePath}`);
+        await new NativeFileGateway().writeText(filePath, content);
       },
     },
   };

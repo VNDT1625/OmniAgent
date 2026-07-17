@@ -39,6 +39,11 @@ const makeIdeService = (): IdeMcpService => ({
   context: async () => ({ summary: 'context' }),
   map: async () => ({ summary: 'map' }),
   analyze: async () => ({ summary: 'analyze' }),
+  analyzeImage: async () => ({
+    json: { schemaVersion: 1, image: { width: 10, height: 20 } },
+    semanticText: 'Image: 10x20',
+    mockUi: '[image]\n[/image]',
+  }),
   compact: async () => ({ summary: 'compact' }),
   runCommand: async () => ({ code: 0, stdout: '', stderr: '', timedOut: false, durationMs: 1 }),
 });
@@ -169,6 +174,7 @@ describe('Omni MCP sidecar smoke checks', () => {
       'ide_grep',
       'ide_glob',
       'ide_list_dir',
+      'ide_analyze_image',
       'import_artifact_text',
       'apply_artifact_edit',
       'import_media_asset',
